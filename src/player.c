@@ -28,6 +28,7 @@ static HWND g_open, g_play, g_stop, g_seek, g_volume;
 static HFONT g_font, g_titleFont;
 static HBRUSH g_background;
 static BOOL g_draggingSeek = FALSE;
+static BOOL g_hasMedia = FALSE;
 static int g_volumeValue = 70;
 
 static void SetStatus(const wchar_t *text)
@@ -115,6 +116,7 @@ static void OpenMedia(HWND owner)
     libvlc_media_player_stop(g_player);
     libvlc_media_player_set_media(g_player, media);
     libvlc_media_release(media);
+    g_hasMedia = TRUE;
 
     const wchar_t *leaf = wcsrchr(path, L'\\');
     leaf = leaf ? leaf + 1 : path;
@@ -136,7 +138,7 @@ static void OpenMedia(HWND owner)
 
 static void TogglePlayPause(void)
 {
-    if (!g_player || !libvlc_media_player_get_media(g_player)) {
+    if (!g_player || !g_hasMedia) {
         SetStatus(L"Open an audio or video file first.");
         return;
     }
@@ -211,7 +213,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     switch (msg) {
     case WM_CREATE:
     {
-        g_video = MakeControl(hwnd, L"STATIC", L"", SS_BLACKRECT,
+        g_video = MakeControl(hwnd, L"STATIC", L"", SS_BLACKRECT | WS_CLIPCHILDREN,
                               18, 18, 700, 400, ID_VIDEO);
         g_title = MakeControl(hwnd, L"STATIC", L"No media selected",
                               SS_LEFT | SS_CENTERIMAGE, 24, 0, 700, 28, ID_TITLE);
