@@ -10,7 +10,7 @@
 #include <wchar.h>
 #include <stdint.h>
 
-#define APP_NAME L"ABM AV Player"
+#define APP_NAME L"ABM AV Player | Product Owner: Abhisek Basu Mullick"
 #define ID_OPEN 1001
 #define ID_PLAY 1002
 #define ID_STOP 1003
@@ -23,7 +23,7 @@
 
 static libvlc_instance_t *g_vlc;
 static libvlc_media_player_t *g_player;
-static HWND g_video, g_title, g_time;
+static HWND g_video, g_title, g_time, g_owner;
 static HWND g_open, g_play, g_stop, g_seek, g_volume;
 static HFONT g_font, g_titleFont;
 static HBRUSH g_background;
@@ -191,7 +191,7 @@ static void Layout(HWND hwnd)
     RECT rc;
     GetClientRect(hwnd, &rc);
     int w = rc.right, h = rc.bottom;
-    int bottom = 150;
+    int bottom = 170;
     int videoHeight = h - bottom;
     if (videoHeight < 120) videoHeight = 120;
 
@@ -204,7 +204,7 @@ static void Layout(HWND hwnd)
     MoveWindow(g_open, start, videoHeight + 82, bw, 38, TRUE);
     MoveWindow(g_play, start + bw + gap, videoHeight + 82, bw, 38, TRUE);
     MoveWindow(g_stop, start + (bw + gap) * 2, videoHeight + 82, bw, 38, TRUE);
-    MoveWindow(g_time, 24, h - 25, 160, 20, TRUE);
+    MoveWindow(g_owner, 24, videoHeight + 122, w - 48, 20, TRUE);\n    MoveWindow(g_time, 24, h - 25, 160, 20, TRUE);
     MoveWindow(g_volume, w - 210, h - 30, 180, 28, TRUE);
 }
 
@@ -234,7 +234,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         SendMessageW(g_volume, TBM_SETPOS, TRUE, g_volumeValue);
 
         HWND controls[] = {g_video, g_title, g_seek, g_open, g_play,
-                           g_stop, g_time, g_volume};
+                           g_stop, g_time, g_volume, g_owner};
         for (unsigned i = 0; i < sizeof(controls) / sizeof(controls[0]); ++i) {
             if (!controls[i]) return -1;
             if (g_font) SendMessageW(controls[i], WM_SETFONT, (WPARAM)g_font, TRUE);
@@ -321,7 +321,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
                     PWSTR commandLine, int show)
 {
     (void)previous;
-    (void)commandLine;
+    (void)commandLine;\n\n    /* Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.\n       Product Owner: Abhisek Basu Mullick. See COPYRIGHT.md and LICENSE. */
 
     INITCOMMONCONTROLSEX icc = {sizeof(icc), ICC_BAR_CLASSES};
     InitCommonControlsEx(&icc);
