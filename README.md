@@ -1,4 +1,4 @@
-# ABM AV Player
+# ABM AV Player\n\n**Product Owner:** Abhisek Basu Mullick  \n**Copyright:** © 2026 Abhisek Basu Mullick. All rights reserved.\n\nThis repository is publicly viewable for reference only. Public availability does not grant permission to copy, modify, redistribute, sublicense, or commercially exploit this software. See [LICENSE](LICENSE) and [COPYRIGHT.md](COPYRIGHT.md).
 
 A native Windows desktop audio/video player written in C.
 
