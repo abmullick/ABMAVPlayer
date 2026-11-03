@@ -204,7 +204,8 @@ static void Layout(HWND hwnd)
     MoveWindow(g_open, start, videoHeight + 82, bw, 38, TRUE);
     MoveWindow(g_play, start + bw + gap, videoHeight + 82, bw, 38, TRUE);
     MoveWindow(g_stop, start + (bw + gap) * 2, videoHeight + 82, bw, 38, TRUE);
-    MoveWindow(g_owner, 24, videoHeight + 122, w - 48, 20, TRUE);\n    MoveWindow(g_time, 24, h - 25, 160, 20, TRUE);
+    MoveWindow(g_owner, 24, videoHeight + 122, w - 48, 20, TRUE);
+    MoveWindow(g_time, 24, h - 25, 160, 20, TRUE);
     MoveWindow(g_volume, w - 210, h - 30, 180, 28, TRUE);
 }
 
@@ -228,6 +229,9 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                              0, 0, 100, 38, ID_STOP);
         g_time = MakeControl(hwnd, L"STATIC", L"00:00  /  00:00",
                              SS_LEFT | SS_CENTERIMAGE, 24, 0, 160, 20, ID_TIME);
+        g_owner = MakeControl(hwnd, L"STATIC",
+            L"Product Owner: Abhisek Basu Mullick  |  \u00A9 2026 Abhisek Basu Mullick. All rights reserved.",
+            SS_LEFT | SS_CENTERIMAGE, 24, 0, 800, 20, 1009);
         g_volume = MakeControl(hwnd, TRACKBAR_CLASSW, L"",
                                TBS_HORZ | TBS_NOTICKS, 0, 0, 180, 28, ID_VOL);
         SendMessageW(g_volume, TBM_SETRANGE, TRUE, MAKELONG(0, 100));
@@ -321,7 +325,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
                     PWSTR commandLine, int show)
 {
     (void)previous;
-    (void)commandLine;\n\n    /* Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.\n       Product Owner: Abhisek Basu Mullick. See COPYRIGHT.md and LICENSE. */
+    (void)commandLine;
+
+/* Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.
+   Product Owner: Abhisek Basu Mullick. See COPYRIGHT.md and LICENSE. */
 
     INITCOMMONCONTROLSEX icc = {sizeof(icc), ICC_BAR_CLASSES};
     InitCommonControlsEx(&icc);
