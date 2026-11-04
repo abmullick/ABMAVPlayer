@@ -39,7 +39,7 @@ if errorlevel 1 goto build_failed
 
 echo [4/4] Linking ABM AV Player...
 cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj /link /LIBPATH:"%VLC_SDK%\lib" libvlc.lib ^
-  comctl32.lib comdlg32.lib shell32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib ^
+  comctl32.lib comdlg32.lib shell32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
 
