@@ -291,7 +291,7 @@ static void DrawUI(HDC dc,RECT client) {
         Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
         const wchar_t *labels[10]={L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",L"About ABM AV Player",L"Exit player"};
         const wchar_t *icons[10]={L"+",L"⌕",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×"};
-        for(int i=0;i<10;i++} {
+        for(int i=0;i<10;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
@@ -422,7 +422,8 @@ static void RemovePlaylistItem(int index) {
     g_playlistCount--;
     if(g_playlistCount==0){g_selected=-1;g_current=-1;g_playlistScroll=0;}
     else {
-        if(g_selected>=g_playlistCount)g_selected=g_playlistCount-1;
+        if(index==g_selected)g_selected=index<g_playlistCount?index:g_playlistCount-1;
+        else if(index<g_selected)g_selected--;
         if(g_selected<0)g_selected=0;
     }
     InvalidateRect(g_main,NULL,FALSE);
@@ -465,10 +466,11 @@ static void LoadPlaylist(void) {
     while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){
         size_t n=strcspn(line,"\r\n");line[n]=0;
         if(!line[0]||line[0]=='#')continue;
-        int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,line,-1,NULL,0);
-        if(chars<=0)chars=MultiByteToWideChar(CP_ACP,0,line,-1,NULL,0);
+        UINT cp=CP_UTF8;
+        int chars=MultiByteToWideChar(cp,MB_ERR_INVALID_CHARS,line,-1,NULL,0);
+        if(chars<=0){cp=CP_ACP;chars=MultiByteToWideChar(cp,0,line,-1,NULL,0);}
         if(chars>0&&chars<=PATH_CAP){
-            MultiByteToWideChar(chars>0?CP_UTF8:CP_ACP,0,line,-1,g_playlist[g_playlistCount],PATH_CAP);
+            MultiByteToWideChar(cp,0,line,-1,g_playlist[g_playlistCount],PATH_CAP);
             g_playlistCount++;
         }
     }
@@ -477,6 +479,7 @@ static void LoadPlaylist(void) {
 }
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     if(index>=0&&index<g_playlistCount)g_selected=index;
+    else g_selected=-1;
     HMENU menu=CreatePopupMenu();
     if(!menu)return;
     AppendMenuW(menu,MF_STRING|(g_selected>=0?0:MF_GRAYED),1,L"Play");
@@ -644,7 +647,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetCapture(hwnd);
         if(Inside(R_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
         if(Inside(R_PLAY,x,y)){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}else if(g_playlistCount)PlayIndex(g_selected<0?0:g_selected);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex((g_current+1)%g_playlistCount);ReleaseCapture();return 0;}
         if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
         if(Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
@@ -672,7 +675,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_RBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
         for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){index=i;break;}
-        if(index>=0){ShowPlaylistContextMenu(hwnd,x,y,index);return 0;}
+        if(Inside(R_SIDEBAR,x,y)&&y>=R_SIDEBAR.top+140){ShowPlaylistContextMenu(hwnd,x,y,index);return 0;}
         break;
     }
     case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
