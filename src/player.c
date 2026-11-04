@@ -554,7 +554,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
         ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
         if(GetOpenFileNameW(&ofn)){char utf8[PATH_CAP*4];if(WideCharToMultiByte(CP_UTF8,0,path,-1,utf8,sizeof(utf8),NULL,NULL)>0)libvlc_video_set_subtitle_file(g_player,utf8);}
     } else if(cmd>=22000&&cmd<=22020){
-        float rate=cmd==22005?0.5f:cmd==220075?0.75f:cmd==22010?1.0f:cmd==220125?1.25f:cmd==22015?1.5f:2.0f;
+        float rate=cmd==22005?0.5f:cmd==22007?0.75f:cmd==22010?1.0f:cmd==22012?1.25f:cmd==22015?1.5f:2.0f;
         g_playbackRate=rate;libvlc_media_player_set_rate(g_player,rate);
     } else if(cmd==23002){
         libvlc_media_t *m=libvlc_media_player_get_media(g_player);
