@@ -7,6 +7,7 @@
 #include <vlc/vlc.h>
 #include <vlc/libvlc_renderer_discoverer.h>
 #include <vlc/libvlc_events.h>
+#include "ui_d2d.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <wchar.h>
@@ -25,6 +26,7 @@
 static libvlc_instance_t *g_vlc;
 static libvlc_media_player_t *g_player;
 static HWND g_video, g_renderers, g_main;
+static ABM_D2D g_ui;
 static HFONT g_font, g_smallFont, g_headingFont;
 static HBRUSH g_videoBrush, g_comboBrush;
 static CRITICAL_SECTION g_rendererLock;
@@ -63,28 +65,12 @@ static COLORREF C_LINE = RGB(47,56,70);
 
 static COLORREF Blend(COLORREF a,COLORREF b,int amount);
 static void RoundBox(HDC dc, RECT r, COLORREF c, int radius);
-static void Fill(HDC dc, RECT r, COLORREF c) { HBRUSH b=CreateSolidBrush(c); FillRect(dc,&r,b); DeleteObject(b); }
-static void GradientRect(HDC dc, RECT r, COLORREF top, COLORREF bottom) {
-    int h=r.bottom-r.top;if(h<1)return;
-    for(int y=0;y<h;y++) {
-        int k=(y*100)/(h>1?h-1:1);
-        COLORREF col=Blend(top,bottom,k);
-        RECT band={r.left,r.top+y,r.right,r.top+y+1};Fill(dc,band,col);
-    }
-}
-static void Panel(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius) {
-    RoundBox(dc,r,fill,radius);
-    HPEN p=CreatePen(PS_SOLID,1,edge);HGDIOBJ old=SelectObject(dc,p);
-    HGDIOBJ brush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);
-    SelectObject(dc,brush);SelectObject(dc,old);DeleteObject(p);
-}
-static void DrawLine(HDC dc,int x1,int y1,int x2,int y2,COLORREF color,int width) {
-    HPEN p=CreatePen(PS_SOLID,width,color);HGDIOBJ old=SelectObject(dc,p);
-    MoveToEx(dc,x1,y1,NULL);LineTo(dc,x2,y2);SelectObject(dc,old);DeleteObject(p);
-}
-static void RoundBox(HDC dc, RECT r, COLORREF c, int radius) { HBRUSH b=CreateSolidBrush(c); HPEN p=CreatePen(PS_SOLID,1,c); HGDIOBJ ob=SelectObject(dc,b), op=SelectObject(dc,p); RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(b); DeleteObject(p); }
-static void Txt(HDC dc, const wchar_t *s, RECT r, COLORREF c, HFONT f, UINT flags) { SetBkMode(dc,TRANSPARENT); SetTextColor(dc,c); HGDIOBJ old=SelectObject(dc,f); DrawTextW(dc,s,-1,&r,flags); SelectObject(dc,old); }
+static void Fill(HDC dc, RECT r, COLORREF c) { (void)dc;ABM_D2D_Fill(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,c); }
+static void GradientRect(HDC dc, RECT r, COLORREF top, COLORREF bottom) { (void)dc;ABM_D2D_Fill(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,Blend(top,bottom,45)); }
+static void RoundBox(HDC dc, RECT r, COLORREF c, int radius) { (void)dc;ABM_D2D_Round(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,c); }
+static void Panel(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius) { (void)dc;ABM_D2D_Round(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,fill);ABM_D2D_StrokeRound(&g_ui,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)radius,edge,1.0f); }
+static void DrawLine(HDC dc,int x1,int y1,int x2,int y2,COLORREF color,int width) { (void)dc;ABM_D2D_Line(&g_ui,(float)x1,(float)y1,(float)x2,(float)y2,color,(float)width); }
+static void Txt(HDC dc, const wchar_t *s, RECT r, COLORREF c, HFONT f, UINT flags) { (void)dc;int style=(f==g_smallFont)?1:((f==g_headingFont)?2:0);ABM_D2D_Text(&g_ui,s,r,c,style,flags); }
 static BOOL Inside(RECT r,int x,int y) { return x>=r.left && x<r.right && y>=r.top && y<r.bottom; }
 static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
     if(amount<0)amount=0;if(amount>100)amount=100;
@@ -133,14 +119,26 @@ static void UpdateLayout(HWND hwnd) {
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     COLORREF bg=active?C_ACCENT:Blend(C_PANEL2,RGB(57,75,99),hot?g_hoverLevel:0);
     RoundBox(dc,r,bg,14);
-    HPEN p=CreatePen(PS_SOLID,2,C_TEXT); HGDIOBJ old=SelectObject(dc,p);
     int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
-    if(kind==1){ POINT q[3]={{cx-6,cy-10},{cx+10,cy},{cx-6,cy+10}}; HBRUSH b=CreateSolidBrush(C_TEXT); HGDIOBJ ob=SelectObject(dc,b); Polygon(dc,q,3); SelectObject(dc,ob); DeleteObject(b); }
-    else if(kind==2){ MoveToEx(dc,cx-6,cy-10,NULL); LineTo(dc,cx-6,cy+10); MoveToEx(dc,cx+6,cy-10,NULL); LineTo(dc,cx+6,cy+10); }
-    else if(kind==3){ MoveToEx(dc,cx-8,cy-8,NULL); LineTo(dc,cx+8,cy+8); MoveToEx(dc,cx+8,cy-8,NULL); LineTo(dc,cx-8,cy+8); }
-    else if(kind==4){ MoveToEx(dc,cx-8,cy-8,NULL); LineTo(dc,cx+5,cy); LineTo(dc,cx-8,cy+8); MoveToEx(dc,cx+7,cy-8,NULL); LineTo(dc,cx+7,cy+8); }
-    else if(kind==5){ MoveToEx(dc,cx+8,cy-8,NULL); LineTo(dc,cx-5,cy); LineTo(dc,cx+8,cy+8); MoveToEx(dc,cx-7,cy-8,NULL); LineTo(dc,cx-7,cy+8); }
-    SelectObject(dc,old); DeleteObject(p);
+    if(kind==1) {
+        DrawLine(dc,cx-6,cy-10,cx+10,cy,C_TEXT,3);
+        DrawLine(dc,cx+10,cy,cx-6,cy+10,C_TEXT,3);
+        DrawLine(dc,cx-6,cy+10,cx-6,cy-10,C_TEXT,3);
+    } else if(kind==2) {
+        DrawLine(dc,cx-6,cy-10,cx-6,cy+10,C_TEXT,3);
+        DrawLine(dc,cx+6,cy-10,cx+6,cy+10,C_TEXT,3);
+    } else if(kind==3) {
+        DrawLine(dc,cx-8,cy-8,cx+8,cy+8,C_TEXT,2);
+        DrawLine(dc,cx+8,cy-8,cx-8,cy+8,C_TEXT,2);
+    } else if(kind==4) {
+        DrawLine(dc,cx-8,cy-8,cx+5,cy,C_TEXT,2);
+        DrawLine(dc,cx+5,cy,cx-8,cy+8,C_TEXT,2);
+        DrawLine(dc,cx+7,cy-8,cx+7,cy+8,C_TEXT,2);
+    } else if(kind==5) {
+        DrawLine(dc,cx+8,cy-8,cx-5,cy,C_TEXT,2);
+        DrawLine(dc,cx-5,cy,cx+8,cy+8,C_TEXT,2);
+        DrawLine(dc,cx-7,cy-8,cx-7,cy+8,C_TEXT,2);
+    }
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) { Fill(dc,client,RGB(0,0,0)); return; }
@@ -212,8 +210,7 @@ static void DrawUI(HDC dc,RECT client) {
     if(sel>0)SendMessageW(g_renderers,CB_GETLBTEXT,sel,(LPARAM)deviceName);
     RECT deviceText={receiver.left+38,receiver.top+2,receiver.right-28,receiver.bottom-2};
     Txt(dc,deviceName,deviceText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    POINT chevron[3]={{receiver.right-19,receiver.top+12},{receiver.right-11,receiver.top+12},{receiver.right-15,receiver.top+18}};
-    HPEN cp=CreatePen(PS_SOLID,1,C_MUTED);HGDIOBJ co=SelectObject(dc,cp);HBRUSH cb=CreateSolidBrush(C_MUTED);HGDIOBJ cbo=SelectObject(dc,cb);Polygon(dc,chevron,3);SelectObject(dc,cbo);SelectObject(dc,co);DeleteObject(cb);DeleteObject(cp);
+    DrawLine(dc,receiver.right-19,receiver.top+12,receiver.right-15,receiver.top+17,C_MUTED,2);\n    DrawLine(dc,receiver.right-15,receiver.top+17,receiver.right-11,receiver.top+12,C_MUTED,2);
 
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+111,R_SIDEBAR.right-17,R_SIDEBAR.top+137};
     Txt(dc,L"UP NEXT",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -455,13 +452,17 @@ static void ToggleFullscreen(HWND hwnd) {
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        g_main=hwnd; g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
         libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
-    case WM_SIZE:UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_SIZE: {
+        UpdateLayout(hwnd);
+        if(wp!=SIZE_MINIMIZED)ABM_D2D_Resize(&g_ui,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
     case WM_MEASUREITEM: if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){((LPMEASUREITEMSTRUCT)lp)->itemHeight=26;return TRUE;}break;
     case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=(UINT)-1){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
@@ -557,10 +558,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;ReleaseCapture();return 0;
-    case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);DrawUI(dc,r);EndPaint(hwnd,&ps);return 0;}
+    case WM_PAINT:{
+        PAINTSTRUCT ps;BeginPaint(hwnd,&ps);
+        RECT r;GetClientRect(hwnd,&r);
+        ABM_D2D_Begin(&g_ui,C_BG);
+        DrawUI(NULL,r);
+        ABM_D2D_End(&g_ui);
+        EndPaint(hwnd,&ps);return 0;
+    }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
-    case WM_DESTROY:KillTimer(hwnd,TIMER_ID);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+    case WM_DESTROY:KillTimer(hwnd,TIMER_ID);ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
