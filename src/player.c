@@ -473,7 +473,7 @@ static void LoadPlaylist(void) {
     char line[PATH_CAP*4];
     while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){
         size_t n=strcspn(line,"\r\n");line[n]=0;
-        if(g_playlistCount==0&&(unsigned char)line[0]==0xEF&&(unsigned char)line[1]==0xBB&&(unsigned char)line[2]==0xBF)
+        if(g_playlistCount==0&&strlen(line)>=3&&(unsigned char)line[0]==0xEF&&(unsigned char)line[1]==0xBB&&(unsigned char)line[2]==0xBF)
             memmove(line,line+3,strlen(line+3)+1);
         if(!line[0]||line[0]=='#')continue;
         UINT cp=CP_UTF8;
