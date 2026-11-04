@@ -565,9 +565,9 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
             const char *album=libvlc_media_get_meta(m,libvlc_meta_Album);
             int64_t duration=libvlc_media_get_duration(m);
             wchar_t wt[512]=L"(unknown)",wa[512]=L"(unknown)",wal[512]=L"(unknown)";
-            if(title)MultiByteToWideChar(CP_UTF8,0,title,-1,wt,512);
-            if(artist)MultiByteToWideChar(CP_UTF8,0,artist,-1,wa,512);
-            if(album)MultiByteToWideChar(CP_UTF8,0,album,-1,wal,512);
+            if(title){MultiByteToWideChar(CP_UTF8,0,title,-1,wt,512);libvlc_free((void*)title);}
+            if(artist){MultiByteToWideChar(CP_UTF8,0,artist,-1,wa,512);libvlc_free((void*)artist);}
+            if(album){MultiByteToWideChar(CP_UTF8,0,album,-1,wal,512);libvlc_free((void*)album);}
             swprintf_s(info,2048,L"Title: %s\nArtist: %s\nAlbum: %s\nDuration: %02lld:%02lld",wt,wa,wal,(long long)(duration/60000),(long long)((duration/1000)%60));
             libvlc_media_release(m);
         } else wcscpy_s(info,2048,L"Media information is not available yet.");
