@@ -16,6 +16,9 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 - Video: MP4, MKV, AVI, MOV, WMV and WebM (codec support depends on installed VLC)
 - Play/pause, stop, seek and volume
 - Dark native Windows interface
+- Network receiver discovery through LibVLC (Google Cast / Chromecast where the installed VLC build provides the renderer module)
+- Select a receiver before opening media to route playback to a TV
+- Chromecast renderer can automatically transcode unsupported streams when supported by the installed VLC build
 - Unicode file paths converted to UTF-8 for LibVLC
 
 ## Requirements
@@ -50,8 +53,18 @@ If VLC is installed elsewhere, set VLC_DIR before running.
 - No subtitle/audio-track selection or playback-speed control yet.
 - No exclusive-mode / bit-perfect audio path yet.
 - No hardware-acceleration controls yet.
-- Codec availability depends on the installed VLC build.
+- Codec availability and network-casting capabilities depend on the installed VLC build and its plugins.
+- For casting, allow ABM AV Player/VLC through Windows Defender Firewall on private networks and ensure multicast/mDNS discovery is not blocked.
+- Select the TV before opening a file; changing the renderer after playback has started currently requires restarting the application.
 - Source has not yet been compiled or tested on the user's HP Envy.
+
+## Google Cast / network casting
+1. Click **Find TVs** and wait for network receivers to appear.
+2. Select your Google TV / Chromecast receiver from the list.
+3. Open the media file. LibVLC's renderer module handles the Cast session and can transcode streams the receiver cannot decode directly, depending on the VLC build and available encoder plugins.
+4. Keep the laptop and TV on the same non-guest Wi-Fi/LAN. Router client isolation, VPNs, multicast filtering, or Windows Firewall rules can prevent discovery or streaming.
+
+The application uses LibVLC's renderer-discovery and renderer-selection APIs. It does not bundle a separate FFmpeg executable; codec conversion is delegated to the VLC engine and its installed plugins. Transcoding is not guaranteed for every codec, subtitle format, or receiver.
 
 ## Roadmap
 1. Robust playback-state handling and metadata
