@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
 #include <commdlg.h>
 #include <uxtheme.h>
@@ -268,27 +269,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_SIZE:UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
-    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
     case WM_MEASUREITEM: if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){((LPMEASUREITEMSTRUCT)lp)->itemHeight=26;return TRUE;}break;
-    case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=UINT(-1)){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
+    case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=(UINT)-1){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
     case WM_TIMER:if(wp==TIMER_ID){if(g_hoverButton&&g_hoverLevel<100)g_hoverLevel+=20;else if(!g_hoverButton&&g_hoverLevel>0)g_hoverLevel-=20;if(g_hoverLevel<0)g_hoverLevel=0;if(g_hoverLevel>100)g_hoverLevel=100;UpdateUI();}return 0;
     case WM_MOUSEWHEEL: {
-        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
-        int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
-        g_playlistScroll-=GET_WHEEL_DELTA_WPARAM(wp)/WHEEL_DELTA;
-        if(g_playlistScroll<0)g_playlistScroll=0;
-        if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
-        InvalidateRect(hwnd,NULL,FALSE);return 0;
-    }
-    case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
         int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
         int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
         g_playlistScroll-=delta/WHEEL_DELTA;
-        if(g_playlistScroll<0)g_playlistScroll=0;if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
+        if(g_playlistScroll<0)g_playlistScroll=0;
+        if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
     case WM_LBUTTONDOWN: {
