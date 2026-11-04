@@ -102,15 +102,15 @@ static void FormatTime(int ms,wchar_t *out,size_t n) {
 }
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
-    int left=24,top=78,bottom=158,gap=18;
-    int side=w>=1050?292:(w>=760?250:220);
-    int videoW=w-side-left*2-gap; if(videoW<240)videoW=240;
-    int videoH=h-top-bottom; if(videoH<120)videoH=120;
+    int left=32,top=88,bottom=170,gap=24;
+    int side=w>=1280?328:(w>=1050?300:264);
+    int videoW=w-side-left*2-gap; if(videoW<260)videoW=260;
+    int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
-    R_MENU_BUTTON=(RECT){w-252,15,w-210,53};
-    R_MENU_PANEL=(RECT){w-258,62,w-18,62+472};
+    R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
+    R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
@@ -159,19 +159,19 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) { Fill(dc,client,RGB(0,0,0)); return; }
     Fill(dc,client,C_BG);
-    RECT header={0,0,client.right,66};GradientRect(dc,header,RGB(24,31,44),RGB(16,20,29));
-    DrawLine(dc,0,65,client.right,65,RGB(37,48,65),1);
+    RECT header={0,0,client.right,72};GradientRect(dc,header,RGB(27,37,54),RGB(14,19,28));
+    DrawLine(dc,0,71,client.right,71,RGB(43,57,76),1);
 
-    RECT logo={24,18,54,48};RoundBox(dc,logo,C_ACCENT,9);
-    DrawLine(dc,31,26,31,40,RGB(255,255,255),2);
-    DrawLine(dc,31,26,43,26,RGB(255,255,255),2);
-    DrawLine(dc,43,26,43,40,RGB(255,255,255),2);
-    RECT brand={68,10,390,38};Txt(dc,L"ABM AV PLAYER",brand,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT sub={69,37,420,56};Txt(dc,L"YOUR MEDIA. YOUR EXPERIENCE.",sub,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT logo={30,18,66,54};RoundBox(dc,logo,C_ACCENT,11);
+    DrawLine(dc,39,27,39,45,RGB(255,255,255),2);
+    DrawLine(dc,39,27,56,27,RGB(255,255,255),2);
+    DrawLine(dc,56,27,56,45,RGB(255,255,255),2);
+    RECT brand={80,10,420,42};Txt(dc,L"ABM AV PLAYER",brand,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT sub={81,41,430,61};Txt(dc,L"YOUR MEDIA. YOUR EXPERIENCE.",sub,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     RoundBox(dc,menuBtn,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
-    RECT status={client.right-190,21,client.right-24,48};
+    RECT status={client.right-202,23,client.right-278,50};
     RoundBox(dc,status,RGB(26,36,51),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
@@ -796,7 +796,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp!=SIZE_MINIMIZED)ABM_D2D_Resize(&g_ui,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
-    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
+    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=1000; mi->ptMinTrackSize.y=650; return 0; }
     case WM_MEASUREITEM: if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){((LPMEASUREITEMSTRUCT)lp)->itemHeight=26;return TRUE;}break;
     case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=(UINT)-1){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
