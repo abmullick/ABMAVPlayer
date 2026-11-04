@@ -36,6 +36,7 @@ static size_t g_discovererCount;
 static libvlc_renderer_item_t *g_rendererItems[MAX_RENDERERS], *g_comboItems[MAX_RENDERERS];
 static size_t g_rendererCount, g_comboCount;
 static libvlc_renderer_item_t *g_selectedRenderer;
+static BOOL g_rendererApplied = FALSE;
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
 static int g_volume = 70, g_dragSeek = 0, g_dragVolume = 0, g_hover = 0;
@@ -365,9 +366,13 @@ static void SelectRenderer(void) {
         g_player=libvlc_media_player_new(g_vlc);
         if(!g_player){g_hasMedia=FALSE;MessageBoxW(g_main,L"Could not recreate the media player.",APP_NAME,MB_ICONERROR);return;}
         libvlc_media_player_set_hwnd(g_player,g_video);
-        if(g_selectedRenderer&&libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
-            MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);
-            return;
+        g_rendererApplied=FALSE;
+        if(g_selectedRenderer){
+            if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
+                MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);
+                return;
+            }
+            g_rendererApplied=TRUE;
         }
         char utf8[PATH_CAP*4];
         if(WideCharToMultiByte(CP_UTF8,0,g_playlist[g_current],-1,utf8,sizeof(utf8),NULL,NULL)>0){
@@ -393,7 +398,10 @@ static void PlayIndex(int index) {
     char utf8[PATH_CAP*4]; int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[index],-1,utf8,sizeof(utf8),NULL,NULL); if(n<=0)return;
     libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8); if(!m){MessageBoxW(g_main,L"LibVLC could not open this file.",APP_NAME,MB_ICONERROR);return;}
     libvlc_media_player_stop(g_player);
-    if(g_selectedRenderer&&libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){libvlc_media_release(m);MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);return;}
+    if(g_selectedRenderer&&!g_rendererApplied){
+        if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){libvlc_media_release(m);MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);return;}
+        g_rendererApplied=TRUE;
+    }
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;InvalidateRect(g_main,NULL,FALSE);
@@ -465,6 +473,8 @@ static void LoadPlaylist(void) {
     char line[PATH_CAP*4];
     while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){
         size_t n=strcspn(line,"\r\n");line[n]=0;
+        if(g_playlistCount==0&&(unsigned char)line[0]==0xEF&&(unsigned char)line[1]==0xBB&&(unsigned char)line[2]==0xBF)
+            memmove(line,line+3,strlen(line+3)+1);
         if(!line[0]||line[0]=='#')continue;
         UINT cp=CP_UTF8;
         int chars=MultiByteToWideChar(cp,MB_ERR_INVALID_CHARS,line,-1,NULL,0);
@@ -490,7 +500,8 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     AppendMenuW(menu,MF_STRING|(g_playlistCount?0:MF_GRAYED),5,L"Clear playlist");
     AppendMenuW(menu,MF_STRING|(g_playlistCount?0:MF_GRAYED),6,L"Save playlist...");
     SetForegroundWindow(hwnd);
-    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,NULL);
+    POINT pt={x,y};ClientToScreen(hwnd,&pt);
+    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,pt.x,pt.y,0,hwnd,NULL);
     DestroyMenu(menu);
     switch(cmd){
         case 1:PlayIndex(g_selected);break;
@@ -635,7 +646,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     L"Double-click the video - Toggle fullscreen",
                     L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
                 else if(mi==8)MessageBoxW(hwnd,
-                    L"ABM AV Player\nVersion 0.2\n\n"
+                    L"ABM AV Player\nVersion 0.3\n\n"
                     L"A Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\n\n"
                     L"Product Owner: Abhisek Basu Mullick\n"
                     L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
