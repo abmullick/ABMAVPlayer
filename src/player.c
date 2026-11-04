@@ -592,6 +592,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
     case WM_TIMER:if(wp==TIMER_ID){
+        int oldMenuProgress=g_menuProgress;
         if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
         else if(!g_menuOpen&&g_menuProgress>0)g_menuProgress-=20;
         if(g_menuProgress<0)g_menuProgress=0;if(g_menuProgress>100)g_menuProgress=100;
@@ -609,7 +610,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         UpdateUI();
-        if(g_menuProgress>0) {
+        /* Invalidate on every animation step, including the final transition
+           from 20% to 0%, so no fragment of the menu is left on screen. */
+        if(oldMenuProgress!=g_menuProgress) {
             RECT dirty=R_MENU_PANEL;
             InvalidateRect(hwnd,&dirty,FALSE);
         }
