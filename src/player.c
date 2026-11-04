@@ -16,11 +16,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <shlobj.h>
+#include <urlmon.h>
 
 #define APP_NAME L"ABM AV Player"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
 #define ID_RENDERERS 1010
 #define WM_RENDERERS_CHANGED (WM_APP + 10)
+#define WM_ARTWORK_READY (WM_APP + 11)
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -55,6 +57,10 @@ static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
+static libvlc_media_t *g_artMedia=NULL;
+static BOOL g_artworkLoaded=FALSE;
+static wchar_t g_trackTitle[256]=L"";
+static wchar_t g_trackArtist[256]=L"";
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -81,6 +87,8 @@ static COLORREF C_ACCENT = RGB(67,143,255);
 static COLORREF C_LINE = RGB(47,56,70);
 
 static void PlayIndex(int index);
+static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque);
+static BOOL EnsureDataDirectory(void);
 static COLORREF Blend(COLORREF a,COLORREF b,int amount);
 static void RoundBox(HDC dc, RECT r, COLORREF c, int radius);
 static void Fill(HDC dc, RECT r, COLORREF c) { (void)dc;ABM_D2D_Fill(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,c); }
