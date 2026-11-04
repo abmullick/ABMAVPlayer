@@ -257,7 +257,28 @@ static void SeekAt(int x) {
     int width=R_SEEK.right-R_SEEK.left;int p=x-R_SEEK.left;if(p<0)p=0;if(p>width)p=width;
     libvlc_media_player_set_time(g_player,(len*p)/width);
 }
-static void UpdateUI(void) { if(g_main)InvalidateRect(g_main,NULL,FALSE); }
+static void InvalidateButton(int hit) {
+    if(!g_main)return;
+    RECT r={0,0,0,0};
+    switch(hit) {
+        case HIT_OPEN:r=R_OPEN;break;
+        case HIT_PLAY:r=R_PLAY;break;
+        case HIT_STOP:r=R_STOP;break;
+        case HIT_PREV:r=R_PREV;break;
+        case HIT_NEXT:r=R_NEXT;break;
+        case HIT_SCAN:r=R_SCAN;break;
+        default:return;
+    }
+    InflateRect(&r,3,3);
+    InvalidateRect(g_main,&r,FALSE);
+}
+static void UpdateUI(void) {
+    if(!g_main)return;
+    RECT timeline={R_SEEK.left,R_SEEK.top-14,R_SEEK.right,R_SEEK.bottom+16};
+    RECT timeText={20,R_SEEK.top+10,190,R_SEEK.top+36};
+    InvalidateRect(g_main,&timeline,FALSE);
+    InvalidateRect(g_main,&timeText,FALSE);
+}
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -265,7 +286,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
-        libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,16,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_SIZE:UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
@@ -274,7 +295,22 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
-    case WM_TIMER:if(wp==TIMER_ID){if(g_hoverButton&&g_hoverLevel<100)g_hoverLevel+=20;else if(!g_hoverButton&&g_hoverLevel>0)g_hoverLevel-=20;if(g_hoverLevel<0)g_hoverLevel=0;if(g_hoverLevel>100)g_hoverLevel=100;UpdateUI();}return 0;
+    case WM_TIMER:if(wp==TIMER_ID){
+        int oldLevel=g_hoverLevel;
+        if(g_hoverButton&&g_hoverLevel<100)g_hoverLevel+=20;
+        else if(!g_hoverButton&&g_hoverLevel>0)g_hoverLevel-=20;
+        if(g_hoverLevel<0)g_hoverLevel=0;
+        if(g_hoverLevel>100)g_hoverLevel=100;
+        if(oldLevel!=g_hoverLevel) {
+            InvalidateButton(g_hoverButton);
+            if(g_hoverButton==HIT_NONE) {
+                InvalidateButton(HIT_OPEN);InvalidateButton(HIT_PLAY);
+                InvalidateButton(HIT_STOP);InvalidateButton(HIT_PREV);
+                InvalidateButton(HIT_NEXT);InvalidateButton(HIT_SCAN);
+            }
+        }
+        UpdateUI();
+    }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
         int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
