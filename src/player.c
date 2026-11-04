@@ -275,7 +275,7 @@ static void InvalidateButton(int hit) {
 static void UpdateUI(void) {
     if(!g_main)return;
     RECT timeline={R_SEEK.left,R_SEEK.top-14,R_SEEK.right,R_SEEK.bottom+16};
-    RECT timeText={20,R_SEEK.top+10,190,R_SEEK.top+36};
+    RECT timeText={20,R_SEEK.top+76,190,R_SEEK.top+106};
     InvalidateRect(g_main,&timeline,FALSE);
     InvalidateRect(g_main,&timeText,FALSE);
 }
@@ -339,7 +339,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_OPEN,mx,my))hit=HIT_OPEN;else if(Inside(R_SCAN,mx,my))hit=HIT_SCAN;
         else if(Inside(R_PLAY,mx,my))hit=HIT_PLAY;else if(Inside(R_STOP,mx,my))hit=HIT_STOP;
         else if(Inside(R_PREV,mx,my))hit=HIT_PREV;else if(Inside(R_NEXT,mx,my))hit=HIT_NEXT;
-        if(hit!=g_hoverButton){g_hoverButton=hit;InvalidateRect(hwnd,NULL,FALSE);}
+        if(hit!=g_hoverButton){
+            int previous=g_hoverButton;
+            g_hoverButton=hit;
+            InvalidateButton(previous);
+            InvalidateButton(g_hoverButton);
+        }
         if(g_dragSeek)SeekAt(mx);
         if(g_dragVolume){int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}
         return 0;
