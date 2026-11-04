@@ -13,7 +13,7 @@ typedef struct ABM_D2D {
     void *target;
     void *writeFactory;
     void *body;
-    void *small;
+    void *smallFormat;
     void *heading;
     void *brush;
     HWND hwnd;
