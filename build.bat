@@ -25,7 +25,7 @@ if errorlevel 1 (
 
 if not exist build mkdir build
 
-echo [1/3] Compiling C playback engine...
+echo [1/4] Compiling C playback engine...
 cl /nologo /W4 /O2 /std:c11 /TC /DUNICODE /D_UNICODE /I"%VLC_SDK%\include" /c src\player.c /Fo:build\player.obj
 if errorlevel 1 goto build_failed
 
