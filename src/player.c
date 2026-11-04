@@ -35,8 +35,10 @@ static libvlc_renderer_item_t *g_selectedRenderer;
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
 static int g_volume = 70, g_dragSeek = 0, g_dragVolume = 0, g_hover = 0;
+static int g_playlistScroll = 0, g_hoverButton = 0, g_animPhase = 0;
+static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
-static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME;
+static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER;
 static RECT R_ROW[MAX_PLAYLIST];
 static BOOL g_hasMedia = FALSE;
 
@@ -62,23 +64,25 @@ static void FormatTime(int ms,wchar_t *out,size_t n) {
 }
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
-    int side=292, left=24, top=78, bottom=158, gap=18;
-    int videoW=w-side- left*2-gap; if(videoW<280) videoW=280;
-    int videoH=h-top-bottom; if(videoH<150) videoH=150;
+    int left=24,top=78,bottom=158,gap=18;
+    int side=w>=1050?292:(w>=760?250:220);
+    int videoW=w-side-left*2-gap; if(videoW<240)videoW=240;
+    int videoH=h-top-bottom; if(videoH<120)videoH=120;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
+    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
     MoveWindow(g_video,R_VIDEO.left,R_VIDEO.top,videoW,videoH,TRUE);
-    MoveWindow(g_renderers,R_SIDEBAR.left+14,R_SIDEBAR.top+66,side-28,30,TRUE);
+    MoveWindow(g_renderers,R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right-R_RECEIVER.left,30,TRUE);
     R_SEEK=(RECT){left,h-126,w-left,h-120};
     R_PREV=(RECT){w/2-118,h-94,w/2-70,h-46};
     R_PLAY=(RECT){w/2-48,h-100,w/2+48,h-40};
     R_NEXT=(RECT){w/2+70,h-94,w/2+118,h-46};
     R_STOP=(RECT){w/2+140,h-94,w/2+188,h-46};
     R_OPEN=(RECT){left,h-96,left+112,h-48};
-    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+18,R_SIDEBAR.left+side-28,R_SIDEBAR.top+54};
+    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+18,R_SIDEBAR.right-14,R_SIDEBAR.top+54};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    int y=R_SIDEBAR.top+118;
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+i*48,R_SIDEBAR.right-10,y+(i+1)*48};
+    int y=R_SIDEBAR.top+154;
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*48,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*48};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     COLORREF bg=active?C_ACCENT:(hot?RGB(49,61,79):C_PANEL2);
@@ -99,18 +103,18 @@ static void DrawUI(HDC dc,RECT client) {
     RECT mark={logo.left+6,logo.top+5,logo.right-5,logo.bottom-5}; Txt(dc,L"▶",mark,RGB(255,255,255),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT brand={58,10,420,36}; Txt(dc,L"ABM AV PLAYER",brand,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT sub={58,34,440,54}; Txt(dc,L"MEDIA, WITHOUT COMPROMISE",sub,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT open=R_OPEN; RoundBox(dc,open,C_PANEL2,12); Txt(dc,L"+   Add media",open,C_TEXT,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT open=R_OPEN; RoundBox(dc,open,(g_hoverButton==HIT_OPEN)?RGB(48,64,86):C_PANEL2,12); Txt(dc,L"+   Add media",open,C_TEXT,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RoundBox(dc,R_SIDEBAR,C_PANEL,16);
     RECT st={R_SIDEBAR.left+14,R_SIDEBAR.top+14,R_SIDEBAR.right-14,R_SIDEBAR.top+38};
     Txt(dc,L"OUTPUT DEVICE",st,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RoundBox(dc,R_SCAN,C_PANEL2,10); Txt(dc,L"⌁   Find TVs",R_SCAN,C_TEXT,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RoundBox(dc,R_SCAN,(g_hoverButton==HIT_SCAN)?RGB(48,64,86):C_PANEL2,10); Txt(dc,L"⌁   Scan for devices",R_SCAN,C_TEXT,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT playlistHead={R_SIDEBAR.left+14,R_SIDEBAR.top+108,R_SIDEBAR.right-14,R_SIDEBAR.top+138};
     Txt(dc,L"UP NEXT",playlistHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48]; swprintf_s(count,48,L"%d TRACKS",g_playlistCount);
     RECT cr={R_SIDEBAR.right-110,playlistHead.top,R_SIDEBAR.right-14,playlistHead.bottom};
     Txt(dc,count,cr,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-    int visible=(client.bottom-R_SIDEBAR.top-160)/48; if(visible<0)visible=0; if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
-    for(int i=0;i<g_playlistCount && i<visible;i++) {
+    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48; if(visible<0)visible=0; if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
+    for(int i=g_playlistScroll;i<g_playlistCount && i<g_playlistScroll+visible;i++) {
         RECT row=R_ROW[i];
         if(i==g_selected) RoundBox(dc,row,RGB(39,57,82),9);
         RECT num={row.left+9,row.top+4,row.left+34,row.bottom-4};
@@ -138,10 +142,10 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dot={thumb-6,R_SEEK.top-4,thumb+6,R_SEEK.bottom+4}; RoundBox(dc,dot,C_TEXT,8);
     wchar_t t1[24],t2[24],times[64]; FormatTime((int)now,t1,24); FormatTime((int)len,t2,24); swprintf_s(times,64,L"%s  /  %s",t1,t2);
     RECT tr={24,client.bottom-44,180,client.bottom-20}; Txt(dc,times,tr,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    DrawIconButton(dc,R_PREV,5,FALSE,FALSE);
-    DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,FALSE,TRUE);
-    DrawIconButton(dc,R_NEXT,4,FALSE,FALSE);
-    DrawIconButton(dc,R_STOP,3,FALSE,FALSE);
+    DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
+    DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
+    DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
+    DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     RECT volLabel={client.right-286,client.bottom-96,client.right-224,client.bottom-74};
     Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     RECT vr={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2}; RoundBox(dc,vr,C_LINE,5);
@@ -152,6 +156,8 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"PRODUCT OWNER: ABHISEK BASU MULLICK  ·  © 2026 ALL RIGHTS RESERVED",footer,RGB(92,104,122),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
 }
 static void RefreshRendererList(void) {
+    libvlc_renderer_item_t *previous=g_selectedRenderer;
+    int restored=0;
     for(size_t i=0;i<g_comboCount;i++) libvlc_renderer_item_release(g_comboItems[i]);
     g_comboCount=0; SendMessageW(g_renderers,CB_RESETCONTENT,0,0);
     SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");
@@ -161,9 +167,14 @@ static void RefreshRendererList(void) {
         const char *name=libvlc_renderer_item_name(it); wchar_t wide[256]=L"Network receiver";
         if(name) MultiByteToWideChar(CP_UTF8,0,name,-1,wide,256);
         int ix=(int)SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)wide);
-        if(ix!=CB_ERR && ix!=CB_ERRSPACE) g_comboItems[g_comboCount++]=it; else libvlc_renderer_item_release(it);
+        if(ix!=CB_ERR && ix!=CB_ERRSPACE) {
+            g_comboItems[g_comboCount]=it;
+            if(previous==it) restored=(int)g_comboCount+1;
+            g_comboCount++;
+        } else libvlc_renderer_item_release(it);
     }
-    LeaveCriticalSection(&g_rendererLock); SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+    LeaveCriticalSection(&g_rendererLock);
+    SendMessageW(g_renderers,CB_SETCURSEL,(WPARAM)restored,0);
 }
 static void RendererEvent(const libvlc_event_t *ev,void *opaque) {
     (void)opaque; libvlc_renderer_item_t *it=ev->type==libvlc_RendererDiscovererItemAdded?ev->u.renderer_discoverer_item_added.item:ev->u.renderer_discoverer_item_deleted.item;
@@ -250,12 +261,30 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_SIZE:UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
+    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
     case WM_MEASUREITEM: if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){((LPMEASUREITEMSTRUCT)lp)->itemHeight=26;return TRUE;}break;
     case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=UINT(-1)){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
     case WM_TIMER:if(wp==TIMER_ID)UpdateUI();return 0;
+    case WM_MOUSEWHEEL: {
+        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
+        int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
+        g_playlistScroll-=GET_WHEEL_DELTA_WPARAM(wp)/WHEEL_DELTA;
+        if(g_playlistScroll<0)g_playlistScroll=0;
+        if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
+    case WM_MOUSEWHEEL: {
+        int delta=GET_WHEEL_DELTA_WPARAM(wp);
+        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
+        int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
+        g_playlistScroll-=delta/WHEEL_DELTA;
+        if(g_playlistScroll<0)g_playlistScroll=0;if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);SetCapture(hwnd);
         if(Inside(R_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
@@ -266,11 +295,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
         if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12){g_dragVolume=1;int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        for(int i=0;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){g_selected=i;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){g_selected=i;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         ReleaseCapture();return 0;
     }
-    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); for(int i=0;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
-    case WM_MOUSEMOVE: if(g_dragSeek)SeekAt(GET_X_LPARAM(lp));if(g_dragVolume){int v=(GET_X_LPARAM(lp)-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}return 0;
+    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
+    case WM_MOUSEMOVE: {
+        int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
+        if(Inside(R_OPEN,mx,my))hit=HIT_OPEN;else if(Inside(R_SCAN,mx,my))hit=HIT_SCAN;
+        else if(Inside(R_PLAY,mx,my))hit=HIT_PLAY;else if(Inside(R_STOP,mx,my))hit=HIT_STOP;
+        else if(Inside(R_PREV,mx,my))hit=HIT_PREV;else if(Inside(R_NEXT,mx,my))hit=HIT_NEXT;
+        if(hit!=g_hoverButton){g_hoverButton=hit;InvalidateRect(hwnd,NULL,FALSE);}
+        if(g_dragSeek)SeekAt(mx);
+        if(g_dragVolume){int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}
+        return 0;
+    }
     case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;ReleaseCapture();return 0;
     case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);DrawUI(dc,r);EndPaint(hwnd,&ps);return 0;}
     case WM_ERASEBKGND:return 1;
@@ -291,7 +329,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;
     if(!RegisterClassW(&wc))return 1;
-    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,1280,820,NULL,NULL,inst,NULL);
+    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW,CW_USEDEFAULT,CW_USEDEFAULT,1440,900,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;ShowWindow(hwnd,show);UpdateWindow(hwnd);
     MSG m;while(GetMessageW(&m,NULL,0,0)>0){TranslateMessage(&m);DispatchMessageW(&m);}
     if(g_headingFont)DeleteObject(g_headingFont);if(g_smallFont)DeleteObject(g_smallFont);if(g_font)DeleteObject(g_font);if(g_videoBrush)DeleteObject(g_videoBrush);if(g_comboBrush)DeleteObject(g_comboBrush);DeleteCriticalSection(&g_rendererLock);
