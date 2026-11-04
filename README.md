@@ -3,7 +3,8 @@
 A native Windows desktop audio/video player written in C.
 
 ## Architecture
-- Application and interface: C + Win32 API
+- Application and windowing: C + Win32 API
+- Interface rendering: Direct2D (antialiased shapes, surfaces and controls) + DirectWrite (Segoe UI text layout and ClearType-quality glyph rendering)
 - Media playback, demuxing and codecs: LibVLC
 - Video output: LibVLC embedded in a Win32 child window
 - Audio output: LibVLC's Windows audio backend
@@ -15,7 +16,8 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 - Audio: MP3, WAV, FLAC, AAC, M4A and OGG (codec support depends on installed VLC)
 - Video: MP4, MKV, AVI, MOV, WMV and WebM (codec support depends on installed VLC)
 - Play/pause, stop, seek and volume
-- Dark native Windows interface
+- Dark custom Windows interface rendered with Direct2D and DirectWrite
+- DirectWrite typography and antialiased Direct2D controls, panels and interactive surfaces
 - Network receiver discovery through LibVLC (Google Cast / Chromecast where the installed VLC build provides the renderer module)
 - Select a receiver before opening media to route playback to a TV
 - Chromecast renderer can automatically transcode unsupported streams when supported by the installed VLC build
@@ -23,7 +25,7 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 
 ## Requirements
 - Windows 11 x64
-- Visual Studio 2022 with **Desktop development with C++**
+- Visual Studio Build Tools / Visual Studio with **Desktop development with C++** and Windows 10/11 SDK
 - Windows SDK
 - 64-bit VLC media player
 - Matching 64-bit LibVLC SDK (headers and import library), version 3.0 or later for renderer discovery
@@ -38,7 +40,7 @@ All components must use the same architecture (x64). For casting, use a full VLC
 2. Extract the matching 64-bit LibVLC SDK, for example to C:\vlc-sdk.
 3. Open **x64 Native Tools Command Prompt for VS 2022**.
 4. Set the SDK path: set VLC_SDK=C:\vlc-sdk
-5. Run build.bat from the repository root.
+5. Run build.bat from the repository root. The build compiles `src\\player.c` and `src\\ui_d2d.c`, linking `d2d1.lib` and `dwrite.lib` from the Windows SDK.
 
 The executable is written to build\ABMAVPlayer.exe.
 
