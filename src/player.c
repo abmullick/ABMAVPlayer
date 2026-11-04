@@ -39,6 +39,7 @@ static int g_volume = 70, g_dragSeek = 0, g_dragVolume = 0, g_hover = 0;
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
+static int64_t g_lastUiTime = -1;
 static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER;
 static RECT R_ROW[MAX_PLAYLIST];
 static BOOL g_hasMedia = FALSE;
@@ -235,7 +236,7 @@ static void PlayIndex(int index) {
     if(g_selectedRenderer&&libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){libvlc_media_release(m);MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);return;}
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
-    g_current=index;g_selected=index;g_hasMedia=TRUE;InvalidateRect(g_main,NULL,FALSE);
+    g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;InvalidateRect(g_main,NULL,FALSE);
 }
 static void AddFiles(void) {
     OPENFILENAMEW ofn; wchar_t buf[32768]=L""; ZeroMemory(&ofn,sizeof(ofn));
@@ -273,7 +274,13 @@ static void InvalidateButton(int hit) {
     InvalidateRect(g_main,&r,FALSE);
 }
 static void UpdateUI(void) {
-    if(!g_main)return;
+    if(!g_main || !g_player)return;
+    /* VLC renders video frames independently. Refresh only the timeline while
+       playback is advancing, and only when the reported position changes. */
+    if(libvlc_media_player_get_state(g_player)!=libvlc_Playing)return;
+    int64_t current=libvlc_media_player_get_time(g_player);
+    if(current<0 || current==g_lastUiTime)return;
+    g_lastUiTime=current;
     RECT timeline={R_SEEK.left,R_SEEK.top-14,R_SEEK.right,R_SEEK.bottom+16};
     RECT timeText={20,R_SEEK.top+76,190,R_SEEK.top+106};
     InvalidateRect(g_main,&timeline,FALSE);
