@@ -238,7 +238,17 @@ static void DrawVisualizer(HDC dc,RECT area) {
     Fill(dc,baseline,RGB(36,54,76));
 }
 static void DrawUI(HDC dc,RECT client) {
-    if(g_fullscreen) { Fill(dc,client,RGB(0,0,0)); if(g_visualizerActive) DrawVisualizer(dc,client); return; }
+    if(g_fullscreen) {
+        Fill(dc,client,RGB(0,0,0));
+        if(g_artworkLoaded) {
+            ABM_D2D_DrawImage(&g_ui,0,0,(float)client.right,(float)client.bottom);
+            RECT title={20,client.bottom-76,client.right-20,client.bottom-48};
+            RECT artist={20,client.bottom-46,client.right-20,client.bottom-20};
+            if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        } else if(g_visualizerActive) DrawVisualizer(dc,client);
+        return;
+    }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,72};GradientRect(dc,header,RGB(27,37,54),RGB(14,19,28));
     DrawLine(dc,0,71,client.right,71,RGB(43,57,76),1);
@@ -263,7 +273,13 @@ static void DrawUI(HDC dc,RECT client) {
     int glow=(int)(18.0+10.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
     COLORREF edge=Blend(RGB(35,53,78),C_ACCENT,glow);
     Panel(dc,frame,RGB(8,11,16),edge,13);
-    if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
+    if(g_artworkLoaded) {
+        ABM_D2D_DrawImage(&g_ui,(float)R_VIDEO.left+18,(float)R_VIDEO.top+18,(float)R_VIDEO.right-18,(float)R_VIDEO.bottom-18);
+        RECT title={R_VIDEO.left+18,R_VIDEO.bottom-64,R_VIDEO.right-18,R_VIDEO.bottom-40};
+        RECT artist={R_VIDEO.left+18,R_VIDEO.bottom-39,R_VIDEO.right-18,R_VIDEO.bottom-18};
+        if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
         RECT badge={R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2-31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2-52,
                     R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2+31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2+10};
@@ -926,7 +942,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
             if(!g_visualizerTried) { g_visualizerTried=TRUE; g_visualizerActive=ABM_AudioVisualizer_Start(); }
-            if(g_visualizerActive) ShowWindow(g_video,SW_HIDE);
+            if(g_visualizerActive || g_artworkLoaded) ShowWindow(g_video,SW_HIDE);
             else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
         } else {
             if(g_visualizerActive) ABM_AudioVisualizer_Stop();
