@@ -144,32 +144,13 @@ static void DrawUI(HDC dc,RECT client) {
     RECT brand={68,10,390,38};Txt(dc,L"ABM AV PLAYER",brand,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT sub={69,37,420,56};Txt(dc,L"YOUR MEDIA. YOUR EXPERIENCE.",sub,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
-    RoundBox(dc,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
+    RoundBox(dc,menuBtn,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT status={client.right-190,21,client.right-24,48};
     RoundBox(dc,status,RGB(26,36,51),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
     Txt(dc,g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER",statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-
-    if(g_menuProgress>0) {
-        RECT menu=R_MENU_PANEL;
-        menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
-        Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
-        const wchar_t *labels[4]={L"Open media",L"Find network devices",L"Play / Pause",L"Exit player"};
-        for(int i=0;i<4;i++) {
-            RECT item=R_MENU_ITEMS[i];
-            if(item.bottom>menu.bottom)item.bottom=menu.bottom;
-            if(item.top>=menu.bottom)continue;
-            if(Inside(item,GetSystemMetrics(SM_CXSCREEN)+1,GetSystemMetrics(SM_CYSCREEN)+1)){}
-            if(g_menuOpen)RoundBox(dc,item,RGB(31,43,61),7);
-            RECT glyph={item.left+10,item.top+2,item.left+34,item.bottom-2};
-            const wchar_t *icons[4]={L"+",L"⌕",L"▶",L"×"};
-            Txt(dc,icons[i],glyph,C_ACCENT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+40,item.top+2,item.right-8,item.bottom-2};
-            Txt(dc,labels[i],label,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        }
-    }
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,2,2);Panel(dc,frame,RGB(8,11,16),RGB(43,54,70),10);
@@ -280,7 +261,26 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     RECT footer={client.right-430,client.bottom-25,client.right-24,client.bottom-8};
-    Txt(dc,L"ABHISEK BASU MULLICK  |  © 2026 ALL RIGHTS RESERVED",footer,RGB(83,97,117),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"ABHISEK BASU MULLICK  |  © 2026 ALL RIGHTS RESERVED",footer,RGB(128,143,162),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+
+    /* Animated drop-down menu is painted last so it floats above the player. */
+    if(g_menuProgress>0) {
+        RECT menu=R_MENU_PANEL;
+        menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
+        Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
+        const wchar_t *labels[4]={L"Open media",L"Find network devices",L"Play / Pause",L"Exit player"};
+        const wchar_t *icons[4]={L"+",L"⌕",L"▶",L"×"};
+        for(int i=0;i<4;i++) {
+            RECT item=R_MENU_ITEMS[i];
+            if(item.bottom>menu.bottom)item.bottom=menu.bottom;
+            if(item.top>=menu.bottom)continue;
+            if(g_menuOpen)RoundBox(dc,item,RGB(31,43,61),7);
+            RECT glyph={item.left+10,item.top+2,item.left+34,item.bottom-2};
+            Txt(dc,icons[i],glyph,C_ACCENT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label={item.left+40,item.top+2,item.right-8,item.bottom-2};
+            Txt(dc,labels[i],label,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        }
+    }
 }
 static void RefreshRendererList(void) {
     libvlc_renderer_item_t *previous=g_selectedRenderer;
@@ -439,7 +439,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         UpdateUI();
-        if(g_menuProgress>0)InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);
+        if(g_menuProgress>0)InvalidateRect(hwnd,NULL,FALSE);
     }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
@@ -452,7 +452,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-        if(Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,&R_MENU_BUTTON,FALSE);ReleaseCapture();return 0;}
+        if(Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<4;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
@@ -516,7 +516,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
     g_font=CreateFontW(17,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    g_smallFont=CreateFontW(14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     g_headingFont=CreateFontW(22,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     const char *args[]={"--no-video-title-show","--quiet"};g_vlc=libvlc_new(2,args);
     if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
