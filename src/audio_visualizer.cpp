@@ -19,6 +19,8 @@ struct Complex { float r, i; };
 std::atomic<bool> running{false};
 std::thread worker;
 HANDLE stopEvent = nullptr;
+HANDLE startupEvent = nullptr;
+std::atomic<bool> captureActive{false};
 std::mutex bandsMutex;
 float bands[BAND_COUNT]{};
 
@@ -141,6 +143,8 @@ static void CaptureThread() {
             if (FAILED(capture->GetNextPacketSize(&packet))) { packet=0; break; }
         }
     }
+    captureActive.store(started);
+    if (startupEvent) SetEvent(startupEvent);
     if (started) client->Stop();
     if (capture) capture->Release();
     if (format) CoTaskMemFree(format);
@@ -150,6 +154,8 @@ static void CaptureThread() {
     if (audioEvent) CloseHandle(audioEvent);
     if (SUCCEEDED(co)) CoUninitialize();
     { std::lock_guard<std::mutex> lock(bandsMutex); for(float &v:bands)v=0.0f; }
+    captureActive.store(false);
+    running.store(false);
 }
 }
 
@@ -157,22 +163,37 @@ extern "C" BOOL ABM_AudioVisualizer_Start(void) {
     if (running.load()) return TRUE;
     if (worker.joinable()) worker.join();
     stopEvent=CreateEventW(nullptr,TRUE,FALSE,nullptr);
-    if (!stopEvent) return FALSE;
+    startupEvent=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+    if (!stopEvent || !startupEvent) {
+        if(stopEvent) CloseHandle(stopEvent);
+        if(startupEvent) CloseHandle(startupEvent);
+        stopEvent=nullptr; startupEvent=nullptr; return FALSE;
+    }
     { std::lock_guard<std::mutex> lock(bandsMutex); for(float &v:bands)v=0.0f; }
     running.store(true);
     try { worker=std::thread(CaptureThread); }
-    catch (...) { running.store(false); CloseHandle(stopEvent); stopEvent=nullptr; return FALSE; }
+    catch (...) { running.store(false); CloseHandle(stopEvent); CloseHandle(startupEvent); stopEvent=nullptr; startupEvent=nullptr; return FALSE; }
+    DWORD ready=WaitForSingleObject(startupEvent,1500);
+    if(ready!=WAIT_OBJECT_0 || !captureActive.load()) {
+        running.store(false);
+        SetEvent(stopEvent);
+        if(worker.joinable()) worker.join();
+        CloseHandle(stopEvent); CloseHandle(startupEvent);
+        stopEvent=nullptr; startupEvent=nullptr; return FALSE;
+    }
     return TRUE;
 }
 extern "C" void ABM_AudioVisualizer_Stop(void) {
     if (!running.exchange(false)) {
         if (worker.joinable()) worker.join();
         if (stopEvent) { CloseHandle(stopEvent); stopEvent=nullptr; }
+        if (startupEvent) { CloseHandle(startupEvent); startupEvent=nullptr; }
         return;
     }
     if (stopEvent) SetEvent(stopEvent);
     if (worker.joinable()) worker.join();
     if (stopEvent) { CloseHandle(stopEvent); stopEvent=nullptr; }
+    if (startupEvent) { CloseHandle(startupEvent); startupEvent=nullptr; }
 }
 extern "C" void ABM_AudioVisualizer_GetBands(float *outBands,int count) {
     if (!outBands || count<=0) return;
