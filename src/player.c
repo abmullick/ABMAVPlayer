@@ -171,7 +171,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT menuBtn=R_MENU_BUTTON;
     RoundBox(dc,menuBtn,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
-    RECT status={client.right-202,23,client.right-278,50};
+    RECT status={client.right-460,23,client.right-278,50};
     RoundBox(dc,status,RGB(26,36,51),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
