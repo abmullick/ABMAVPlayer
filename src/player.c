@@ -10,6 +10,7 @@
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
 #include <stdint.h>
+#include <math.h>
 #include <stdio.h>
 #include <wchar.h>
 #include <string.h>
@@ -50,6 +51,8 @@ static wchar_t g_recent[MAX_RECENT][PATH_CAP];
 static int g_recentCount=0;
 static wchar_t g_dataDir[PATH_CAP];
 static BOOL g_libraryReady=FALSE;
+static unsigned int g_visualPulse=0;
+static BOOL g_receiverLost=FALSE;
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -175,7 +178,10 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER",statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
-    RECT frame=R_VIDEO;InflateRect(&frame,2,2);Panel(dc,frame,RGB(8,11,16),RGB(43,54,70),10);
+    RECT frame=R_VIDEO;InflateRect(&frame,3,3);
+    int glow=(int)(18.0+10.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
+    COLORREF edge=Blend(RGB(35,53,78),C_ACCENT,glow);
+    Panel(dc,frame,RGB(8,11,16),edge,13);
     if(!g_hasMedia) {
         RECT badge={R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2-31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2-52,
                     R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2+31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2+10};
@@ -787,7 +793,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=(UINT)-1){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
-    case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
+    case WM_RENDERERS_CHANGED:{
+        RefreshRendererList();
+        if(g_selectedRenderer){
+            BOOL present=FALSE;
+            for(size_t i=0;i<g_comboCount;i++)if(g_comboItems[i]==g_selectedRenderer){present=TRUE;break;}
+            if(!present){
+                g_receiverLost=TRUE;
+                libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;
+                SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+                SelectRenderer();
+                SetStatus(L"Receiver disconnected - returned to local playback");
+            } else g_receiverLost=FALSE;
+        }
+        return 0;
+    }
     case WM_TIMER:if(wp==TIMER_ID){
         int oldMenuProgress=g_menuProgress;
         if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
@@ -812,6 +832,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else if(g_playlistCount>1)PlayIndex(GetNextPlaylistIndex());
             else {g_hasMedia=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         }
+        g_visualPulse=(g_visualPulse+1)%10000;
+        if(g_hasMedia && (g_visualPulse%3)==0) {RECT glow=R_VIDEO;InflateRect(&glow,4,4);InvalidateRect(hwnd,&glow,FALSE);}
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
            from 20% to 0%, so no fragment of the menu is left on screen. */
