@@ -941,7 +941,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else {g_hasMedia=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         }
         g_visualPulse=(g_visualPulse+1)%10000;
-        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
+        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && !g_artworkLoaded && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
             if(!g_visualizerTried) { g_visualizerTried=TRUE; g_visualizerActive=ABM_AudioVisualizer_Start(); }
             if(g_visualizerActive || g_artworkLoaded) ShowWindow(g_video,SW_HIDE);
@@ -1099,7 +1099,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
-    (void)prev;(void)cmd;CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
+    (void)prev;(void)cmd;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
     g_font=CreateFontW(17,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
@@ -1114,6 +1114,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!hwnd)return 1;ShowWindow(hwnd,show);UpdateWindow(hwnd);
     MSG m;while(GetMessageW(&m,NULL,0,0)>0){TranslateMessage(&m);DispatchMessageW(&m);}
     if(g_headingFont)DeleteObject(g_headingFont);if(g_smallFont)DeleteObject(g_smallFont);if(g_font)DeleteObject(g_font);if(g_videoBrush)DeleteObject(g_videoBrush);if(g_comboBrush)DeleteObject(g_comboBrush);DeleteCriticalSection(&g_rendererLock);
-    CoUninitialize();
+    if(SUCCEEDED(comInit))CoUninitialize();
     return (int)m.wParam;
 }
