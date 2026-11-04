@@ -156,6 +156,8 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"PRODUCT OWNER: ABHISEK BASU MULLICK  ·  © 2026 ALL RIGHTS RESERVED",footer,RGB(92,104,122),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
 }
 static void RefreshRendererList(void) {
+    libvlc_renderer_item_t *previous=g_selectedRenderer;
+    int restored=0;
     for(size_t i=0;i<g_comboCount;i++) libvlc_renderer_item_release(g_comboItems[i]);
     g_comboCount=0; SendMessageW(g_renderers,CB_RESETCONTENT,0,0);
     SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");
@@ -165,9 +167,14 @@ static void RefreshRendererList(void) {
         const char *name=libvlc_renderer_item_name(it); wchar_t wide[256]=L"Network receiver";
         if(name) MultiByteToWideChar(CP_UTF8,0,name,-1,wide,256);
         int ix=(int)SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)wide);
-        if(ix!=CB_ERR && ix!=CB_ERRSPACE) g_comboItems[g_comboCount++]=it; else libvlc_renderer_item_release(it);
+        if(ix!=CB_ERR && ix!=CB_ERRSPACE) {
+            g_comboItems[g_comboCount]=it;
+            if(previous==it) restored=(int)g_comboCount+1;
+            g_comboCount++;
+        } else libvlc_renderer_item_release(it);
     }
-    LeaveCriticalSection(&g_rendererLock); SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+    LeaveCriticalSection(&g_rendererLock);
+    SendMessageW(g_renderers,CB_SETCURSEL,(WPARAM)restored,0);
 }
 static void RendererEvent(const libvlc_event_t *ev,void *opaque) {
     (void)opaque; libvlc_renderer_item_t *it=ev->type==libvlc_RendererDiscovererItemAdded?ev->u.renderer_discoverer_item_added.item:ev->u.renderer_discoverer_item_deleted.item;
