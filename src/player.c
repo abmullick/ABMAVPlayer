@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define APP_NAME L"ABM AV Player"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
@@ -51,7 +52,7 @@ static BOOL g_fullscreen = FALSE;
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
-static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[7], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[10], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -94,8 +95,8 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
     R_MENU_BUTTON=(RECT){w-252,15,w-210,53};
-    R_MENU_PANEL=(RECT){w-258,62,w-18,62+310};
-    for(int i=0;i<7;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
+    R_MENU_PANEL=(RECT){w-258,62,w-18,62+436};
+    for(int i=0;i<10;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -288,9 +289,9 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
         Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
-        const wchar_t *labels[7]={L"Open media",L"Find network devices",L"Play / Pause",L"Fullscreen",L"Help",L"About ABM AV Player",L"Exit player"};
-        const wchar_t *icons[7]={L"+",L"⌕",L"▶",L"⛶",L"?",L"i",L"×"};
-        for(int i=0;i<7;i++) {
+        const wchar_t *labels[10]={L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",L"About ABM AV Player",L"Exit player"};
+        const wchar_t *icons[10]={L"+",L"⌕",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×"};
+        for(int i=0;i<10;i++} {
             RECT item=R_MENU_ITEMS[i];
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
@@ -349,17 +350,37 @@ static void StartDiscovery(void) {
 }
 static void SelectRenderer(void) {
     int s=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
-    if(g_hasMedia) {
-        int restore=0;
-        if(g_selectedRenderer) for(size_t i=0;i<g_comboCount;i++)
-            if(g_comboItems[i]==g_selectedRenderer) restore=(int)i+1;
-        SendMessageW(g_renderers,CB_SETCURSEL,(WPARAM)restore,0);
-        MessageBoxW(g_main,L"Choose the receiver before opening media. Stop and reopen the player to change an active playback route.",APP_NAME,MB_ICONINFORMATION);
-        return;
+    libvlc_renderer_item_t *next=NULL;
+    if(s>0&&(size_t)(s-1)<g_comboCount)next=libvlc_renderer_item_hold(g_comboItems[s-1]);
+    if(g_selectedRenderer)libvlc_renderer_item_release(g_selectedRenderer);
+    g_selectedRenderer=next;
+
+    /* set_renderer only takes effect before play(). Recreate the media player
+       when changing the output so an already-playing item can move to the TV. */
+    if(g_hasMedia&&g_current>=0&&g_current<g_playlistCount){
+        int64_t resumeAt=libvlc_media_player_get_time(g_player);
+        BOOL wasPlaying=libvlc_media_player_get_state(g_player)==libvlc_Playing;
+        libvlc_media_player_stop(g_player);
+        libvlc_media_player_release(g_player);
+        g_player=libvlc_media_player_new(g_vlc);
+        if(!g_player){g_hasMedia=FALSE;MessageBoxW(g_main,L"Could not recreate the media player.",APP_NAME,MB_ICONERROR);return;}
+        libvlc_media_player_set_hwnd(g_player,g_video);
+        if(g_selectedRenderer&&libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
+            MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);
+            return;
+        }
+        char utf8[PATH_CAP*4];
+        if(WideCharToMultiByte(CP_UTF8,0,g_playlist[g_current],-1,utf8,sizeof(utf8),NULL,NULL)>0){
+            libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8);
+            if(m){libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
+                if(libvlc_media_player_play(g_player)==0){
+                    if(resumeAt>0)libvlc_media_player_set_time(g_player,resumeAt);
+                    if(!wasPlaying)libvlc_media_player_set_pause(g_player,1);
+                }else MessageBoxW(g_main,L"Playback could not restart on the selected output.",APP_NAME,MB_ICONERROR);
+            }
+        }
     }
-    if(g_selectedRenderer){libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;}
-    if(s>0&&(size_t)(s-1)<g_comboCount)
-        g_selectedRenderer=libvlc_renderer_item_hold(g_comboItems[s-1]);
+    InvalidateRect(g_main,NULL,FALSE);
 }
 static void StopDiscovery(void) {
     for(size_t i=0;i<g_discovererCount;i++){libvlc_event_manager_t *em=libvlc_renderer_discoverer_event_manager(g_discoverers[i]);libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);libvlc_renderer_discoverer_stop(g_discoverers[i]);libvlc_renderer_discoverer_release(g_discoverers[i]);}
@@ -392,6 +413,92 @@ static void AddFiles(void) {
     if(g_selected<0&&g_playlistCount>0)g_selected=0;
     InvalidateRect(g_main,NULL,FALSE);
 }
+static void RemovePlaylistItem(int index) {
+    if(index<0||index>=g_playlistCount)return;
+    if(index==g_current){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;g_current=-1;}
+    else if(index<g_current)g_current--;
+    for(int i=index+1;i<g_playlistCount;i++)
+        wcsncpy_s(g_playlist[i-1],PATH_CAP,g_playlist[i],_TRUNCATE);
+    g_playlistCount--;
+    if(g_playlistCount==0){g_selected=-1;g_current=-1;g_playlistScroll=0;}
+    else {
+        if(g_selected>=g_playlistCount)g_selected=g_playlistCount-1;
+        if(g_selected<0)g_selected=0;
+    }
+    InvalidateRect(g_main,NULL,FALSE);
+}
+static void MovePlaylistItem(int from,int to) {
+    if(from<0||from>=g_playlistCount||to<0||to>=g_playlistCount||from==to)return;
+    wchar_t temp[PATH_CAP];wcsncpy_s(temp,PATH_CAP,g_playlist[from],_TRUNCATE);
+    if(from<to)for(int i=from;i<to;i++)wcsncpy_s(g_playlist[i],PATH_CAP,g_playlist[i+1],_TRUNCATE);
+    else for(int i=from;i>to;i--)wcsncpy_s(g_playlist[i],PATH_CAP,g_playlist[i-1],_TRUNCATE);
+    wcsncpy_s(g_playlist[to],PATH_CAP,temp,_TRUNCATE);
+    if(g_current==from)g_current=to;else if(from<g_current&&to>=g_current)g_current--;else if(from>g_current&&to<=g_current)g_current++;
+    g_selected=to;InvalidateRect(g_main,NULL,FALSE);
+}
+static void SavePlaylist(void) {
+    OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"Playlist.m3u";
+    ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_main;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;
+    ofn.lpstrFilter=L"M3U playlists (*.m3u)\0*.m3u\0All files (*.*)\0*.*\0";
+    ofn.lpstrDefExt=L"m3u";ofn.lpstrTitle=L"Save playlist";
+    ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST;
+    if(!GetSaveFileNameW(&ofn))return;
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wb")!=0||!fp){MessageBoxW(g_main,L"Could not save the playlist.",APP_NAME,MB_ICONERROR);return;}
+    const unsigned char bom[3]={0xEF,0xBB,0xBF};fwrite(bom,1,3,fp);
+    fputs("#EXTM3U\n",fp);
+    for(int i=0;i<g_playlistCount;i++){
+        int bytes=WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,NULL,0,NULL,NULL);
+        if(bytes>1){char *utf8=(char*)malloc((size_t)bytes);if(utf8){WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,utf8,bytes,NULL,NULL);fputs(utf8,fp);fputc('\n',fp);free(utf8);}}
+    }
+    fclose(fp);
+}
+static void LoadPlaylist(void) {
+    OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"";
+    ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_main;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;
+    ofn.lpstrFilter=L"M3U playlists (*.m3u;*.m3u8)\0*.m3u;*.m3u8\0All files (*.*)\0*.*\0";
+    ofn.lpstrTitle=L"Load playlist";ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
+    if(!GetOpenFileNameW(&ofn))return;
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rb")!=0||!fp){MessageBoxW(g_main,L"Could not open the playlist.",APP_NAME,MB_ICONERROR);return;}
+    if(g_hasMedia){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;}
+    g_playlistCount=0;g_current=-1;g_selected=-1;g_playlistScroll=0;
+    char line[PATH_CAP*4];
+    while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){
+        size_t n=strcspn(line,"\r\n");line[n]=0;
+        if(!line[0]||line[0]=='#')continue;
+        int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,line,-1,NULL,0);
+        if(chars<=0)chars=MultiByteToWideChar(CP_ACP,0,line,-1,NULL,0);
+        if(chars>0&&chars<=PATH_CAP){
+            MultiByteToWideChar(chars>0?CP_UTF8:CP_ACP,0,line,-1,g_playlist[g_playlistCount],PATH_CAP);
+            g_playlistCount++;
+        }
+    }
+    fclose(fp);if(g_playlistCount)g_selected=0;
+    InvalidateRect(g_main,NULL,FALSE);
+}
+static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
+    if(index>=0&&index<g_playlistCount)g_selected=index;
+    HMENU menu=CreatePopupMenu();
+    if(!menu)return;
+    AppendMenuW(menu,MF_STRING|(g_selected>=0?0:MF_GRAYED),1,L"Play");
+    AppendMenuW(menu,MF_STRING|(g_selected>=0?0:MF_GRAYED),2,L"Remove from playlist");
+    AppendMenuW(menu,MF_STRING|((g_selected>0)?0:MF_GRAYED),3,L"Move up");
+    AppendMenuW(menu,MF_STRING|((g_selected>=0&&g_selected<g_playlistCount-1)?0:MF_GRAYED),4,L"Move down");
+    AppendMenuW(menu,MF_SEPARATOR,0,NULL);
+    AppendMenuW(menu,MF_STRING|(g_playlistCount?0:MF_GRAYED),5,L"Clear playlist");
+    AppendMenuW(menu,MF_STRING|(g_playlistCount?0:MF_GRAYED),6,L"Save playlist...");
+    SetForegroundWindow(hwnd);
+    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,x,y,0,hwnd,NULL);
+    DestroyMenu(menu);
+    switch(cmd){
+        case 1:PlayIndex(g_selected);break;
+        case 2:RemovePlaylistItem(g_selected);break;
+        case 3:MovePlaylistItem(g_selected,g_selected-1);break;
+        case 4:MovePlaylistItem(g_selected,g_selected+1);break;
+        case 5:if(MessageBoxW(hwnd,L"Clear all items from the playlist?",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES){if(g_hasMedia)libvlc_media_player_stop(g_player);g_hasMedia=FALSE;g_playlistCount=0;g_current=g_selected=-1;g_playlistScroll=0;InvalidateRect(hwnd,NULL,FALSE);}break;
+        case 6:SavePlaylist();break;
+    }
+}
+
 static void SeekAt(int x) {
     int64_t len=libvlc_media_player_get_length(g_player);if(len<=0)return;
     int width=R_SEEK.right-R_SEEK.left;int p=x-R_SEEK.left;if(p<0)p=0;if(p>width)p=width;
@@ -504,33 +611,33 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<7;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<10;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
-                else if(mi==2){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}}
-                else if(mi==3)ToggleFullscreen(hwnd);
-                else if(mi==4)MessageBoxW(hwnd,
+                else if(mi==2){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);}
+                else if(mi==3){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}}
+                else if(mi==4)ToggleFullscreen(hwnd);
+                else if(mi==5)LoadPlaylist();
+                else if(mi==6)SavePlaylist();
+                else if(mi==7)MessageBoxW(hwnd,
                     L"ABM AV Player - Quick Help\n\n"
                     L"Open media: Add audio or video files to the playlist.\n"
-                    L"Play / Pause: Start or pause the selected media.\n"
-                    L"Previous / Next: Move through the playlist.\n"
-                    L"Seek: Drag the timeline to change playback position.\n"
-                    L"Volume: Drag the volume slider.\n"
-                    L"Network playback: Select a discovered receiver before opening media.\n\n"
-                    L"Keyboard shortcuts:\n"
-                    L"F11 - Toggle fullscreen\n"
-                    L"Esc - Exit fullscreen or close the menu\n"
+                    L"Double-click a playlist item to play it.\n"
+                    L"Right-click the playlist for remove, reorder and clear options.\n"
+                    L"Load / Save playlist: Use M3U playlist files.\n"
+                    L"Seek: Drag the timeline. Volume: Drag the volume slider.\n"
+                    L"Cast to TV: Discover receivers, then choose your TV in Playback Output.\n\n"
+                    L"Keyboard shortcuts:\nF11 - Toggle fullscreen\nEsc - Exit fullscreen or close the menu\n"
                     L"Double-click the video - Toggle fullscreen",
                     L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
-                else if(mi==5)MessageBoxW(hwnd,
-                    L"ABM AV Player\n"
-                    L"Version 0.1\n\n"
+                else if(mi==8)MessageBoxW(hwnd,
+                    L"ABM AV Player\nVersion 0.2\n\n"
                     L"A Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\n\n"
                     L"Product Owner: Abhisek Basu Mullick\n"
                     L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
                     L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
-                else if(mi==6)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==9)PostMessageW(hwnd,WM_CLOSE,0,0);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -562,6 +669,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
+    case WM_RBUTTONUP: {
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
+        for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){index=i;break;}
+        if(index>=0){ShowPlaylistContextMenu(hwnd,x,y,index);return 0;}
+        break;
+    }
     case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
