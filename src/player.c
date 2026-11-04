@@ -191,11 +191,17 @@ static void StartDiscovery(void) {
 }
 static void SelectRenderer(void) {
     int s=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
-    if(g_selectedRenderer){libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;}
-    if(s>0&&(size_t)(s-1)<g_comboCount) {
-        if(g_hasMedia){MessageBoxW(g_main,L"Select a receiver before opening media.",APP_NAME,MB_ICONINFORMATION);SendMessageW(g_renderers,CB_SETCURSEL,0,0);return;}
-        g_selectedRenderer=libvlc_renderer_item_hold(g_comboItems[s-1]);
+    if(g_hasMedia) {
+        int restore=0;
+        if(g_selectedRenderer) for(size_t i=0;i<g_comboCount;i++)
+            if(g_comboItems[i]==g_selectedRenderer) restore=(int)i+1;
+        SendMessageW(g_renderers,CB_SETCURSEL,(WPARAM)restore,0);
+        MessageBoxW(g_main,L"Choose the receiver before opening media. Stop and reopen the player to change an active playback route.",APP_NAME,MB_ICONINFORMATION);
+        return;
     }
+    if(g_selectedRenderer){libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;}
+    if(s>0&&(size_t)(s-1)<g_comboCount)
+        g_selectedRenderer=libvlc_renderer_item_hold(g_comboItems[s-1]);
 }
 static void StopDiscovery(void) {
     for(size_t i=0;i<g_discovererCount;i++){libvlc_event_manager_t *em=libvlc_renderer_discoverer_event_manager(g_discoverers[i]);libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);libvlc_renderer_discoverer_stop(g_discoverers[i]);libvlc_renderer_discoverer_release(g_discoverers[i]);}
