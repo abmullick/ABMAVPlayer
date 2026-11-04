@@ -54,6 +54,7 @@ static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
 static BOOL g_visualizerActive=FALSE;
+static BOOL g_visualizerTried=FALSE;
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -871,10 +872,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_visualPulse=(g_visualPulse+1)%10000;
         BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
-            if(!g_visualizerActive) g_visualizerActive=ABM_AudioVisualizer_Start();
-            ShowWindow(g_video,SW_HIDE);
+            if(!g_visualizerTried) { g_visualizerTried=TRUE; g_visualizerActive=ABM_AudioVisualizer_Start(); }
+            if(g_visualizerActive) ShowWindow(g_video,SW_HIDE);
+            else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
         } else {
-            if(g_visualizerActive) { ABM_AudioVisualizer_Stop(); g_visualizerActive=FALSE; }
+            if(g_visualizerActive) ABM_AudioVisualizer_Stop();
+            g_visualizerActive=FALSE; g_visualizerTried=FALSE;
             if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
         }
         if(g_visualizerActive) InvalidateRect(hwnd,&R_VIDEO,FALSE);
