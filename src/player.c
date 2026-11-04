@@ -617,12 +617,20 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(!menu||!audio||!subs||!speed||!eq){if(menu)DestroyMenu(menu);if(audio)DestroyMenu(audio);if(subs)DestroyMenu(subs);if(speed)DestroyMenu(speed);if(eq)DestroyMenu(eq);return;}
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     int n=0;
-    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){AppendMenuW(audio,MF_STRING,t->i_id+20000,t->psz_name?t->psz_name:L"Audio track");n++;}
+    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){
+        wchar_t trackName[256]=L"Audio track";
+        if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,trackName,256);
+        AppendMenuW(audio,MF_STRING,t->i_id+20000,trackName);n++;
+    }
     if(!n)AppendMenuW(audio,MF_STRING|MF_GRAYED,0,L"No audio tracks");
     if(tracks)libvlc_track_description_list_release(tracks);
     tracks=libvlc_video_get_spu_description(g_player);n=0;
     AppendMenuW(subs,MF_STRING,21000,L"Disable subtitles");
-    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){AppendMenuW(subs,MF_STRING,t->i_id+21000,t->psz_name?t->psz_name:L"Subtitle");n++;}
+    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){
+        wchar_t trackName[256]=L"Subtitle";
+        if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,trackName,256);
+        AppendMenuW(subs,MF_STRING,t->i_id+21000,trackName);n++;
+    }
     if(tracks)libvlc_track_description_list_release(tracks);
     AppendMenuW(speed,MF_STRING,22005,L"0.5x");
     AppendMenuW(speed,MF_STRING,22007,L"0.75x");
@@ -934,8 +942,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if((wp==VK_OEM_PLUS||wp==VK_ADD)&&g_hasMedia){if(g_playbackRate<2.0f)g_playbackRate+=0.25f;libvlc_media_player_set_rate(g_player,g_playbackRate);InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if((wp==VK_OEM_MINUS||wp==VK_SUBTRACT)&&g_hasMedia){if(g_playbackRate>0.5f)g_playbackRate-=0.25f;libvlc_media_player_set_rate(g_player,g_playbackRate);InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(wp==VK_HOME&&g_hasMedia){libvlc_media_player_set_time(g_player,0);return 0;}
-        if(wp==VK_N&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
-        if(wp==VK_P&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
+        if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
+        if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
         if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
