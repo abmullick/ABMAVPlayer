@@ -7,6 +7,9 @@
 #include <commdlg.h>
 #include <uxtheme.h>
 #include <vlc/vlc.h>
+#include <vlc/libvlc_renderer_discoverer.h>
+#include <vlc/libvlc_events.h>
+#include <string.h>
 #include <wchar.h>
 #include <stdint.h>
 
@@ -19,17 +22,161 @@
 #define ID_VIDEO 1006
 #define ID_TITLE 1007
 #define ID_TIME 1008
+#define ID_RENDERERS 1010
+#define ID_SCAN 1011
+#define WM_RENDERERS_CHANGED (WM_APP + 10)
+#define MAX_RENDERERS 32
+#define MAX_DISCOVERERS 16
 #define TIMER_ID 1
 
 static libvlc_instance_t *g_vlc;
 static libvlc_media_player_t *g_player;
 static HWND g_video, g_title, g_time, g_owner;
-static HWND g_open, g_play, g_stop, g_seek, g_volume;
+static HWND g_open, g_play, g_stop, g_seek, g_volume, g_renderers, g_scan;
+static HWND g_mainWindow;
+static CRITICAL_SECTION g_rendererLock;
+static libvlc_renderer_discoverer_t *g_discoverers[MAX_DISCOVERERS];
+static size_t g_discovererCount;
+static libvlc_renderer_item_t *g_rendererItems[MAX_RENDERERS], *g_comboItems[MAX_RENDERERS];
+static size_t g_rendererCount, g_comboCount;
+static libvlc_renderer_item_t *g_selectedRenderer;
+static void SetStatus(const wchar_t *text);
 static HFONT g_font, g_titleFont;
 static HBRUSH g_background;
 static BOOL g_draggingSeek = FALSE;
 static BOOL g_hasMedia = FALSE;
 static int g_volumeValue = 70;
+
+
+static void RendererEvent(const libvlc_event_t *event, void *opaque)
+{
+    (void)opaque;
+    libvlc_renderer_item_t *item = event->type == libvlc_RendererDiscovererItemAdded
+        ? event->u.renderer_discoverer_item_added.item
+        : event->u.renderer_discoverer_item_deleted.item;
+    if (!item) return;
+    EnterCriticalSection(&g_rendererLock);
+    if (event->type == libvlc_RendererDiscovererItemAdded) {
+        BOOL found = FALSE;
+        for (size_t i = 0; i < g_rendererCount; ++i)
+            if (g_rendererItems[i] == item) found = TRUE;
+        if (!found && g_rendererCount < MAX_RENDERERS)
+            g_rendererItems[g_rendererCount++] = libvlc_renderer_item_hold(item);
+    } else {
+        for (size_t i = 0; i < g_rendererCount; ++i) {
+            if (g_rendererItems[i] == item) {
+                libvlc_renderer_item_release(g_rendererItems[i]);
+                for (size_t j = i + 1; j < g_rendererCount; ++j)
+                    g_rendererItems[j - 1] = g_rendererItems[j];
+                --g_rendererCount;
+                break;
+            }
+        }
+    }
+    LeaveCriticalSection(&g_rendererLock);
+    if (g_mainWindow) PostMessageW(g_mainWindow, WM_RENDERERS_CHANGED, 0, 0);
+}
+
+static void RefreshRendererList(void)
+{
+    for (size_t i = 0; i < g_comboCount; ++i)
+        libvlc_renderer_item_release(g_comboItems[i]);
+    g_comboCount = 0;
+    SendMessageW(g_renderers, CB_RESETCONTENT, 0, 0);
+    SendMessageW(g_renderers, CB_ADDSTRING, 0, (LPARAM)L"No receiver selected");
+    EnterCriticalSection(&g_rendererLock);
+    for (size_t i = 0; i < g_rendererCount && g_comboCount < MAX_RENDERERS; ++i) {
+        libvlc_renderer_item_t *item = libvlc_renderer_item_hold(g_rendererItems[i]);
+        const char *name = libvlc_renderer_item_name(item);
+        wchar_t wide[256] = L"Network media receiver";
+        if (name) MultiByteToWideChar(CP_UTF8, 0, name, -1, wide, 256);
+        int index = (int)SendMessageW(g_renderers, CB_ADDSTRING, 0, (LPARAM)wide);
+        if (index != CB_ERR && index != CB_ERRSPACE) g_comboItems[g_comboCount++] = item;
+        else libvlc_renderer_item_release(item);
+    }
+    LeaveCriticalSection(&g_rendererLock);
+    SendMessageW(g_renderers, CB_SETCURSEL, 0, 0);
+    if (g_selectedRenderer)
+        for (size_t i = 0; i < g_comboCount; ++i)
+            if (g_comboItems[i] == g_selectedRenderer)
+                SendMessageW(g_renderers, CB_SETCURSEL, (WPARAM)(i + 1), 0);
+}
+
+static void StartRendererDiscovery(void)
+{
+    if (g_discovererCount) {
+        SetStatus(L"Searching for network receivers...");
+        return;
+    }
+    libvlc_rd_description_t **services = NULL;
+    size_t count = libvlc_renderer_discoverer_list_get(g_vlc, &services);
+    if (!count || !services) {
+        SetStatus(L"No renderer discovery services are available in this VLC build.");
+        return;
+    }
+    for (size_t i = 0; i < count && g_discovererCount < MAX_DISCOVERERS; ++i) {
+        libvlc_renderer_discoverer_t *d =
+            libvlc_renderer_discoverer_new(g_vlc, services[i]->psz_name);
+        if (!d) continue;
+        libvlc_event_manager_t *em = libvlc_renderer_discoverer_event_manager(d);
+        libvlc_event_attach(em, libvlc_RendererDiscovererItemAdded, RendererEvent, NULL);
+        libvlc_event_attach(em, libvlc_RendererDiscovererItemDeleted, RendererEvent, NULL);
+        if (libvlc_renderer_discoverer_start(d) == 0)
+            g_discoverers[g_discovererCount++] = d;
+        else {
+            libvlc_event_detach(em, libvlc_RendererDiscovererItemAdded, RendererEvent, NULL);
+            libvlc_event_detach(em, libvlc_RendererDiscovererItemDeleted, RendererEvent, NULL);
+            libvlc_renderer_discoverer_release(d);
+        }
+    }
+    libvlc_renderer_discoverer_list_release(services, count);
+    SetStatus(g_discovererCount
+        ? L"Searching for Google Cast and supported network receivers..."
+        : L"Receiver discovery failed. Check the VLC plugins installation.");
+}
+
+static void SelectRenderer(void)
+{
+    int selected = (int)SendMessageW(g_renderers, CB_GETCURSEL, 0, 0);
+    if (selected <= 0 || (size_t)(selected - 1) >= g_comboCount) {
+        if (g_selectedRenderer) libvlc_renderer_item_release(g_selectedRenderer);
+        g_selectedRenderer = NULL;
+        SetStatus(L"Local playback selected.");
+        return;
+    }
+    if (g_hasMedia) {
+        SetStatus(L"Select a receiver before opening media. Restart the player to change an active playback route.");
+        return;
+    }
+    if (g_selectedRenderer) libvlc_renderer_item_release(g_selectedRenderer);
+    g_selectedRenderer = libvlc_renderer_item_hold(g_comboItems[selected - 1]);
+    const char *type = libvlc_renderer_item_type(g_selectedRenderer);
+    SetStatus(type && strcmp(type, "chromecast") == 0
+        ? L"Google Cast receiver selected. Open a video to cast."
+        : L"Network receiver selected. Open media to stream.");
+}
+
+static void StopRendererDiscovery(void)
+{
+    for (size_t i = 0; i < g_discovererCount; ++i) {
+        libvlc_event_manager_t *em = libvlc_renderer_discoverer_event_manager(g_discoverers[i]);
+        libvlc_event_detach(em, libvlc_RendererDiscovererItemAdded, RendererEvent, NULL);
+        libvlc_event_detach(em, libvlc_RendererDiscovererItemDeleted, RendererEvent, NULL);
+        libvlc_renderer_discoverer_stop(g_discoverers[i]);
+        libvlc_renderer_discoverer_release(g_discoverers[i]);
+    }
+    g_discovererCount = 0;
+    for (size_t i = 0; i < g_comboCount; ++i)
+        libvlc_renderer_item_release(g_comboItems[i]);
+    g_comboCount = 0;
+    if (g_selectedRenderer) libvlc_renderer_item_release(g_selectedRenderer);
+    g_selectedRenderer = NULL;
+    EnterCriticalSection(&g_rendererLock);
+    for (size_t i = 0; i < g_rendererCount; ++i)
+        libvlc_renderer_item_release(g_rendererItems[i]);
+    g_rendererCount = 0;
+    LeaveCriticalSection(&g_rendererLock);
+}
 
 static void SetStatus(const wchar_t *text)
 {
@@ -114,6 +261,11 @@ static void OpenMedia(HWND owner)
     }
 
     libvlc_media_player_stop(g_player);
+    if (g_selectedRenderer && libvlc_media_player_set_renderer(g_player, g_selectedRenderer) != 0) {
+        libvlc_media_release(media);
+        MessageBoxW(owner, L"Could not select this receiver. Restart ABM AV Player and select the receiver before opening media.", APP_NAME, MB_ICONERROR);
+        return;
+    }
     libvlc_media_player_set_media(g_player, media);
     libvlc_media_release(media);
     g_hasMedia = TRUE;
@@ -191,7 +343,7 @@ static void Layout(HWND hwnd)
     RECT rc;
     GetClientRect(hwnd, &rc);
     int w = rc.right, h = rc.bottom;
-    int bottom = 170;
+    int bottom = 220;
     int videoHeight = h - bottom;
     if (videoHeight < 120) videoHeight = 120;
 
@@ -204,7 +356,9 @@ static void Layout(HWND hwnd)
     MoveWindow(g_open, start, videoHeight + 82, bw, 38, TRUE);
     MoveWindow(g_play, start + bw + gap, videoHeight + 82, bw, 38, TRUE);
     MoveWindow(g_stop, start + (bw + gap) * 2, videoHeight + 82, bw, 38, TRUE);
-    MoveWindow(g_owner, 24, videoHeight + 122, w - 48, 20, TRUE);
+    MoveWindow(g_renderers, 24, videoHeight + 128, w - 160, 30, TRUE);
+    MoveWindow(g_scan, w - 124, videoHeight + 128, 100, 30, TRUE);
+    MoveWindow(g_owner, 24, videoHeight + 166, w - 48, 20, TRUE);
     MoveWindow(g_time, 24, h - 25, 160, 20, TRUE);
     MoveWindow(g_volume, w - 210, h - 30, 180, 28, TRUE);
 }
@@ -229,6 +383,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                              0, 0, 100, 38, ID_STOP);
         g_time = MakeControl(hwnd, L"STATIC", L"00:00  /  00:00",
                              SS_LEFT | SS_CENTERIMAGE, 24, 0, 160, 20, ID_TIME);
+        g_renderers = MakeControl(hwnd, L"COMBOBOX", L"", CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_VSCROLL, 24, 0, 500, 240, ID_RENDERERS);
+        g_scan = MakeControl(hwnd, L"BUTTON", L"Find TVs", BS_PUSHBUTTON, 0, 0, 100, 30, ID_SCAN);
         g_owner = MakeControl(hwnd, L"STATIC",
             L"Product Owner: Abhisek Basu Mullick  |  \u00A9 2026 Abhisek Basu Mullick. All rights reserved.",
             SS_LEFT | SS_CENTERIMAGE, 24, 0, 800, 20, 1009);
@@ -238,7 +394,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         SendMessageW(g_volume, TBM_SETPOS, TRUE, g_volumeValue);
 
         HWND controls[] = {g_video, g_title, g_seek, g_open, g_play,
-                           g_stop, g_time, g_volume, g_owner};
+                           g_stop, g_time, g_volume, g_owner, g_renderers, g_scan};
         for (unsigned i = 0; i < sizeof(controls) / sizeof(controls[0]); ++i) {
             if (!controls[i]) return -1;
             if (g_font) SendMessageW(controls[i], WM_SETFONT, (WPARAM)g_font, TRUE);
@@ -246,6 +402,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         if (g_titleFont)
             SendMessageW(g_title, WM_SETFONT, (WPARAM)g_titleFont, TRUE);
 
+        g_mainWindow = hwnd;
+        RefreshRendererList();
         libvlc_media_player_set_hwnd(g_player, g_video);
         SetTimer(hwnd, TIMER_ID, 250, NULL);
         Layout(hwnd);
@@ -259,6 +417,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         case ID_OPEN: OpenMedia(hwnd); return 0;
         case ID_PLAY: TogglePlayPause(); return 0;
         case ID_STOP: StopPlayback(); return 0;
+        case ID_SCAN: StartRendererDiscovery(); return 0;
+        case ID_RENDERERS:
+            if (HIWORD(wp) == CBN_SELCHANGE) SelectRenderer();
+            return 0;
         }
         break;
     case WM_HSCROLL:
@@ -272,6 +434,9 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                 SeekToTrackbar();
             }
         }
+        return 0;
+    case WM_RENDERERS_CHANGED:
+        RefreshRendererList();
         return 0;
     case WM_TIMER:
         if (wp == TIMER_ID) UpdatePlaybackUI();
@@ -306,6 +471,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     }
     case WM_DESTROY:
         KillTimer(hwnd, TIMER_ID);
+        StopRendererDiscovery();
+        g_mainWindow = NULL;
         if (g_player) {
             libvlc_media_player_stop(g_player);
             libvlc_media_player_release(g_player);
@@ -333,6 +500,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
     INITCOMMONCONTROLSEX icc = {sizeof(icc), ICC_BAR_CLASSES};
     InitCommonControlsEx(&icc);
 
+    InitializeCriticalSection(&g_rendererLock);
     g_background = CreateSolidBrush(RGB(22, 25, 32));
     g_font = CreateFontW(15, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -347,12 +515,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
         MessageBoxW(NULL,
             L"Could not initialize LibVLC. Install 64-bit VLC and check its plugins folder.",
             APP_NAME, MB_ICONERROR);
+        DeleteCriticalSection(&g_rendererLock);
         return 1;
     }
 
     g_player = libvlc_media_player_new(g_vlc);
     if (!g_player) {
         libvlc_release(g_vlc);
+        DeleteCriticalSection(&g_rendererLock);
         MessageBoxW(NULL, L"Could not create the media player.",
                     APP_NAME, MB_ICONERROR);
         return 1;
@@ -391,5 +561,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
     if (g_titleFont) DeleteObject(g_titleFont);
     if (g_font) DeleteObject(g_font);
     if (g_background) DeleteObject(g_background);
+    DeleteCriticalSection(&g_rendererLock);
     return (int)msg.wParam;
 }
