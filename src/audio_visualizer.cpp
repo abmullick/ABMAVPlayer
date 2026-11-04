@@ -143,8 +143,6 @@ static void CaptureThread() {
             if (FAILED(capture->GetNextPacketSize(&packet))) { packet=0; break; }
         }
     }
-    captureActive.store(started);
-    if (startupEvent) SetEvent(startupEvent);
     if (started) client->Stop();
     if (capture) capture->Release();
     if (format) CoTaskMemFree(format);
