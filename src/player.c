@@ -630,6 +630,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
             InvalidateRect(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
         }
+        /* Clicking anywhere outside the open menu dismisses it. Continue
+           processing the click so the underlying control still responds. */
+        if(g_menuOpen && !Inside(R_MENU_PANEL,x,y)) {
+            g_menuOpen=FALSE;
+            RECT dirty=R_MENU_PANEL;
+            InvalidateRect(hwnd,&dirty,FALSE);
+        }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<10;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
