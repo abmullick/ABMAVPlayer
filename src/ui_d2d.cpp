@@ -99,10 +99,27 @@ extern "C" void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear) {
     Target(ui)->BeginDraw();
     D2D1_COLOR_F color = ToD2D(clear);
     Target(ui)->Clear(&color);
+    ui->clipActive = FALSE;
+}
+
+extern "C" void ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip) {
+    if (!ui || !clip || !EnsureTarget(ui)) return;
+    Target(ui)->BeginDraw();
+    D2D1_RECT_F bounds = D2D1::RectF(
+        static_cast<float>(clip->left), static_cast<float>(clip->top),
+        static_cast<float>(clip->right), static_cast<float>(clip->bottom));
+    Target(ui)->PushAxisAlignedClip(bounds, D2D1_ANTIALIAS_MODE_ALIASED);
+    ui->clipActive = TRUE;
+    SetColor(ui, clear);
+    Target(ui)->FillRectangle(bounds, Brush(ui));
 }
 
 extern "C" BOOL ABM_D2D_End(ABM_D2D *ui) {
     if (!ui || !ui->target) return FALSE;
+    if (ui->clipActive) {
+        Target(ui)->PopAxisAlignedClip();
+        ui->clipActive = FALSE;
+    }
     HRESULT hr = Target(ui)->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET) {
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
