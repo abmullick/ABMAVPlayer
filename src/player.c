@@ -45,8 +45,11 @@ static RECT R_ROW[MAX_PLAYLIST];
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_menuOpen = FALSE;
+static BOOL g_fullscreen = FALSE;
+static DWORD_PTR g_savedStyle = 0;
+static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
-static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[4];
+static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[5], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -105,8 +108,15 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
     R_MENU_BUTTON=(RECT){w-252,15,w-210,53};
-    R_MENU_PANEL=(RECT){w-258,62,w-18,62+184};
-    for(int i=0;i<4;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
+    R_MENU_PANEL=(RECT){w-258,62,w-18,62+226};
+    for(int i=0;i<5;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
+    R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
+    if(g_fullscreen) {
+        R_VIDEO=(RECT){0,0,w,h};
+        MoveWindow(g_video,0,0,w,h,TRUE);
+        ShowWindow(g_renderers,SW_HIDE);
+        return;
+    }
     MoveWindow(g_video,R_VIDEO.left,R_VIDEO.top,videoW,videoH,TRUE);
     MoveWindow(g_renderers,R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right-R_RECEIVER.left,30,FALSE);
     R_SEEK=(RECT){left,h-126,w-left,h-120};
@@ -133,6 +143,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     SelectObject(dc,old); DeleteObject(p);
 }
 static void DrawUI(HDC dc,RECT client) {
+    if(g_fullscreen) { Fill(dc,client,RGB(0,0,0)); return; }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,66};GradientRect(dc,header,RGB(24,31,44),RGB(16,20,29));
     DrawLine(dc,0,65,client.right,65,RGB(37,48,65),1);
@@ -166,6 +177,17 @@ static void DrawUI(HDC dc,RECT client) {
         RECT hint={R_VIDEO.left+20,empty.bottom,R_VIDEO.right-20,empty.bottom+26};
         Txt(dc,L"Add a file or choose something from your playlist",hint,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
+
+    RECT fs=R_FULLSCREEN;
+    RoundBox(dc,fs,RGB(20,29,42),8);
+    DrawLine(dc,fs.left+9,fs.top+13,fs.left+9,fs.top+7,C_TEXT,2);
+    DrawLine(dc,fs.left+9,fs.top+7,fs.left+15,fs.top+7,C_TEXT,2);
+    DrawLine(dc,fs.right-9,fs.top+13,fs.right-9,fs.top+7,C_TEXT,2);
+    DrawLine(dc,fs.right-9,fs.top+7,fs.right-15,fs.top+7,C_TEXT,2);
+    DrawLine(dc,fs.left+9,fs.bottom-13,fs.left+9,fs.bottom-7,C_TEXT,2);
+    DrawLine(dc,fs.left+9,fs.bottom-7,fs.left+15,fs.bottom-7,C_TEXT,2);
+    DrawLine(dc,fs.right-9,fs.bottom-13,fs.right-9,fs.bottom-7,C_TEXT,2);
+    DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
     /* Sidebar cards */
     Panel(dc,R_SIDEBAR,C_PANEL,RGB(40,49,64),16);
@@ -268,9 +290,9 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
         Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
-        const wchar_t *labels[4]={L"Open media",L"Find network devices",L"Play / Pause",L"Exit player"};
-        const wchar_t *icons[4]={L"+",L"⌕",L"▶",L"×"};
-        for(int i=0;i<4;i++) {
+        const wchar_t *labels[5]={L"Open media",L"Find network devices",L"Play / Pause",L"Fullscreen",L"Exit player"};
+        const wchar_t *icons[5]={L"+",L"⌕",L"▶",L"⛶",L"×"};
+        for(int i=0;i<5;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
@@ -405,6 +427,31 @@ static void UpdateUI(void) {
     InvalidateRect(g_main,&timeline,FALSE);
     InvalidateRect(g_main,&timeText,FALSE);
 }
+static void ToggleFullscreen(HWND hwnd) {
+    if(!g_fullscreen) {
+        g_savedStyle=(DWORD_PTR)GetWindowLongPtrW(hwnd,GWL_STYLE);
+        g_savedPlacement.length=sizeof(g_savedPlacement);
+        GetWindowPlacement(hwnd,&g_savedPlacement);
+        MONITORINFO mi={sizeof(mi)};
+        HMONITOR monitor=MonitorFromWindow(hwnd,MONITOR_DEFAULTTONEAREST);
+        GetMonitorInfoW(monitor,&mi);
+        g_fullscreen=TRUE;
+        g_menuOpen=FALSE;g_receiverPopup=FALSE;
+        ShowWindow(g_renderers,SW_HIDE);
+        SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE));
+        SetWindowPos(hwnd,HWND_TOP,mi.rcMonitor.left,mi.rcMonitor.top,
+            mi.rcMonitor.right-mi.rcMonitor.left,mi.rcMonitor.bottom-mi.rcMonitor.top,
+            SWP_FRAMECHANGED|SWP_SHOWWINDOW);
+    } else {
+        g_fullscreen=FALSE;
+        SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)g_savedStyle);
+        SetWindowPlacement(hwnd,&g_savedPlacement);
+        SetWindowPos(hwnd,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+        ShowWindow(g_renderers,SW_SHOW);
+    }
+    UpdateLayout(hwnd);
+    InvalidateRect(hwnd,NULL,TRUE);
+}
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -452,14 +499,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-        if(Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<4;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
                 else if(mi==2){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}}
-                else if(mi==3)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==3)ToggleFullscreen(hwnd);
+                else if(mi==4)PostMessageW(hwnd,WM_CLOSE,0,0);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -486,8 +535,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){g_selected=i;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         ReleaseCapture();return 0;
     }
-    case WM_KEYDOWN:if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}break;
-    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
+    case WM_KEYDOWN:
+        if(wp==VK_F11){ToggleFullscreen(hwnd);return 0;}
+        if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
+        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        break;
+    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
         if(Inside(R_OPEN,mx,my))hit=HIT_OPEN;else if(Inside(R_SCAN,mx,my))hit=HIT_SCAN;
