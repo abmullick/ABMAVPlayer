@@ -210,7 +210,8 @@ static void DrawUI(HDC dc,RECT client) {
     if(sel>0)SendMessageW(g_renderers,CB_GETLBTEXT,sel,(LPARAM)deviceName);
     RECT deviceText={receiver.left+38,receiver.top+2,receiver.right-28,receiver.bottom-2};
     Txt(dc,deviceName,deviceText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    DrawLine(dc,receiver.right-19,receiver.top+12,receiver.right-15,receiver.top+17,C_MUTED,2);\n    DrawLine(dc,receiver.right-15,receiver.top+17,receiver.right-11,receiver.top+12,C_MUTED,2);
+    DrawLine(dc,receiver.right-19,receiver.top+12,receiver.right-15,receiver.top+17,C_MUTED,2);
+    DrawLine(dc,receiver.right-15,receiver.top+17,receiver.right-11,receiver.top+12,C_MUTED,2);
 
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+111,R_SIDEBAR.right-17,R_SIDEBAR.top+137};
     Txt(dc,L"UP NEXT",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
