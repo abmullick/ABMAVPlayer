@@ -32,6 +32,11 @@ void ABM_D2D_Line(ABM_D2D *ui, float x1, float y1, float x2, float y2, COLORREF 
 void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect, COLORREF color, int style, UINT flags);
 void ABM_D2D_Destroy(ABM_D2D *ui);
 
+/* Captures the Windows render mix for audio-reactive visualisation. */
+BOOL ABM_AudioVisualizer_Start(void);
+void ABM_AudioVisualizer_Stop(void);
+void ABM_AudioVisualizer_GetBands(float *outBands, int count);
+
 #ifdef __cplusplus
 }
 #endif
