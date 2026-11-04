@@ -5,6 +5,7 @@
 #include <dwrite.h>
 #include <wincodec.h>
 #include <string.h>
+#include <algorithm>
 #include "ui_d2d.h"
 
 #pragma comment(lib, "d2d1.lib")
