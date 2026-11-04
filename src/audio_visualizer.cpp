@@ -115,6 +115,8 @@ static void CaptureThread() {
             if (SUCCEEDED(hr)) { hr=client->Start(); started=SUCCEEDED(hr); }
         }
     }
+    captureActive.store(started);
+    if (startupEvent) SetEvent(startupEvent);
     float window[FFT_SIZE]{};
     int used=0;
     while (running.load() && started) {
