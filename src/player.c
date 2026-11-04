@@ -161,8 +161,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+12,R_SIDEBAR.right-16,R_SIDEBAR.top+37};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
-    GradientRect(dc,scan,(g_hoverButton==HIT_SCAN)?RGB(56,104,171):RGB(42,77,125),(g_hoverButton==HIT_SCAN)?RGB(39,79,139):RGB(29,56,94));
-    Panel(dc,scan,RGB(35,68,111),RGB(61,111,174),10);
+    Panel(dc,scan,Blend(RGB(31,57,91),RGB(51,91,145),(g_hoverButton==HIT_SCAN)?g_hoverLevel:0),RGB(61,111,174),10);
     RECT scanIcon={scan.left+14,scan.top+8,scan.left+34,scan.bottom-8};
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.left+2,scanIcon.bottom-7,RGB(220,236,255),2);
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.right-2,scanIcon.top+8,RGB(220,236,255),2);
@@ -244,8 +243,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(235,244,255),8);
 
     RECT open=R_OPEN;
-    GradientRect(dc,open,(g_hoverButton==HIT_OPEN)?RGB(57,108,180):RGB(42,83,137),(g_hoverButton==HIT_OPEN)?RGB(39,79,139):RGB(28,57,98));
-    Panel(dc,open,RGB(35,68,111),RGB(61,111,174),12);
+    Panel(dc,open,Blend(RGB(31,60,97),RGB(53,95,151),(g_hoverButton==HIT_OPEN)?g_hoverLevel:0),RGB(61,111,174),12);
     RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
     Txt(dc,L"+",plus,RGB(230,242,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
@@ -426,6 +424,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex((g_current+1)%g_playlistCount);ReleaseCapture();return 0;}
         if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
         if(Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
+        if(Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_receiverPopup && Inside(R_RECEIVER_LIST,x,y)) {
+            int item=(y-R_RECEIVER_LIST.top-3)/32;
+            int count=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);
+            if(item>=0&&item<count) {
+                SendMessageW(g_renderers,CB_SETCURSEL,item,0);
+                SelectRenderer();
+            }
+            g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
+        }
+        if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
         if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12){g_dragVolume=1;int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){g_selected=i;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
