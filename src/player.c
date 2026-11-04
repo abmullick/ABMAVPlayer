@@ -14,6 +14,7 @@
 #include <wchar.h>
 #include <string.h>
 #include <stdlib.h>
+#include <shlobj.h>
 
 #define APP_NAME L"ABM AV Player"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
@@ -44,6 +45,11 @@ static int g_volume = 70, g_dragSeek = 0, g_dragVolume = 0, g_hover = 0;
 static BOOL g_shuffle = FALSE, g_repeat = FALSE;
 static float g_playbackRate = 1.0f;
 static BOOL g_endHandled = FALSE;
+#define MAX_RECENT 12
+static wchar_t g_recent[MAX_RECENT][PATH_CAP];
+static int g_recentCount=0;
+static wchar_t g_dataDir[PATH_CAP];
+static BOOL g_libraryReady=FALSE;
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -399,6 +405,68 @@ static void StopDiscovery(void) {
     if(g_selectedRenderer)libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;
     EnterCriticalSection(&g_rendererLock);for(size_t i=0;i<g_rendererCount;i++)libvlc_renderer_item_release(g_rendererItems[i]);g_rendererCount=0;LeaveCriticalSection(&g_rendererLock);
 }
+static BOOL EnsureDataDirectory(void) {
+    if(g_dataDir[0])return TRUE;
+    wchar_t base[PATH_CAP];
+    if(FAILED(SHGetFolderPathW(NULL,CSIDL_APPDATA|CSIDL_FLAG_CREATE,NULL,SHGFP_TYPE_CURRENT,base)))return FALSE;
+    if(swprintf_s(g_dataDir,PATH_CAP,L"%s\\ABMAVPlayer",base)<0)return FALSE;
+    if(!CreateDirectoryW(g_dataDir,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
+    return TRUE;
+}
+static void SavePersistentState(void) {
+    if(!EnsureDataDirectory())return;
+    wchar_t path[PATH_CAP];swprintf_s(path,PATH_CAP,L"%s\\library.m3u",g_dataDir);
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wb")==0&&fp){
+        fputs("#EXTM3U\n",fp);
+        for(int i=0;i<g_playlistCount;i++){int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,NULL,0,NULL,NULL);if(n>1){char *s=(char*)malloc((size_t)n);if(s){WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,s,n,NULL,NULL);fputs(s,fp);fputc('\n',fp);free(s);}}}
+        fclose(fp);
+    }
+    swprintf_s(path,PATH_CAP,L"%s\\recent.m3u",g_dataDir);
+    fp=NULL;if(_wfopen_s(&fp,path,L"wb")==0&&fp){
+        fputs("#EXTM3U\n",fp);
+        for(int i=0;i<g_recentCount;i++){int n=WideCharToMultiByte(CP_UTF8,0,g_recent[i],-1,NULL,0,NULL,NULL);if(n>1){char *s=(char*)malloc((size_t)n);if(s){WideCharToMultiByte(CP_UTF8,0,g_recent[i],-1,s,n,NULL,NULL);fputs(s,fp);fputc('\n',fp);free(s);}}}
+        fclose(fp);
+    }
+    swprintf_s(path,PATH_CAP,L"%s\\settings.ini",g_dataDir);
+    wchar_t settings[256];swprintf_s(settings,256,L"Volume=%d\r\nShuffle=%d\r\nRepeat=%d\r\nRate=%.2f\r\n",g_volume,g_shuffle,g_repeat,g_playbackRate);
+    WritePrivateProfileStringW(L"Player",L"Volume",NULL,path);
+    WritePrivateProfileStringW(L"Player",L"Volume",NULL,path);
+    WritePrivateProfileStringW(L"Player",L"Volume",NULL,path);
+    FILE *sf=NULL;if(_wfopen_s(&sf,path,L"wt, ccs=UNICODE")==0&&sf){fputws(L"[Player]\n",sf);fputws(settings,sf);fclose(sf);}
+}
+static void LoadPersistentState(void) {
+    if(!EnsureDataDirectory())return;
+    wchar_t path[PATH_CAP];swprintf_s(path,PATH_CAP,L"%s\\settings.ini",g_dataDir);
+    g_volume=GetPrivateProfileIntW(L"Player",L"Volume",70,path);
+    g_shuffle=GetPrivateProfileIntW(L"Player",L"Shuffle",0,path)!=0;
+    g_repeat=GetPrivateProfileIntW(L"Player",L"Repeat",0,path)!=0;
+    g_playbackRate=(float)GetPrivateProfileIntW(L"Player",L"RatePercent",100,path)/100.0f;
+    if(g_volume<0||g_volume>100)g_volume=70;
+    if(g_playbackRate<0.5f||g_playbackRate>2.0f)g_playbackRate=1.0f;
+    const wchar_t *files[2]={L"library.m3u",L"recent.m3u"};
+    for(int which=0;which<2;which++){
+        swprintf_s(path,PATH_CAP,L"%s\\%s",g_dataDir,files[which]);
+        FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rt, ccs=UTF-8")!=0||!fp)continue;
+        wchar_t line[PATH_CAP];int count=0,limit=which?MAX_RECENT:MAX_PLAYLIST;
+        while(count<limit&&fgetws(line,PATH_CAP,fp)){
+            line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#')continue;
+            if(which)wcsncpy_s(g_recent[count],PATH_CAP,line,_TRUNCATE);
+            else wcsncpy_s(g_playlist[count],PATH_CAP,line,_TRUNCATE);
+            count++;
+        }
+        fclose(fp);
+        if(which)g_recentCount=count;else g_playlistCount=count;
+    }
+    if(g_playlistCount)g_selected=0;
+    g_libraryReady=TRUE;
+}
+static void AddRecent(const wchar_t *path) {
+    for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],path)){for(int j=i;j>0;j--)wcsncpy_s(g_recent[j],PATH_CAP,g_recent[j-1],_TRUNCATE);wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();return;}
+    int end=g_recentCount<MAX_RECENT?g_recentCount++:MAX_RECENT-1;
+    for(int i=end;i>0;i--)wcsncpy_s(g_recent[i],PATH_CAP,g_recent[i-1],_TRUNCATE);
+    wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();
+}
+
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
     char utf8[PATH_CAP*4]; int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[index],-1,utf8,sizeof(utf8),NULL,NULL); if(n<=0)return;
@@ -411,6 +479,7 @@ static void PlayIndex(int index) {
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_endHandled=FALSE;
+    AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
     InvalidateRect(g_main,NULL,FALSE);
 }
@@ -432,7 +501,7 @@ static void AddDroppedFiles(HDROP drop) {
     }
     DragFinish(drop);
     if(g_selected<0&&g_playlistCount>0)g_selected=0;
-    InvalidateRect(g_main,NULL,FALSE);
+    SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
 }
 static void AddFiles(void) {
     OPENFILENAMEW ofn; wchar_t buf[32768]=L""; ZeroMemory(&ofn,sizeof(ofn));
@@ -455,7 +524,7 @@ static void RemovePlaylistItem(int index) {
     else if(index<g_current)g_current--;
     for(int i=index+1;i<g_playlistCount;i++)
         wcsncpy_s(g_playlist[i-1],PATH_CAP,g_playlist[i],_TRUNCATE);
-    g_playlistCount--;
+    g_playlistCount--;SavePersistentState();
     if(g_playlistCount==0){g_selected=-1;g_current=-1;g_playlistScroll=0;}
     else {
         if(index==g_selected)g_selected=index<g_playlistCount?index:g_playlistCount-1;
@@ -471,7 +540,7 @@ static void MovePlaylistItem(int from,int to) {
     else for(int i=from;i>to;i--)wcsncpy_s(g_playlist[i],PATH_CAP,g_playlist[i-1],_TRUNCATE);
     wcsncpy_s(g_playlist[to],PATH_CAP,temp,_TRUNCATE);
     if(g_current==from)g_current=to;else if(from<g_current&&to>=g_current)g_current--;else if(from>g_current&&to<=g_current)g_current++;
-    g_selected=to;InvalidateRect(g_main,NULL,FALSE);
+    g_selected=to;SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
 }
 static void SavePlaylist(void) {
     OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"Playlist.m3u";
@@ -665,12 +734,12 @@ static void ToggleFullscreen(HWND hwnd) {
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        g_main=hwnd; if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; LoadPersistentState(); if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
-        libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);libvlc_audio_set_volume(g_player,g_volume);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
     case WM_SIZE: {
@@ -848,7 +917,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
-    case WM_DESTROY:DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+    case WM_DESTROY:SavePersistentState();DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
