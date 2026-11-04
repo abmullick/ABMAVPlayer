@@ -13,13 +13,14 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 
 ## Current features
 - Open local audio and video files
+- Editable playlist: add, remove, reorder, clear, load and save M3U playlists
 - Audio: MP3, WAV, FLAC, AAC, M4A and OGG (codec support depends on installed VLC)
 - Video: MP4, MKV, AVI, MOV, WMV and WebM (codec support depends on installed VLC)
 - Play/pause, stop, seek and volume
 - Dark custom Windows interface rendered with Direct2D and DirectWrite
 - DirectWrite typography and antialiased Direct2D controls, panels and interactive surfaces
 - Network receiver discovery through LibVLC (Google Cast / Chromecast where the installed VLC build provides the renderer module)
-- Select a receiver before opening media to route playback to a TV
+- Select a receiver before playback, or switch the current item to a discovered TV from the Playback Output selector
 - Chromecast renderer can automatically transcode unsupported streams when supported by the installed VLC build
 - Unicode file paths converted to UTF-8 for LibVLC
 
@@ -51,13 +52,13 @@ C:\Program Files\VideoLAN\VLC
 If VLC is installed elsewhere, set VLC_DIR before running.
 
 ## Known limitations of this first version
-- Single-file playback; no playlist or library database yet.
+- Playlist capacity is currently limited to 256 entries; no persistent media-library database yet.
 - No subtitle/audio-track selection or playback-speed control yet.
 - No exclusive-mode / bit-perfect audio path yet.
 - No hardware-acceleration controls yet.
 - Codec availability and network-casting capabilities depend on the installed VLC build and its plugins.
 - For casting, allow ABM AV Player/VLC through Windows Defender Firewall on private networks and ensure multicast/mDNS discovery is not blocked.
-- Select the TV before opening a file; changing the renderer after playback has started currently requires restarting the application.
+- Switching the output recreates the LibVLC media player and restarts the current playlist item; seek-position restoration and receiver compatibility should be tested with the target TV.
 - Source has not yet been compiled or tested on the user's HP Envy.
 
 ## Google Cast / network casting
@@ -69,10 +70,10 @@ If VLC is installed elsewhere, set VLC_DIR before running.
 The application uses LibVLC's renderer-discovery and renderer-selection APIs. It does not bundle a separate FFmpeg executable; codec conversion is delegated to the VLC engine and its installed plugins. Transcoding is not guaranteed for every codec, subtitle format, or receiver.
 
 ## Roadmap
-1. Robust playback-state handling and metadata
-2. Playlist and drag-and-drop
+1. Robust playback-state handling and media metadata
+2. Drag-and-drop playlist editing and persistent media-library database
 3. Subtitle and audio-track selection
-4. Fullscreen, aspect ratio and playback speed
+4. Aspect ratio and playback speed
 5. Audio-device selection and advanced output
 6. Equalizer and DSP
-7. Library scanning, album art and persistent playlists
+7. Library scanning and album art
