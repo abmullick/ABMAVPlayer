@@ -71,15 +71,15 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     if (FAILED(hr)) { ABM_D2D_Destroy(ui); return FALSE; }
     ui->writeFactory = writeFactory;
 
-    IDWriteTextFormat *body = nullptr, *small = nullptr, *heading = nullptr;
+    IDWriteTextFormat *body = nullptr, *smallFormat = nullptr, *heading = nullptr;
     if (!MakeFormat(writeFactory, L"Segoe UI", 15.0f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(writeFactory, L"Segoe UI", 12.0f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &small) ||
+        !MakeFormat(writeFactory, L"Segoe UI", 12.0f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
         !MakeFormat(writeFactory, L"Segoe UI", 21.0f, DWRITE_FONT_WEIGHT_BOLD, &heading)) {
-        SafeRelease(&body); SafeRelease(&small); SafeRelease(&heading);
+        SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
         ABM_D2D_Destroy(ui);
         return FALSE;
     }
-    ui->body = body; ui->small = small; ui->heading = heading;
+    ui->body = body; ui->smallFormat = smallFormat; ui->heading = heading;
     if (!EnsureTarget(ui)) { ABM_D2D_Destroy(ui); return FALSE; }
     return TRUE;
 }
@@ -151,7 +151,7 @@ extern "C" void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect,
                               COLORREF color, int style, UINT flags) {
     if (!ui || !EnsureTarget(ui) || !text || !text[0]) return;
     IDWriteTextFormat *format = static_cast<IDWriteTextFormat *>(
-        style == 1 ? ui->small : (style == 2 ? ui->heading : ui->body));
+        style == 1 ? ui->smallFormat : (style == 2 ? ui->heading : ui->body));
     DWRITE_TEXT_ALIGNMENT align = (flags & DT_CENTER) ? DWRITE_TEXT_ALIGNMENT_CENTER :
         ((flags & DT_RIGHT) ? DWRITE_TEXT_ALIGNMENT_TRAILING : DWRITE_TEXT_ALIGNMENT_LEADING);
     DWRITE_PARAGRAPH_ALIGNMENT valign = (flags & DT_VCENTER) ?
@@ -172,7 +172,7 @@ extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
     SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->body));
-    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->small));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->smallFormat));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->heading));
     SafeRelease(reinterpret_cast<IDWriteFactory **>(&ui->writeFactory));
     SafeRelease(reinterpret_cast<ID2D1Factory **>(&ui->factory));
