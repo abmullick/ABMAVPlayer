@@ -44,6 +44,9 @@ static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, 
 static RECT R_ROW[MAX_PLAYLIST];
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
+static BOOL g_menuOpen = FALSE;
+static int g_menuProgress = 0;
+static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[4];
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -51,10 +54,12 @@ static COLORREF C_BG = RGB(15,18,24);
 static COLORREF C_PANEL = RGB(24,29,38);
 static COLORREF C_PANEL2 = RGB(31,38,49);
 static COLORREF C_TEXT = RGB(238,242,248);
-static COLORREF C_MUTED = RGB(145,157,174);
+static COLORREF C_MUTED = RGB(177,189,205);
 static COLORREF C_ACCENT = RGB(67,143,255);
 static COLORREF C_LINE = RGB(47,56,70);
 
+static COLORREF Blend(COLORREF a,COLORREF b,int amount);
+static void RoundBox(HDC dc, RECT r, COLORREF c, int radius);
 static void Fill(HDC dc, RECT r, COLORREF c) { HBRUSH b=CreateSolidBrush(c); FillRect(dc,&r,b); DeleteObject(b); }
 static void GradientRect(HDC dc, RECT r, COLORREF top, COLORREF bottom) {
     int h=r.bottom-r.top;if(h<1)return;
@@ -99,6 +104,9 @@ static void UpdateLayout(HWND hwnd) {
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
+    R_MENU_BUTTON=(RECT){w-252,15,w-210,53};
+    R_MENU_PANEL=(RECT){w-258,62,w-18,62+184};
+    for(int i=0;i<4;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
     MoveWindow(g_video,R_VIDEO.left,R_VIDEO.top,videoW,videoH,TRUE);
     MoveWindow(g_renderers,R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right-R_RECEIVER.left,30,FALSE);
     R_SEEK=(RECT){left,h-126,w-left,h-120};
@@ -135,11 +143,33 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,43,26,43,40,RGB(255,255,255),2);
     RECT brand={68,10,390,38};Txt(dc,L"ABM AV PLAYER",brand,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT sub={69,37,420,56};Txt(dc,L"YOUR MEDIA. YOUR EXPERIENCE.",sub,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT menuBtn=R_MENU_BUTTON;
+    RoundBox(dc,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
+    for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT status={client.right-190,21,client.right-24,48};
     RoundBox(dc,status,RGB(26,36,51),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
-    Txt(dc,g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER",statusText,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER",statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+    if(g_menuProgress>0) {
+        RECT menu=R_MENU_PANEL;
+        menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
+        Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
+        const wchar_t *labels[4]={L"Open media",L"Find network devices",L"Play / Pause",L"Exit player"};
+        for(int i=0;i<4;i++) {
+            RECT item=R_MENU_ITEMS[i];
+            if(item.bottom>menu.bottom)item.bottom=menu.bottom;
+            if(item.top>=menu.bottom)continue;
+            if(Inside(item,GetSystemMetrics(SM_CXSCREEN)+1,GetSystemMetrics(SM_CYSCREEN)+1)){}
+            if(g_menuOpen)RoundBox(dc,item,RGB(31,43,61),7);
+            RECT glyph={item.left+10,item.top+2,item.left+34,item.bottom-2};
+            const wchar_t *icons[4]={L"+",L"⌕",L"▶",L"×"};
+            Txt(dc,icons[i],glyph,C_ACCENT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label={item.left+40,item.top+2,item.right-8,item.bottom-2};
+            Txt(dc,labels[i],label,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        }
+    }
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,2,2);Panel(dc,frame,RGB(8,11,16),RGB(43,54,70),10);
@@ -392,6 +422,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
     case WM_TIMER:if(wp==TIMER_ID){
+        if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
+        else if(!g_menuOpen&&g_menuProgress>0)g_menuProgress-=20;
+        if(g_menuProgress<0)g_menuProgress=0;if(g_menuProgress>100)g_menuProgress=100;
         int oldLevel=g_hoverLevel;
         if(g_hoverButton&&g_hoverLevel<100)g_hoverLevel+=20;
         else if(!g_hoverButton&&g_hoverLevel>0)g_hoverLevel-=20;
@@ -406,6 +439,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         UpdateUI();
+        if(g_menuProgress>0)InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);
     }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
@@ -417,7 +451,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
     case WM_LBUTTONDOWN: {
-        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);SetCapture(hwnd);
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        if(Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,&R_MENU_BUTTON,FALSE);ReleaseCapture();return 0;}
+        if(g_menuOpen&&g_menuProgress>=80) {
+            for(int mi=0;mi<4;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+                g_menuOpen=FALSE;
+                if(mi==0)AddFiles();
+                else if(mi==1)StartDiscovery();
+                else if(mi==2){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}}
+                else if(mi==3)PostMessageW(hwnd,WM_CLOSE,0,0);
+                InvalidateRect(hwnd,NULL,FALSE);return 0;
+            }
+        }
+        SetCapture(hwnd);
         if(Inside(R_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
         if(Inside(R_PLAY,x,y)){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}else if(g_playlistCount)PlayIndex(g_selected<0?0:g_selected);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
@@ -440,6 +486,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){g_selected=i;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         ReleaseCapture();return 0;
     }
+    case WM_KEYDOWN:if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}break;
     case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
@@ -468,9 +515,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     (void)prev;(void)cmd;INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
-    g_font=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    g_smallFont=CreateFontW(11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    g_headingFont=CreateFontW(20,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    g_font=CreateFontW(17,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    g_headingFont=CreateFontW(22,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     const char *args[]={"--no-video-title-show","--quiet"};g_vlc=libvlc_new(2,args);
     if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
