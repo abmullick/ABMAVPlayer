@@ -51,7 +51,7 @@ static BOOL g_fullscreen = FALSE;
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
-static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[5], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[7], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -94,8 +94,8 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
     R_MENU_BUTTON=(RECT){w-252,15,w-210,53};
-    R_MENU_PANEL=(RECT){w-258,62,w-18,62+226};
-    for(int i=0;i<5;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
+    R_MENU_PANEL=(RECT){w-258,62,w-18,62+310};
+    for(int i=0;i<7;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*42,R_MENU_PANEL.right-8,R_MENU_PANEL.top+48+i*42};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -288,9 +288,9 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
         Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
-        const wchar_t *labels[5]={L"Open media",L"Find network devices",L"Play / Pause",L"Fullscreen",L"Exit player"};
-        const wchar_t *icons[5]={L"+",L"⌕",L"▶",L"⛶",L"×"};
-        for(int i=0;i<5;i++) {
+        const wchar_t *labels[7]={L"Open media",L"Find network devices",L"Play / Pause",L"Fullscreen",L"Help",L"About ABM AV Player",L"Exit player"};
+        const wchar_t *icons[7]={L"+",L"⌕",L"▶",L"⛶",L"?",L"i",L"×"};
+        for(int i=0;i<7;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
@@ -504,13 +504,33 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<5;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<7;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
                 else if(mi==2){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}}
                 else if(mi==3)ToggleFullscreen(hwnd);
-                else if(mi==4)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==4)MessageBoxW(hwnd,
+                    L"ABM AV Player - Quick Help\n\n"
+                    L"Open media: Add audio or video files to the playlist.\n"
+                    L"Play / Pause: Start or pause the selected media.\n"
+                    L"Previous / Next: Move through the playlist.\n"
+                    L"Seek: Drag the timeline to change playback position.\n"
+                    L"Volume: Drag the volume slider.\n"
+                    L"Network playback: Select a discovered receiver before opening media.\n\n"
+                    L"Keyboard shortcuts:\n"
+                    L"F11 - Toggle fullscreen\n"
+                    L"Esc - Exit fullscreen or close the menu\n"
+                    L"Double-click the video - Toggle fullscreen",
+                    L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
+                else if(mi==5)MessageBoxW(hwnd,
+                    L"ABM AV Player\n"
+                    L"Version 0.1\n\n"
+                    L"A Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\n\n"
+                    L"Product Owner: Abhisek Basu Mullick\n"
+                    L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
+                    L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
+                else if(mi==6)PostMessageW(hwnd,WM_CLOSE,0,0);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
