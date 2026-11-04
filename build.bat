@@ -25,10 +25,10 @@ if errorlevel 1 (
 
 if not exist build mkdir build
 
-cl /nologo /W4 /O2 /std:c11 /DUNICODE /D_UNICODE src\player.c ^
+cl /nologo /W4 /O2 /std:c11 /DUNICODE /D_UNICODE src\player.c src\ui_d2d.c ^
   /I"%VLC_SDK%\include" ^
   /link /LIBPATH:"%VLC_SDK%\lib" libvlc.lib ^
-  comctl32.lib comdlg32.lib uxtheme.lib user32.lib gdi32.lib ^
+  comctl32.lib comdlg32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 
 if errorlevel 1 (
