@@ -75,6 +75,7 @@ static COLORREF C_MUTED = RGB(177,189,205);
 static COLORREF C_ACCENT = RGB(67,143,255);
 static COLORREF C_LINE = RGB(47,56,70);
 
+static void PlayIndex(int index);
 static COLORREF Blend(COLORREF a,COLORREF b,int amount);
 static void RoundBox(HDC dc, RECT r, COLORREF c, int radius);
 static void Fill(HDC dc, RECT r, COLORREF c) { (void)dc;ABM_D2D_Fill(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,c); }
@@ -606,8 +607,8 @@ static void LoadPlaylist(void) {
 static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(!g_hasMedia)return;
     HMENU menu=CreatePopupMenu();
-    HMENU audio=CreatePopupMenu(),subs=CreatePopupMenu(),speed=CreatePopupMenu();
-    if(!menu||!audio||!subs||!speed){if(menu)DestroyMenu(menu);if(audio)DestroyMenu(audio);if(subs)DestroyMenu(subs);if(speed)DestroyMenu(speed);return;}
+    HMENU audio=CreatePopupMenu(),subs=CreatePopupMenu(),speed=CreatePopupMenu(),eq=CreatePopupMenu();
+    if(!menu||!audio||!subs||!speed||!eq){if(menu)DestroyMenu(menu);if(audio)DestroyMenu(audio);if(subs)DestroyMenu(subs);if(speed)DestroyMenu(speed);if(eq)DestroyMenu(eq);return;}
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     int n=0;
     for(libvlc_track_description_t *t=tracks;t;t=t->p_next){AppendMenuW(audio,MF_STRING,t->i_id+20000,t->psz_name?t->psz_name:L"Audio track");n++;}
@@ -627,6 +628,17 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     AppendMenuW(menu,MF_POPUP,(UINT_PTR)subs,L"Subtitles");
     AppendMenuW(menu,MF_STRING,23001,L"Load external subtitle...");
     AppendMenuW(menu,MF_POPUP,(UINT_PTR)speed,L"Playback speed");
+    AppendMenuW(eq,MF_STRING,25000,L"Flat");
+    AppendMenuW(eq,MF_STRING,25001,L"Classical");
+    AppendMenuW(eq,MF_STRING,25002,L"Club");
+    AppendMenuW(eq,MF_STRING,25003,L"Dance");
+    AppendMenuW(eq,MF_STRING,25004,L"Full bass");
+    AppendMenuW(eq,MF_STRING,25005,L"Full treble");
+    AppendMenuW(eq,MF_STRING,25006,L"Headphones");
+    AppendMenuW(eq,MF_STRING,25007,L"Laptop / speakers");
+    AppendMenuW(eq,MF_STRING,25008,L"Live");
+    AppendMenuW(eq,MF_STRING,25009,L"Rock");
+    AppendMenuW(menu,MF_POPUP,(UINT_PTR)eq,L"Equalizer presets");
     AppendMenuW(menu,MF_SEPARATOR,0,NULL);
     AppendMenuW(menu,MF_STRING,23002,L"Media information...");
     AppendMenuW(menu,MF_STRING|(g_shuffle?MF_CHECKED:0),23003,L"Shuffle");
@@ -662,6 +674,10 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
         MessageBoxW(hwnd,info,L"Media information - ABM AV Player",MB_OK|MB_ICONINFORMATION);
     } else if(cmd==23003)g_shuffle=!g_shuffle;
     else if(cmd==23004)g_repeat=!g_repeat;
+    else if(cmd>=25000&&cmd<=25009){
+        libvlc_equalizer_t *eqp=libvlc_audio_equalizer_new_from_preset(cmd-25000);
+        if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);}
+    }
     DestroyMenu(menu);
     InvalidateRect(hwnd,NULL,FALSE);
 }
