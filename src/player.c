@@ -63,7 +63,7 @@ static BOOL g_fullscreen = FALSE;
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
-static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[12], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -106,8 +106,8 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
     R_MENU_BUTTON=(RECT){w-252,15,w-210,53};
-    R_MENU_PANEL=(RECT){w-258,62,w-18,62+448};
-    for(int i=0;i<12;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+8+i*36,R_MENU_PANEL.right-8,R_MENU_PANEL.top+42+i*36};
+    R_MENU_PANEL=(RECT){w-258,62,w-18,62+472};
+    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -429,10 +429,11 @@ static void SavePersistentState(void) {
     }
     swprintf_s(path,PATH_CAP,L"%s\\settings.ini",g_dataDir);
     wchar_t settings[256];swprintf_s(settings,256,L"Volume=%d\r\nShuffle=%d\r\nRepeat=%d\r\nRate=%.2f\r\n",g_volume,g_shuffle,g_repeat,g_playbackRate);
-    WritePrivateProfileStringW(L"Player",L"Volume",NULL,path);
-    WritePrivateProfileStringW(L"Player",L"Volume",NULL,path);
-    WritePrivateProfileStringW(L"Player",L"Volume",NULL,path);
-    FILE *sf=NULL;if(_wfopen_s(&sf,path,L"wt, ccs=UNICODE")==0&&sf){fputws(L"[Player]\n",sf);fputws(settings,sf);fclose(sf);}
+    wchar_t value[32];
+    swprintf_s(value,32,L"%d",g_volume);WritePrivateProfileStringW(L"Player",L"Volume",value,path);
+    swprintf_s(value,32,L"%d",g_shuffle?1:0);WritePrivateProfileStringW(L"Player",L"Shuffle",value,path);
+    swprintf_s(value,32,L"%d",g_repeat?1:0);WritePrivateProfileStringW(L"Player",L"Repeat",value,path);
+    swprintf_s(value,32,L"%d",(int)(g_playbackRate*100.0f));WritePrivateProfileStringW(L"Player",L"RatePercent",value,path);
 }
 static void LoadPersistentState(void) {
     if(!EnsureDataDirectory())return;
@@ -459,6 +460,24 @@ static void LoadPersistentState(void) {
     }
     if(g_playlistCount)g_selected=0;
     g_libraryReady=TRUE;
+}
+static void ShowRecentMenu(HWND hwnd,int x,int y) {
+    if(!g_recentCount){MessageBoxW(hwnd,L"No recently played media yet.",APP_NAME,MB_OK|MB_ICONINFORMATION);return;}
+    HMENU menu=CreatePopupMenu();if(!menu)return;
+    for(int i=0;i<g_recentCount;i++){
+        wchar_t label[PATH_CAP+16];wchar_t *name=wcsrchr(g_recent[i],L'\\');name=name?name+1:g_recent[i];
+        swprintf_s(label,PATH_CAP+16,L"%d. %s",i+1,name);
+        AppendMenuW(menu,MF_STRING,24000+i,label);
+    }
+    POINT pt={x,y};ClientToScreen(hwnd,&pt);
+    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,pt.x,pt.y,0,hwnd,NULL);
+    DestroyMenu(menu);
+    if(cmd>=24000&&cmd<24000+g_recentCount){
+        const wchar_t *path=g_recent[cmd-24000];int found=-1;
+        for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],path)){found=i;break;}
+        if(found<0&&g_playlistCount<MAX_PLAYLIST){found=g_playlistCount++;wcsncpy_s(g_playlist[found],PATH_CAP,path,_TRUNCATE);}
+        if(found>=0){SavePersistentState();PlayIndex(found);}
+    }
 }
 static void AddRecent(const wchar_t *path) {
     for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],path)){for(int j=i;j>0;j--)wcsncpy_s(g_recent[j],PATH_CAP,g_recent[j-1],_TRUNCATE);wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();return;}
@@ -810,7 +829,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<12;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
@@ -842,6 +861,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==9)PostMessageW(hwnd,WM_CLOSE,0,0);
                 else if(mi==10){g_shuffle=!g_shuffle;}
                 else if(mi==11){g_repeat=!g_repeat;}
+                else if(mi==12){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
