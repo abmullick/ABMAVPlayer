@@ -515,6 +515,69 @@ static void LoadPlaylist(void) {
     fclose(fp);if(g_playlistCount)g_selected=0;
     InvalidateRect(g_main,NULL,FALSE);
 }
+static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
+    if(!g_hasMedia)return;
+    HMENU menu=CreatePopupMenu();
+    HMENU audio=CreatePopupMenu(),subs=CreatePopupMenu(),speed=CreatePopupMenu();
+    if(!menu||!audio||!subs||!speed){if(menu)DestroyMenu(menu);if(audio)DestroyMenu(audio);if(subs)DestroyMenu(subs);if(speed)DestroyMenu(speed);return;}
+    libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
+    int n=0;
+    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){AppendMenuW(audio,MF_STRING,t->i_id+20000,t->psz_name?t->psz_name:L"Audio track");n++;}
+    if(!n)AppendMenuW(audio,MF_STRING|MF_GRAYED,0,L"No audio tracks");
+    if(tracks)libvlc_track_description_list_release(tracks);
+    tracks=libvlc_video_get_spu_description(g_player);n=0;
+    AppendMenuW(subs,MF_STRING,21000,L"Disable subtitles");
+    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){AppendMenuW(subs,MF_STRING,t->i_id+21000,t->psz_name?t->psz_name:L"Subtitle");n++;}
+    if(tracks)libvlc_track_description_list_release(tracks);
+    AppendMenuW(speed,MF_STRING,22005,L"0.5x");
+    AppendMenuW(speed,MF_STRING,220075,L"0.75x");
+    AppendMenuW(speed,MF_STRING,22010,L"1.0x (Normal)");
+    AppendMenuW(speed,MF_STRING,220125,L"1.25x");
+    AppendMenuW(speed,MF_STRING,22015,L"1.5x");
+    AppendMenuW(speed,MF_STRING,22020,L"2.0x");
+    AppendMenuW(menu,MF_POPUP,(UINT_PTR)audio,L"Audio track");
+    AppendMenuW(menu,MF_POPUP,(UINT_PTR)subs,L"Subtitles");
+    AppendMenuW(menu,MF_STRING,23001,L"Load external subtitle...");
+    AppendMenuW(menu,MF_POPUP,(UINT_PTR)speed,L"Playback speed");
+    AppendMenuW(menu,MF_SEPARATOR,0,NULL);
+    AppendMenuW(menu,MF_STRING,23002,L"Media information...");
+    AppendMenuW(menu,MF_STRING|(g_shuffle?MF_CHECKED:0),23003,L"Shuffle");
+    AppendMenuW(menu,MF_STRING|(g_repeat?MF_CHECKED:0),23004,L"Repeat current");
+    POINT pt={x,y};ClientToScreen(hwnd,&pt);
+    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,pt.x,pt.y,0,hwnd,NULL);
+    if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
+    else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
+    else if(cmd==23001){
+        OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"";
+        ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=hwnd;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;
+        ofn.lpstrFilter=L"Subtitle files (*.srt;*.ass;*.ssa;*.sub;*.vtt)\0*.srt;*.ass;*.ssa;*.sub;*.vtt\0All files\0*.*\0";
+        ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
+        if(GetOpenFileNameW(&ofn)){char utf8[PATH_CAP*4];if(WideCharToMultiByte(CP_UTF8,0,path,-1,utf8,sizeof(utf8),NULL,NULL)>0)libvlc_video_set_subtitle_file(g_player,utf8);}
+    } else if(cmd>=22000&&cmd<=22020){
+        float rate=cmd==22005?0.5f:cmd==220075?0.75f:cmd==22010?1.0f:cmd==220125?1.25f:cmd==22015?1.5f:2.0f;
+        g_playbackRate=rate;libvlc_media_player_set_rate(g_player,rate);
+    } else if(cmd==23002){
+        libvlc_media_t *m=libvlc_media_player_get_media(g_player);
+        wchar_t info[2048]=L"";
+        if(m){
+            const char *title=libvlc_media_get_meta(m,libvlc_meta_Title);
+            const char *artist=libvlc_media_get_meta(m,libvlc_meta_Artist);
+            const char *album=libvlc_media_get_meta(m,libvlc_meta_Album);
+            int64_t duration=libvlc_media_get_duration(m);
+            wchar_t wt[512]=L"(unknown)",wa[512]=L"(unknown)",wal[512]=L"(unknown)";
+            if(title)MultiByteToWideChar(CP_UTF8,0,title,-1,wt,512);
+            if(artist)MultiByteToWideChar(CP_UTF8,0,artist,-1,wa,512);
+            if(album)MultiByteToWideChar(CP_UTF8,0,album,-1,wal,512);
+            swprintf_s(info,2048,L"Title: %s\nArtist: %s\nAlbum: %s\nDuration: %02lld:%02lld",wt,wa,wal,(long long)(duration/60000),(long long)((duration/1000)%60));
+            libvlc_media_release(m);
+        } else wcscpy_s(info,2048,L"Media information is not available yet.");
+        MessageBoxW(hwnd,info,L"Media information - ABM AV Player",MB_OK|MB_ICONINFORMATION);
+    } else if(cmd==23003)g_shuffle=!g_shuffle;
+    else if(cmd==23004)g_repeat=!g_repeat;
+    DestroyMenu(menu);
+    InvalidateRect(hwnd,NULL,FALSE);
+}
+
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     if(index>=0&&index<g_playlistCount)g_selected=index;
     else g_selected=-1;
@@ -753,6 +816,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
         for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++)if(Inside(R_ROW[i],x,y)){index=i;break;}
         if(Inside(R_SIDEBAR,x,y)&&y>=R_SIDEBAR.top+140){ShowPlaylistContextMenu(hwnd,x,y,index);return 0;}
+        if(Inside(R_VIDEO,x,y)){ShowPlaybackContextMenu(hwnd,x,y);return 0;}
         break;
     }
     case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
