@@ -26,12 +26,12 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 - Visual Studio 2022 with **Desktop development with C++**
 - Windows SDK
 - 64-bit VLC media player
-- Matching 64-bit LibVLC SDK (headers and import library)
+- Matching 64-bit LibVLC SDK (headers and import library), version 3.0 or later for renderer discovery
 
 Download VLC: https://www.videolan.org/vlc/
 LibVLC SDK: https://www.videolan.org/vlc/libvlc.html
 
-All components must use the same architecture (x64).
+All components must use the same architecture (x64). For casting, use a full VLC installation with its renderer-discovery and Chromecast plugins; minimal VLC runtime bundles may omit them.
 
 ## Build
 1. Install 64-bit VLC.
