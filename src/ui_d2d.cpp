@@ -3,6 +3,7 @@
 #include <d2d1.h>
 #include <d2d1helper.h>
 #include <dwrite.h>
+#include <wincodec.h>
 #include <string.h>
 #include "ui_d2d.h"
 
@@ -186,8 +187,54 @@ extern "C" void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect,
                          Brush(ui), D2D1_DRAW_TEXT_OPTIONS_CLIP, DWRITE_MEASURING_MODE_NATURAL);
 }
 
+extern "C" BOOL ABM_D2D_LoadImage(ABM_D2D *ui, const wchar_t *path) {
+    if (!ui || !path || !path[0] || !EnsureTarget(ui)) return FALSE;
+    IWICImagingFactory *wic = static_cast<IWICImagingFactory *>(ui->wicFactory);
+    if (!wic) {
+        HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER,
+                                      IID_PPV_ARGS(&wic));
+        if (FAILED(hr)) return FALSE;
+        ui->wicFactory = wic;
+    }
+    IWICBitmapDecoder *decoder = nullptr;
+    IWICBitmapFrameDecode *frame = nullptr;
+    IWICFormatConverter *converter = nullptr;
+    ID2D1Bitmap *bitmap = nullptr;
+    HRESULT hr = wic->CreateDecoderFromFilename(path, nullptr, GENERIC_READ,
+        WICDecodeMetadataCacheOnLoad, &decoder);
+    if (SUCCEEDED(hr)) hr = decoder->GetFrame(0, &frame);
+    if (SUCCEEDED(hr)) hr = wic->CreateFormatConverter(&converter);
+    if (SUCCEEDED(hr)) hr = converter->Initialize(frame, GUID_WICPixelFormat32bppPBGRA,
+        WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom);
+    if (SUCCEEDED(hr)) hr = Target(ui)->CreateBitmapFromWicBitmap(converter, nullptr, &bitmap);
+    SafeRelease(&converter); SafeRelease(&frame); SafeRelease(&decoder);
+    if (FAILED(hr)) { SafeRelease(&bitmap); return FALSE; }
+    SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->image));
+    ui->image = bitmap;
+    return TRUE;
+}
+
+extern "C" void ABM_D2D_ClearImage(ABM_D2D *ui) {
+    if (ui) SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->image));
+}
+
+extern "C" void ABM_D2D_DrawImage(ABM_D2D *ui, float l, float t, float r, float b) {
+    if (!ui || !ui->image || !EnsureTarget(ui)) return;
+    ID2D1Bitmap *bitmap = static_cast<ID2D1Bitmap *>(ui->image);
+    D2D1_SIZE_F size = bitmap->GetSize();
+    float boxW = r-l, boxH = b-t;
+    if (size.width <= 0 || size.height <= 0 || boxW <= 0 || boxH <= 0) return;
+    float scale = (std::min)(boxW/size.width, boxH/size.height);
+    float w = size.width*scale, h = size.height*scale;
+    float x = l+(boxW-w)*0.5f, y = t+(boxH-h)*0.5f;
+    Target(ui)->DrawBitmap(bitmap, D2D1::RectF(x,y,x+w,y+h), 1.0f,
+                           D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
+}
+
 extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     if (!ui) return;
+    SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->image));
+    SafeRelease(reinterpret_cast<IWICImagingFactory **>(&ui->wicFactory));
     SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
     SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->body));
