@@ -17,6 +17,12 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 - Audio: MP3, WAV, FLAC, AAC, M4A and OGG (codec support depends on installed VLC)
 - Video: MP4, MKV, AVI, MOV, WMV and WebM (codec support depends on installed VLC)
 - Play/pause, stop, seek and volume
+- Drag-and-drop media files into the player
+- Shuffle playback and repeat-current-track mode
+- Playback speed presets from 0.5x to 2.0x (right-click the video)
+- Audio-track selection, subtitle-track selection and external subtitle loading (right-click the video)
+- Basic media metadata dialog (title, artist, album and duration)
+- Keyboard shortcuts: Space, Left/Right, Home, N/P, +/- and F11
 - Dark custom Windows interface rendered with Direct2D and DirectWrite
 - DirectWrite typography and antialiased Direct2D controls, panels and interactive surfaces
 - Network receiver discovery through LibVLC (Google Cast / Chromecast where the installed VLC build provides the renderer module)
@@ -51,9 +57,9 @@ C:\Program Files\VideoLAN\VLC
 
 If VLC is installed elsewhere, set VLC_DIR before running.
 
-## Known limitations of this first version
+## Known limitations
 - Playlist capacity is currently limited to 256 entries; no persistent media-library database yet.
-- No subtitle/audio-track selection or playback-speed control yet.
+- No persistent media-library database or recent-history view yet.
 - No exclusive-mode / bit-perfect audio path yet.
 - No hardware-acceleration controls yet.
 - Codec availability and network-casting capabilities depend on the installed VLC build and its plugins.
@@ -69,11 +75,10 @@ If VLC is installed elsewhere, set VLC_DIR before running.
 
 The application uses LibVLC's renderer-discovery and renderer-selection APIs. It does not bundle a separate FFmpeg executable; codec conversion is delegated to the VLC engine and its installed plugins. Transcoding is not guaranteed for every codec, subtitle format, or receiver.
 
-## Roadmap
-1. Robust playback-state handling and media metadata
-2. Drag-and-drop playlist editing and persistent media-library database
-3. Subtitle and audio-track selection
-4. Aspect ratio and playback speed
-5. Audio-device selection and advanced output
-6. Equalizer and DSP
-7. Library scanning and album art
+## Remaining roadmap
+1. Persistent media-library database and recently played history
+2. Search/filter and drag-to-reorder playlist editing
+3. Album art and animated audio visualizer
+4. Audio-device selection, equalizer and DSP
+5. Hardware-acceleration and aspect-ratio controls
+6. More resilient Chromecast session/reconnection handling
