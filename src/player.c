@@ -530,9 +530,9 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     for(libvlc_track_description_t *t=tracks;t;t=t->p_next){AppendMenuW(subs,MF_STRING,t->i_id+21000,t->psz_name?t->psz_name:L"Subtitle");n++;}
     if(tracks)libvlc_track_description_list_release(tracks);
     AppendMenuW(speed,MF_STRING,22005,L"0.5x");
-    AppendMenuW(speed,MF_STRING,220075,L"0.75x");
+    AppendMenuW(speed,MF_STRING,22007,L"0.75x");
     AppendMenuW(speed,MF_STRING,22010,L"1.0x (Normal)");
-    AppendMenuW(speed,MF_STRING,220125,L"1.25x");
+    AppendMenuW(speed,MF_STRING,22012,L"1.25x");
     AppendMenuW(speed,MF_STRING,22015,L"1.5x");
     AppendMenuW(speed,MF_STRING,22020,L"2.0x");
     AppendMenuW(menu,MF_POPUP,(UINT_PTR)audio,L"Audio track");
