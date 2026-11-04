@@ -609,7 +609,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         UpdateUI();
-        if(g_menuProgress>0)InvalidateRect(hwnd,NULL,FALSE);
+        if(g_menuProgress>0) {
+            RECT dirty=R_MENU_PANEL;
+            InvalidateRect(hwnd,&dirty,FALSE);
+        }
     }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
@@ -622,7 +625,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-        if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
+            g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
+            RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
+            InvalidateRect(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
+        }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<10;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
@@ -709,7 +716,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_PAINT:{
         PAINTSTRUCT ps;BeginPaint(hwnd,&ps);
         RECT r;GetClientRect(hwnd,&r);
-        ABM_D2D_Begin(&g_ui,C_BG);
+        /* Paint only the invalidated area. A full-target Direct2D Clear on every
+           menu animation frame was repainting the whole surface and causing flicker. */
+        ABM_D2D_BeginClip(&g_ui,C_BG,&ps.rcPaint);
         DrawUI(NULL,r);
         ABM_D2D_End(&g_ui);
         EndPaint(hwnd,&ps);return 0;
