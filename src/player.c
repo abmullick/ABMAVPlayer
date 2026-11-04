@@ -53,6 +53,7 @@ static wchar_t g_dataDir[PATH_CAP];
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
+static BOOL g_visualizerActive=FALSE;
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -156,8 +157,34 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
         DrawLine(dc,cx-7,cy-8,cx-7,cy+8,C_TEXT,2);
     }
 }
+static void DrawVisualizer(HDC dc,RECT area) {
+    float levels[24]={0};
+    ABM_AudioVisualizer_GetBands(levels,24);
+    Fill(dc,area,RGB(7,11,18));
+    RECT inset=area; InflateRect(&inset,-22,-24);
+    int width=inset.right-inset.left;
+    int gap=5;
+    int barWidth=(width-gap*23)/24;
+    if(barWidth<2)barWidth=2;
+    int base=inset.bottom-8;
+    int maxHeight=inset.bottom-inset.top-34;
+    for(int i=0;i<24;i++) {
+        float level=levels[i];
+        if(level<0.015f)level=0.015f;
+        if(level>1.0f)level=1.0f;
+        int height=(int)(level*(float)maxHeight);
+        int x=inset.left+i*(barWidth+gap);
+        RECT bar={x,base-height,x+barWidth,base};
+        COLORREF color=Blend(RGB(38,105,181),RGB(74,210,190),(i*100)/23);
+        ABM_D2D_Round(&g_ui,(float)bar.left,(float)bar.top,(float)bar.right,(float)bar.bottom,(float)(barWidth/2),color);
+    }
+    RECT label={area.left+20,area.top+14,area.right-20,area.top+38};
+    Txt(dc,L"NOW PLAYING  •  LIVE AUDIO SPECTRUM",label,RGB(153,174,201),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT baseline={inset.left,base+8,inset.right,base+9};
+    Fill(dc,baseline,RGB(36,54,76));
+}
 static void DrawUI(HDC dc,RECT client) {
-    if(g_fullscreen) { Fill(dc,client,RGB(0,0,0)); return; }
+    if(g_fullscreen) { Fill(dc,client,RGB(0,0,0)); if(g_visualizerActive) DrawVisualizer(dc,client); return; }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,72};GradientRect(dc,header,RGB(27,37,54),RGB(14,19,28));
     DrawLine(dc,0,71,client.right,71,RGB(43,57,76),1);
@@ -182,6 +209,7 @@ static void DrawUI(HDC dc,RECT client) {
     int glow=(int)(18.0+10.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
     COLORREF edge=Blend(RGB(35,53,78),C_ACCENT,glow);
     Panel(dc,frame,RGB(8,11,16),edge,13);
+    if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
         RECT badge={R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2-31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2-52,
                     R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2+31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2+10};
@@ -841,7 +869,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else {g_hasMedia=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         }
         g_visualPulse=(g_visualPulse+1)%10000;
-        if(g_hasMedia && (g_visualPulse%3)==0) {RECT glow=R_VIDEO;InflateRect(&glow,4,4);InvalidateRect(hwnd,&glow,FALSE);}
+        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
+        if(audioOnlyLocal) {
+            if(!g_visualizerActive) g_visualizerActive=ABM_AudioVisualizer_Start();
+            ShowWindow(g_video,SW_HIDE);
+        } else {
+            if(g_visualizerActive) { ABM_AudioVisualizer_Stop(); g_visualizerActive=FALSE; }
+            if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
+        }
+        if(g_visualizerActive) InvalidateRect(hwnd,&R_VIDEO,FALSE);
+        else if(g_hasMedia && (g_visualPulse%3)==0) {RECT glow=R_VIDEO;InflateRect(&glow,4,4);InvalidateRect(hwnd,&glow,FALSE);}
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
            from 20% to 0%, so no fragment of the menu is left on screen. */
@@ -983,7 +1020,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
-    case WM_DESTROY:SavePersistentState();DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+    case WM_DESTROY:SavePersistentState();DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
