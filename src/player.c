@@ -105,6 +105,51 @@ static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
                (GetBValue(a)*(100-amount)+GetBValue(b)*amount)/100);
 }
 static void SetStatus(const wchar_t *s) { (void)s; if(g_main) InvalidateRect(g_main,NULL,FALSE); }
+static void ResetArtwork(void) {
+    if (g_artMedia) {
+        libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
+        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,NULL);
+        libvlc_media_parse_stop(g_artMedia);
+        libvlc_media_release(g_artMedia); g_artMedia=NULL;
+    }
+    g_artworkLoaded=FALSE; g_trackTitle[0]=0; g_trackArtist[0]=0;
+    ABM_D2D_ClearImage(&g_ui);
+}
+static void BeginArtworkParse(libvlc_media_t *media) {
+    ResetArtwork(); if (!media) return;
+    g_artMedia=media; libvlc_media_retain(g_artMedia);
+    libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
+    if (libvlc_event_attach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,NULL)!=0) return;
+    libvlc_media_parse_with_options(g_artMedia,libvlc_media_parse_local,5000);
+}
+static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque) {
+    (void)opaque;
+    if (ev && ev->type==libvlc_MediaParsedChanged && g_main)
+        PostMessageW(g_main,WM_ARTWORK_READY,(WPARAM)ev->p_obj,0);
+}
+static void CopyVlcMeta(libvlc_media_t *media,libvlc_meta_t key,wchar_t *out,size_t cap) {
+    char *value=libvlc_media_get_meta(media,key);
+    if (!value) { out[0]=0; return; }
+    MultiByteToWideChar(CP_UTF8,0,value,-1,out,(int)cap); libvlc_free(value);
+}
+static void LoadParsedArtwork(libvlc_media_t *media) {
+    if (!media || media!=g_artMedia) return;
+    CopyVlcMeta(media,libvlc_meta_Title,g_trackTitle,256);
+    CopyVlcMeta(media,libvlc_meta_Artist,g_trackArtist,256);
+    char *art=libvlc_media_get_meta(media,libvlc_meta_ArtworkURL);
+    if (art) {
+        wchar_t url[PATH_CAP*4];
+        int n=MultiByteToWideChar(CP_UTF8,0,art,-1,url,(int)(sizeof(url)/sizeof(url[0])));
+        libvlc_free(art);
+        if (n>0 && EnsureDataDirectory()) {
+            wchar_t path[PATH_CAP];
+            swprintf_s(path,PATH_CAP,L"%s\\current-artwork.bin",g_dataDir);
+            if (URLDownloadToFileW(NULL,url,path,0,NULL)==S_OK)
+                g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
+        }
+    }
+    InvalidateRect(g_main,NULL,FALSE);
+}
 
 static void FormatTime(int ms,wchar_t *out,size_t n) {
     if(ms<0) ms=0; int sec=ms/1000;
