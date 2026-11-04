@@ -96,10 +96,20 @@ static void RefreshRendererList(void)
     }
     LeaveCriticalSection(&g_rendererLock);
     SendMessageW(g_renderers, CB_SETCURSEL, 0, 0);
-    if (g_selectedRenderer)
-        for (size_t i = 0; i < g_comboCount; ++i)
-            if (g_comboItems[i] == g_selectedRenderer)
+    BOOL selectedFound = FALSE;
+    if (g_selectedRenderer) {
+        for (size_t i = 0; i < g_comboCount; ++i) {
+            if (g_comboItems[i] == g_selectedRenderer) {
                 SendMessageW(g_renderers, CB_SETCURSEL, (WPARAM)(i + 1), 0);
+                selectedFound = TRUE;
+                break;
+            }
+        }
+        if (!selectedFound) {
+            libvlc_renderer_item_release(g_selectedRenderer);
+            g_selectedRenderer = NULL;
+        }
+    }
 }
 
 static void StartRendererDiscovery(void)
@@ -145,6 +155,11 @@ static void SelectRenderer(void)
         return;
     }
     if (g_hasMedia) {
+        int restore = 0;
+        for (size_t i = 0; i < g_comboCount; ++i)
+            if (g_selectedRenderer && g_comboItems[i] == g_selectedRenderer)
+                restore = (int)i + 1;
+        SendMessageW(g_renderers, CB_SETCURSEL, (WPARAM)restore, 0);
         SetStatus(L"Select a receiver before opening media. Restart the player to change an active playback route.");
         return;
     }
@@ -471,8 +486,8 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     }
     case WM_DESTROY:
         KillTimer(hwnd, TIMER_ID);
-        StopRendererDiscovery();
         g_mainWindow = NULL;
+        StopRendererDiscovery();
         if (g_player) {
             libvlc_media_player_stop(g_player);
             libvlc_media_player_release(g_player);
@@ -538,6 +553,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
     if (!RegisterClassW(&wc)) {
         libvlc_media_player_release(g_player);
         libvlc_release(g_vlc);
+        DeleteCriticalSection(&g_rendererLock);
         return 1;
     }
 
@@ -547,6 +563,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous,
     if (!hwnd) {
         libvlc_media_player_release(g_player);
         libvlc_release(g_vlc);
+        DeleteCriticalSection(&g_rendererLock);
         return 1;
     }
 
