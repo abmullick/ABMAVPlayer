@@ -64,11 +64,13 @@ static void FormatTime(int ms,wchar_t *out,size_t n) {
 }
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
-    int side=292, left=24, top=78, bottom=158, gap=18;
-    int videoW=w-side- left*2-gap; if(videoW<280) videoW=280;
-    int videoH=h-top-bottom; if(videoH<150) videoH=150;
+    int left=24,top=78,bottom=158,gap=18;
+    int side=w>=1050?292:(w>=760?250:220);
+    int videoW=w-side-left*2-gap; if(videoW<240)videoW=240;
+    int videoH=h-top-bottom; if(videoH<120)videoH=120;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
+    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+96};
     MoveWindow(g_video,R_VIDEO.left,R_VIDEO.top,videoW,videoH,TRUE);
     MoveWindow(g_renderers,R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right-R_RECEIVER.left,30,TRUE);
     R_SEEK=(RECT){left,h-126,w-left,h-120};
@@ -77,10 +79,10 @@ static void UpdateLayout(HWND hwnd) {
     R_NEXT=(RECT){w/2+70,h-94,w/2+118,h-46};
     R_STOP=(RECT){w/2+140,h-94,w/2+188,h-46};
     R_OPEN=(RECT){left,h-96,left+112,h-48};
-    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+18,R_SIDEBAR.left+side-28,R_SIDEBAR.top+54};
+    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+18,R_SIDEBAR.right-14,R_SIDEBAR.top+54};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    int y=R_SIDEBAR.top+118;
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+i*48,R_SIDEBAR.right-10,y+(i+1)*48};
+    int y=R_SIDEBAR.top+154;
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*48,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*48};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     COLORREF bg=active?C_ACCENT:(hot?RGB(49,61,79):C_PANEL2);
@@ -111,8 +113,8 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t count[48]; swprintf_s(count,48,L"%d TRACKS",g_playlistCount);
     RECT cr={R_SIDEBAR.right-110,playlistHead.top,R_SIDEBAR.right-14,playlistHead.bottom};
     Txt(dc,count,cr,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-    int visible=(client.bottom-R_SIDEBAR.top-160)/48; if(visible<0)visible=0; if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
-    for(int i=0;i<g_playlistCount && i<visible;i++) {
+    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48; if(visible<0)visible=0; if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
+    for(int i=g_playlistScroll;i<g_playlistCount && i<g_playlistScroll+visible;i++) {
         RECT row=R_ROW[i];
         if(i==g_selected) RoundBox(dc,row,RGB(39,57,82),9);
         RECT num={row.left+9,row.top+4,row.left+34,row.bottom-4};
@@ -140,10 +142,10 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dot={thumb-6,R_SEEK.top-4,thumb+6,R_SEEK.bottom+4}; RoundBox(dc,dot,C_TEXT,8);
     wchar_t t1[24],t2[24],times[64]; FormatTime((int)now,t1,24); FormatTime((int)len,t2,24); swprintf_s(times,64,L"%s  /  %s",t1,t2);
     RECT tr={24,client.bottom-44,180,client.bottom-20}; Txt(dc,times,tr,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    DrawIconButton(dc,R_PREV,5,FALSE,FALSE);
-    DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,FALSE,TRUE);
-    DrawIconButton(dc,R_NEXT,4,FALSE,FALSE);
-    DrawIconButton(dc,R_STOP,3,FALSE,FALSE);
+    DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
+    DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
+    DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
+    DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     RECT volLabel={client.right-286,client.bottom-96,client.right-224,client.bottom-74};
     Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     RECT vr={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2}; RoundBox(dc,vr,C_LINE,5);
@@ -253,12 +255,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_SIZE:UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
+    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
     case WM_MEASUREITEM: if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){((LPMEASUREITEMSTRUCT)lp)->itemHeight=26;return TRUE;}break;
     case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=UINT(-1)){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
-    case WM_TIMER:if(wp==TIMER_ID){g_animPhase=(g_animPhase+1)%60;UpdateUI();}return 0;
+    case WM_TIMER:if(wp==TIMER_ID)UpdateUI();return 0;
+    case WM_MOUSEWHEEL: {
+        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
+        int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
+        g_playlistScroll-=GET_WHEEL_DELTA_WPARAM(wp)/WHEEL_DELTA;
+        if(g_playlistScroll<0)g_playlistScroll=0;
+        if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
         int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
@@ -287,7 +298,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         else if(Inside(R_PLAY,mx,my))hit=HIT_PLAY;else if(Inside(R_STOP,mx,my))hit=HIT_STOP;
         else if(Inside(R_PREV,mx,my))hit=HIT_PREV;else if(Inside(R_NEXT,mx,my))hit=HIT_NEXT;
         if(hit!=g_hoverButton){g_hoverButton=hit;InvalidateRect(hwnd,NULL,FALSE);}
-        if(g_dragSeek)SeekAt(GET_X_LPARAM(lp));if(g_dragVolume){int v=(GET_X_LPARAM(lp)-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}return 0;
+        if(g_dragSeek)SeekAt(mx);
+        if(g_dragVolume){int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}
+        return 0;
+    }
     case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;ReleaseCapture();return 0;
     case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT r;GetClientRect(hwnd,&r);DrawUI(dc,r);EndPaint(hwnd,&ps);return 0;}
     case WM_ERASEBKGND:return 1;
