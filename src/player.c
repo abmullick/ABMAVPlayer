@@ -697,10 +697,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     L"Drag files into the player to add them. Space: play/pause, arrows: seek 10 seconds. +/-: speed. N/P: next/previous.\n"
                     L"Cast to TV: Discover receivers, then choose your TV in Playback Output.\n\n"
                     L"Keyboard shortcuts:\nF11 - Toggle fullscreen\nEsc - Exit fullscreen or close the menu\n"
-                    L"Double-click the video - Toggle fullscreen",
+                    L"Double-click the video - Toggle fullscreen\n"\
+                    L"Space - Play/Pause | Left/Right - Seek 10 seconds\n"\
+                    L"+/- - Playback speed | N/P - Next/Previous",
                     L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
                 else if(mi==8)MessageBoxW(hwnd,
-                    L"ABM AV Player\nVersion 0.3\n\n"
+                    L"ABM AV Player\nVersion 0.4\n\n"
                     L"A Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\n\n"
                     L"Product Owner: Abhisek Basu Mullick\n"
                     L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
