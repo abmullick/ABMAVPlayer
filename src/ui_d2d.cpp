@@ -27,6 +27,8 @@ static ID2D1HwndRenderTarget *Target(ABM_D2D *ui) { return static_cast<ID2D1Hwnd
 static IDWriteFactory *WriteFactory(ABM_D2D *ui) { return static_cast<IDWriteFactory *>(ui->writeFactory); }
 static ID2D1SolidColorBrush *Brush(ABM_D2D *ui) { return static_cast<ID2D1SolidColorBrush *>(ui->brush); }
 
+static void SetColor(ABM_D2D *ui, COLORREF color);
+
 static BOOL EnsureTarget(ABM_D2D *ui) {
     if (ui->target) return TRUE;
     RECT rc{};
