@@ -18,9 +18,11 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 - Video: MP4, MKV, AVI, MOV, WMV and WebM (codec support depends on installed VLC)
 - Play/pause, stop, seek and volume
 - Drag-and-drop media files into the player
+- Persistent playlist library, recent-media history and saved volume/shuffle/repeat/speed preferences under `%APPDATA%\\ABMAVPlayer`
 - Shuffle playback and repeat-current-track mode
 - Playback speed presets from 0.5x to 2.0x (right-click the video)
 - Audio-track selection, subtitle-track selection and external subtitle loading (right-click the video)
+- LibVLC equalizer presets (right-click the video)
 - Basic media metadata dialog (title, artist, album and duration)
 - Keyboard shortcuts: Space, Left/Right, Home, N/P, +/- and F11
 - Dark custom Windows interface rendered with Direct2D and DirectWrite
@@ -76,9 +78,9 @@ If VLC is installed elsewhere, set VLC_DIR before running.
 The application uses LibVLC's renderer-discovery and renderer-selection APIs. It does not bundle a separate FFmpeg executable; codec conversion is delegated to the VLC engine and its installed plugins. Transcoding is not guaranteed for every codec, subtitle format, or receiver.
 
 ## Remaining roadmap
-1. Persistent media-library database and recently played history
-2. Search/filter and drag-to-reorder playlist editing
-3. Album art and animated audio visualizer
-4. Audio-device selection, equalizer and DSP
+1. Database-backed media library with folder indexing, search and richer recent history
+2. Embedded and online album artwork with caching
+3. Audio-reactive visualizer (requires a safe audio tap/mixer implementation)
+4. Custom equalizer bands, audio-device selection and DSP beyond the current LibVLC presets
 5. Hardware-acceleration and aspect-ratio controls
-6. More resilient Chromecast session/reconnection handling
+6. Chromecast session health, receiver-loss detection and automatic reconnection
