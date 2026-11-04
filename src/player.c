@@ -35,7 +35,7 @@ static libvlc_renderer_item_t *g_selectedRenderer;
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
 static int g_volume = 70, g_dragSeek = 0, g_dragVolume = 0, g_hover = 0;
-static int g_playlistScroll = 0, g_hoverButton = 0, g_animPhase = 0;
+static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
 static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER;
@@ -56,6 +56,12 @@ static void Fill(HDC dc, RECT r, COLORREF c) { HBRUSH b=CreateSolidBrush(c); Fil
 static void RoundBox(HDC dc, RECT r, COLORREF c, int radius) { HBRUSH b=CreateSolidBrush(c); HPEN p=CreatePen(PS_SOLID,1,c); HGDIOBJ ob=SelectObject(dc,b), op=SelectObject(dc,p); RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius); SelectObject(dc,ob); SelectObject(dc,op); DeleteObject(b); DeleteObject(p); }
 static void Txt(HDC dc, const wchar_t *s, RECT r, COLORREF c, HFONT f, UINT flags) { SetBkMode(dc,TRANSPARENT); SetTextColor(dc,c); HGDIOBJ old=SelectObject(dc,f); DrawTextW(dc,s,-1,&r,flags); SelectObject(dc,old); }
 static BOOL Inside(RECT r,int x,int y) { return x>=r.left && x<r.right && y>=r.top && y<r.bottom; }
+static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
+    if(amount<0)amount=0;if(amount>100)amount=100;
+    return RGB((GetRValue(a)*(100-amount)+GetRValue(b)*amount)/100,
+               (GetGValue(a)*(100-amount)+GetGValue(b)*amount)/100,
+               (GetBValue(a)*(100-amount)+GetBValue(b)*amount)/100);
+}
 static void SetStatus(const wchar_t *s) { (void)s; if(g_main) InvalidateRect(g_main,NULL,FALSE); }
 
 static void FormatTime(int ms,wchar_t *out,size_t n) {
@@ -85,7 +91,7 @@ static void UpdateLayout(HWND hwnd) {
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*48,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*48};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
-    COLORREF bg=active?C_ACCENT:(hot?RGB(49,61,79):C_PANEL2);
+    COLORREF bg=active?C_ACCENT:Blend(C_PANEL2,RGB(57,75,99),hot?g_hoverLevel:0);
     RoundBox(dc,r,bg,14);
     HPEN p=CreatePen(PS_SOLID,2,C_TEXT); HGDIOBJ old=SelectObject(dc,p);
     int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
@@ -258,7 +264,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
-        libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,16,NULL);return 0;
     }
     case WM_SIZE:UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=820; mi->ptMinTrackSize.y=560; return 0; }
@@ -268,7 +274,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:RefreshRendererList();return 0;
-    case WM_TIMER:if(wp==TIMER_ID)UpdateUI();return 0;
+    case WM_TIMER:if(wp==TIMER_ID){if(g_hoverButton&&g_hoverLevel<100)g_hoverLevel+=20;else if(!g_hoverButton&&g_hoverLevel>0)g_hoverLevel-=20;if(g_hoverLevel<0)g_hoverLevel=0;if(g_hoverLevel>100)g_hoverLevel=100;UpdateUI();}return 0;
     case WM_MOUSEWHEEL: {
         int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
         int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
