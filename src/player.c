@@ -82,13 +82,13 @@ static RECT R_MENU_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
-static COLORREF C_BG = RGB(15,18,24);
-static COLORREF C_PANEL = RGB(24,29,38);
-static COLORREF C_PANEL2 = RGB(31,38,49);
-static COLORREF C_TEXT = RGB(238,242,248);
-static COLORREF C_MUTED = RGB(177,189,205);
-static COLORREF C_ACCENT = RGB(67,143,255);
-static COLORREF C_LINE = RGB(47,56,70);
+static COLORREF C_BG = RGB(8,12,20);
+static COLORREF C_PANEL = RGB(17,24,37);
+static COLORREF C_PANEL2 = RGB(24,34,50);
+static COLORREF C_TEXT = RGB(242,247,255);
+static COLORREF C_MUTED = RGB(153,171,195);
+static COLORREF C_ACCENT = RGB(69,156,255);
+static COLORREF C_LINE = RGB(43,57,79);
 
 static void PlayIndex(int index);
 static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque);
@@ -96,7 +96,18 @@ static BOOL EnsureDataDirectory(void);
 static COLORREF Blend(COLORREF a,COLORREF b,int amount);
 static void RoundBox(HDC dc, RECT r, COLORREF c, int radius);
 static void Fill(HDC dc, RECT r, COLORREF c) { (void)dc;ABM_D2D_Fill(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,c); }
-static void GradientRect(HDC dc, RECT r, COLORREF top, COLORREF bottom) { (void)dc;ABM_D2D_Fill(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,Blend(top,bottom,45)); }
+static void GradientRect(HDC dc, RECT r, COLORREF leftColor, COLORREF rightColor) {
+    (void)dc;
+    int width = r.right - r.left;
+    if (width <= 0) return;
+    const int steps = 36;
+    for (int i = 0; i < steps; ++i) {
+        int x1 = r.left + width * i / steps;
+        int x2 = r.left + width * (i + 1) / steps + 1;
+        RECT strip = { x1, r.top, x2, r.bottom };
+        Fill(NULL, strip, Blend(leftColor, rightColor, i * 100 / (steps - 1)));
+    }
+}
 static void RoundBox(HDC dc, RECT r, COLORREF c, int radius) { (void)dc;ABM_D2D_Round(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,c); }
 static void Panel(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius) { (void)dc;ABM_D2D_Round(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,fill);ABM_D2D_StrokeRound(&g_ui,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)radius,edge,1.0f); }
 static void DrawLine(HDC dc,int x1,int y1,int x2,int y2,COLORREF color,int width) { (void)dc;ABM_D2D_Line(&g_ui,(float)x1,(float)y1,(float)x2,(float)y2,color,(float)width); }
@@ -298,10 +309,16 @@ static void DrawUI(HDC dc,RECT client) {
         return;
     }
     Fill(dc,client,C_BG);
-    RECT header={0,0,client.right,72};GradientRect(dc,header,RGB(27,37,54),RGB(14,19,28));
-    DrawLine(dc,0,71,client.right,71,RGB(43,57,76),1);
+    RECT header={0,0,client.right,76};
+    GradientRect(dc,header,RGB(20,34,59),RGB(17,20,37));
+    Fill(dc,(RECT){0,75,client.right,77},RGB(37,59,88));
+    int beamX = (int)((g_visualPulse * 7u) % (unsigned int)(client.right + 220)) - 220;
+    RECT beam = {beamX,75,beamX+220,77};
+    GradientRect(dc,beam,RGB(50,125,220),RGB(123,92,255));
+    RECT logoHalo={25,13,71,59};
+    Panel(dc,logoHalo,RGB(19,39,68),RGB(52,99,157),14);
 
-    RECT logo={30,18,66,54};RoundBox(dc,logo,C_ACCENT,11);
+    RECT logo={30,18,66,54};GradientRect(dc,logo,RGB(49,178,232),RGB(91,105,255));RoundBox(dc,logo,Blend(RGB(49,178,232),RGB(91,105,255),50),11);
     DrawLine(dc,39,27,39,45,RGB(255,255,255),2);
     DrawLine(dc,39,27,56,27,RGB(255,255,255),2);
     DrawLine(dc,56,27,56,45,RGB(255,255,255),2);
@@ -311,7 +328,7 @@ static void DrawUI(HDC dc,RECT client) {
     RoundBox(dc,menuBtn,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT status={client.right-460,23,client.right-278,50};
-    RoundBox(dc,status,RGB(26,36,51),16);
+    Panel(dc,status,RGB(21,32,49),RGB(52,76,109),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
     Txt(dc,g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER",statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -330,16 +347,31 @@ static void DrawUI(HDC dc,RECT client) {
         if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
-        RECT badge={R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2-31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2-52,
-                    R_VIDEO.left+(R_VIDEO.right-R_VIDEO.left)/2+31,R_VIDEO.top+(R_VIDEO.bottom-R_VIDEO.top)/2+10};
-        RoundBox(dc,badge,RGB(24,38,58),18);
-        DrawLine(dc,(badge.left+badge.right)/2-7,badge.top+16,(badge.left+badge.right)/2-7,badge.bottom-16,C_ACCENT,3);
-        DrawLine(dc,(badge.left+badge.right)/2-7,badge.top+16,(badge.left+badge.right)/2+13,(badge.top+badge.bottom)/2, C_ACCENT,3);
-        DrawLine(dc,(badge.left+badge.right)/2+13,(badge.top+badge.bottom)/2,(badge.left+badge.right)/2-7,badge.bottom-16,C_ACCENT,3);
-        RECT empty={R_VIDEO.left+20,badge.bottom+12,R_VIDEO.right-20,badge.bottom+42};
-        Txt(dc,L"Nothing playing right now",empty,RGB(190,202,220),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        RECT hint={R_VIDEO.left+20,empty.bottom,R_VIDEO.right-20,empty.bottom+26};
-        Txt(dc,L"Add a file or choose something from your playlist",hint,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        int cx=(R_VIDEO.left+R_VIDEO.right)/2;
+        int cy=(R_VIDEO.top+R_VIDEO.bottom)/2-28;
+        int breathe=(int)(3.0+3.0*(0.5+0.5*sin((double)g_visualPulse*0.075)));
+        RECT outer={cx-48-breathe,cy-48-breathe,cx+48+breathe,cy+48+breathe};
+        ABM_D2D_StrokeRound(&g_ui,(float)outer.left,(float)outer.top,(float)outer.right,(float)outer.bottom,27.0f,Blend(RGB(34,83,132),RGB(87,91,206),(g_visualPulse%80u)*100/79),1.5f);
+        RECT badge={cx-39,cy-39,cx+39,cy+39};
+        GradientRect(dc,badge,RGB(27,112,164),RGB(77,73,173));
+        RoundBox(dc,badge,Blend(RGB(27,112,164),RGB(77,73,173),48),23);
+        DrawLine(dc,cx-8,cy-16,cx-8,cy+16,RGB(245,250,255),3);
+        DrawLine(dc,cx-8,cy-16,cx+17,cy,RGB(245,250,255),3);
+        DrawLine(dc,cx+17,cy,cx-8,cy+16,RGB(245,250,255),3);
+        RECT empty={R_VIDEO.left+20,cy+57,R_VIDEO.right-20,cy+86};
+        Txt(dc,L"Your next favourite starts here",empty,RGB(232,241,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT hint={R_VIDEO.left+20,empty.bottom+2,R_VIDEO.right-20,empty.bottom+26};
+        Txt(dc,L"Drop a track or add media to build your listening space",hint,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        int bars=25, gap=7, barW=5;
+        int total=bars*barW+(bars-1)*gap;
+        int start=cx-total/2, base=hint.bottom+25;
+        for(int i=0;i<bars;i++) {
+            double wave=0.5+0.5*sin((double)g_visualPulse*0.12+(double)i*0.52);
+            int bh=5+(int)(wave*19.0);
+            RECT bar={start+i*(barW+gap),base-bh,start+i*(barW+gap)+barW,base};
+            COLORREF bc=Blend(RGB(47,153,207),RGB(125,94,232),i*100/(bars-1));
+            RoundBox(dc,bar,bc,3);
+        }
     }
 
     RECT fs=R_FULLSCREEN;
@@ -354,11 +386,14 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
     /* Sidebar cards */
-    Panel(dc,R_SIDEBAR,C_PANEL,RGB(40,49,64),16);
+    Panel(dc,R_SIDEBAR,C_PANEL,RGB(48,67,94),18);
+    RECT sideGlow={R_SIDEBAR.left+18,R_SIDEBAR.top+2,R_SIDEBAR.right-18,R_SIDEBAR.top+4};
+    GradientRect(dc,sideGlow,RGB(52,147,222),RGB(117,91,229));
     RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+12,R_SIDEBAR.right-16,R_SIDEBAR.top+37};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
-    Panel(dc,scan,Blend(RGB(31,57,91),RGB(51,91,145),(g_hoverButton==HIT_SCAN)?g_hoverLevel:0),RGB(61,111,174),10);
+    GradientRect(dc,scan,Blend(RGB(24,68,111),RGB(43,105,165),(g_hoverButton==HIT_SCAN)?g_hoverLevel:0),Blend(RGB(37,63,115),RGB(81,84,174),(g_hoverButton==HIT_SCAN)?g_hoverLevel:0));
+    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,10.0f,RGB(69,127,194),1.0f);
     RECT scanIcon={scan.left+14,scan.top+8,scan.left+34,scan.bottom-8};
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.left+2,scanIcon.bottom-7,RGB(220,236,255),2);
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.right-2,scanIcon.top+8,RGB(220,236,255),2);
@@ -388,7 +423,7 @@ static void DrawUI(HDC dc,RECT client) {
     int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
     for(int i=g_playlistScroll;i<g_playlistCount&&i<g_playlistScroll+visible;i++) {
         RECT row=R_ROW[i];
-        if(i==g_selected)Panel(dc,row,RGB(34,54,80),RGB(48,83,125),9);
+        if(i==g_selected){GradientRect(dc,row,RGB(27,57,91),RGB(39,47,91));ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,9.0f,RGB(65,112,173),1.0f);}
         RECT indexR={row.left+8,row.top+5,row.left+34,row.bottom-5};
         wchar_t ix[12];swprintf_s(ix,12,L"%02d",i+1);
         Txt(dc,ix,indexR,i==g_current?C_ACCENT:C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -415,8 +450,8 @@ static void DrawUI(HDC dc,RECT client) {
     int pos=0;int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
     int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
     if(len>0){pos=(int)((now*1000)/len);if(pos<0)pos=0;if(pos>1000)pos=1000;}
-    RECT track={R_SEEK.left,R_SEEK.top-1,R_SEEK.right,R_SEEK.bottom+1};RoundBox(dc,track,RGB(39,49,65),5);
-    RECT prog=track;prog.right=prog.left+(prog.right-prog.left)*pos/1000;if(prog.right>prog.left)RoundBox(dc,prog,C_ACCENT,5);
+    RECT track={R_SEEK.left,R_SEEK.top-1,R_SEEK.right,R_SEEK.bottom+1};RoundBox(dc,track,RGB(31,43,61),5);
+    RECT prog=track;prog.right=prog.left+(prog.right-prog.left)*pos/1000;if(prog.right>prog.left)GradientRect(dc,prog,RGB(50,184,235),RGB(103,102,255));
     int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
     RECT halo={thumb-10,R_SEEK.top-10,thumb+10,R_SEEK.bottom+10};RoundBox(dc,halo,RGB(36,66,104),12);
     RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};RoundBox(dc,dot,RGB(235,244,255),10);
@@ -425,13 +460,20 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Control dock */
     RECT dock={client.right/2-190,client.bottom-108,client.right/2+190,client.bottom-34};
-    RoundBox(dc,dock,RGB(20,26,36),19);
+    Panel(dc,dock,RGB(16,24,38),RGB(39,56,80),22);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
+    if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
+        int pulse = (int)(3.0 + 2.0 * (0.5 + 0.5 * sin((double)g_visualPulse * 0.11)));
+        RECT halo = R_PLAY; InflateRect(&halo,pulse,pulse);
+        ABM_D2D_StrokeRound(&g_ui,(float)halo.left,(float)halo.top,(float)halo.right,(float)halo.bottom,19.0f,Blend(RGB(48,111,196),RGB(108,94,255),(g_visualPulse%60u)*100/59),1.5f);
+    }
+    RECT playGlow=R_PLAY; InflateRect(&playGlow,2,2);
+    GradientRect(dc,playGlow,RGB(42,151,234),RGB(100,91,238));
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     RECT volPanel={client.right-282,client.bottom-101,client.right-22,client.bottom-35};
-    RoundBox(dc,volPanel,RGB(20,26,36),15);
+    Panel(dc,volPanel,RGB(16,24,38),RGB(39,56,80),16);
     RECT volLabel={volPanel.left+13,volPanel.top+8,volPanel.left+75,volPanel.top+27};
     Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT vr={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2};RoundBox(dc,vr,RGB(47,59,77),5);
@@ -440,7 +482,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(235,244,255),8);
 
     RECT open=R_OPEN;
-    Panel(dc,open,Blend(RGB(31,60,97),RGB(53,95,151),(g_hoverButton==HIT_OPEN)?g_hoverLevel:0),RGB(61,111,174),12);
+    GradientRect(dc,open,Blend(RGB(25,83,132),RGB(44,130,190),(g_hoverButton==HIT_OPEN)?g_hoverLevel:0),Blend(RGB(45,61,135),RGB(91,82,188),(g_hoverButton==HIT_OPEN)?g_hoverLevel:0));
+    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,12.0f,RGB(72,127,192),1.0f);
     RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
     Txt(dc,L"+",plus,RGB(230,242,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
@@ -986,7 +1029,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
-        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
     case WM_ARTWORK_READY: if((libvlc_media_t *)wp==g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
@@ -1049,10 +1092,23 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         } else {
             if(g_visualizerActive) ABM_AudioVisualizer_Stop();
             g_visualizerActive=FALSE; g_visualizerTried=FALSE;
-            if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
+            if(g_video && !g_fullscreen) {
+                if (g_hasMedia) ShowWindow(g_video,SW_SHOWNA);
+                else ShowWindow(g_video,SW_HIDE);
+            }
         }
-        if(g_visualizerActive) InvalidateRect(hwnd,&R_VIDEO,FALSE);
-        else if(g_hasMedia && (g_visualPulse%3)==0) {RECT glow=R_VIDEO;InflateRect(&glow,4,4);InvalidateRect(hwnd,&glow,FALSE);}
+        if ((g_visualPulse % 3u) == 0u) {
+            if (!g_hasMedia) InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            else if (g_visualizerActive) InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            else { RECT glow=R_VIDEO; InflateRect(&glow,4,4); InvalidateRect(hwnd,&glow,FALSE); }
+            if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
+                RECT playDirty=R_PLAY; InflateRect(&playDirty,8,8);
+                InvalidateRect(hwnd,&playDirty,FALSE);
+            }
+            RECT headerDirty={0,72,hwnd ? 0 : 0,77};
+            headerDirty.right=R_SIDEBAR.right;
+            InvalidateRect(hwnd,&headerDirty,FALSE);
+        }
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
            from 20% to 0%, so no fragment of the menu is left on screen. */
