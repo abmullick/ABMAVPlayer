@@ -1158,6 +1158,10 @@ static void ToggleFullscreen(HWND hwnd) {
         g_fullscreenControlsVisible=TRUE;
         g_fullscreenLastInputTick=GetTickCount();
         SetCursor(LoadCursorW(NULL,IDC_ARROW));
+        /* Capture mouse input at the top-level window for the duration of
+           fullscreen. VLC can otherwise consume WM_MOUSEMOVE in its child
+           HWND, especially after the child is resized to cover the monitor. */
+        SetCapture(hwnd);
         g_menuOpen=FALSE;g_receiverPopup=FALSE;
         ShowWindow(g_renderers,SW_HIDE);
         SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
@@ -1167,6 +1171,7 @@ static void ToggleFullscreen(HWND hwnd) {
     } else {
         g_fullscreen=FALSE;
         g_fullscreenControlsVisible=TRUE;
+        if(GetCapture()==hwnd)ReleaseCapture();
         SetCursor(LoadCursorW(NULL,IDC_ARROW));
         /* Restore a known normal overlapped-window style instead of trusting
            a potentially stale style snapshot from the fullscreen transition. */
@@ -1279,6 +1284,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_fullscreenControlsVisible=FALSE;
             UpdateLayout(hwnd);
             InvalidateRect(hwnd,NULL,FALSE);
+            RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
             SetCursor(NULL);
         }
         int oldMenuProgress=g_menuProgress;
@@ -1497,10 +1503,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
+            SetCursor(LoadCursorW(NULL,IDC_ARROW));
             if (!g_fullscreenControlsVisible) {
                 g_fullscreenControlsVisible=TRUE;
                 UpdateLayout(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);
+                RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
             }
         }
         if(Inside(R_OPEN,mx,my))hit=HIT_OPEN;else if(Inside(R_SCAN,mx,my))hit=HIT_SCAN;
@@ -1519,6 +1527,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_SETCURSOR:
         if (g_fullscreen && !g_fullscreenControlsVisible) {
             SetCursor(NULL);
+            return TRUE;
+        }
+        if (g_fullscreen && g_fullscreenControlsVisible) {
+            SetCursor(LoadCursorW(NULL,IDC_ARROW));
             return TRUE;
         }
         break;
