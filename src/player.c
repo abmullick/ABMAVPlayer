@@ -68,6 +68,8 @@ static BOOL g_artworkLoaded=FALSE;
 static int g_artworkFade=100;
 static wchar_t g_trackTitle[256]=L"";
 static wchar_t g_trackArtist[256]=L"";
+static wchar_t g_trackAlbum[256]=L"";
+static wchar_t g_trackGenre[256]=L"";
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -139,7 +141,8 @@ static void ResetArtwork(void) {
         libvlc_media_parse_stop(g_artMedia);
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
-    g_artworkLoaded=FALSE; g_artworkFade=100; g_trackTitle[0]=0; g_trackArtist[0]=0;
+    g_artworkLoaded=FALSE; g_artworkFade=100;
+    g_trackTitle[0]=0; g_trackArtist[0]=0; g_trackAlbum[0]=0; g_trackGenre[0]=0;
     ABM_D2D_ClearImage(&g_ui);
 }
 static void BeginArtworkParse(libvlc_media_t *media) {
@@ -163,6 +166,8 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
     if (!media || media!=g_artMedia) return;
     CopyVlcMeta(media,libvlc_meta_Title,g_trackTitle,256);
     CopyVlcMeta(media,libvlc_meta_Artist,g_trackArtist,256);
+    CopyVlcMeta(media,libvlc_meta_Album,g_trackAlbum,256);
+    CopyVlcMeta(media,libvlc_meta_Genre,g_trackGenre,256);
     char *art=libvlc_media_get_meta(media,libvlc_meta_ArtworkURL);
     if (art) {
         wchar_t url[PATH_CAP*4];
@@ -242,6 +247,11 @@ static void UpdateLayout(HWND hwnd) {
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
+        R_SEEK=(RECT){72,h-132,w-72,h-126};
+        R_PREV=(RECT){w/2-116,h-83,w/2-72,h-39};
+        R_PLAY=(RECT){w/2-32,h-96,w/2+32,h-32};
+        R_NEXT=(RECT){w/2+72,h-83,w/2+116,h-39};
+        R_STOP=(RECT){w/2+136,h-83,w/2+180,h-39};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
@@ -323,23 +333,91 @@ static void DrawVisualizer(HDC dc,RECT area) {
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
-        Fill(dc,client,RGB(0,0,0));
+        /* Immersive now-playing view: artwork, track metadata and transport
+           controls are composed as one screen rather than a centered cover. */
+        Fill(dc,client,RGB(10,11,13));
         if(g_artworkLoaded) {
-            ABM_D2D_DrawImageCover(&g_ui,0,0,(float)client.right,(float)client.bottom,0.20f*(float)g_artworkFade/100.0f);
-            int cover=client.bottom<client.right?client.bottom-210:client.right-210;
-            if(cover>460)cover=460;
-            if(cover<220)cover=220;
-            int cx=client.right/2, cy=client.bottom/2-34;
-            RECT tile={cx-cover/2,cy-cover/2,cx+cover/2,cy+cover/2};
-            Panel(dc,tile,RGB(12,19,31),RGB(76,128,190),20);
-            ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,(float)tile.right-8,(float)tile.bottom-8,(float)g_artworkFade/100.0f);
-            RECT kicker={20,client.bottom-116,client.right-20,client.bottom-91};
-            RECT title={20,client.bottom-86,client.right-20,client.bottom-52};
-            RECT artist={20,client.bottom-49,client.right-20,client.bottom-24};
-            Txt(dc,L"NOW PLAYING",kicker,RGB(91,184,239),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        } else if(g_visualizerActive) DrawVisualizer(dc,client);
+            ABM_D2D_DrawImageCover(&g_ui,0,0,(float)client.right,(float)client.bottom,0.17f*(float)g_artworkFade/100.0f);
+            RECT veil={0,0,client.right,client.bottom};
+            Fill(dc,veil,RGB(10,12,15));
+            int artSize=client.bottom-270;
+            if(artSize>500)artSize=500;
+            if(artSize>client.right/2-90)artSize=client.right/2-90;
+            if(artSize<250)artSize=250;
+            int artX=(client.right/2-artSize)/2;
+            int artY=(client.bottom-170-artSize)/2+12;
+            RECT tile={artX,artY,artX+artSize,artY+artSize};
+            Panel(dc,tile,RGB(20,22,25),RGB(66,70,76),18);
+            ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+7,(float)tile.top+7,
+                (float)tile.right-7,(float)tile.bottom-7,(float)g_artworkFade/100.0f);
+
+            int infoX=client.right/2+34;
+            int infoW=client.right-infoX-62;
+            RECT kicker={infoX,artY+8,infoX+infoW,artY+34};
+            RECT title={infoX,artY+50,infoX+infoW,artY+105};
+            RECT artist={infoX,artY+112,infoX+infoW,artY+145};
+            Txt(dc,L"NOW PLAYING",kicker,RGB(174,179,186),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,g_trackTitle[0]?g_trackTitle:L"Untitled track",title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,g_trackArtist[0]?g_trackArtist:L"Unknown artist",artist,RGB(194,198,204),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+
+            int cardY=artY+184;
+            RECT artistCard={infoX,cardY,infoX+infoW,cardY+112};
+            Panel(dc,artistCard,RGB(26,28,31),RGB(53,56,61),15);
+            RECT artistHead={infoX+18,cardY+12,infoX+infoW-18,cardY+37};
+            RECT artistName={infoX+18,cardY+45,infoX+infoW-18,cardY+72};
+            RECT artistRole={infoX+18,cardY+75,infoX+infoW-18,cardY+98};
+            Txt(dc,L"ABOUT THE ARTIST",artistHead,RGB(185,190,197),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,g_trackArtist[0]?g_trackArtist:L"Artist information unavailable",artistName,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,L"Artist",artistRole,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+            RECT credits={infoX,cardY+128,infoX+infoW,cardY+242};
+            Panel(dc,credits,RGB(26,28,31),RGB(53,56,61),15);
+            RECT creditsHead={infoX+18,credits.top+12,infoX+infoW-18,credits.top+37};
+            Txt(dc,L"TRACK DETAILS",creditsHead,RGB(185,190,197),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT albumLabel={infoX+18,credits.top+45,infoX+110,credits.top+67};
+            RECT albumValue={infoX+118,credits.top+45,infoX+infoW-18,credits.top+67};
+            RECT genreLabel={infoX+18,credits.top+73,infoX+110,credits.top+95};
+            RECT genreValue={infoX+118,credits.top+73,infoX+infoW-18,credits.top+95};
+            Txt(dc,L"Album",albumLabel,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,g_trackAlbum[0]?g_trackAlbum:L"Not provided",albumValue,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,L"Genre",genreLabel,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,g_trackGenre[0]?g_trackGenre:L"Not provided",genreValue,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        } else if(g_visualizerActive) {
+            DrawVisualizer(dc,client);
+        } else {
+            RECT empty={client.right/2-260,client.bottom/2-30,client.right/2+260,client.bottom/2+20};
+            Txt(dc,L"Nothing is playing",empty,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        }
+
+        RECT bottom={0,client.bottom-174,client.right,client.bottom};
+        Fill(dc,bottom,RGB(12,13,15));
+        RECT trackTitle={48,client.bottom-166,client.right-100,client.bottom-137};
+        RECT trackArtist={48,client.bottom-137,client.right-100,client.bottom-113};
+        Txt(dc,g_trackTitle[0]?g_trackTitle:L"No track selected",trackTitle,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,g_trackArtist,trackArtist,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        RECT heart={client.right-58,client.bottom-158,client.right-34,client.bottom-134};
+        DrawLine(dc,heart.left+2,heart.top+7,heart.left+8,heart.top+1,C_MUTED,2);
+        DrawLine(dc,heart.left+8,heart.top+1,heart.left+14,heart.top+7,C_MUTED,2);
+        DrawLine(dc,heart.left+14,heart.top+7,heart.left+21,heart.top+1,C_MUTED,2);
+        RECT timeline={R_SEEK.left,R_SEEK.top-12,R_SEEK.right,R_SEEK.bottom+12};
+        Fill(dc,timeline,RGB(12,13,15));
+        int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
+        int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
+        int pos=(len>0)?(int)(now*1000/len):0;
+        if(pos<0)pos=0;if(pos>1000)pos=1000;
+        RECT track={R_SEEK.left,R_SEEK.top-1,R_SEEK.right,R_SEEK.bottom+1};
+        RoundBox(dc,track,RGB(68,71,76),3);
+        RECT progress=track;progress.right=progress.left+(progress.right-progress.left)*pos/1000;
+        if(progress.right>progress.left)RoundBox(dc,progress,RGB(239,241,244),3);
+        wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
+        RECT elapsedR={R_SEEK.left,client.bottom-143,R_SEEK.left+65,client.bottom-124};
+        RECT totalR={R_SEEK.right-65,client.bottom-143,R_SEEK.right,client.bottom-124};
+        Txt(dc,elapsed,elapsedR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,total,totalR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        DrawIconButton(dc,R_PREV,5,FALSE,FALSE);
+        DrawIconButton(dc,R_PLAY,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,FALSE,TRUE);
+        DrawIconButton(dc,R_NEXT,4,FALSE,FALSE);
+        DrawIconButton(dc,R_STOP,3,FALSE,FALSE);
         return;
     }
     Fill(dc,client,C_BG);
@@ -1208,6 +1286,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        if(g_fullscreen) {
+            if(Inside(R_PLAY,x,y)) {
+                if(g_hasMedia) {
+                    if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);
+                    else libvlc_media_player_play(g_player);
+                }
+                InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
+            }
+            if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
+            if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
+            if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+            if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
+            ReleaseCapture();return 0;
+        }
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
             RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
