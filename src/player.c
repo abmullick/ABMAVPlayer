@@ -260,12 +260,12 @@ static void UpdateLayout(HWND hwnd) {
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
-        R_SEEK=(RECT){82,h-145,w-82,h-141};
-        R_PREV=(RECT){w/2-174,h-94,w/2-126,h-46};
-        R_PLAY=(RECT){w/2-34,h-101,w/2+34,h-33};
-        R_NEXT=(RECT){w/2+126,h-94,w/2+174,h-46};
-        R_STOP=(RECT){w/2+190,h-94,w/2+238,h-46};
-        R_VOLUME=(RECT){w-140,h-55,w-38,h-47};
+        R_SEEK=(RECT){82,h-54,w-82,h-50};
+        R_PREV=(RECT){w/2-112,h-60,w/2-64,h-12};
+        R_PLAY=(RECT){w/2-30,h-66,w/2+30,h-6};
+        R_NEXT=(RECT){w/2+64,h-60,w/2+112,h-12};
+        R_STOP=(RECT){w/2+132,h-60,w/2+180,h-12};
+        R_VOLUME=(RECT){w-148,h-59,w-38,h-45};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
