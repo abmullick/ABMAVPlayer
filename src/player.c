@@ -260,12 +260,12 @@ static void UpdateLayout(HWND hwnd) {
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
-        R_SEEK=(RECT){82,h-54,w-82,h-50};
+        R_SEEK=(RECT){82,h-112,w-310,h-108};
         R_PREV=(RECT){w/2-112,h-60,w/2-64,h-12};
         R_PLAY=(RECT){w/2-30,h-66,w/2+30,h-6};
         R_NEXT=(RECT){w/2+64,h-60,w/2+112,h-12};
         R_STOP=(RECT){w/2+132,h-60,w/2+180,h-12};
-        R_VOLUME=(RECT){w-148,h-59,w-38,h-45};
+        R_VOLUME=(RECT){w-148,h-43,w-38,h-25};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
@@ -1116,7 +1116,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     HFONT oldFont=(HFONT)SelectObject(mem,font);
 
     /* Timeline floats independently above the transport buttons. */
-    RECT tr={R_SEEK.left,h-54,R_SEEK.right,h-50};
+    RECT tr={R_SEEK.left,h-112,R_SEEK.right,h-108};
     HBRUSH track=CreateSolidBrush(RGB(82,87,94));FillRect(mem,&tr,track);DeleteObject(track);
     int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
     int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
@@ -1124,8 +1124,8 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     RECT progress=tr;progress.right=progress.left+(progress.right-progress.left)*pos/1000;
     HBRUSH played=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&progress,played);DeleteObject(played);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
-    RECT et={R_SEEK.left,h-76,R_SEEK.left+70,h-58};
-    RECT tt={R_SEEK.right-70,h-76,R_SEEK.right,h-58};
+    RECT et={R_SEEK.left,h-139,R_SEEK.left+70,h-120};
+    RECT tt={R_SEEK.right-70,h-139,R_SEEK.right,h-120};
     DrawTextW(mem,elapsed,-1,&et,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
     DrawTextW(mem,total,-1,&tt,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
 
@@ -1140,16 +1140,16 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     OverlayButton(mem,stop,3,FALSE);
 
     /* Minimal volume label and slider; no enclosing rectangle. */
-    RECT vl={w-214,h-61,w-160,h-43};
+    RECT vl={w-214,h-44,w-160,h-26};
     SetTextColor(mem,RGB(202,207,214));
     DrawTextW(mem,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT vt={w-148,h-54,w-38,h-50};
+    RECT vt={w-148,h-36,w-38,h-32};
     HBRUSH vtrack=CreateSolidBrush(RGB(86,91,98));FillRect(mem,&vt,vtrack);DeleteObject(vtrack);
     int volume=g_volume;if(volume<0)volume=0;if(volume>100)volume=100;
     RECT vf=vt;vf.right=vf.left+(vf.right-vf.left)*volume/100;
     HBRUSH vfill=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&vf,vfill);DeleteObject(vfill);
     int knobX=vf.right;
-    RECT knob={knobX-5,h-59,knobX+5,h-45};
+    RECT knob={knobX-5,h-41,knobX+5,h-27};
     HBRUSH kb=CreateSolidBrush(RGB(248,249,250));FillRect(mem,&knob,kb);DeleteObject(kb);
 
     SelectObject(mem,oldFont);DeleteObject(font);
