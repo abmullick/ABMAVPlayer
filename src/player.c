@@ -141,6 +141,20 @@ static void Txt(HDC dc, const wchar_t *s, RECT r, COLORREF c, HFONT f, UINT flag
 static BOOL Inside(RECT r,int x,int y) { return x>=r.left && x<r.right && y>=r.top && y<r.bottom; }
 static BOOL ContainsTextI(const wchar_t *text,const wchar_t *query) { if(!query||!query[0])return TRUE;if(!text)return FALSE;size_t n=wcslen(query);for(const wchar_t *s=text;*s;s++)if(!_wcsnicmp(s,query,n))return TRUE;return FALSE; }
 static BOOL IsVideoPath(const wchar_t *path) { const wchar_t *d=wcsrchr(path?path:L"",L'.');return d&&(!_wcsicmp(d,L".mp4")||!_wcsicmp(d,L".mkv")||!_wcsicmp(d,L".avi")||!_wcsicmp(d,L".mov")||!_wcsicmp(d,L".wmv")||!_wcsicmp(d,L".webm")||!_wcsicmp(d,L".mpeg")||!_wcsicmp(d,L".mpg")||!_wcsicmp(d,L".m4v")); }
+static int CountFilteredMedia(void) {
+    int count=0;
+    for(int i=0;i<g_playlistCount;i++){
+        BOOL video=IsVideoPath(g_playlist[i]);
+        if((g_mediaFilter==1&&video)||(g_mediaFilter==2&&!video))continue;
+        const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
+        if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
+           !(i==g_current&&((g_trackArtist[0]&&ContainsTextI(g_trackArtist,g_searchText))||
+                            (g_trackAlbum[0]&&ContainsTextI(g_trackAlbum,g_searchText))||
+                            (g_trackTitle[0]&&ContainsTextI(g_trackTitle,g_searchText)))))continue;
+        count++;
+    }
+    return count;
+}
 static int g_visibleRows[MAX_PLAYLIST],g_visibleRowCount=0;
 static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
     if(amount<0)amount=0;if(amount>100)amount=100;
@@ -622,7 +636,10 @@ static void DrawUI(HDC dc,RECT client) {
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
         BOOL isVideo=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
-        if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText))continue;
+        if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
+           !(i==g_current&&((g_trackArtist[0]&&ContainsTextI(g_trackArtist,g_searchText))||
+                            (g_trackAlbum[0]&&ContainsTextI(g_trackAlbum,g_searchText))||
+                            (g_trackTitle[0]&&ContainsTextI(g_trackTitle,g_searchText)))))continue;
         if(matched++<g_playlistScroll)continue;
         if(shown>=visible)break;
         RECT row={R_SIDEBAR.left+10,R_SIDEBAR.top+370+shown*58,R_SIDEBAR.right-10,R_SIDEBAR.top+370+(shown+1)*58};
@@ -1573,8 +1590,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
-        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+260)-18)/48;
-        int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
+        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+374)-12)/58;
+        int maxScroll=CountFilteredMedia()-visible;if(maxScroll<0)maxScroll=0;
         g_playlistScroll-=delta/WHEEL_DELTA;
         if(g_playlistScroll<0)g_playlistScroll=0;
         if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
