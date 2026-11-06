@@ -155,6 +155,11 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
     InvalidateRect(g_main,NULL,FALSE);
 }
 
+static BOOL IsFullscreenWindow(HWND hwnd) {
+    LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+    return (style & WS_POPUP) != 0 && (style & WS_OVERLAPPEDWINDOW) == 0;
+}
+
 static void FormatTime(int ms,wchar_t *out,size_t n) {
     if(ms<0) ms=0; int sec=ms/1000;
     swprintf_s(out,n,L"%02d:%02d",sec/60,sec%60);
@@ -216,7 +221,7 @@ static void UpdateLayout(HWND hwnd) {
     R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
-    if(g_fullscreen) {
+    if(IsFullscreenWindow(hwnd)) {
         R_VIDEO=(RECT){0,0,w,h};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
@@ -286,7 +291,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
     Fill(dc,baseline,RGB(36,54,76));
 }
 static void DrawUI(HDC dc,RECT client) {
-    if(g_fullscreen) {
+    if(IsFullscreenWindow(g_main)) {
         Fill(dc,client,RGB(0,0,0));
         if(g_artworkLoaded) {
             ABM_D2D_DrawImage(&g_ui,0,0,(float)client.right,(float)client.bottom);
