@@ -1130,10 +1130,10 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     DrawTextW(mem,total,-1,&tt,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
 
     /* Each transport action is its own floating control: no dock or panel. */
-    RECT prev={w/2-112,h-48,w/2-64,h};
-    RECT play={w/2-30,h-54,w/2+30,h+6};
-    RECT next={w/2+64,h-48,w/2+112,h};
-    RECT stop={w/2+132,h-48,w/2+180,h};
+    RECT prev={w/2-112,h-60,w/2-64,h-12};
+    RECT play={w/2-30,h-66,w/2+30,h-6};
+    RECT next={w/2+64,h-60,w/2+112,h-12};
+    RECT stop={w/2+132,h-60,w/2+180,h-12};
     OverlayButton(mem,prev,4,FALSE);
     OverlayButton(mem,play,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,TRUE);
     OverlayButton(mem,next,5,FALSE);
