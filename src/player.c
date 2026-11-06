@@ -102,6 +102,7 @@ static DWORD g_fullscreenLastInputTick = 0;
 static POINT g_fullscreenLastMousePos = {0,0};
 static BOOL g_fullscreenMousePosValid = FALSE;
 #define FULLSCREEN_CONTROLS_TIMEOUT_MS 10000u
+#define FULLSCREEN_OVERLAY_HEIGHT 160
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
@@ -1319,8 +1320,10 @@ static void PaintFullscreenOverlay(HWND hwnd) {
 
     SelectObject(mem,oldFont);DeleteObject(font);
 
-    /* UpdateLayeredWindow requires premultiplied BGRA. Black canvas pixels
-       become fully transparent; only the actual controls retain alpha. */
+    /* UpdateLayeredWindow requires premultiplied BGRA. The overlay is only
+       FULLSCREEN_OVERLAY_HEIGHT pixels tall, not monitor-sized, so this
+       transparency pass touches a small control strip rather than millions
+       of video-area pixels. Black canvas pixels become fully transparent. */
     DWORD *px=(DWORD*)pixels;
     size_t count=(size_t)w*(size_t)h;
     for(size_t i=0;i<count;i++){
@@ -1422,7 +1425,9 @@ static void ToggleFullscreen(HWND hwnd) {
     SyncRendererComboVisibility();
     if(g_fullscreen && g_fullscreenOverlay) {
         RECT wr;GetWindowRect(hwnd,&wr);
-        SetWindowPos(g_fullscreenOverlay,HWND_TOP,wr.left,wr.top,wr.right-wr.left,wr.bottom-wr.top,SWP_NOACTIVATE);
+        SetWindowPos(g_fullscreenOverlay,HWND_TOP,wr.left,
+            wr.bottom-FULLSCREEN_OVERLAY_HEIGHT,wr.right-wr.left,
+            FULLSCREEN_OVERLAY_HEIGHT,SWP_NOACTIVATE);
         ShowWindow(g_fullscreenOverlay,g_fullscreenControlsVisible?SW_SHOWNOACTIVATE:SW_HIDE);
         InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
     } else if(g_fullscreenOverlay) ShowWindow(g_fullscreenOverlay,SW_HIDE);
@@ -1548,7 +1553,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                         if (g_fullscreenOverlay) {
                             RECT wr; GetWindowRect(hwnd,&wr);
                             SetWindowPos(g_fullscreenOverlay,HWND_TOP,
-                                wr.left,wr.top,wr.right-wr.left,wr.bottom-wr.top,
+                                wr.left,wr.bottom-FULLSCREEN_OVERLAY_HEIGHT,
+                                wr.right-wr.left,FULLSCREEN_OVERLAY_HEIGHT,
                                 SWP_NOACTIVATE|SWP_SHOWWINDOW);
                             InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
                         }
