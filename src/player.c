@@ -506,8 +506,12 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-13,fs.right-9,fs.bottom-7,C_TEXT,2);
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
-    /* Sidebar cards */
-    Panel(dc,R_SIDEBAR,RGB(22,24,27),RGB(48,51,55),22);
+    /* Sidebar surface: restrained depth, a moving accent glint and crisp
+       separation from the video canvas without adding expensive effects. */
+    Panel(dc,R_SIDEBAR,RGB(19,24,33),RGB(48,64,84),22);
+    int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
+    RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
+    GradientRect(dc,accent,RGB(48,180,230),RGB(112,105,255));
     RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+12,R_SIDEBAR.right-16,R_SIDEBAR.top+37};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
@@ -545,8 +549,10 @@ static void DrawUI(HDC dc,RECT client) {
     BOOL actionActive[4]={g_shuffle,g_repeat,g_playbackRate!=1.0f,FALSE};
     for(int ai=0;ai<4;ai++) {
         RECT ar=actions[ai];
-        COLORREF fill=actionActive[ai]?RGB(32,58,91):RGB(29,35,44);
-        COLORREF edge=actionActive[ai]?RGB(69,128,204):RGB(49,62,80);
+        POINT cursor; BOOL actionHot=FALSE;
+        if(GetCursorPos(&cursor)){ScreenToClient(g_main,&cursor);actionHot=PtInRect(&ar,cursor);}
+        COLORREF fill=actionActive[ai]?RGB(32,58,91):(actionHot?RGB(39,51,68):RGB(26,33,44));
+        COLORREF edge=actionActive[ai]?RGB(69,128,204):(actionHot?RGB(77,111,151):RGB(45,59,77));
         Panel(dc,ar,fill,edge,10);
         RECT glyph={ar.left+8,ar.top+3,ar.left+31,ar.bottom-3};
         Txt(dc,actionIcons[ai],glyph,actionActive[ai]?RGB(126,184,255):RGB(157,177,202),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -1482,6 +1488,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             headerDirty.top=72;
             headerDirty.bottom=77;
             InvalidateRect(hwnd,&headerDirty,FALSE);
+            RECT sidebarAccent={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.top+4};
+            InvalidateRect(hwnd,&sidebarAccent,FALSE);
         }
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
