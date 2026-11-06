@@ -906,6 +906,11 @@ static void UpdateUI(void) {
     InvalidateRect(g_main,&timeText,FALSE);
 }
 static void ToggleFullscreen(HWND hwnd) {
+    /* Hide the VLC child while the top-level window changes styles and bounds.
+       This prevents a stale fullscreen child rectangle from covering the
+       restored title/header area during the transition. */
+    if (g_video) ShowWindow(g_video, SW_HIDE);
+
     if(!g_fullscreen) {
         g_savedStyle=(DWORD_PTR)GetWindowLongPtrW(hwnd,GWL_STYLE);
         g_savedPlacement.length=sizeof(g_savedPlacement);
@@ -916,7 +921,7 @@ static void ToggleFullscreen(HWND hwnd) {
         g_fullscreen=TRUE;
         g_menuOpen=FALSE;g_receiverPopup=FALSE;
         ShowWindow(g_renderers,SW_HIDE);
-        SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE));
+        SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
         SetWindowPos(hwnd,HWND_TOP,mi.rcMonitor.left,mi.rcMonitor.top,
             mi.rcMonitor.right-mi.rcMonitor.left,mi.rcMonitor.bottom-mi.rcMonitor.top,
             SWP_FRAMECHANGED|SWP_SHOWWINDOW);
@@ -927,8 +932,23 @@ static void ToggleFullscreen(HWND hwnd) {
         SetWindowPos(hwnd,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
         ShowWindow(g_renderers,SW_SHOW);
     }
+
+    /* Force a fresh child-window placement even if its cached rectangle
+       happens to match a previous layout. */
+    g_videoBoundsValid = FALSE;
     UpdateLayout(hwnd);
+
+    if (g_video && IsWindow(g_video)) {
+        RECT vr = g_videoBounds;
+        int vw = vr.right - vr.left;
+        int vh = vr.bottom - vr.top;
+        if (vw > 0 && vh > 0) {
+            SetWindowPos(g_video, HWND_BOTTOM, vr.left, vr.top, vw, vh,
+                SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
+    }
     InvalidateRect(hwnd,NULL,TRUE);
+    UpdateWindow(hwnd);
 }
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
