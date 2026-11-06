@@ -80,6 +80,7 @@ static unsigned int g_videoGeometryPoll = 0;
 static int64_t g_lastUiTime = -1;
 static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
 static RECT R_ROW[MAX_PLAYLIST];
+static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT;
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_menuOpen = FALSE;
@@ -282,7 +283,11 @@ static void UpdateLayout(HWND hwnd) {
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+18,R_SIDEBAR.right-14,R_SIDEBAR.top+54};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    int y=R_SIDEBAR.top+154;
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+112,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+150};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+112,R_SIDEBAR.right-14,R_SIDEBAR.top+150};
+    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+158,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+196};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+158,R_SIDEBAR.right-14,R_SIDEBAR.top+196};
+    int y=R_SIDEBAR.top+250;
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*48,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*48};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -532,13 +537,33 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
-    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+111,R_SIDEBAR.right-17,R_SIDEBAR.top+137};
+    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+105,R_SIDEBAR.right-17,R_SIDEBAR.top+126};
+    Txt(dc,L"QUICK CONTROLS",toolsHead,RGB(133,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
+    const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
+    const wchar_t *actionIcons[4]={L"⇄",L"↻",L"1×",L"◷"};
+    BOOL actionActive[4]={g_shuffle,g_repeat,g_playbackRate!=1.0f,FALSE};
+    for(int ai=0;ai<4;ai++) {
+        RECT ar=actions[ai];
+        COLORREF fill=actionActive[ai]?RGB(32,58,91):RGB(29,35,44);
+        COLORREF edge=actionActive[ai]?RGB(69,128,204):RGB(49,62,80);
+        Panel(dc,ar,fill,edge,10);
+        RECT glyph={ar.left+8,ar.top+3,ar.left+31,ar.bottom-3};
+        Txt(dc,actionIcons[ai],glyph,actionActive[ai]?RGB(126,184,255):RGB(157,177,202),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT label={ar.left+34,ar.top+2,ar.right-5,ar.bottom-2};
+        wchar_t speedLabel[32];
+        const wchar_t *shown=actionLabels[ai];
+        if(ai==2){swprintf_s(speedLabel,32,L"Speed  %.2gx",g_playbackRate);shown=speedLabel;}
+        Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    }
+
+    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+207,R_SIDEBAR.right-17,R_SIDEBAR.top+233};
     Txt(dc,L"UP NEXT",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
     Txt(dc,count,countR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     DrawLine(dc,R_SIDEBAR.left+16,listHead.bottom+4,R_SIDEBAR.right-16,listHead.bottom+4,RGB(43,53,69),1);
-    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
+    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+250)-18)/48;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
     for(int i=g_playlistScroll;i<g_playlistCount&&i<g_playlistScroll+visible;i++) {
         RECT row=R_ROW[i];
             if(i==g_selected){RoundBox(dc,row,RGB(43,46,51),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10.0f,RGB(68,72,78),0.75f);}
@@ -1468,7 +1493,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
-        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+154)-18)/48;
+        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+250)-18)/48;
         int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
         g_playlistScroll-=delta/WHEEL_DELTA;
         if(g_playlistScroll<0)g_playlistScroll=0;
@@ -1558,6 +1583,18 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
         if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
         if(Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
+        if(Inside(R_SHUFFLE,x,y)){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(Inside(R_REPEAT,x,y)){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(Inside(R_SPEED,x,y)){
+            if(g_playbackRate<0.99f)g_playbackRate=1.0f;
+            else if(g_playbackRate<1.24f)g_playbackRate=1.25f;
+            else if(g_playbackRate<1.49f)g_playbackRate=1.5f;
+            else if(g_playbackRate<1.99f)g_playbackRate=2.0f;
+            else g_playbackRate=0.75f;
+            libvlc_media_player_set_rate(g_player,g_playbackRate);
+            SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;
+        }
+        if(Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
         if(Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_receiverPopup && Inside(R_RECEIVER_LIST,x,y)) {
             int item=(y-R_RECEIVER_LIST.top-3)/32;
