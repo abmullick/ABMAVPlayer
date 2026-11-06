@@ -106,6 +106,7 @@ static BOOL g_fullscreenMousePosValid = FALSE;
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
+static int g_hoverMenuItem = -1;
 static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
@@ -305,8 +306,8 @@ static void UpdateLayout(HWND hwnd) {
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-190,17,w-146,61};
     R_DRAWER_BUTTON=(RECT){w-132,17,w-18,61};
-    R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
-    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
+    R_MENU_PANEL=(RECT){w-350,66,w-18,66+526};
+    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+10+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+46+i*39};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -574,7 +575,9 @@ static void DrawUI(HDC dc,RECT client) {
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Slide-out media drawer: output, quick controls, search and queue. */
-    Panel(dc,R_SIDEBAR,RGB(19,24,33),RGB(48,64,84),22);
+    Panel(dc,R_SIDEBAR,RGB(17,25,38),RGB(57,83,116),24);
+    RECT drawerInset={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
+    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,23.0f,RGB(39,57,79),0.8f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
     GradientRect(dc,accent,RGB(48,180,230),RGB(112,105,255));
@@ -781,7 +784,12 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_menuProgress>0) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
-        Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
+        /* Floating command surface with a soft shadow, refined rim and section label. */
+        RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,RGB(7,11,18),19);
+        Panel(dc,menu,RGB(20,30,46),RGB(83,112,151),18);
+        RECT menuHeader={menu.left+14,menu.top+10,menu.right-14,menu.top+43};
+        Txt(dc,L"PLAYER CONTROLS",menuHeader,RGB(112,174,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        DrawLine(dc,menu.left+14,menu.top+45,menu.right-14,menu.top+45,RGB(48,68,94),1);
         const wchar_t *labels[13]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",
@@ -794,20 +802,24 @@ static void DrawUI(HDC dc,RECT client) {
             L"Ctrl+I",L"Alt+F4",L"Ctrl+Shift+H",
             L"Ctrl+R",L"Ctrl+J"
         };
-        const wchar_t *icons[13]={L"+",L"⌕",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷"};
+        const wchar_t *icons[13]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷"};
         for(int i=0;i<13;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==10)labels[10]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==11)labels[11]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
-            if(g_menuOpen)RoundBox(dc,item,RGB(31,43,61),7);
-            RECT glyph={item.left+10,item.top+2,item.left+34,item.bottom-2};
-            Txt(dc,icons[i],glyph,C_ACCENT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+40,item.top+2,item.right-86,item.bottom-2};
-            Txt(dc,labels[i],label,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT shortcut={item.right-84,item.top+2,item.right-10,item.bottom-2};
-            Txt(dc,shortcuts[i],shortcut,RGB(143,158,178),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            BOOL hot=(g_hoverMenuItem==i);
+            RECT row=item;InflateRect(&row,-1,-1);
+            if(hot){RoundBox(dc,row,RGB(42,66,98),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10.0f,RGB(82,133,194),0.9f);}
+            else if(i==3||i==9)RoundBox(dc,row,RGB(24,37,55),9);
+            RECT glyph={item.left+9,item.top+5,item.left+39,item.bottom-5};
+            RoundBox(dc,glyph,hot?RGB(58,104,159):RGB(32,49,72),8);
+            Txt(dc,icons[i],glyph,hot?RGB(244,249,255):RGB(154,190,232),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label={item.left+49,item.top+2,item.right-104,item.bottom-2};
+            Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT shortcut={item.right-100,item.top+2,item.right-10,item.bottom-2};
+            Txt(dc,shortcuts[i],shortcut,hot?RGB(190,216,247):RGB(137,160,190),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
     }
 }
@@ -1860,6 +1872,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){PlayIndex(g_visibleRows[ri]);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
+        int menuHot=-1;
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
             SetCursor(LoadCursorW(NULL,IDC_ARROW));
