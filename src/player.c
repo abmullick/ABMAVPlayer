@@ -1097,21 +1097,25 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else ShowWindow(g_video,SW_HIDE);
             }
         }
-        if ((g_visualPulse % 3u) == 0u) {
-            if (!g_hasMedia) InvalidateRect(hwnd,&R_VIDEO,FALSE);
-            else if (g_visualizerActive) InvalidateRect(hwnd,&R_VIDEO,FALSE);
-            else { RECT glow=R_VIDEO; InflateRect(&glow,4,4); InvalidateRect(hwnd,&glow,FALSE); }
-            if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
-                RECT playDirty=R_PLAY; InflateRect(&playDirty,8,8);
-                InvalidateRect(hwnd,&playDirty,FALSE);
-            }
-            if (!g_fullscreen) {
-                RECT headerDirty;
-                GetClientRect(hwnd,&headerDirty);
-                headerDirty.top=72;
-                headerDirty.bottom=77;
-                InvalidateRect(hwnd,&headerDirty,FALSE);
-            }
+        if (!g_hasMedia || g_visualizerActive) {
+            /* Keep the idle equalizer and audio spectrum fluid at the 30 Hz UI tick. */
+            InvalidateRect(hwnd,&R_VIDEO,FALSE);
+        } else if ((g_visualPulse % 3u) == 0u) {
+            RECT glow=R_VIDEO;
+            InflateRect(&glow,4,4);
+            InvalidateRect(hwnd,&glow,FALSE);
+        }
+        if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
+            RECT playDirty=R_PLAY;
+            InflateRect(&playDirty,8,8);
+            InvalidateRect(hwnd,&playDirty,FALSE);
+        }
+        if (!g_fullscreen) {
+            RECT headerDirty;
+            GetClientRect(hwnd,&headerDirty);
+            headerDirty.top=72;
+            headerDirty.bottom=77;
+            InvalidateRect(hwnd,&headerDirty,FALSE);
         }
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
