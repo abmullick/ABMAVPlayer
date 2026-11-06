@@ -198,15 +198,25 @@ static void PositionVideoWindow(void) {
     int areaH = R_VIDEO.bottom - R_VIDEO.top;
     if (areaW <= 0 || areaH <= 0) return;
 
-    /* Fit the decoded video inside the available rectangle without stretching
-       or cropping. The parent paints the exposed letterbox area black. */
+    /* In fullscreen use a cover crop: fill the monitor edge-to-edge while
+       preserving aspect ratio. In windowed mode retain the complete frame. */
     double aspect = (g_videoWidth > 0 && g_videoHeight > 0)
         ? (double)g_videoWidth / (double)g_videoHeight : (16.0 / 9.0);
-    int videoW = areaW;
-    int videoH = (int)((double)videoW / aspect + 0.5);
-    if (videoH > areaH) {
-        videoH = areaH;
-        videoW = (int)((double)videoH * aspect + 0.5);
+    int videoW, videoH;
+    if (g_fullscreen) {
+        videoW = areaW;
+        videoH = (int)((double)videoW / aspect + 0.5);
+        if (videoH < areaH) {
+            videoH = areaH;
+            videoW = (int)((double)videoH * aspect + 0.5);
+        }
+    } else {
+        videoW = areaW;
+        videoH = (int)((double)videoW / aspect + 0.5);
+        if (videoH > areaH) {
+            videoH = areaH;
+            videoW = (int)((double)videoH * aspect + 0.5);
+        }
     }
     if (videoW < 1 || videoH < 1) return;
 
@@ -251,7 +261,7 @@ static void UpdateLayout(HWND hwnd) {
     if(g_fullscreen) {
         /* Keep a bottom control shelf outside the LibVLC child HWND.
            A native video child cannot be overpainted by its parent window. */
-        R_VIDEO=(RECT){0,0,w,h-174};
+        R_VIDEO=(RECT){0,0,w,g_fullscreenControlsVisible?h-174:h};
         R_SEEK=(RECT){72,h-145,w-72,h-141};
         R_PREV=(RECT){w/2-116,h-88,w/2-72,h-44};
         R_PLAY=(RECT){w/2-32,h-100,w/2+32,h-36};
@@ -1224,6 +1234,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (g_fullscreen && g_fullscreenControlsVisible &&
             (DWORD)(GetTickCount()-g_fullscreenLastInputTick)>=FULLSCREEN_CONTROLS_TIMEOUT_MS) {
             g_fullscreenControlsVisible=FALSE;
+            UpdateLayout(hwnd);
             InvalidateRect(hwnd,NULL,FALSE);
             SetCursor(NULL);
         }
@@ -1442,6 +1453,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_fullscreenLastInputTick=GetTickCount();
             if (!g_fullscreenControlsVisible) {
                 g_fullscreenControlsVisible=TRUE;
+                UpdateLayout(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);
             }
         }
