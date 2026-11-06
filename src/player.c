@@ -94,6 +94,8 @@ static int g_groupMode=0; /* 0 = Folder, 1 = Artist, 2 = Album */
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_drawerOpen = FALSE;
+static int g_drawerProgress = 0;
+static int g_hoverPlaylistIndex = -1;
 static BOOL g_drawerSettingsOpen = FALSE;
 static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
@@ -297,10 +299,12 @@ static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
     int left=28,top=108,bottom=164,gap=22;
     int side=w>=1700?420:(w>=1400?390:(w>=1180?350:320));
-    int videoW=w-(g_drawerOpen?side:0)-left*2-(g_drawerOpen?gap:0); if(videoW<260)videoW=260;
+    int drawerWidth=side*g_drawerProgress/100;
+    int videoW=w-drawerWidth-left*2-(g_drawerProgress?gap*g_drawerProgress/100:0); if(videoW<260)videoW=260;
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
-    R_SIDEBAR=(RECT){g_drawerOpen?R_VIDEO.right+gap:w+20,top,g_drawerOpen?w-left:w+side+20,h-18};
+    int drawerLeft=R_VIDEO.right+(gap*g_drawerProgress/100)+side-drawerWidth;
+    R_SIDEBAR=(RECT){drawerLeft,top,drawerLeft+side,h-18};
     int settingsShift=g_drawerSettingsOpen?44:0;
     int queueShift=g_drawerSettingsOpen?44:-120;
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
@@ -570,13 +574,16 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-13,fs.right-9,fs.bottom-7,C_TEXT,2);
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
-    if(g_drawerOpen) {
+    if(g_drawerProgress>0) {
     int settingsShift=g_drawerSettingsOpen?44:0;
     int queueShift=g_drawerSettingsOpen?44:-120;
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Slide-out media drawer: output, quick controls, search and queue. */
-    Panel(dc,R_SIDEBAR,RGB(17,25,38),RGB(57,83,116),24);
+    /* Premium media-library surface with layered navy and an inset rim. */
+    Panel(dc,R_SIDEBAR,RGB(15,23,36),RGB(61,91,132),24);
+    RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
+    ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,23.0f,RGB(36,56,82),0.9f);
     RECT drawerInset={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
     ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,23.0f,RGB(39,57,79),0.8f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
@@ -635,12 +642,12 @@ static void DrawUI(HDC dc,RECT client) {
     }
     Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(35,58,86):RGB(25,34,47),g_drawerSettingsOpen?RGB(77,132,194):RGB(49,66,88),11);
     RECT settingsLabel={R_SETTINGS_BUTTON.left+14,R_SETTINGS_BUTTON.top+2,R_SETTINGS_BUTTON.right-38,R_SETTINGS_BUTTON.bottom-2};
-    Txt(dc,g_drawerSettingsOpen?L"Hide playback settings":L"Playback settings and devices",settingsLabel,RGB(220,233,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_drawerSettingsOpen?L"Hide playback settings":L"Playback & output",settingsLabel,RGB(231,240,252),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
     DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
     DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-17,R_SIDEBAR.top+212+queueShift};
-    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"PLAYBACK QUEUE",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(169,190,218),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
     Txt(dc,count,countR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
@@ -648,7 +655,7 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Search and filters are drawn in Direct2D; keyboard input is handled by
        the main window so no blurry native EDIT control is layered over it. */
-    Panel(dc,R_SEARCH,RGB(13,19,28),g_searchFocused?RGB(74,139,220):RGB(48,63,82),11);
+    Panel(dc,R_SEARCH,RGB(10,17,28),g_searchFocused?RGB(79,151,235):RGB(49,70,99),12);
     RECT searchGlyph={R_SEARCH.left+12,R_SEARCH.top+10,R_SEARCH.left+26,R_SEARCH.bottom-10};
     ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,RGB(139,163,193),1.5f);
     DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,RGB(139,163,193),1.5f);
@@ -660,7 +667,7 @@ static void DrawUI(HDC dc,RECT client) {
     const wchar_t *tabNames[2]={L"Queue",L"Library"};
     for(int ti=0;ti<2;ti++){
         BOOL active=(g_libraryTab==ti);
-        Panel(dc,tabs[ti],active?RGB(34,69,111):RGB(24,32,43),active?RGB(77,139,210):RGB(44,58,76),9);
+        Panel(dc,tabs[ti],active?RGB(43,91,148):RGB(21,31,46),active?RGB(91,157,231):RGB(40,57,80),11);
         RECT label={tabs[ti].left+3,tabs[ti].top+1,tabs[ti].right-3,tabs[ti].bottom-1};
         Txt(dc,tabNames[ti],label,active?RGB(238,246,255):RGB(171,187,207),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
@@ -676,7 +683,7 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=64;
+    int rowHeight=68;
     int listHeight=R_LIST.bottom-R_LIST.top;
     /* Render complete rows only; partial final rows previously bled into
        the volume area and made adjacent titles appear superimposed. */
@@ -696,9 +703,9 @@ static void DrawUI(HDC dc,RECT client) {
         RECT row={R_LIST.left,R_LIST.top+shown*rowHeight,R_LIST.right,R_LIST.top+(shown+1)*rowHeight};
         if(row.bottom>R_LIST.bottom)row.bottom=R_LIST.bottom;
         R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
-        BOOL current=(i==g_current),selected=(i==g_selected);
-        if(selected){RoundBox(dc,row,RGB(29,49,73),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10,RGB(66,113,165),0.9f);}
-        RECT thumb={row.left+7,row.top+7,row.left+51,row.bottom-7};
+        BOOL current=(i==g_current),selected=(i==g_selected),hot=(i==g_hoverPlaylistIndex);
+        if(current||selected||hot){RoundBox(dc,row,current?RGB(28,54,84):(selected?RGB(25,43,65):RGB(21,34,51)),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,current?RGB(69,132,197):(hot?RGB(57,91,133):RGB(47,72,103)),current?1.2f:0.8f);}
+        RECT thumb={row.left+8,row.top+9,row.left+56,row.bottom-9};
         RoundBox(dc,thumb,RGB(28+(i*17)%24,42+(i*11)%22,61+(i*7)%26),8);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
         else {
@@ -707,14 +714,14 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+60,row.top+7,row.right-10,row.top+31};
-        RECT subline={row.left+60,row.top+31,row.right-10,row.bottom-5};
+        RECT name={row.left+67,row.top+9,row.right-14,row.top+34};
+        RECT subline={row.left+67,row.top+35,row.right-14,row.bottom-7};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(225,232,242),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"Local file";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
         else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album details appear when track is played";
         Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(current){RECT playing={row.right-20,row.top+20,row.right-13,row.top+27};RoundBox(dc,playing,RGB(73,169,235),4);}
+        if(current){int cx=row.right-22,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
         shown++;
     }
     if(shown==0){
@@ -1597,6 +1604,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
+        int oldDrawerProgress=g_drawerProgress;
+        if(g_drawerOpen&&g_drawerProgress<100)g_drawerProgress+=12;
+        else if(!g_drawerOpen&&g_drawerProgress>0)g_drawerProgress-=12;
+        if(g_drawerProgress<0)g_drawerProgress=0;if(g_drawerProgress>100)g_drawerProgress=100;
+        if(oldDrawerProgress!=g_drawerProgress){UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}
         int oldMenuProgress=g_menuProgress;
         if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
         else if(!g_menuOpen&&g_menuProgress>0)g_menuProgress-=20;
@@ -1726,7 +1738,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             ReleaseCapture();return 0;
         }
-        if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SETTINGS_BUTTON,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
