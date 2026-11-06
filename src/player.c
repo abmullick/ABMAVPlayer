@@ -280,12 +280,12 @@ static void UpdateLayout(HWND hwnd) {
     int videoW=w-(g_drawerOpen?side:0)-left*2-(g_drawerOpen?gap:0); if(videoW<260)videoW=260;
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
-    R_SIDEBAR=(RECT){g_drawerOpen?R_VIDEO.right+gap:w+20,top,g_drawerOpen?w-left:w+side+20,h-112};
+    R_SIDEBAR=(RECT){g_drawerOpen?R_VIDEO.right+gap:w+20,top,g_drawerOpen?w-left:w+side+20,h-18};
     int settingsShift=g_drawerSettingsOpen?44:0;
     int queueShift=g_drawerSettingsOpen?44:-120;
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
-    R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
-    R_DRAWER_BUTTON=(RECT){w-210,17,w-130,61};
+    R_MENU_BUTTON=(RECT){w-190,17,w-146,61};
+    R_DRAWER_BUTTON=(RECT){w-132,17,w-18,61};
     R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
@@ -311,7 +311,7 @@ static void UpdateLayout(HWND hwnd) {
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+12,R_SIDEBAR.right-14,R_SIDEBAR.top+48};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
-    R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
+    R_VOLUME=(RECT){R_SIDEBAR.left+92,h-59,R_SIDEBAR.right-30,h-51};
     R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+124+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+152+settingsShift};
     R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+124+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+152+settingsShift};
     R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+156+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184+settingsShift};
@@ -323,8 +323,8 @@ static void UpdateLayout(HWND hwnd) {
     R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+145,R_SIDEBAR.top+318+queueShift};
     R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+218,R_SIDEBAR.top+318+queueShift};
     R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+318+queueShift};
-    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*58,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*58};
+    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-10,R_SIDEBAR.bottom-94};
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*64,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*64};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
@@ -452,11 +452,11 @@ static void DrawUI(HDC dc,RECT client) {
     RoundBox(dc,menuBtn,g_menuOpen?RGB(42,67,101):RGB(29,39,54),12);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT drawerBtn=R_DRAWER_BUTTON;
-    Panel(dc,drawerBtn,g_drawerOpen?RGB(37,66,101):RGB(25,33,45),g_drawerOpen?RGB(80,145,218):RGB(52,68,88),13);
-    DrawLine(dc,drawerBtn.left+10,drawerBtn.top+14,drawerBtn.left+27,drawerBtn.top+14,RGB(220,235,252),2);
-    DrawLine(dc,drawerBtn.left+10,drawerBtn.top+22,drawerBtn.left+27,drawerBtn.top+22,RGB(220,235,252),2);
-    DrawLine(dc,drawerBtn.left+10,drawerBtn.top+30,drawerBtn.left+27,drawerBtn.top+30,RGB(220,235,252),2);
-    RECT drawerLabel={drawerBtn.left+32,drawerBtn.top+3,drawerBtn.right-5,drawerBtn.bottom-3};
+    Panel(dc,drawerBtn,g_drawerOpen?RGB(35,76,125):RGB(23,34,49),g_drawerOpen?RGB(83,155,235):RGB(54,76,103),14);
+    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+15,drawerBtn.left+29,drawerBtn.top+15,RGB(220,235,252),2);
+    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+22,drawerBtn.left+29,drawerBtn.top+22,RGB(220,235,252),2);
+    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,RGB(220,235,252),2);
+    RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
     Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT status={client.right-470,28,client.right-278,59};
     Panel(dc,status,RGB(31,33,36),RGB(59,62,67),16);
@@ -653,9 +653,11 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=58;
+    int rowHeight=64;
     int listHeight=R_LIST.bottom-R_LIST.top;
-    int visible=listHeight>0?(listHeight+rowHeight-1)/rowHeight:0;
+    /* Render complete rows only; partial final rows previously bled into
+       the volume area and made adjacent titles appear superimposed. */
+    int visible=listHeight>0?listHeight/rowHeight:0;
     if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
     int matched=0,shown=0;g_visibleRowCount=0;
     for(int i=0;i<g_playlistCount;i++){
@@ -733,10 +735,12 @@ static void DrawUI(HDC dc,RECT client) {
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
-    RECT volPanel={client.right-258,client.bottom-94,client.right-22,client.bottom-35};
-    Panel(dc,volPanel,RGB(25,29,35),RGB(54,63,76),17);
-    RECT volLabel={volPanel.left+13,volPanel.top+8,volPanel.left+75,volPanel.top+27};
-    Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    if(g_drawerOpen) {
+    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-78,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
+    Panel(dc,volPanel,RGB(23,31,43),RGB(57,83,116),16);
+    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+78,volPanel.bottom-3};
+    Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
     RECT vr={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2};RoundBox(dc,vr,RGB(58,68,82),5);
     vr.right=vr.left+(vr.right-vr.left)*g_volume/100;RoundBox(dc,vr,RGB(92,157,255),5);
     int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
