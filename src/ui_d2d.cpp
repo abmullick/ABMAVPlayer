@@ -46,6 +46,9 @@ static BOOL EnsureTarget(ABM_D2D *ui) {
     ID2D1SolidColorBrush *brush = nullptr;
     hr = target->CreateSolidColorBrush(D2D1::ColorF(1, 1, 1, 1), &brush);
     if (FAILED(hr)) { target->Release(); return FALSE; }
+    /* Explicit ClearType text rasterization keeps small labels crisp on
+       high-density Windows displays instead of inheriting grayscale AA. */
+    target->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
     ui->target = target;
     ui->brush = brush;
     return TRUE;
