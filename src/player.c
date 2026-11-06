@@ -337,9 +337,6 @@ static void DrawUI(HDC dc,RECT client) {
            controls are composed as one screen rather than a centered cover. */
         Fill(dc,client,RGB(10,11,13));
         if(g_artworkLoaded) {
-            ABM_D2D_DrawImageCover(&g_ui,0,0,(float)client.right,(float)client.bottom,0.17f*(float)g_artworkFade/100.0f);
-            RECT veil={0,0,client.right,client.bottom};
-            Fill(dc,veil,RGB(10,12,15));
             int artSize=client.bottom-270;
             if(artSize>500)artSize=500;
             if(artSize>client.right/2-90)artSize=client.right/2-90;
