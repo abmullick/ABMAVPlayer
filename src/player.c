@@ -59,6 +59,7 @@ static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static libvlc_media_t *g_artMedia=NULL;
 static BOOL g_artworkLoaded=FALSE;
+static int g_artworkFade=100;
 static wchar_t g_trackTitle[256]=L"";
 static wchar_t g_trackArtist[256]=L"";
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
@@ -127,7 +128,7 @@ static void ResetArtwork(void) {
         libvlc_media_parse_stop(g_artMedia);
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
-    g_artworkLoaded=FALSE; g_trackTitle[0]=0; g_trackArtist[0]=0;
+    g_artworkLoaded=FALSE; g_artworkFade=100; g_trackTitle[0]=0; g_trackArtist[0]=0;
     ABM_D2D_ClearImage(&g_ui);
 }
 static void BeginArtworkParse(libvlc_media_t *media) {
@@ -161,6 +162,7 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
             swprintf_s(path,PATH_CAP,L"%s\\current-artwork.bin",g_dataDir);
             if (URLDownloadToFileW(NULL,url,path,0,NULL)==S_OK)
                 g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
+            if (g_artworkLoaded) g_artworkFade=0;
         }
     }
     InvalidateRect(g_main,NULL,FALSE);
@@ -300,14 +302,14 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
         Fill(dc,client,RGB(0,0,0));
         if(g_artworkLoaded) {
-            ABM_D2D_DrawImageCover(&g_ui,0,0,(float)client.right,(float)client.bottom,0.20f);
+            ABM_D2D_DrawImageCover(&g_ui,0,0,(float)client.right,(float)client.bottom,0.20f*(float)g_artworkFade/100.0f);
             int cover=client.bottom<client.right?client.bottom-210:client.right-210;
             if(cover>460)cover=460;
             if(cover<220)cover=220;
             int cx=client.right/2, cy=client.bottom/2-34;
             RECT tile={cx-cover/2,cy-cover/2,cx+cover/2,cy+cover/2};
             Panel(dc,tile,RGB(12,19,31),RGB(76,128,190),20);
-            ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,(float)tile.right-8,(float)tile.bottom-8,1.0f);
+            ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,(float)tile.right-8,(float)tile.bottom-8,(float)g_artworkFade/100.0f);
             RECT kicker={20,client.bottom-116,client.right-20,client.bottom-91};
             RECT title={20,client.bottom-86,client.right-20,client.bottom-52};
             RECT artist={20,client.bottom-49,client.right-20,client.bottom-24};
@@ -351,7 +353,7 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
-            (float)R_VIDEO.right,(float)R_VIDEO.bottom,0.16f);
+            (float)R_VIDEO.right,(float)R_VIDEO.bottom,0.16f*(float)g_artworkFade/100.0f);
         int cover=areaH-92;
         if(cover>420)cover=420;
         if(cover>areaW/2)cover=areaW/2;
@@ -361,7 +363,7 @@ static void DrawUI(HDC dc,RECT client) {
         RECT tile={tileX,tileY,tileX+cover,tileY+cover};
         Panel(dc,tile,RGB(13,20,32),RGB(72,119,178),19);
         ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,
-            (float)tile.right-8,(float)tile.bottom-8,1.0f);
+            (float)tile.right-8,(float)tile.bottom-8,(float)g_artworkFade/100.0f);
 
         int infoX=tile.right+54;
         RECT kicker={infoX,R_VIDEO.top+areaH/2-116,R_VIDEO.right-42,R_VIDEO.top+areaH/2-88};
@@ -1125,6 +1127,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else {g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);}
         }
         g_visualPulse=(g_visualPulse+1)%10000;
+        if (g_artworkLoaded && g_artworkFade < 100) {
+            g_artworkFade += 5;
+            if (g_artworkFade > 100) g_artworkFade = 100;
+            InvalidateRect(hwnd,&R_VIDEO,FALSE);
+        }
         if ((++g_videoGeometryPoll % 5u) == 0u) RefreshVideoGeometry();
         BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer &&
             libvlc_media_player_has_vout(g_player)==0;
