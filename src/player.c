@@ -84,6 +84,9 @@ static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
+static BOOL g_fullscreenControlsVisible = TRUE;
+static DWORD g_fullscreenLastInputTick = 0;
+#define FULLSCREEN_CONTROLS_TIMEOUT_MS 10000u
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
@@ -386,6 +389,7 @@ static void DrawUI(HDC dc,RECT client) {
             Txt(dc,L"Nothing is playing",empty,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
 
+        if (g_fullscreenControlsVisible) {
         RECT bottom={0,client.bottom-174,client.right,client.bottom};
         Fill(dc,bottom,RGB(12,13,15));
         RECT trackTitle={48,client.bottom-166,client.right-100,client.bottom-137};
@@ -415,6 +419,7 @@ static void DrawUI(HDC dc,RECT client) {
         DrawIconButton(dc,R_PLAY,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,FALSE,TRUE);
         DrawIconButton(dc,R_NEXT,4,FALSE,FALSE);
         DrawIconButton(dc,R_STOP,3,FALSE,FALSE);
+        }
         return;
     }
     Fill(dc,client,C_BG);
@@ -1106,6 +1111,9 @@ static void ToggleFullscreen(HWND hwnd) {
         HMONITOR monitor=MonitorFromWindow(hwnd,MONITOR_DEFAULTTONEAREST);
         GetMonitorInfoW(monitor,&mi);
         g_fullscreen=TRUE;
+        g_fullscreenControlsVisible=TRUE;
+        g_fullscreenLastInputTick=GetTickCount();
+        SetCursor(LoadCursorW(NULL,IDC_ARROW));
         g_menuOpen=FALSE;g_receiverPopup=FALSE;
         ShowWindow(g_renderers,SW_HIDE);
         SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
@@ -1114,6 +1122,8 @@ static void ToggleFullscreen(HWND hwnd) {
             SWP_FRAMECHANGED|SWP_SHOWWINDOW);
     } else {
         g_fullscreen=FALSE;
+        g_fullscreenControlsVisible=TRUE;
+        SetCursor(LoadCursorW(NULL,IDC_ARROW));
         /* Restore a known normal overlapped-window style instead of trusting
            a potentially stale style snapshot from the fullscreen transition. */
         SetWindowLongPtrW(hwnd,GWL_STYLE,
@@ -1189,6 +1199,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==TIMER_ID){
+        if (g_fullscreen && g_fullscreenControlsVisible &&
+            (DWORD)(GetTickCount()-g_fullscreenLastInputTick)>=FULLSCREEN_CONTROLS_TIMEOUT_MS) {
+            g_fullscreenControlsVisible=FALSE;
+            InvalidateRect(hwnd,NULL,FALSE);
+            SetCursor(NULL);
+        }
         int oldMenuProgress=g_menuProgress;
         if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
         else if(!g_menuOpen&&g_menuProgress>0)g_menuProgress-=20;
@@ -1393,6 +1409,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int i=g_playlistScroll;i<g_playlistCount&&i<MAX_PLAYLIST;i++) if(Inside(R_ROW[i],x,y)){PlayIndex(i);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
+        if (g_fullscreen) {
+            g_fullscreenLastInputTick=GetTickCount();
+            if (!g_fullscreenControlsVisible) {
+                g_fullscreenControlsVisible=TRUE;
+                InvalidateRect(hwnd,NULL,FALSE);
+            }
+        }
         if(Inside(R_OPEN,mx,my))hit=HIT_OPEN;else if(Inside(R_SCAN,mx,my))hit=HIT_SCAN;
         else if(Inside(R_PLAY,mx,my))hit=HIT_PLAY;else if(Inside(R_STOP,mx,my))hit=HIT_STOP;
         else if(Inside(R_PREV,mx,my))hit=HIT_PREV;else if(Inside(R_NEXT,mx,my))hit=HIT_NEXT;
@@ -1406,6 +1429,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_dragVolume){int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}
         return 0;
     }
+    case WM_SETCURSOR:
+        if (g_fullscreen && !g_fullscreenControlsVisible) {
+            SetCursor(NULL);
+            return TRUE;
+        }
+        break;
     case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;ReleaseCapture();return 0;
     case WM_PAINT: {
         PAINTSTRUCT ps;
