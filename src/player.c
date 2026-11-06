@@ -37,7 +37,7 @@
 
 static libvlc_instance_t *g_vlc;
 static libvlc_media_player_t *g_player;
-static HWND g_video, g_renderers, g_main;
+static HWND g_video, g_renderers, g_main, g_fullscreenOverlay;
 static ABM_D2D g_ui;
 static HFONT g_font, g_smallFont, g_headingFont;
 static HBRUSH g_videoBrush, g_comboBrush;
@@ -259,15 +259,13 @@ static void UpdateLayout(HWND hwnd) {
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
-        /* Keep a bottom control shelf outside the LibVLC child HWND.
-           A native video child cannot be overpainted by its parent window. */
-        R_VIDEO=(RECT){0,0,w,g_fullscreenControlsVisible?h-174:h};
-        R_SEEK=(RECT){72,h-145,w-72,h-141};
-        R_PREV=(RECT){w/2-116,h-88,w/2-72,h-44};
-        R_PLAY=(RECT){w/2-32,h-100,w/2+32,h-36};
-        R_NEXT=(RECT){w/2+72,h-88,w/2+116,h-44};
-        R_STOP=(RECT){w/2+136,h-88,w/2+180,h-44};
-        R_VOLUME=(RECT){w-230,h-76,w-72,h-68};
+        R_VIDEO=(RECT){0,0,w,h};
+        R_SEEK=(RECT){82,h-145,w-82,h-141};
+        R_PREV=(RECT){w/2-174,h-94,w/2-126,h-46};
+        R_PLAY=(RECT){w/2-34,h-101,w/2+34,h-33};
+        R_NEXT=(RECT){w/2+126,h-94,w/2+174,h-46};
+        R_STOP=(RECT){w/2+190,h-94,w/2+238,h-46};
+        R_VOLUME=(RECT){w-192,h-64,w-45,h-56};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
@@ -402,47 +400,6 @@ static void DrawUI(HDC dc,RECT client) {
             Txt(dc,L"Nothing is playing",empty,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
 
-        if (g_fullscreenControlsVisible) {
-        RECT bottom={0,client.bottom-174,client.right,client.bottom};
-        Fill(dc,bottom,RGB(12,13,15));
-        RECT trackTitle={48,client.bottom-166,client.right-100,client.bottom-137};
-        RECT trackArtist={48,client.bottom-137,client.right-100,client.bottom-113};
-        Txt(dc,g_trackTitle[0]?g_trackTitle:L"No track selected",trackTitle,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        Txt(dc,g_trackArtist,trackArtist,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        RECT heart={client.right-58,client.bottom-158,client.right-34,client.bottom-134};
-        DrawLine(dc,heart.left+2,heart.top+7,heart.left+8,heart.top+1,C_MUTED,2);
-        DrawLine(dc,heart.left+8,heart.top+1,heart.left+14,heart.top+7,C_MUTED,2);
-        DrawLine(dc,heart.left+14,heart.top+7,heart.left+21,heart.top+1,C_MUTED,2);
-        RECT timeline={R_SEEK.left,R_SEEK.top-12,R_SEEK.right,R_SEEK.bottom+12};
-        Fill(dc,timeline,RGB(12,13,15));
-        int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
-        int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
-        int pos=(len>0)?(int)(now*1000/len):0;
-        if(pos<0)pos=0;if(pos>1000)pos=1000;
-        RECT track={R_SEEK.left,R_SEEK.top-1,R_SEEK.right,R_SEEK.bottom+1};
-        RoundBox(dc,track,RGB(68,71,76),3);
-        RECT progress=track;progress.right=progress.left+(progress.right-progress.left)*pos/1000;
-        if(progress.right>progress.left)RoundBox(dc,progress,RGB(239,241,244),3);
-        wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
-        RECT elapsedR={R_SEEK.left,client.bottom-143,R_SEEK.left+65,client.bottom-124};
-        RECT totalR={R_SEEK.right-65,client.bottom-143,R_SEEK.right,client.bottom-124};
-        Txt(dc,elapsed,elapsedR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        Txt(dc,total,totalR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-        DrawIconButton(dc,R_PREV,5,FALSE,FALSE);
-        DrawIconButton(dc,R_PLAY,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,FALSE,TRUE);
-        DrawIconButton(dc,R_NEXT,4,FALSE,FALSE);
-        DrawIconButton(dc,R_STOP,3,FALSE,FALSE);
-        RECT volLabel={R_VOLUME.left-60,R_VOLUME.top-10,R_VOLUME.left-8,R_VOLUME.bottom+12};
-        Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-        RECT volTrack={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2};
-        RoundBox(dc,volTrack,RGB(66,69,74),4);
-        RECT volFill=volTrack;
-        volFill.right=volFill.left+(volFill.right-volFill.left)*g_volume/100;
-        if(volFill.right>volFill.left)RoundBox(dc,volFill,RGB(239,241,244),4);
-        int volX=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
-        RECT volThumb={volX-6,R_VOLUME.top-7,volX+6,R_VOLUME.bottom+7};
-        RoundBox(dc,volThumb,RGB(246,247,248),7);
-        }
         return;
     }
     Fill(dc,client,C_BG);
@@ -1118,6 +1075,58 @@ static void UpdateUI(void) {
     InvalidateRect(g_main,&timeline,FALSE);
     InvalidateRect(g_main,&timeText,FALSE);
 }
+static void OverlayButton(HDC dc,RECT r,int kind,BOOL primary) {
+    HBRUSH b=CreateSolidBrush(primary?RGB(247,248,250):RGB(43,46,51));
+    HPEN e=CreatePen(PS_SOLID,1,primary?RGB(247,248,250):RGB(70,74,80));
+    HBRUSH ob=(HBRUSH)SelectObject(dc,b);HPEN oe=(HPEN)SelectObject(dc,e);
+    Ellipse(dc,r.left,r.top,r.right,r.bottom);
+    SelectObject(dc,ob);SelectObject(dc,oe);DeleteObject(b);DeleteObject(e);
+    int x=(r.left+r.right)/2,y=(r.top+r.bottom)/2;
+    HPEN g=CreatePen(PS_SOLID,2,primary?RGB(20,22,25):RGB(232,235,239));oe=(HPEN)SelectObject(dc,g);
+    if(kind==1){MoveToEx(dc,x-7,y-11,NULL);LineTo(dc,x+10,y);LineTo(dc,x-7,y+11);LineTo(dc,x-7,y-11);}
+    else if(kind==2){MoveToEx(dc,x-5,y-10,NULL);LineTo(dc,x-5,y+10);MoveToEx(dc,x+5,y-10,NULL);LineTo(dc,x+5,y+10);}
+    else if(kind==3){MoveToEx(dc,x-8,y-8,NULL);LineTo(dc,x+8,y+8);MoveToEx(dc,x+8,y-8,NULL);LineTo(dc,x-8,y+8);}
+    else if(kind==4){MoveToEx(dc,x+8,y-8,NULL);LineTo(dc,x-4,y);LineTo(dc,x+8,y+8);MoveToEx(dc,x-8,y-10,NULL);LineTo(dc,x-8,y+10);}
+    else if(kind==5){MoveToEx(dc,x-8,y-8,NULL);LineTo(dc,x+4,y);LineTo(dc,x-8,y+8);MoveToEx(dc,x+8,y-10,NULL);LineTo(dc,x+8,y+10);}
+    SelectObject(dc,oe);DeleteObject(g);
+}
+static void PaintFullscreenOverlay(HWND hwnd) {
+    PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT c;GetClientRect(hwnd,&c);
+    HBRUSH key=CreateSolidBrush(RGB(0,0,0));FillRect(dc,&c,key);DeleteObject(key);
+    SetBkMode(dc,TRANSPARENT);int w=c.right,h=c.bottom;
+    RECT dock={w/2-214,h-116,w/2+214,h-22};
+    HBRUSH b=CreateSolidBrush(RGB(24,26,30));HPEN e=CreatePen(PS_SOLID,1,RGB(69,73,80));
+    HBRUSH ob=(HBRUSH)SelectObject(dc,b);HPEN oe=(HPEN)SelectObject(dc,e);
+    RoundRect(dc,dock.left,dock.top,dock.right,dock.bottom,30,30);
+    SelectObject(dc,ob);SelectObject(dc,oe);DeleteObject(b);DeleteObject(e);
+    RECT tr={R_SEEK.left,R_SEEK.top-1,R_SEEK.right,R_SEEK.bottom+1};
+    b=CreateSolidBrush(RGB(84,88,94));FillRect(dc,&tr,b);DeleteObject(b);
+    int64_t len=g_player?libvlc_media_player_get_length(g_player):0,now=g_player?libvlc_media_player_get_time(g_player):0;
+    int pos=len>0?(int)(now*1000/len):0;if(pos<0)pos=0;if(pos>1000)pos=1000;
+    tr.right=tr.left+(tr.right-tr.left)*pos/1000;b=CreateSolidBrush(RGB(242,244,247));FillRect(dc,&tr,b);DeleteObject(b);
+    wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
+    SetTextColor(dc,RGB(207,211,217));RECT et={R_SEEK.left,h-164,R_SEEK.left+70,h-147},tt={R_SEEK.right-70,h-164,R_SEEK.right,h-147};
+    DrawTextW(dc,elapsed,-1,&et,DT_LEFT|DT_SINGLELINE|DT_VCENTER);DrawTextW(dc,total,-1,&tt,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
+    OverlayButton(dc,R_PREV,4,FALSE);OverlayButton(dc,R_PLAY,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,TRUE);
+    OverlayButton(dc,R_NEXT,5,FALSE);OverlayButton(dc,R_STOP,3,FALSE);
+    RECT vol={w-274,h-91,w-28,h-30};b=CreateSolidBrush(RGB(24,26,30));e=CreatePen(PS_SOLID,1,RGB(69,73,80));
+    ob=(HBRUSH)SelectObject(dc,b);oe=(HPEN)SelectObject(dc,e);RoundRect(dc,vol.left,vol.top,vol.right,vol.bottom,20,20);
+    SelectObject(dc,ob);SelectObject(dc,oe);DeleteObject(b);DeleteObject(e);
+    SetTextColor(dc,RGB(180,185,193));RECT vl={vol.left+14,vol.top+5,vol.left+72,vol.bottom-5};DrawTextW(dc,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT vt={vol.left+82,vol.top+27,vol.right-17,vol.top+33};b=CreateSolidBrush(RGB(78,82,89));FillRect(dc,&vt,b);DeleteObject(b);
+    vt.right=vt.left+(vt.right-vt.left)*g_volume/100;b=CreateSolidBrush(RGB(241,243,246));FillRect(dc,&vt,b);DeleteObject(b);
+    EndPaint(hwnd,&ps);
+}
+static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    HWND owner=GetWindow(hwnd,GW_OWNER);
+    if(msg==WM_PAINT){PaintFullscreenOverlay(hwnd);return 0;}
+    if(msg==WM_MOUSEMOVE||msg==WM_LBUTTONDOWN||msg==WM_LBUTTONUP){
+        POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};MapWindowPoints(hwnd,owner,&pt,1);
+        SendMessageW(owner,msg,wp,MAKELPARAM(pt.x,pt.y));return 0;
+    }
+    if(msg==WM_SETCURSOR){SetCursor(LoadCursorW(NULL,IDC_ARROW));return TRUE;}
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
 static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
         WPARAM wp, LPARAM lp, UINT_PTR subclassId, DWORD_PTR refData) {
     (void)subclassId;
@@ -1161,7 +1170,6 @@ static void ToggleFullscreen(HWND hwnd) {
         /* Capture mouse input at the top-level window for the duration of
            fullscreen. VLC can otherwise consume WM_MOUSEMOVE in its child
            HWND, especially after the child is resized to cover the monitor. */
-        SetCapture(hwnd);
         g_menuOpen=FALSE;g_receiverPopup=FALSE;
         ShowWindow(g_renderers,SW_HIDE);
         SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
@@ -1172,6 +1180,7 @@ static void ToggleFullscreen(HWND hwnd) {
         g_fullscreen=FALSE;
         g_fullscreenControlsVisible=TRUE;
         if(GetCapture()==hwnd)ReleaseCapture();
+        if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
         SetCursor(LoadCursorW(NULL,IDC_ARROW));
         /* Restore a known normal overlapped-window style instead of trusting
            a potentially stale style snapshot from the fullscreen transition. */
@@ -1189,6 +1198,12 @@ static void ToggleFullscreen(HWND hwnd) {
     g_videoBoundsValid = FALSE;
     UpdateLayout(hwnd);
     SyncRendererComboVisibility();
+    if(g_fullscreen && g_fullscreenOverlay) {
+        RECT wr;GetWindowRect(hwnd,&wr);
+        SetWindowPos(g_fullscreenOverlay,HWND_TOP,wr.left,wr.top,wr.right-wr.left,wr.bottom-wr.top,SWP_NOACTIVATE);
+        ShowWindow(g_fullscreenOverlay,g_fullscreenControlsVisible?SW_SHOWNOACTIVATE:SW_HIDE);
+        InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+    } else if(g_fullscreenOverlay) ShowWindow(g_fullscreenOverlay,SW_HIDE);
 
     if (g_video && IsWindow(g_video)) {
         RECT vr = g_videoBounds;
@@ -1282,9 +1297,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (g_fullscreen && g_fullscreenControlsVisible &&
             (DWORD)(GetTickCount()-g_fullscreenLastInputTick)>=FULLSCREEN_CONTROLS_TIMEOUT_MS) {
             g_fullscreenControlsVisible=FALSE;
-            UpdateLayout(hwnd);
-            InvalidateRect(hwnd,NULL,FALSE);
-            RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
+            if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
             SetCursor(NULL);
         }
         int oldMenuProgress=g_menuProgress;
@@ -1506,8 +1519,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             SetCursor(LoadCursorW(NULL,IDC_ARROW));
             if (!g_fullscreenControlsVisible) {
                 g_fullscreenControlsVisible=TRUE;
-                UpdateLayout(hwnd);
-                InvalidateRect(hwnd,NULL,FALSE);
+                if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_SHOWNOACTIVATE);
+                if(g_fullscreenOverlay)InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
                 RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
             }
         }
@@ -1576,8 +1589,13 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;
     if(!RegisterClassW(&wc))return 1;
+    WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
+    if(!RegisterClassW(&owc))return 1;
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1440,900,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
+    g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
+        L"ABMFullscreenOverlay",L"",WS_POPUP,0,0,1,1,hwnd,NULL,inst,NULL);
+    if(g_fullscreenOverlay)SetLayeredWindowAttributes(g_fullscreenOverlay,RGB(0,0,0),255,LWA_COLORKEY);
     BOOL darkTitle=TRUE;
     DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&darkTitle,sizeof(darkTitle));
     ShowWindow(hwnd,show);UpdateWindow(hwnd);
