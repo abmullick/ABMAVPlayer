@@ -300,9 +300,18 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
         Fill(dc,client,RGB(0,0,0));
         if(g_artworkLoaded) {
-            ABM_D2D_DrawImage(&g_ui,0,0,(float)client.right,(float)client.bottom);
-            RECT title={20,client.bottom-76,client.right-20,client.bottom-48};
-            RECT artist={20,client.bottom-46,client.right-20,client.bottom-20};
+            ABM_D2D_DrawImageCover(&g_ui,0,0,(float)client.right,(float)client.bottom,0.20f);
+            int cover=client.bottom<client.right?client.bottom-210:client.right-210;
+            if(cover>460)cover=460;
+            if(cover<220)cover=220;
+            int cx=client.right/2, cy=client.bottom/2-34;
+            RECT tile={cx-cover/2,cy-cover/2,cx+cover/2,cy+cover/2};
+            Panel(dc,tile,RGB(12,19,31),RGB(76,128,190),20);
+            ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,(float)tile.right-8,(float)tile.bottom-8,1.0f);
+            RECT kicker={20,client.bottom-116,client.right-20,client.bottom-91};
+            RECT title={20,client.bottom-86,client.right-20,client.bottom-52};
+            RECT artist={20,client.bottom-49,client.right-20,client.bottom-24};
+            Txt(dc,L"NOW PLAYING",kicker,RGB(91,184,239),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         } else if(g_visualizerActive) DrawVisualizer(dc,client);
@@ -340,11 +349,44 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,frame,RGB(8,11,16),edge,13);
     Fill(dc,R_VIDEO,RGB(0,0,0));
     if(g_artworkLoaded) {
-        ABM_D2D_DrawImage(&g_ui,(float)R_VIDEO.left+18,(float)R_VIDEO.top+18,(float)R_VIDEO.right-18,(float)R_VIDEO.bottom-18);
-        RECT title={R_VIDEO.left+18,R_VIDEO.bottom-64,R_VIDEO.right-18,R_VIDEO.bottom-40};
-        RECT artist={R_VIDEO.left+18,R_VIDEO.bottom-39,R_VIDEO.right-18,R_VIDEO.bottom-18};
-        if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
+        ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
+            (float)R_VIDEO.right,(float)R_VIDEO.bottom,0.16f);
+        int cover=areaH-92;
+        if(cover>420)cover=420;
+        if(cover>areaW/2)cover=areaW/2;
+        if(cover<190)cover=190;
+        int tileX=R_VIDEO.left+42;
+        int tileY=R_VIDEO.top+(areaH-cover)/2;
+        RECT tile={tileX,tileY,tileX+cover,tileY+cover};
+        Panel(dc,tile,RGB(13,20,32),RGB(72,119,178),19);
+        ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,
+            (float)tile.right-8,(float)tile.bottom-8,1.0f);
+
+        int infoX=tile.right+54;
+        RECT kicker={infoX,R_VIDEO.top+areaH/2-116,R_VIDEO.right-42,R_VIDEO.top+areaH/2-88};
+        RECT title={infoX,R_VIDEO.top+areaH/2-76,R_VIDEO.right-42,R_VIDEO.top+areaH/2-25};
+        RECT artist={infoX,R_VIDEO.top+areaH/2-17,R_VIDEO.right-42,R_VIDEO.top+areaH/2+16};
+        RECT detail={infoX,R_VIDEO.top+areaH/2+38,R_VIDEO.right-42,R_VIDEO.top+areaH/2+64};
+        Txt(dc,L"NOW PLAYING  /  ABM AUDIO",kicker,RGB(92,184,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        else Txt(dc,L"Untitled track",title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,RGB(191,207,229),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        else Txt(dc,L"Your personal listening session",artist,RGB(191,207,229),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        int64_t trackLength=g_player?libvlc_media_player_get_length(g_player):0;
+        wchar_t duration[48]; FormatTime((int)trackLength,duration,48);
+        Txt(dc,duration,detail,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+        int waveX=infoX, waveY=detail.bottom+32, waveW=R_VIDEO.right-infoX-48;
+        int bars=36, gap=5, bw=(waveW-gap*(bars-1))/bars;
+        if(bw<2)bw=2;
+        for(int i=0;i<bars;i++) {
+            double pulse=0.22+0.78*(0.5+0.5*sin((double)g_visualPulse*0.095+i*0.47));
+            int bh=5+(int)(pulse*25.0);
+            RECT bar={waveX+i*(bw+gap),waveY-bh/2,waveX+i*(bw+gap)+bw,waveY+bh/2};
+            COLORREF col=Blend(RGB(44,169,218),RGB(125,91,229),i*100/(bars-1));
+            RoundBox(dc,bar,col,3);
+        }
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
         int cx=(R_VIDEO.left+R_VIDEO.right)/2;
@@ -1084,11 +1126,23 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         g_visualPulse=(g_visualPulse+1)%10000;
         if ((++g_videoGeometryPoll % 5u) == 0u) RefreshVideoGeometry();
-        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && !g_artworkLoaded && libvlc_media_player_has_vout(g_player)==0;
+        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer &&
+            libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
-            if(!g_visualizerTried) { g_visualizerTried=TRUE; g_visualizerActive=ABM_AudioVisualizer_Start(); }
-            if(g_visualizerActive || g_artworkLoaded) ShowWindow(g_video,SW_HIDE);
-            else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
+            if(g_artworkLoaded) {
+                if(g_visualizerActive) ABM_AudioVisualizer_Stop();
+                g_visualizerActive=FALSE;
+                g_visualizerTried=TRUE;
+                if(g_video && !g_fullscreen) ShowWindow(g_video,SW_HIDE);
+            } else {
+                if(!g_visualizerTried) {
+                    g_visualizerTried=TRUE;
+                    g_visualizerActive=ABM_AudioVisualizer_Start();
+                }
+                if(g_visualizerActive) {
+                    if(g_video && !g_fullscreen) ShowWindow(g_video,SW_HIDE);
+                } else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
+            }
         } else {
             if(g_visualizerActive) ABM_AudioVisualizer_Stop();
             g_visualizerActive=FALSE; g_visualizerTried=FALSE;
