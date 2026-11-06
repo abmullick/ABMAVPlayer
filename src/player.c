@@ -253,25 +253,16 @@ static void PositionVideoWindow(void) {
     int areaH = R_VIDEO.bottom - R_VIDEO.top;
     if (areaW <= 0 || areaH <= 0) return;
 
-    /* In fullscreen use a cover crop: fill the monitor edge-to-edge while
-       preserving aspect ratio. In windowed mode retain the complete frame. */
+    /* Always fit the complete video frame inside the available area.
+       This preserves the source aspect ratio in both windowed and fullscreen
+       modes; the surrounding video surface remains black (letterbox/pillarbox). */
     double aspect = (g_videoWidth > 0 && g_videoHeight > 0)
         ? (double)g_videoWidth / (double)g_videoHeight : (16.0 / 9.0);
-    int videoW, videoH;
-    if (g_fullscreen) {
-        videoW = areaW;
-        videoH = (int)((double)videoW / aspect + 0.5);
-        if (videoH < areaH) {
-            videoH = areaH;
-            videoW = (int)((double)videoH * aspect + 0.5);
-        }
-    } else {
-        videoW = areaW;
-        videoH = (int)((double)videoW / aspect + 0.5);
-        if (videoH > areaH) {
-            videoH = areaH;
-            videoW = (int)((double)videoH * aspect + 0.5);
-        }
+    int videoW = areaW;
+    int videoH = (int)((double)videoW / aspect + 0.5);
+    if (videoH > areaH) {
+        videoH = areaH;
+        videoW = (int)((double)videoH * aspect + 0.5);
     }
     if (videoW < 1 || videoH < 1) return;
 
