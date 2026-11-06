@@ -617,16 +617,16 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+374)-12)/58;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
-    int drawn=0;g_visibleRowCount=0;
+    int matched=0,shown=0;g_visibleRowCount=0;
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
         BOOL isVideo=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText))continue;
-        if(drawn<g_playlistScroll){drawn++;continue;}
-        if(drawn>=g_playlistScroll+visible)break;
-        RECT row={R_SIDEBAR.left+10,R_SIDEBAR.top+370+(drawn-g_playlistScroll)*58,R_SIDEBAR.right-10,R_SIDEBAR.top+370+(drawn-g_playlistScroll+1)*58};
-        R_ROW[drawn]=row;g_visibleRows[drawn]=i;g_visibleRowCount=drawn+1;
+        if(matched++<g_playlistScroll)continue;
+        if(shown>=visible)break;
+        RECT row={R_SIDEBAR.left+10,R_SIDEBAR.top+370+shown*58,R_SIDEBAR.right-10,R_SIDEBAR.top+370+(shown+1)*58};
+        R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
         BOOL current=(i==g_current),selected=(i==g_selected);
         if(selected){RoundBox(dc,row,RGB(29,49,73),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10,RGB(66,113,165),0.9f);}
         RECT thumb={row.left+7,row.top+7,row.left+51,row.bottom-7};
@@ -634,20 +634,21 @@ static void DrawUI(HDC dc,RECT client) {
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
         else {
             int cx=(thumb.left+thumb.right)/2,cy=(thumb.top+thumb.bottom)/2;
-            if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,current?RGB(255,255,255):RGB(171,198,229),2);DrawLine(dc,cx+7,cy,cx-5,cy+7,current?RGB(255,255,255):RGB(171,198,229),2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,current?RGB(255,255,255):RGB(171,198,229),2);}
+            COLORREF iconColor=current?RGB(255,255,255):RGB(171,198,229);
+            if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
         RECT name={row.left+60,row.top+7,row.right-10,row.top+31};
         RECT subline={row.left+60,row.top+31,row.right-10,row.bottom-5};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(225,232,242),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"Local file";
-        if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist metadata on playback";
-        else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album metadata on playback";
+        if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
+        else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album details appear when track is played";
         Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         if(current){RECT playing={row.right-20,row.top+20,row.right-13,row.top+27};RoundBox(dc,playing,RGB(73,169,235),4);}
-        drawn++;
+        shown++;
     }
-    if(drawn==0){
+    if(shown==0){
         RECT empty={R_SIDEBAR.left+18,R_SIDEBAR.top+402,R_SIDEBAR.right-18,R_SIDEBAR.top+456};
         Txt(dc,g_searchText[0]?L"No matching media":L"Add media to start your library",empty,RGB(151,168,191),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
