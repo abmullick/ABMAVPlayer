@@ -288,35 +288,25 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
     int diameter=(r.right-r.left<r.bottom-r.top)?r.right-r.left:r.bottom-r.top;
     int radius=diameter/2;
-    COLORREF glyph=RGB(222,226,231);
-    if (active) {
-        /* Reference-inspired transport: a clean white circular primary action. */
-        RoundBox(NULL,r,RGB(246,247,248),radius);
-        glyph=RGB(22,24,27);
+    COLORREF glyph=RGB(224,231,240);
+    if(active) {
+        RoundBox(NULL,r,hot?RGB(91,151,255):RGB(67,126,235),radius);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,RGB(137,181,255),1.0f);
+        glyph=RGB(255,255,255);
     } else {
-        COLORREF idle=RGB(39,42,46);
-        COLORREF hover=RGB(58,62,68);
-        RoundBox(NULL,r,Blend(idle,hover,hot?g_hoverLevel:0),radius);
+        RoundBox(NULL,r,Blend(RGB(31,36,44),RGB(48,57,70),hot?g_hoverLevel:0),radius);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,hot?RGB(91,111,137):RGB(57,65,76),0.9f);
     }
-    int weight=active?3:2;
     if(kind==1) {
-        DrawLine(NULL,cx-6,cy-11,cx+11,cy,glyph,weight);
-        DrawLine(NULL,cx+11,cy,cx-6,cy+11,glyph,weight);
-        DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,weight);
+        DrawLine(NULL,cx-6,cy-11,cx+10,cy,glyph,2);DrawLine(NULL,cx+10,cy,cx-6,cy+11,glyph,2);DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,2);
     } else if(kind==2) {
-        DrawLine(NULL,cx-6,cy-10,cx-6,cy+10,glyph,weight);
-        DrawLine(NULL,cx+6,cy-10,cx+6,cy+10,glyph,weight);
+        DrawLine(NULL,cx-5,cy-9,cx-5,cy+9,glyph,2);DrawLine(NULL,cx+5,cy-9,cx+5,cy+9,glyph,2);
     } else if(kind==3) {
-        DrawLine(NULL,cx-7,cy-7,cx+7,cy+7,glyph,weight);
-        DrawLine(NULL,cx+7,cy-7,cx-7,cy+7,glyph,weight);
+        RECT stop={cx-6,cy-6,cx+6,cy+6};RoundBox(NULL,stop,glyph,2);
     } else if(kind==4) {
-        DrawLine(NULL,cx-8,cy-8,cx+4,cy,glyph,weight);
-        DrawLine(NULL,cx+4,cy,cx-8,cy+8,glyph,weight);
-        DrawLine(NULL,cx+7,cy-9,cx+7,cy+9,glyph,weight);
+        DrawLine(NULL,cx-8,cy-8,cx+4,cy,glyph,2);DrawLine(NULL,cx+4,cy,cx-8,cy+8,glyph,2);DrawLine(NULL,cx+7,cy-9,cx+7,cy+9,glyph,2);
     } else if(kind==5) {
-        DrawLine(NULL,cx+8,cy-8,cx-4,cy,glyph,weight);
-        DrawLine(NULL,cx-4,cy,cx+8,cy+8,glyph,weight);
-        DrawLine(NULL,cx-7,cy-9,cx-7,cy+9,glyph,weight);
+        DrawLine(NULL,cx+8,cy-8,cx-4,cy,glyph,2);DrawLine(NULL,cx-4,cy,cx+8,cy+8,glyph,2);DrawLine(NULL,cx-7,cy-9,cx-7,cy+9,glyph,2);
     }
 }
 static void DrawVisualizer(HDC dc,RECT area) {
@@ -586,20 +576,21 @@ static void DrawUI(HDC dc,RECT client) {
     RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
-    RECT dock={client.right/2-190,client.bottom-111,client.right/2+190,client.bottom-27};
-    Panel(dc,dock,RGB(23,25,28),RGB(48,51,55),28);
+    RECT dock={client.right/2-174,client.bottom-105,client.right/2+174,client.bottom-29};
+    Panel(dc,dock,RGB(25,29,35),RGB(54,63,76),25);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
-    RECT volPanel={client.right-282,client.bottom-101,client.right-22,client.bottom-35};
-    Panel(dc,volPanel,RGB(23,25,28),RGB(48,51,55),18);
+    RECT volPanel={client.right-258,client.bottom-94,client.right-22,client.bottom-35};
+    Panel(dc,volPanel,RGB(25,29,35),RGB(54,63,76),17);
     RECT volLabel={volPanel.left+13,volPanel.top+8,volPanel.left+75,volPanel.top+27};
     Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT vr={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2};RoundBox(dc,vr,RGB(66,69,74),5);
-    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;RoundBox(dc,vr,RGB(231,234,238),5);
+    RECT vr={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2};RoundBox(dc,vr,RGB(58,68,82),5);
+    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;RoundBox(dc,vr,RGB(92,157,255),5);
     int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
-    RECT vd={vx-7,R_VOLUME.top-7,vx+7,R_VOLUME.bottom+7};RoundBox(dc,vd,RGB(246,247,248),9);
+    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
 
     RECT open=R_OPEN;
     RoundBox(dc,open,Blend(RGB(43,46,51),RGB(61,65,71),(g_hoverButton==HIT_OPEN)?g_hoverLevel:0),13);
@@ -1085,7 +1076,7 @@ static void OverlayButton(HDC dc,RECT r,int kind,BOOL primary) {
     HPEN g=CreatePen(PS_SOLID,2,primary?RGB(20,22,25):RGB(232,235,239));oe=(HPEN)SelectObject(dc,g);
     if(kind==1){MoveToEx(dc,x-7,y-11,NULL);LineTo(dc,x+10,y);LineTo(dc,x-7,y+11);LineTo(dc,x-7,y-11);}
     else if(kind==2){MoveToEx(dc,x-5,y-10,NULL);LineTo(dc,x-5,y+10);MoveToEx(dc,x+5,y-10,NULL);LineTo(dc,x+5,y+10);}
-    else if(kind==3){MoveToEx(dc,x-8,y-8,NULL);LineTo(dc,x+8,y+8);MoveToEx(dc,x+8,y-8,NULL);LineTo(dc,x-8,y+8);}
+    else if(kind==3){RECT s={x-6,y-6,x+6,y+6};HBRUSH sb=CreateSolidBrush(primary?RGB(20,22,25):RGB(232,235,239));FillRect(dc,&s,sb);DeleteObject(sb);}
     else if(kind==4){MoveToEx(dc,x+8,y-8,NULL);LineTo(dc,x-4,y);LineTo(dc,x+8,y+8);MoveToEx(dc,x-8,y-10,NULL);LineTo(dc,x-8,y+10);}
     else if(kind==5){MoveToEx(dc,x-8,y-8,NULL);LineTo(dc,x+4,y);LineTo(dc,x-8,y+8);MoveToEx(dc,x+8,y-10,NULL);LineTo(dc,x+8,y+10);}
     SelectObject(dc,oe);DeleteObject(g);
