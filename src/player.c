@@ -782,9 +782,20 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
         Panel(dc,menu,RGB(25,33,47),RGB(68,86,112),13);
-        const wchar_t *labels[12]={L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",L"About ABM AV Player",L"Exit player",L"Shuffle: Off",L"Repeat current: Off"};
-        const wchar_t *icons[12]={L"+",L"⌕",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻"};
-        for(int i=0;i<12;i++) {
+        const wchar_t *labels[13]={
+            L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
+            L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",
+            L"About ABM AV Player",L"Exit player",L"Shuffle: Off",
+            L"Repeat current: Off",L"Recent media"
+        };
+        const wchar_t *shortcuts[13]={
+            L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
+            L"F11",L"Ctrl+L",L"Ctrl+S",L"F1",
+            L"Ctrl+I",L"Alt+F4",L"Ctrl+Shift+H",
+            L"Ctrl+R",L"Ctrl+J"
+        };
+        const wchar_t *icons[13]={L"+",L"⌕",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷"};
+        for(int i=0;i<13;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==10)labels[10]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==11)labels[11]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
@@ -793,8 +804,10 @@ static void DrawUI(HDC dc,RECT client) {
             if(g_menuOpen)RoundBox(dc,item,RGB(31,43,61),7);
             RECT glyph={item.left+10,item.top+2,item.left+34,item.bottom-2};
             Txt(dc,icons[i],glyph,C_ACCENT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+40,item.top+2,item.right-8,item.bottom-2};
+            RECT label={item.left+40,item.top+2,item.right-86,item.bottom-2};
             Txt(dc,labels[i],label,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT shortcut={item.right-84,item.top+2,item.right-10,item.bottom-2};
+            Txt(dc,shortcuts[i],shortcut,RGB(143,158,178),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
     }
 }
@@ -1798,7 +1811,25 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){g_selected=g_visibleRows[ri];InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         ReleaseCapture();return 0;
     }
-    case WM_KEYDOWN:
+    case WM_KEYDOWN: {
+        BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
+        BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
+        if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
+        if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
+        if(ctrl && shift && wp=='C'){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);return 0;}
+        if(ctrl && !shift && wp=='L'){LoadPlaylist();return 0;}
+        if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
+        if(ctrl && !shift && wp=='I'){
+            MessageBoxW(hwnd,L"ABM AV Player\\nVersion 0.4\\n\\nA Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\\n\\nProduct Owner: Abhisek Basu Mullick\\nCopyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
+            return 0;
+        }
+        if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
+        if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
+        if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
+        if(wp==VK_F1){
+            MessageBoxW(hwnd,L"ABM AV Player - Quick Help\\n\\nCtrl+O Open media | Ctrl+D Find network devices | Ctrl+Shift+C Cast to TV\\nSpace Play/Pause | F11 Fullscreen | Esc Exit fullscreen\\nCtrl+L Load playlist | Ctrl+S Save playlist | Ctrl+J Recent media\\nCtrl+Shift+H Shuffle | Ctrl+R Repeat | Ctrl+I About | Alt+F4 Exit\\nLeft/Right Seek 10 seconds | +/- Playback speed | N/P Previous/Next",L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
+            return 0;
+        }
         if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
         if(g_searchFocused&&wp==VK_BACK){size_t n=wcslen(g_searchText);if(n)g_searchText[n-1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;}
         if(g_searchFocused&&wp==VK_RETURN){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
@@ -1815,6 +1846,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
+    }
     case WM_CHAR:
         if(g_searchFocused){wchar_t ch=(wchar_t)wp;if(ch>=32&&ch!=127){size_t n=wcslen(g_searchText);if(n<127){g_searchText[n]=ch;g_searchText[n+1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}}return 0;}
         break;
