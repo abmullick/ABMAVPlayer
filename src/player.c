@@ -86,6 +86,8 @@ static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
 static BOOL g_fullscreenControlsVisible = TRUE;
 static DWORD g_fullscreenLastInputTick = 0;
+static POINT g_fullscreenLastMousePos = {0,0};
+static BOOL g_fullscreenMousePosValid = FALSE;
 #define FULLSCREEN_CONTROLS_TIMEOUT_MS 10000u
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
@@ -1213,6 +1215,7 @@ static void ToggleFullscreen(HWND hwnd) {
         g_fullscreen=TRUE;
         g_fullscreenControlsVisible=TRUE;
         g_fullscreenLastInputTick=GetTickCount();
+        g_fullscreenMousePosValid=GetCursorPos(&g_fullscreenLastMousePos);
         SetCursor(LoadCursorW(NULL,IDC_ARROW));
         /* Capture mouse input at the top-level window for the duration of
            fullscreen. VLC can otherwise consume WM_MOUSEMOVE in its child
@@ -1341,15 +1344,44 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==TIMER_ID){
-        if (g_fullscreen && g_fullscreenControlsVisible &&
-            (DWORD)(GetTickCount()-g_fullscreenLastInputTick)>=FULLSCREEN_CONTROLS_TIMEOUT_MS) {
-            g_fullscreenControlsVisible=FALSE;
-            if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
-            SetCursor(NULL);
-        }
-        if(g_fullscreen && g_fullscreenControlsVisible && g_fullscreenOverlay &&
-           (GetTickCount()%250u)<34u) {
-            InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+        if (g_fullscreen) {
+            /* Do not depend on WM_MOUSEMOVE reaching a particular HWND.
+               LibVLC owns the video child and the layered controls are a
+               separate popup, so input messages can be routed differently
+               as those windows appear/disappear. Poll the screen cursor
+               position at the existing 30 Hz UI tick instead. */
+            POINT mouseNow;
+            if (GetCursorPos(&mouseNow)) {
+                BOOL moved = !g_fullscreenMousePosValid ||
+                    mouseNow.x != g_fullscreenLastMousePos.x ||
+                    mouseNow.y != g_fullscreenLastMousePos.y;
+                if (moved) {
+                    g_fullscreenLastMousePos = mouseNow;
+                    g_fullscreenMousePosValid = TRUE;
+                    g_fullscreenLastInputTick = GetTickCount();
+                    SetCursor(LoadCursorW(NULL,IDC_ARROW));
+                    if (!g_fullscreenControlsVisible) {
+                        g_fullscreenControlsVisible = TRUE;
+                        if (g_fullscreenOverlay) {
+                            RECT wr; GetWindowRect(hwnd,&wr);
+                            SetWindowPos(g_fullscreenOverlay,HWND_TOP,
+                                wr.left,wr.top,wr.right-wr.left,wr.bottom-wr.top,
+                                SWP_NOACTIVATE|SWP_SHOWWINDOW);
+                            InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+                        }
+                    }
+                }
+            }
+            if (g_fullscreenControlsVisible &&
+                (DWORD)(GetTickCount()-g_fullscreenLastInputTick)>=FULLSCREEN_CONTROLS_TIMEOUT_MS) {
+                g_fullscreenControlsVisible=FALSE;
+                if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
+                SetCursor(NULL);
+            }
+            if(g_fullscreenControlsVisible && g_fullscreenOverlay &&
+               (GetTickCount()%250u)<34u) InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+        } else {
+            g_fullscreenMousePosValid = FALSE;
         }
         int oldMenuProgress=g_menuProgress;
         if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
