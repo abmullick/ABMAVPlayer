@@ -310,14 +310,14 @@ static void UpdateLayout(HWND hwnd) {
     R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+116,R_SIDEBAR.right-14,R_SIDEBAR.top+148};
     R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+152,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184};
     R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+152,R_SIDEBAR.right-14,R_SIDEBAR.top+184};
-    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+204,R_SIDEBAR.right-14,R_SIDEBAR.top+240};
-    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+246,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+278};
-    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+246,R_SIDEBAR.right-14,R_SIDEBAR.top+278};
-    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+284,R_SIDEBAR.left+72,R_SIDEBAR.top+308};
-    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+284,R_SIDEBAR.left+145,R_SIDEBAR.top+308};
-    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+284,R_SIDEBAR.left+218,R_SIDEBAR.top+308};
-    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+284,R_SIDEBAR.right-14,R_SIDEBAR.top+308};
-    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+316,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
+    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+214,R_SIDEBAR.right-14,R_SIDEBAR.top+250};
+    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+256,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+288};
+    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+256,R_SIDEBAR.right-14,R_SIDEBAR.top+288};
+    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+294,R_SIDEBAR.left+72,R_SIDEBAR.top+318};
+    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+294,R_SIDEBAR.left+145,R_SIDEBAR.top+318};
+    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+294,R_SIDEBAR.left+218,R_SIDEBAR.top+318};
+    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294,R_SIDEBAR.right-14,R_SIDEBAR.top+318};
+    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*58,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*58};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -593,7 +593,7 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
-    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+164,R_SIDEBAR.right-17,R_SIDEBAR.top+186};
+    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+188,R_SIDEBAR.right-17,R_SIDEBAR.top+210};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"PLAYBACK QUEUE",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
