@@ -1636,7 +1636,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             ReleaseCapture();return 0;
         }
-        if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_receiverPopup=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
