@@ -281,6 +281,8 @@ static void UpdateLayout(HWND hwnd) {
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){g_drawerOpen?R_VIDEO.right+gap:w+20,top,g_drawerOpen?w-left:w+side+20,h-112};
+    int settingsShift=g_drawerSettingsOpen?44:0;
+    int queueShift=g_drawerSettingsOpen?44:-120;
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
     R_DRAWER_BUTTON=(RECT){w-210,17,w-130,61};
@@ -307,8 +309,6 @@ static void UpdateLayout(HWND hwnd) {
     R_NEXT=(RECT){w/2+64,h-91,w/2+108,h-47};
     R_STOP=(RECT){w/2+126,h-91,w/2+170,h-47};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
-    int settingsShift=g_drawerSettingsOpen?44:0;
-    int queueShift=g_drawerSettingsOpen?44:-120;
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+12,R_SIDEBAR.right-14,R_SIDEBAR.top+48};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
@@ -550,6 +550,10 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
     if(g_drawerOpen) {
+    int settingsShift=g_drawerSettingsOpen?44:0;
+    int queueShift=g_drawerSettingsOpen?44:-120;
+    RECT receiver=R_RECEIVER;
+    int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Slide-out media drawer: output, quick controls, search and queue. */
     Panel(dc,R_SIDEBAR,RGB(19,24,33),RGB(48,64,84),22);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
@@ -568,7 +572,6 @@ static void DrawUI(HDC dc,RECT client) {
     RECT scanText={scan.left+42,scan.top+2,scan.right-10,scan.bottom-2};
     Txt(dc,L"Discover devices",scanText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-    RECT receiver={R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right,R_RECEIVER.bottom};
     /* Fully custom Direct2D output selector. */
     COLORREF receiverFill=g_receiverPopup?RGB(42,45,50):RGB(30,32,36);
     Panel(dc,receiver,receiverFill,g_receiverPopup?RGB(91,99,110):RGB(58,61,66),12);
@@ -577,7 +580,6 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,RGB(197,205,214),2);
     DrawLine(dc,deviceIcon.left+4,deviceIcon.bottom-5,deviceIcon.right-4,deviceIcon.bottom-5,RGB(197,205,214),2);
     wchar_t deviceName[256]=L"Local playback";
-    int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     if(sel>0)SendMessageW(g_renderers,CB_GETLBTEXT,sel,(LPARAM)deviceName);
     RECT deviceText={receiver.left+44,receiver.top+2,receiver.right-48,receiver.bottom-2};
     Txt(dc,deviceName,deviceText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
