@@ -79,9 +79,9 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     ui->writeFactory = writeFactory;
 
     IDWriteTextFormat *body = nullptr, *smallFormat = nullptr, *heading = nullptr;
-    if (!MakeFormat(writeFactory, L"Segoe UI", 16.0f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(writeFactory, L"Segoe UI", 12.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
-        !MakeFormat(writeFactory, L"Segoe UI", 23.0f, DWRITE_FONT_WEIGHT_BOLD, &heading)) {
+    if (!MakeFormat(writeFactory, L"Segoe UI", 17.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
+        !MakeFormat(writeFactory, L"Segoe UI", 14.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
+        !MakeFormat(writeFactory, L"Segoe UI", 25.0f, DWRITE_FONT_WEIGHT_BOLD, &heading)) {
         SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
         ABM_D2D_Destroy(ui);
         return FALSE;
