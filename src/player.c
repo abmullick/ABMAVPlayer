@@ -947,8 +947,16 @@ static void ToggleFullscreen(HWND hwnd) {
                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
     }
-    InvalidateRect(hwnd,NULL,TRUE);
-    UpdateWindow(hwnd);
+    /* Re-sync the Direct2D HWND target with the restored client size.
+       WM_SIZE can arrive while the non-client style transition is still in
+       progress, so do one final resize and synchronous full-window repaint. */
+    RECT clientRect = {0};
+    GetClientRect(hwnd, &clientRect);
+    if (clientRect.right > 0 && clientRect.bottom > 0) {
+        ABM_D2D_Resize(&g_ui, (UINT)clientRect.right, (UINT)clientRect.bottom);
+    }
+    RedrawWindow(hwnd, NULL, NULL,
+        RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 }
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
