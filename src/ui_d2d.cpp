@@ -92,7 +92,7 @@ extern "C" void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height) {
     if (!ui || !ui->target) return;
     D2D1_SIZE_U size = D2D1::SizeU(width, height);
     HRESULT hr = Target(ui)->Resize(&size);
-    if (hr == D2DERR_RECREATE_TARGET) {
+    if (FAILED(hr)) {
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
         SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
     }
@@ -106,8 +106,8 @@ extern "C" void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear) {
     ui->clipActive = FALSE;
 }
 
-extern "C" void ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip) {
-    if (!ui || !clip || !EnsureTarget(ui)) return;
+extern "C" BOOL ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip) {
+    if (!ui || !clip || !EnsureTarget(ui)) return FALSE;
     Target(ui)->BeginDraw();
     D2D1_RECT_F bounds = D2D1::RectF(
         static_cast<float>(clip->left), static_cast<float>(clip->top),
@@ -116,6 +116,7 @@ extern "C" void ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip)
     ui->clipActive = TRUE;
     SetColor(ui, clear);
     Target(ui)->FillRectangle(bounds, Brush(ui));
+    return TRUE;
 }
 
 extern "C" BOOL ABM_D2D_End(ABM_D2D *ui) {
