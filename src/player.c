@@ -90,6 +90,7 @@ static int g_groupMode=0; /* 0 = Folder, 1 = Artist, 2 = Album */
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_drawerOpen = FALSE;
+static BOOL g_drawerSettingsOpen = FALSE;
 static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
 static BOOL g_fullscreenControlsVisible = TRUE;
@@ -100,7 +101,7 @@ static BOOL g_fullscreenMousePosValid = FALSE;
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -280,7 +281,7 @@ static void UpdateLayout(HWND hwnd) {
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){g_drawerOpen?R_VIDEO.right+gap:w+20,top,g_drawerOpen?w-left:w+side+20,h-112};
-    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+98};
+    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
     R_DRAWER_BUTTON=(RECT){w-210,17,w-130,61};
     R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
@@ -306,20 +307,23 @@ static void UpdateLayout(HWND hwnd) {
     R_NEXT=(RECT){w/2+64,h-91,w/2+108,h-47};
     R_STOP=(RECT){w/2+126,h-91,w/2+170,h-47};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
-    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32,R_SIDEBAR.right-14,R_SIDEBAR.top+62};
+    int settingsShift=g_drawerSettingsOpen?44:0;
+    int queueShift=g_drawerSettingsOpen?44:-120;
+    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+12,R_SIDEBAR.right-14,R_SIDEBAR.top+48};
+    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+124,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+152};
-    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+124,R_SIDEBAR.right-14,R_SIDEBAR.top+152};
-    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+156,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184};
-    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+156,R_SIDEBAR.right-14,R_SIDEBAR.top+184};
-    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+214,R_SIDEBAR.right-14,R_SIDEBAR.top+250};
-    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+256,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+288};
-    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+256,R_SIDEBAR.right-14,R_SIDEBAR.top+288};
-    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+294,R_SIDEBAR.left+72,R_SIDEBAR.top+318};
-    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+294,R_SIDEBAR.left+145,R_SIDEBAR.top+318};
-    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+294,R_SIDEBAR.left+218,R_SIDEBAR.top+318};
-    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294,R_SIDEBAR.right-14,R_SIDEBAR.top+318};
-    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+124+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+152+settingsShift};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+124+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+152+settingsShift};
+    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+156+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184+settingsShift};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+156+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+184+settingsShift};
+    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+214+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+250+queueShift};
+    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+256+queueShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+288+queueShift};
+    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+256+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+288+queueShift};
+    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+72,R_SIDEBAR.top+318+queueShift};
+    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+145,R_SIDEBAR.top+318+queueShift};
+    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+218,R_SIDEBAR.top+318+queueShift};
+    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+318+queueShift};
+    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*58,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*58};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -551,7 +555,8 @@ static void DrawUI(HDC dc,RECT client) {
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
     GradientRect(dc,accent,RGB(48,180,230),RGB(112,105,255));
-    RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+10,R_SIDEBAR.right-16,R_SIDEBAR.top+29};
+    if(g_drawerSettingsOpen) {
+    RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+54,R_SIDEBAR.right-16,R_SIDEBAR.top+73};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
     RoundBox(dc,scan,Blend(RGB(43,46,51),RGB(61,65,71),(g_hoverButton==HIT_SCAN)?g_hoverLevel:0),12);
@@ -580,7 +585,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
-    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+100,R_SIDEBAR.right-17,R_SIDEBAR.top+120};
+    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+144,R_SIDEBAR.right-17,R_SIDEBAR.top+164};
     Txt(dc,L"QUICK CONTROLS",toolsHead,RGB(133,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
@@ -602,7 +607,14 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
-    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+190,R_SIDEBAR.right-17,R_SIDEBAR.top+212};
+    }
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(35,58,86):RGB(25,34,47),g_drawerSettingsOpen?RGB(77,132,194):RGB(49,66,88),11);
+    RECT settingsLabel={R_SETTINGS_BUTTON.left+14,R_SETTINGS_BUTTON.top+2,R_SETTINGS_BUTTON.right-38,R_SETTINGS_BUTTON.bottom-2};
+    Txt(dc,g_drawerSettingsOpen?L"Hide playback settings":L"Playback settings and devices",settingsLabel,RGB(220,233,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
+    DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
+    DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
+    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-17,R_SIDEBAR.top+212+queueShift};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"PLAYBACK QUEUE",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
@@ -616,7 +628,7 @@ static void DrawUI(HDC dc,RECT client) {
     ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,RGB(139,163,193),1.5f);
     DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,RGB(139,163,193),1.5f);
     RECT searchText={R_SEARCH.left+36,R_SEARCH.top+2,R_SEARCH.right-10,R_SEARCH.bottom-2};
-    Txt(dc,g_searchText[0]?g_searchText:(g_searchFocused?L"Type to search…":L"Search tracks, artists, albums"),searchText,
+    Txt(dc,g_searchText[0]?g_searchText:(g_searchFocused?L"Type to search":L"Search tracks, artists, albums"),searchText,
         g_searchText[0]?C_TEXT:RGB(135,151,172),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     RECT tabs[2]={R_TAB_QUEUE,R_TAB_LIBRARY};
@@ -1636,8 +1648,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             ReleaseCapture();return 0;
         }
-        if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_SETTINGS_BUTTON,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&g_drawerSettingsOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_LIBRARY,x,y)){g_libraryTab=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
