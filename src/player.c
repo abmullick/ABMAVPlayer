@@ -278,7 +278,7 @@ static void UpdateLayout(HWND hwnd) {
     int videoW=w-side-left*2-gap; if(videoW<260)videoW=260;
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
-    R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-bottom};
+    R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-112};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+72,R_SIDEBAR.right-14,R_SIDEBAR.top+104};
     R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
     R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
@@ -306,18 +306,18 @@ static void UpdateLayout(HWND hwnd) {
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+34,R_SIDEBAR.right-14,R_SIDEBAR.top+66};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+136,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+168};
-    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+136,R_SIDEBAR.right-14,R_SIDEBAR.top+168};
-    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+174,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+206};
-    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+174,R_SIDEBAR.right-14,R_SIDEBAR.top+206};
-    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+238,R_SIDEBAR.right-14,R_SIDEBAR.top+276};
-    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+284,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+318};
-    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+284,R_SIDEBAR.right-14,R_SIDEBAR.top+318};
-    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+326,R_SIDEBAR.left+72,R_SIDEBAR.top+350};
-    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+326,R_SIDEBAR.left+145,R_SIDEBAR.top+350};
-    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+326,R_SIDEBAR.left+218,R_SIDEBAR.top+350};
-    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+326,R_SIDEBAR.right-14,R_SIDEBAR.top+350};
-    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+360,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+116,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+148};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+116,R_SIDEBAR.right-14,R_SIDEBAR.top+148};
+    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+152,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+152,R_SIDEBAR.right-14,R_SIDEBAR.top+184};
+    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+204,R_SIDEBAR.right-14,R_SIDEBAR.top+240};
+    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+246,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+278};
+    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+246,R_SIDEBAR.right-14,R_SIDEBAR.top+278};
+    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+284,R_SIDEBAR.left+72,R_SIDEBAR.top+308};
+    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+284,R_SIDEBAR.left+145,R_SIDEBAR.top+308};
+    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+284,R_SIDEBAR.left+218,R_SIDEBAR.top+308};
+    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+284,R_SIDEBAR.right-14,R_SIDEBAR.top+308};
+    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+316,R_SIDEBAR.right-10,R_SIDEBAR.bottom-14};
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*58,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*58};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -571,7 +571,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
-    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+112,R_SIDEBAR.right-17,R_SIDEBAR.top+132};
+    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+88,R_SIDEBAR.right-17,R_SIDEBAR.top+108};
     Txt(dc,L"QUICK CONTROLS",toolsHead,RGB(133,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
@@ -593,7 +593,7 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
-    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+210,R_SIDEBAR.right-17,R_SIDEBAR.top+232};
+    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+164,R_SIDEBAR.right-17,R_SIDEBAR.top+186};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"PLAYBACK QUEUE",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
