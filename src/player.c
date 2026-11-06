@@ -1300,6 +1300,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
             SetCursor(NULL);
         }
+        if(g_fullscreen && g_fullscreenControlsVisible && g_fullscreenOverlay &&
+           (GetTickCount()%250u)<34u) {
+            InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+        }
         int oldMenuProgress=g_menuProgress;
         if(g_menuOpen&&g_menuProgress<100)g_menuProgress+=20;
         else if(!g_menuOpen&&g_menuProgress>0)g_menuProgress-=20;
