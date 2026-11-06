@@ -306,8 +306,9 @@ static void UpdateLayout(HWND hwnd) {
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-190,17,w-146,61};
     R_DRAWER_BUTTON=(RECT){w-132,17,w-18,61};
-    R_MENU_PANEL=(RECT){w-350,66,w-18,66+526};
-    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+10+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+46+i*39};
+    R_MENU_PANEL=(RECT){w-350,66,w-18,66+580};
+    /* Reserve a dedicated 54 px header zone above the first command row. */
+    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
