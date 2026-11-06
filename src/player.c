@@ -185,7 +185,7 @@ static void PositionVideoWindow(void) {
         next.left != g_videoBounds.left || next.top != g_videoBounds.top ||
         next.right != g_videoBounds.right || next.bottom != g_videoBounds.bottom) {
         SetWindowPos(g_video, NULL, x, y, videoW, videoH,
-            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
+            SWP_NOZORDER | SWP_NOACTIVATE);
         g_videoBounds = next;
         g_videoBoundsValid = TRUE;
         InvalidateRect(g_main, &R_VIDEO, FALSE);
