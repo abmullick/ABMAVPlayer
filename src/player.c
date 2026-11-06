@@ -1972,6 +1972,20 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     g_smallFont=CreateFontW(15,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     g_headingFont=CreateFontW(25,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    /* Resolve the bundled LibVLC runtime relative to this executable. This lets
+       an installed copy find its own plugins/data without a system VLC install. */
+    wchar_t modulePath[PATH_CAP], appDir[PATH_CAP], pluginDir[PATH_CAP];
+    DWORD moduleLen=GetModuleFileNameW(NULL,modulePath,PATH_CAP);
+    if(moduleLen>0 && moduleLen<PATH_CAP) {
+        wchar_t *lastSlash=wcsrchr(modulePath,L'\\');
+        if(lastSlash) {
+            *lastSlash=0;
+            wcscpy_s(appDir,PATH_CAP,modulePath);
+            swprintf_s(pluginDir,PATH_CAP,L"%s\\plugins",appDir);
+            _wputenv_s(L"VLC_PLUGIN_PATH",pluginDir);
+            _wputenv_s(L"VLC_DATA_PATH",appDir);
+        }
+    }
     /* Diagnostic mode: disable hardware decoding to isolate GPU/video-output hangs. */
     const char *args[]={"--no-video-title-show","--quiet","--avcodec-hw=none"};g_vlc=libvlc_new(3,args);
     if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
