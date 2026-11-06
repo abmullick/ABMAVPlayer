@@ -1624,7 +1624,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_MOUSEWHEEL: {
         if(!g_drawerOpen)return 0;
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
-        int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/58:0;
+        int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/64:0;
         int maxScroll=CountFilteredMedia()-visible;if(maxScroll<0)maxScroll=0;
         g_playlistScroll-=delta/WHEEL_DELTA;
         if(g_playlistScroll<0)g_playlistScroll=0;
