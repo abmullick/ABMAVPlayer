@@ -1105,9 +1105,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 RECT playDirty=R_PLAY; InflateRect(&playDirty,8,8);
                 InvalidateRect(hwnd,&playDirty,FALSE);
             }
-            RECT headerDirty={0,72,hwnd ? 0 : 0,77};
-            headerDirty.right=R_SIDEBAR.right;
-            InvalidateRect(hwnd,&headerDirty,FALSE);
+            if (!g_fullscreen) {
+                RECT headerDirty;
+                GetClientRect(hwnd,&headerDirty);
+                headerDirty.top=72;
+                headerDirty.bottom=77;
+                InvalidateRect(hwnd,&headerDirty,FALSE);
+            }
         }
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
