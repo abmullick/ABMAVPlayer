@@ -905,6 +905,20 @@ static void UpdateUI(void) {
     InvalidateRect(g_main,&timeline,FALSE);
     InvalidateRect(g_main,&timeText,FALSE);
 }
+static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
+        WPARAM wp, LPARAM lp, UINT_PTR subclassId, DWORD_PTR refData) {
+    (void)subclassId;
+    HWND owner = (HWND)refData;
+    if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) &&
+        (wp == VK_ESCAPE || wp == VK_F11)) {
+        /* LibVLC's child HWND can own keyboard focus. Route fullscreen
+           shortcuts to the player window so they are never swallowed by VLC. */
+        PostMessageW(owner, WM_KEYDOWN, wp, lp);
+        return 0;
+    }
+    return DefSubclassProc(video, msg, wp, lp);
+}
+
 static void ToggleFullscreen(HWND hwnd) {
     /* Hide the VLC child while the top-level window changes styles and bounds.
        This prevents a stale fullscreen child rectangle from covering the
@@ -962,6 +976,7 @@ static void ToggleFullscreen(HWND hwnd) {
     }
     RedrawWindow(hwnd, NULL, NULL,
         RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    SetFocus(hwnd);
 }
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
@@ -971,7 +986,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
-        libvlc_media_player_set_hwnd(g_player,g_video);libvlc_audio_set_volume(g_player,g_volume);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
     case WM_ARTWORK_READY: if((libvlc_media_t *)wp==g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
