@@ -1182,15 +1182,28 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;ReleaseCapture();return 0;
-    case WM_PAINT:{
-        PAINTSTRUCT ps;BeginPaint(hwnd,&ps);
-        RECT r;GetClientRect(hwnd,&r);
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        BeginPaint(hwnd, &ps);
+
+        RECT r;
+        GetClientRect(hwnd, &r);
+
         /* Paint only the invalidated area. A full-target Direct2D Clear on every
            menu animation frame was repainting the whole surface and causing flicker. */
-        ABM_D2D_BeginClip(&g_ui,C_BG,&ps.rcPaint);
-        DrawUI(NULL,r);
-        ABM_D2D_End(&g_ui);
-        EndPaint(hwnd,&ps);return 0;
+        if (ABM_D2D_BeginClip(&g_ui, C_BG, &ps.rcPaint)) {
+            DrawUI(NULL, r);
+
+            if (!ABM_D2D_End(&g_ui)) {
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+        } else {
+            /* The render target could not be created; retry on a subsequent paint. */
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+
+        EndPaint(hwnd, &ps);
+        return 0;
     }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
