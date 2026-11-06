@@ -1242,23 +1242,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 SetTextColor(d->hDC,RGB(235,238,242));
                 DrawTextW(d->hDC,t,-1,&textRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
-            /* Paint the closed combo's arrow well too; this path uses the
-               combo's own HDC, never the parent Direct2D render target. */
-            if(d->itemState&ODS_COMBOBOXEDIT){
-                RECT arrow=d->rcItem;
-                arrow.left=arrow.right-30;
-                HBRUSH well=CreateSolidBrush(RGB(39,42,47));
-                FillRect(d->hDC,&arrow,well);
-                DeleteObject(well);
-                HPEN pen=CreatePen(PS_SOLID,2,RGB(180,186,194));
-                HPEN oldPen=(HPEN)SelectObject(d->hDC,pen);
-                int cx=(arrow.left+arrow.right)/2,cy=(arrow.top+arrow.bottom)/2;
-                MoveToEx(d->hDC,cx-4,cy-2,NULL);
-                LineTo(d->hDC,cx,cy+2);
-                LineTo(d->hDC,cx+4,cy-2);
-                SelectObject(d->hDC,oldPen);
-                DeleteObject(pen);
-            }
+            /* The native combo already paints its drop-down button.
+               Do not draw a second chevron in the owner-draw edit item. */
             if(d->itemState&ODS_FOCUS)DrawFocusRect(d->hDC,&d->rcItem);
             return TRUE;
         }
