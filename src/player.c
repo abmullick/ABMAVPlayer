@@ -1639,12 +1639,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
             g_overlayPlaying=TRUE;
-        } else {
-            g_overlayPlaying=FALSE;
-        }
             RECT playDirty=R_PLAY;
             InflateRect(&playDirty,8,8);
             InvalidateRect(hwnd,&playDirty,FALSE);
+        } else {
+            g_overlayPlaying=FALSE;
         }
         if (!g_fullscreen) {
             RECT headerDirty;
