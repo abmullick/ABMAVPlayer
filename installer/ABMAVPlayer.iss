@@ -17,7 +17,6 @@ ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=admin
 OutputDir=..\dist
 OutputBaseFilename=ABM-AV-Player-Setup
-SetupIconFile=..\assets\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 WizardStyle=modern
 Compression=lzma2/ultra64
