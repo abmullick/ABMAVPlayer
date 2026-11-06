@@ -81,6 +81,12 @@ static int64_t g_lastUiTime = -1;
 static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
 static RECT R_ROW[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT;
+static RECT R_SEARCH, R_TAB_QUEUE, R_TAB_LIBRARY, R_FILTER_ALL, R_FILTER_AUDIO, R_FILTER_VIDEO, R_GROUP;
+static wchar_t g_searchText[128]=L"";
+static BOOL g_searchFocused=FALSE;
+static int g_libraryTab=0; /* 0 = Queue, 1 = Library */
+static int g_mediaFilter=0; /* 0 = All, 1 = Audio, 2 = Video */
+static int g_groupMode=0; /* 0 = Folder, 1 = Artist, 2 = Album */
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_menuOpen = FALSE;
@@ -287,8 +293,15 @@ static void UpdateLayout(HWND hwnd) {
     R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+132,R_SIDEBAR.right-14,R_SIDEBAR.top+168};
     R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+174,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+210};
     R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+174,R_SIDEBAR.right-14,R_SIDEBAR.top+210};
-    int y=R_SIDEBAR.top+260;
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*48,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*48};
+    int y=R_SIDEBAR.top+370;
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*58,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*58};
+    R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+252,R_SIDEBAR.right-14,R_SIDEBAR.top+292};
+    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+302,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+338};
+    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+302,R_SIDEBAR.right-14,R_SIDEBAR.top+338};
+    R_FILTER_ALL=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+344,R_SIDEBAR.left+72,R_SIDEBAR.top+368};
+    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+344,R_SIDEBAR.left+145,R_SIDEBAR.top+368};
+    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+344,R_SIDEBAR.left+218,R_SIDEBAR.top+368};
+    R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+344,R_SIDEBAR.right-14,R_SIDEBAR.top+368};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
@@ -564,21 +577,77 @@ static void DrawUI(HDC dc,RECT client) {
     }
 
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+220,R_SIDEBAR.right-17,R_SIDEBAR.top+246};
-    Txt(dc,L"UP NEXT",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"PLAYBACK QUEUE",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
     Txt(dc,count,countR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     DrawLine(dc,R_SIDEBAR.left+16,listHead.bottom+4,R_SIDEBAR.right-16,listHead.bottom+4,RGB(43,53,69),1);
-    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+260)-18)/48;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
-    for(int i=g_playlistScroll;i<g_playlistCount&&i<g_playlistScroll+visible;i++) {
-        RECT row=R_ROW[i];
-            if(i==g_selected){RoundBox(dc,row,RGB(43,46,51),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10.0f,RGB(68,72,78),0.75f);}
-        RECT indexR={row.left+8,row.top+5,row.left+34,row.bottom-5};
-        wchar_t ix[12];swprintf_s(ix,12,L"%02d",i+1);
-        Txt(dc,ix,indexR,i==g_current?C_ACCENT:C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    /* Search and filters are drawn in Direct2D; keyboard input is handled by
+       the main window so no blurry native EDIT control is layered over it. */
+    Panel(dc,R_SEARCH,RGB(13,19,28),g_searchFocused?RGB(74,139,220):RGB(48,63,82),11);
+    RECT searchGlyph={R_SEARCH.left+12,R_SEARCH.top+10,R_SEARCH.left+26,R_SEARCH.bottom-10};
+    ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,RGB(139,163,193),1.5f);
+    DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,RGB(139,163,193),1.5f);
+    RECT searchText={R_SEARCH.left+36,R_SEARCH.top+2,R_SEARCH.right-10,R_SEARCH.bottom-2};
+    Txt(dc,g_searchText[0]?g_searchText:(g_searchFocused?L"Type to search…":L"Search tracks, artists, albums"),searchText,
+        g_searchText[0]?C_TEXT:RGB(135,151,172),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+
+    RECT tabs[2]={R_TAB_QUEUE,R_TAB_LIBRARY};
+    const wchar_t *tabNames[2]={L"Queue",L"Library"};
+    for(int ti=0;ti<2;ti++){
+        BOOL active=(g_libraryTab==ti);
+        Panel(dc,tabs[ti],active?RGB(34,69,111):RGB(24,32,43),active?RGB(77,139,210):RGB(44,58,76),9);
+        RECT label={tabs[ti].left+3,tabs[ti].top+1,tabs[ti].right-3,tabs[ti].bottom-1};
+        Txt(dc,tabNames[ti],label,active?RGB(238,246,255):RGB(171,187,207),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
+    RECT filters[3]={R_FILTER_ALL,R_FILTER_AUDIO,R_FILTER_VIDEO};
+    const wchar_t *filterNames[3]={L"All",L"Audio",L"Video"};
+    for(int fi=0;fi<3;fi++){
+        BOOL active=g_mediaFilter==fi;
+        RoundBox(dc,filters[fi],active?RGB(47,91,143):RGB(25,32,42),8);
+        RECT label={filters[fi].left+2,filters[fi].top,filters[fi].right-2,filters[fi].bottom};
+        Txt(dc,filterNames[fi],label,active?RGB(244,248,255):RGB(158,174,194),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
+    RoundBox(dc,R_GROUP,RGB(25,32,42),8);
+    wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
+    Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+374)-12)/58;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
+    int drawn=0;
+    for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
-        RECT name={row.left+42,row.top+3,row.right-9,row.bottom-3};
-        Txt(dc,leaf,name,i==g_selected?C_TEXT:RGB(190,201,216),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        BOOL isVideo=FALSE;
+        const wchar_t *dot=wcsrchr(leaf,L'.');
+        if(dot && (!_wcsicmp(dot,L".mp4")||!_wcsicmp(dot,L".mkv")||!_wcsicmp(dot,L".avi")||!_wcsicmp(dot,L".mov")||!_wcsicmp(dot,L".wmv")||!_wcsicmp(dot,L".webm")||!_wcsicmp(dot,L".mpeg")||!_wcsicmp(dot,L".mpg")))isVideo=TRUE;
+        if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
+        if(g_searchText[0] && !StrStrIW(leaf,g_searchText))continue;
+        if(drawn<g_playlistScroll){drawn++;continue;}
+        if(drawn>=g_playlistScroll+visible)break;
+        RECT row=R_ROW[i];
+        BOOL current=(i==g_current),selected=(i==g_selected);
+        if(selected){RoundBox(dc,row,RGB(29,49,73),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10,RGB(66,113,165),0.9f);}
+        RECT thumb={row.left+7,row.top+7,row.left+51,row.bottom-7};
+        RoundBox(dc,thumb,RGB(28+(i*17)%24,42+(i*11)%22,61+(i*7)%26),8);
+        if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
+        else {
+            int cx=(thumb.left+thumb.right)/2,cy=(thumb.top+thumb.bottom)/2;
+            if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,current?RGB(255,255,255):RGB(171,198,229),2);DrawLine(dc,cx+7,cy,cx-5,cy+7,current?RGB(255,255,255):RGB(171,198,229),2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,current?RGB(255,255,255):RGB(171,198,229),2);}
+            else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
+        }
+        RECT name={row.left+60,row.top+7,row.right-10,row.top+31};
+        RECT subline={row.left+60,row.top+31,row.right-10,row.bottom-5};
+        Txt(dc,leaf,name,current?RGB(255,255,255):RGB(225,232,242),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        const wchar_t *group=L"Local file";
+        if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist metadata on playback";
+        else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album metadata on playback";
+        Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(current){RECT playing={row.right-20,row.top+20,row.right-13,row.top+27};RoundBox(dc,playing,RGB(73,169,235),4);}
+        drawn++;
+    }
+    if(drawn==0){
+        RECT empty={R_SIDEBAR.left+18,R_SIDEBAR.top+402,R_SIDEBAR.right-18,R_SIDEBAR.top+456};
+        Txt(dc,g_searchText[0]?L"No matching media":L"Add media to start your library",empty,RGB(151,168,191),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     if(g_receiverPopup) {
         int n=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);if(n>MAX_RENDERERS+1)n=MAX_RENDERERS+1;
