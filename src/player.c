@@ -29,6 +29,7 @@
 #define ID_RENDERERS 1010
 #define WM_RENDERERS_CHANGED (WM_APP + 10)
 #define WM_ARTWORK_READY (WM_APP + 11)
+#define WM_ARTWORK_DOWNLOAD_READY (WM_APP + 12)
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -64,6 +65,7 @@ static BOOL g_receiverLost=FALSE;
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static libvlc_media_t *g_artMedia=NULL;
+static volatile LONG g_artworkGeneration=0;
 static BOOL g_artworkLoaded=FALSE;
 static int g_artworkFade=100;
 static wchar_t g_trackTitle[256]=L"";
@@ -172,6 +174,7 @@ static void ResetArtwork(void) {
         libvlc_media_parse_stop(g_artMedia);
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
+    InterlockedIncrement(&g_artworkGeneration);
     g_artworkLoaded=FALSE; g_artworkFade=100;
     g_trackTitle[0]=0; g_trackArtist[0]=0; g_trackAlbum[0]=0; g_trackGenre[0]=0;
     ABM_D2D_ClearImage(&g_ui);
@@ -193,6 +196,25 @@ static void CopyVlcMeta(libvlc_media_t *media,libvlc_meta_t key,wchar_t *out,siz
     if (!value) { out[0]=0; return; }
     MultiByteToWideChar(CP_UTF8,0,value,-1,out,(int)cap); libvlc_free(value);
 }
+typedef struct ArtworkDownloadRequest {
+    HWND target;
+    LONG generation;
+    wchar_t url[PATH_CAP*4];
+    wchar_t path[PATH_CAP];
+} ArtworkDownloadRequest;
+
+static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
+    ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)parameter;
+    HRESULT com=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);
+    HRESULT result=URLDownloadToFileW(NULL,request->url,request->path,0,NULL);
+    if(SUCCEEDED(com))CoUninitialize();
+    if(IsWindow(request->target))
+        PostMessageW(request->target,WM_ARTWORK_DOWNLOAD_READY,
+                     (WPARAM)request->generation,(LPARAM)SUCCEEDED(result));
+    free(request);
+    return 0;
+}
+
 static void LoadParsedArtwork(libvlc_media_t *media) {
     if (!media || media!=g_artMedia) return;
     CopyVlcMeta(media,libvlc_meta_Title,g_trackTitle,256);
@@ -204,17 +226,20 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
         wchar_t url[PATH_CAP*4];
         int n=MultiByteToWideChar(CP_UTF8,0,art,-1,url,(int)(sizeof(url)/sizeof(url[0])));
         libvlc_free(art);
-        if (n>0 && EnsureDataDirectory()) {
-            wchar_t path[PATH_CAP];
-            swprintf_s(path,PATH_CAP,L"%s\\current-artwork.bin",g_dataDir);
-            if (URLDownloadToFileW(NULL,url,path,0,NULL)==S_OK)
-                g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
-            if (g_artworkLoaded) g_artworkFade=0;
+        if (n>0 && EnsureDataDirectory() && g_main) {
+            ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
+            if(request) {
+                request->target=g_main;
+                request->generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
+                wcsncpy_s(request->url,_countof(request->url),url,_TRUNCATE);
+                swprintf_s(request->path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)request->generation);
+                HANDLE thread=CreateThread(NULL,0,ArtworkDownloadThread,request,0,NULL);
+                if(thread)CloseHandle(thread);else free(request);
+            }
         }
     }
     InvalidateRect(g_main,NULL,FALSE);
 }
-
 static void FormatTime(int ms,wchar_t *out,size_t n) {
     if(ms<0) ms=0; int sec=ms/1000;
     swprintf_s(out,n,L"%02d:%02d",sec/60,sec%60);
@@ -1442,6 +1467,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
     case WM_ARTWORK_READY: if((libvlc_media_t *)wp==g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
+    case WM_ARTWORK_DOWNLOAD_READY: {
+        LONG generation=(LONG)wp;
+        if(generation==InterlockedCompareExchange(&g_artworkGeneration,0,0) && lp && EnsureDataDirectory()) {
+            wchar_t path[PATH_CAP];
+            swprintf_s(path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)generation);
+            g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
+            if(g_artworkLoaded)g_artworkFade=0;
+            InvalidateRect(hwnd,NULL,FALSE);
+        }
+        return 0;
+    }
     case WM_SIZE: {
         UpdateLayout(hwnd);
         if(wp!=SIZE_MINIMIZED)ABM_D2D_Resize(&g_ui,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
