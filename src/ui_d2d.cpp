@@ -233,6 +233,32 @@ extern "C" void ABM_D2D_DrawImage(ABM_D2D *ui, float l, float t, float r, float 
                            D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
 }
 
+extern "C" void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, float b, float opacity) {
+    if (!ui || !ui->image || !EnsureTarget(ui)) return;
+    ID2D1Bitmap *bitmap = static_cast<ID2D1Bitmap *>(ui->image);
+    D2D1_SIZE_F size = bitmap->GetSize();
+    float boxW = r-l, boxH = b-t;
+    if (size.width <= 0 || size.height <= 0 || boxW <= 0 || boxH <= 0) return;
+
+    /* Crop the source to the destination aspect ratio, preserving the image's
+       proportions. This is used for the soft, low-opacity artwork backdrop. */
+    float sourceW = size.width, sourceH = size.height;
+    float imageAspect = size.width / size.height;
+    float boxAspect = boxW / boxH;
+    if (imageAspect > boxAspect) {
+        sourceW = size.height * boxAspect;
+    } else {
+        sourceH = size.width / boxAspect;
+    }
+    float sx = (size.width - sourceW) * 0.5f;
+    float sy = (size.height - sourceH) * 0.5f;
+    D2D1_RECT_F source = D2D1::RectF(sx, sy, sx + sourceW, sy + sourceH);
+    if (opacity < 0.0f) opacity = 0.0f;
+    if (opacity > 1.0f) opacity = 1.0f;
+    Target(ui)->DrawBitmap(bitmap, D2D1::RectF(l,t,r,b), opacity,
+        D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, &source);
+}
+
 extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     if (!ui) return;
     SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->image));
