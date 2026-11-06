@@ -279,7 +279,7 @@ static void UpdateLayout(HWND hwnd) {
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     R_SIDEBAR=(RECT){R_VIDEO.right+gap,top,w-left,h-112};
-    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+72,R_SIDEBAR.right-14,R_SIDEBAR.top+104};
+    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+98};
     R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
     R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
@@ -304,12 +304,12 @@ static void UpdateLayout(HWND hwnd) {
     R_NEXT=(RECT){w/2+64,h-91,w/2+108,h-47};
     R_STOP=(RECT){w/2+126,h-91,w/2+170,h-47};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
-    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+34,R_SIDEBAR.right-14,R_SIDEBAR.top+66};
+    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32,R_SIDEBAR.right-14,R_SIDEBAR.top+62};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+116,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+148};
-    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+116,R_SIDEBAR.right-14,R_SIDEBAR.top+148};
-    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+152,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184};
-    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+152,R_SIDEBAR.right-14,R_SIDEBAR.top+184};
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+124,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+152};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+124,R_SIDEBAR.right-14,R_SIDEBAR.top+152};
+    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+156,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+156,R_SIDEBAR.right-14,R_SIDEBAR.top+184};
     R_SEARCH=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+214,R_SIDEBAR.right-14,R_SIDEBAR.top+250};
     R_TAB_QUEUE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+256,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-3,R_SIDEBAR.top+288};
     R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+3,R_SIDEBAR.top+256,R_SIDEBAR.right-14,R_SIDEBAR.top+288};
@@ -571,11 +571,11 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
-    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+88,R_SIDEBAR.right-17,R_SIDEBAR.top+108};
+    RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+100,R_SIDEBAR.right-17,R_SIDEBAR.top+120};
     Txt(dc,L"QUICK CONTROLS",toolsHead,RGB(133,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
-    const wchar_t *actionIcons[4]={L"⇄",L"↻",L"1×",L"◷"};
+    const wchar_t *actionIcons[4]={L"S",L"R",L"1x",L"..."};
     BOOL actionActive[4]={g_shuffle,g_repeat,g_playbackRate!=1.0f,FALSE};
     for(int ai=0;ai<4;ai++) {
         RECT ar=actions[ai];
@@ -593,7 +593,7 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
-    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+188,R_SIDEBAR.right-17,R_SIDEBAR.top+210};
+    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+190,R_SIDEBAR.right-17,R_SIDEBAR.top+212};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"PLAYBACK QUEUE",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
