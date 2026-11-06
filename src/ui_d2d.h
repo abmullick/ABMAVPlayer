@@ -36,6 +36,7 @@ void ABM_D2D_Destroy(ABM_D2D *ui);
 BOOL ABM_D2D_LoadImage(ABM_D2D *ui, const wchar_t *path);
 void ABM_D2D_ClearImage(ABM_D2D *ui);
 void ABM_D2D_DrawImage(ABM_D2D *ui, float l, float t, float r, float b);
+void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, float b, float opacity);
 
 /* Captures the Windows render mix for audio-reactive visualisation. */
 BOOL ABM_AudioVisualizer_Start(void);
