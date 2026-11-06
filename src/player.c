@@ -671,6 +671,14 @@ static void DrawUI(HDC dc,RECT client) {
         }
     }
 }
+/* The native renderer combo is a child HWND, so it always paints above
+   the parent's Direct2D menu. Hide it while the custom menu overlaps it. */
+static void SyncRendererComboVisibility(void) {
+    if (!g_renderers || !IsWindow(g_renderers)) return;
+    ShowWindow(g_renderers,
+        (!g_fullscreen && !g_menuOpen) ? SW_SHOWNA : SW_HIDE);
+}
+
 static void RefreshRendererList(void) {
     libvlc_renderer_item_t *previous=g_selectedRenderer;
     int restored=0;
@@ -1171,6 +1179,7 @@ static void ToggleFullscreen(HWND hwnd) {
        happens to match a previous layout. */
     g_videoBoundsValid = FALSE;
     UpdateLayout(hwnd);
+    SyncRendererComboVisibility();
 
     if (g_video && IsWindow(g_video)) {
         RECT vr = g_videoBounds;
@@ -1355,6 +1364,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
+            SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
             InvalidateRect(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
         }
@@ -1362,6 +1372,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            processing the click so the underlying control still responds. */
         if(g_menuOpen && !Inside(R_MENU_PANEL,x,y)) {
             g_menuOpen=FALSE;
+            SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;
             InvalidateRect(hwnd,&dirty,FALSE);
         }
@@ -1369,6 +1380,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
+                SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
                 else if(mi==2){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);}
@@ -1437,7 +1449,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
         if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
         if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
-        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
     case WM_RBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
