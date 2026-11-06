@@ -265,7 +265,7 @@ static void UpdateLayout(HWND hwnd) {
         R_PLAY=(RECT){w/2-34,h-101,w/2+34,h-33};
         R_NEXT=(RECT){w/2+126,h-94,w/2+174,h-46};
         R_STOP=(RECT){w/2+190,h-94,w/2+238,h-46};
-        R_VOLUME=(RECT){w-192,h-64,w-45,h-56};
+        R_VOLUME=(RECT){w-140,h-55,w-38,h-47};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
@@ -1091,35 +1091,91 @@ static void OverlayButton(HDC dc,RECT r,int kind,BOOL primary) {
     SelectObject(dc,oe);DeleteObject(g);
 }
 static void PaintFullscreenOverlay(HWND hwnd) {
-    PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT c;GetClientRect(hwnd,&c);
-    HBRUSH key=CreateSolidBrush(RGB(0,0,0));FillRect(dc,&c,key);DeleteObject(key);
-    SetBkMode(dc,TRANSPARENT);int w=c.right,h=c.bottom;
-    RECT dock={w/2-214,h-116,w/2+214,h-22};
-    HBRUSH b=CreateSolidBrush(RGB(24,26,30));HPEN e=CreatePen(PS_SOLID,1,RGB(69,73,80));
-    HBRUSH ob=(HBRUSH)SelectObject(dc,b);HPEN oe=(HPEN)SelectObject(dc,e);
-    RoundRect(dc,dock.left,dock.top,dock.right,dock.bottom,30,30);
-    SelectObject(dc,ob);SelectObject(dc,oe);DeleteObject(b);DeleteObject(e);
-    RECT tr={R_SEEK.left,R_SEEK.top-1,R_SEEK.right,R_SEEK.bottom+1};
-    b=CreateSolidBrush(RGB(84,88,94));FillRect(dc,&tr,b);DeleteObject(b);
-    int64_t len=g_player?libvlc_media_player_get_length(g_player):0,now=g_player?libvlc_media_player_get_time(g_player):0;
+    RECT wr;GetWindowRect(hwnd,&wr);
+    int w=wr.right-wr.left,h=wr.bottom-wr.top;
+    if(w<=0||h<=0)return;
+
+    BITMAPINFO bmi={0};
+    bmi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth=w;
+    bmi.bmiHeader.biHeight=-h; /* top-down 32-bit BGRA */
+    bmi.bmiHeader.biPlanes=1;
+    bmi.bmiHeader.biBitCount=32;
+    bmi.bmiHeader.biCompression=BI_RGB;
+    void *pixels=NULL;
+    HDC screen=GetDC(NULL),mem=CreateCompatibleDC(screen);
+    HBITMAP dib=CreateDIBSection(screen,&bmi,DIB_RGB_COLORS,&pixels,NULL,0);
+    if(!dib||!mem||!pixels){if(dib)DeleteObject(dib);if(mem)DeleteDC(mem);if(screen)ReleaseDC(NULL,screen);return;}
+    HBITMAP oldBmp=(HBITMAP)SelectObject(mem,dib);
+    RECT canvas={0,0,w,h};
+    HBRUSH black=CreateSolidBrush(RGB(0,0,0));FillRect(mem,&canvas,black);DeleteObject(black);
+    SetBkMode(mem,TRANSPARENT);
+    SetTextColor(mem,RGB(218,222,228));
+    HFONT font=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    HFONT oldFont=(HFONT)SelectObject(mem,font);
+
+    /* Timeline floats independently above the transport buttons. */
+    RECT tr={R_SEEK.left,h-54,R_SEEK.right,h-50};
+    HBRUSH track=CreateSolidBrush(RGB(82,87,94));FillRect(mem,&tr,track);DeleteObject(track);
+    int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
+    int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
     int pos=len>0?(int)(now*1000/len):0;if(pos<0)pos=0;if(pos>1000)pos=1000;
-    tr.right=tr.left+(tr.right-tr.left)*pos/1000;b=CreateSolidBrush(RGB(242,244,247));FillRect(dc,&tr,b);DeleteObject(b);
+    RECT progress=tr;progress.right=progress.left+(progress.right-progress.left)*pos/1000;
+    HBRUSH played=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&progress,played);DeleteObject(played);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
-    SetTextColor(dc,RGB(207,211,217));RECT et={R_SEEK.left,h-164,R_SEEK.left+70,h-147},tt={R_SEEK.right-70,h-164,R_SEEK.right,h-147};
-    DrawTextW(dc,elapsed,-1,&et,DT_LEFT|DT_SINGLELINE|DT_VCENTER);DrawTextW(dc,total,-1,&tt,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
-    OverlayButton(dc,R_PREV,4,FALSE);OverlayButton(dc,R_PLAY,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,TRUE);
-    OverlayButton(dc,R_NEXT,5,FALSE);OverlayButton(dc,R_STOP,3,FALSE);
-    RECT vol={w-274,h-91,w-28,h-30};b=CreateSolidBrush(RGB(24,26,30));e=CreatePen(PS_SOLID,1,RGB(69,73,80));
-    ob=(HBRUSH)SelectObject(dc,b);oe=(HPEN)SelectObject(dc,e);RoundRect(dc,vol.left,vol.top,vol.right,vol.bottom,20,20);
-    SelectObject(dc,ob);SelectObject(dc,oe);DeleteObject(b);DeleteObject(e);
-    SetTextColor(dc,RGB(180,185,193));RECT vl={vol.left+14,vol.top+5,vol.left+72,vol.bottom-5};DrawTextW(dc,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT vt={vol.left+82,vol.top+27,vol.right-17,vol.top+33};b=CreateSolidBrush(RGB(78,82,89));FillRect(dc,&vt,b);DeleteObject(b);
-    vt.right=vt.left+(vt.right-vt.left)*g_volume/100;b=CreateSolidBrush(RGB(241,243,246));FillRect(dc,&vt,b);DeleteObject(b);
-    EndPaint(hwnd,&ps);
+    RECT et={R_SEEK.left,h-76,R_SEEK.left+70,h-58};
+    RECT tt={R_SEEK.right-70,h-76,R_SEEK.right,h-58};
+    DrawTextW(mem,elapsed,-1,&et,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
+    DrawTextW(mem,total,-1,&tt,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
+
+    /* Each transport action is its own floating control: no dock or panel. */
+    RECT prev={w/2-112,h-48,w/2-64,h};
+    RECT play={w/2-30,h-54,w/2+30,h+6};
+    RECT next={w/2+64,h-48,w/2+112,h};
+    RECT stop={w/2+132,h-48,w/2+180,h};
+    OverlayButton(mem,prev,4,FALSE);
+    OverlayButton(mem,play,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,TRUE);
+    OverlayButton(mem,next,5,FALSE);
+    OverlayButton(mem,stop,3,FALSE);
+
+    /* Minimal volume label and slider; no enclosing rectangle. */
+    RECT vl={w-214,h-61,w-160,h-43};
+    SetTextColor(mem,RGB(202,207,214));
+    DrawTextW(mem,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT vt={w-148,h-54,w-38,h-50};
+    HBRUSH vtrack=CreateSolidBrush(RGB(86,91,98));FillRect(mem,&vt,vtrack);DeleteObject(vtrack);
+    int volume=g_volume;if(volume<0)volume=0;if(volume>100)volume=100;
+    RECT vf=vt;vf.right=vf.left+(vf.right-vf.left)*volume/100;
+    HBRUSH vfill=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&vf,vfill);DeleteObject(vfill);
+    int knobX=vf.right;
+    RECT knob={knobX-5,h-59,knobX+5,h-45};
+    HBRUSH kb=CreateSolidBrush(RGB(248,249,250));FillRect(mem,&knob,kb);DeleteObject(kb);
+
+    SelectObject(mem,oldFont);DeleteObject(font);
+
+    /* UpdateLayeredWindow requires premultiplied BGRA. Black canvas pixels
+       become fully transparent; only the actual controls retain alpha. */
+    DWORD *px=(DWORD*)pixels;
+    size_t count=(size_t)w*(size_t)h;
+    for(size_t i=0;i<count;i++){
+        BYTE blue=(BYTE)(px[i]&0xff),green=(BYTE)((px[i]>>8)&0xff),red=(BYTE)((px[i]>>16)&0xff);
+        BYTE maxc=red>green?red:green;if(blue>maxc)maxc=blue;
+        if(maxc==0){px[i]=0;continue;}
+        BYTE alpha=(maxc>220)?245:205;
+        blue=(BYTE)((blue*alpha+127)/255);
+        green=(BYTE)((green*alpha+127)/255);
+        red=(BYTE)((red*alpha+127)/255);
+        px[i]=((DWORD)alpha<<24)|((DWORD)red<<16)|((DWORD)green<<8)|blue;
+    }
+    POINT dst={wr.left,wr.top},src={0,0};SIZE size={w,h};
+    BLENDFUNCTION blend={AC_SRC_OVER,0,255,AC_SRC_ALPHA};
+    UpdateLayeredWindow(hwnd,screen,&dst,&size,mem,&src,0,&blend,ULW_ALPHA);
+    SelectObject(mem,oldBmp);DeleteObject(dib);DeleteDC(mem);ReleaseDC(NULL,screen);
 }
 static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     HWND owner=GetWindow(hwnd,GW_OWNER);
-    if(msg==WM_PAINT){PaintFullscreenOverlay(hwnd);return 0;}
+    if(msg==WM_PAINT){PAINTSTRUCT ps;BeginPaint(hwnd,&ps);EndPaint(hwnd,&ps);PaintFullscreenOverlay(hwnd);return 0;}
     if(msg==WM_MOUSEMOVE||msg==WM_LBUTTONDOWN||msg==WM_LBUTTONUP){
         POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};MapWindowPoints(hwnd,owner,&pt,1);
         SendMessageW(owner,msg,wp,MAKELPARAM(pt.x,pt.y));return 0;
@@ -1599,7 +1655,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!hwnd)return 1;
     g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
         L"ABMFullscreenOverlay",L"",WS_POPUP,0,0,1,1,hwnd,NULL,inst,NULL);
-    if(g_fullscreenOverlay)SetLayeredWindowAttributes(g_fullscreenOverlay,RGB(0,0,0),255,LWA_COLORKEY);
+    /* Per-pixel alpha is supplied by UpdateLayeredWindow; no colour-key
+       transparency, which would leave opaque rectangular control panels. */
     BOOL darkTitle=TRUE;
     DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&darkTitle,sizeof(darkTitle));
     ShowWindow(hwnd,show);UpdateWindow(hwnd);
