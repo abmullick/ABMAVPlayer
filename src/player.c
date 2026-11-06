@@ -80,6 +80,8 @@ static RECT g_videoBounds = {0,0,0,0};
 static BOOL g_videoBoundsValid = FALSE;
 static unsigned int g_videoGeometryPoll = 0;
 static int64_t g_lastUiTime = -1;
+static int64_t g_overlayLength = 0;
+static BOOL g_overlayPlaying = FALSE;
 static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
 static RECT R_ROW[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT;
@@ -994,7 +996,7 @@ static void PlayIndex(int index) {
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
-    g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_endHandled=FALSE;
+    g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
     PositionVideoWindow();
     AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
@@ -1289,8 +1291,9 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     /* Timeline floats independently above the transport buttons. */
     RECT tr={R_SEEK.left,h-112,R_SEEK.right,h-108};
     HBRUSH track=CreateSolidBrush(RGB(82,87,94));FillRect(mem,&tr,track);DeleteObject(track);
-    int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
-    int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
+    /* Keep the layered-window paint path independent of LibVLC locks. */
+    int64_t len=g_overlayLength;
+    int64_t now=g_lastUiTime>0?g_lastUiTime:0;
     int pos=len>0?(int)(now*1000/len):0;if(pos<0)pos=0;if(pos>1000)pos=1000;
     RECT progress=tr;progress.right=progress.left+(progress.right-progress.left)*pos/1000;
     HBRUSH played=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&progress,played);DeleteObject(played);
@@ -1306,7 +1309,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     RECT next={w/2+64,h-60,w/2+112,h-12};
     RECT stop={w/2+132,h-60,w/2+180,h-12};
     OverlayButton(mem,prev,4,FALSE);
-    OverlayButton(mem,play,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,TRUE);
+    OverlayButton(mem,play,g_overlayPlaying?2:1,TRUE);
     OverlayButton(mem,next,5,FALSE);
     OverlayButton(mem,stop,3,FALSE);
 
@@ -1567,8 +1570,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
                 SetCursor(NULL);
             }
-            if(g_fullscreenControlsVisible && g_fullscreenOverlay &&
-               (GetTickCount()%250u)<34u) InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+            /* No periodic layered-window repaint while video decoding is active. */
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
@@ -1636,6 +1638,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateRect(hwnd,&glow,FALSE);
         }
         if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
+            g_overlayPlaying=TRUE;
+        } else {
+            g_overlayPlaying=FALSE;
+        }
             RECT playDirty=R_PLAY;
             InflateRect(&playDirty,8,8);
             InvalidateRect(hwnd,&playDirty,FALSE);
