@@ -282,7 +282,7 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){g_drawerOpen?R_VIDEO.right+gap:w+20,top,g_drawerOpen?w-left:w+side+20,h-112};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66,R_SIDEBAR.right-14,R_SIDEBAR.top+98};
     R_MENU_BUTTON=(RECT){w-260,17,w-218,57};
-    R_DRAWER_BUTTON=(RECT){w-202,17,w-150,61};
+    R_DRAWER_BUTTON=(RECT){w-210,17,w-130,61};
     R_MENU_PANEL=(RECT){w-266,66,w-20,66+472};
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
@@ -449,9 +449,11 @@ static void DrawUI(HDC dc,RECT client) {
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT drawerBtn=R_DRAWER_BUTTON;
     Panel(dc,drawerBtn,g_drawerOpen?RGB(37,66,101):RGB(25,33,45),g_drawerOpen?RGB(80,145,218):RGB(52,68,88),13);
-    DrawLine(dc,drawerBtn.left+15,drawerBtn.top+14,drawerBtn.right-15,drawerBtn.top+14,RGB(220,235,252),2);
-    DrawLine(dc,drawerBtn.left+15,drawerBtn.top+22,drawerBtn.right-15,drawerBtn.top+22,RGB(220,235,252),2);
-    DrawLine(dc,drawerBtn.left+15,drawerBtn.top+30,drawerBtn.right-15,drawerBtn.top+30,RGB(220,235,252),2);
+    DrawLine(dc,drawerBtn.left+10,drawerBtn.top+14,drawerBtn.left+27,drawerBtn.top+14,RGB(220,235,252),2);
+    DrawLine(dc,drawerBtn.left+10,drawerBtn.top+22,drawerBtn.left+27,drawerBtn.top+22,RGB(220,235,252),2);
+    DrawLine(dc,drawerBtn.left+10,drawerBtn.top+30,drawerBtn.left+27,drawerBtn.top+30,RGB(220,235,252),2);
+    RECT drawerLabel={drawerBtn.left+32,drawerBtn.top+3,drawerBtn.right-5,drawerBtn.bottom-3};
+    Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT status={client.right-470,28,client.right-278,59};
     Panel(dc,status,RGB(31,33,36),RGB(59,62,67),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
@@ -1702,10 +1704,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
         if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
-        if(Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
-        if(Inside(R_SHUFFLE,x,y)){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(Inside(R_REPEAT,x,y)){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(Inside(R_SPEED,x,y)){
+        if(g_drawerOpen&&Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
+        if(g_drawerOpen&&Inside(R_SHUFFLE,x,y)){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&Inside(R_REPEAT,x,y)){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&Inside(R_SPEED,x,y)){
             if(g_playbackRate<0.99f)g_playbackRate=1.0f;
             else if(g_playbackRate<1.24f)g_playbackRate=1.25f;
             else if(g_playbackRate<1.49f)g_playbackRate=1.5f;
@@ -1714,9 +1716,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             libvlc_media_player_set_rate(g_player,g_playbackRate);
             SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;
         }
-        if(Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
-        if(Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        if(g_receiverPopup && Inside(R_RECEIVER_LIST,x,y)) {
+        if(g_drawerOpen&&Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&g_receiverPopup && Inside(R_RECEIVER_LIST,x,y)) {
             int item=(y-R_RECEIVER_LIST.top-3)/32;
             int count=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);
             if(item>=0&&item<count) {
