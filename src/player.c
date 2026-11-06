@@ -249,12 +249,15 @@ static void UpdateLayout(HWND hwnd) {
     for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+8,R_MENU_PANEL.top+6+i*35,R_MENU_PANEL.right-8,R_MENU_PANEL.top+40+i*35};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
-        R_VIDEO=(RECT){0,0,w,h};
-        R_SEEK=(RECT){72,h-132,w-72,h-126};
-        R_PREV=(RECT){w/2-116,h-83,w/2-72,h-39};
-        R_PLAY=(RECT){w/2-32,h-96,w/2+32,h-32};
-        R_NEXT=(RECT){w/2+72,h-83,w/2+116,h-39};
-        R_STOP=(RECT){w/2+136,h-83,w/2+180,h-39};
+        /* Keep a bottom control shelf outside the LibVLC child HWND.
+           A native video child cannot be overpainted by its parent window. */
+        R_VIDEO=(RECT){0,0,w,h-174};
+        R_SEEK=(RECT){72,h-145,w-72,h-141};
+        R_PREV=(RECT){w/2-116,h-88,w/2-72,h-44};
+        R_PLAY=(RECT){w/2-32,h-100,w/2+32,h-36};
+        R_NEXT=(RECT){w/2+72,h-88,w/2+116,h-44};
+        R_STOP=(RECT){w/2+136,h-88,w/2+180,h-44};
+        R_VOLUME=(RECT){w-230,h-76,w-72,h-68};
         PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
@@ -419,6 +422,16 @@ static void DrawUI(HDC dc,RECT client) {
         DrawIconButton(dc,R_PLAY,g_player&&libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,FALSE,TRUE);
         DrawIconButton(dc,R_NEXT,4,FALSE,FALSE);
         DrawIconButton(dc,R_STOP,3,FALSE,FALSE);
+        RECT volLabel={R_VOLUME.left-60,R_VOLUME.top-10,R_VOLUME.left-8,R_VOLUME.bottom+12};
+        Txt(dc,L"VOLUME",volLabel,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        RECT volTrack={R_VOLUME.left,R_VOLUME.top-2,R_VOLUME.right,R_VOLUME.bottom+2};
+        RoundBox(dc,volTrack,RGB(66,69,74),4);
+        RECT volFill=volTrack;
+        volFill.right=volFill.left+(volFill.right-volFill.left)*g_volume/100;
+        if(volFill.right>volFill.left)RoundBox(dc,volFill,RGB(239,241,244),4);
+        int volX=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
+        RECT volThumb={volX-6,R_VOLUME.top-7,volX+6,R_VOLUME.bottom+7};
+        RoundBox(dc,volThumb,RGB(246,247,248),7);
         }
         return;
     }
@@ -1087,6 +1100,15 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
         WPARAM wp, LPARAM lp, UINT_PTR subclassId, DWORD_PTR refData) {
     (void)subclassId;
     HWND owner = (HWND)refData;
+    if (msg == WM_MOUSEMOVE && IsWindow(owner) && g_fullscreen) {
+        POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
+        MapWindowPoints(video,owner,&pt,1);
+        SendMessageW(owner,WM_MOUSEMOVE,wp,MAKELPARAM(pt.x,pt.y));
+    }
+    if (msg == WM_SETCURSOR && g_fullscreen && !g_fullscreenControlsVisible) {
+        SetCursor(NULL);
+        return TRUE;
+    }
     if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) &&
         (wp == VK_ESCAPE || wp == VK_F11)) {
         /* LibVLC's child HWND can own keyboard focus. Route fullscreen
@@ -1310,7 +1332,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
             if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
             if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-            if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
+            if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);SetCapture(hwnd);return 0;}
+            if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12&&x>=R_VOLUME.left-8&&x<=R_VOLUME.right+8){
+                g_dragVolume=1;
+                int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);
+                if(v<0)v=0;if(v>100)v=100;
+                g_volume=v;libvlc_audio_set_volume(g_player,v);
+                InvalidateRect(hwnd,NULL,FALSE);SetCapture(hwnd);return 0;
+            }
             ReleaseCapture();return 0;
         }
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
