@@ -64,6 +64,10 @@ static wchar_t g_trackArtist[256]=L"";
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
+static unsigned int g_videoWidth = 0, g_videoHeight = 0;
+static RECT g_videoBounds = {0,0,0,0};
+static BOOL g_videoBoundsValid = FALSE;
+static unsigned int g_videoGeometryPoll = 0;
 static int64_t g_lastUiTime = -1;
 static RECT R_VIDEO, R_SIDEBAR, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
 static RECT R_ROW[MAX_PLAYLIST];
@@ -155,6 +159,50 @@ static void FormatTime(int ms,wchar_t *out,size_t n) {
     if(ms<0) ms=0; int sec=ms/1000;
     swprintf_s(out,n,L"%02d:%02d",sec/60,sec%60);
 }
+static void PositionVideoWindow(void) {
+    if (!g_video || !IsWindow(g_video)) return;
+
+    int areaW = R_VIDEO.right - R_VIDEO.left;
+    int areaH = R_VIDEO.bottom - R_VIDEO.top;
+    if (areaW <= 0 || areaH <= 0) return;
+
+    /* Fit the decoded video inside the available rectangle without stretching
+       or cropping. The parent paints the exposed letterbox area black. */
+    double aspect = (g_videoWidth > 0 && g_videoHeight > 0)
+        ? (double)g_videoWidth / (double)g_videoHeight : (16.0 / 9.0);
+    int videoW = areaW;
+    int videoH = (int)((double)videoW / aspect + 0.5);
+    if (videoH > areaH) {
+        videoH = areaH;
+        videoW = (int)((double)videoH * aspect + 0.5);
+    }
+    if (videoW < 1 || videoH < 1) return;
+
+    int x = R_VIDEO.left + (areaW - videoW) / 2;
+    int y = R_VIDEO.top + (areaH - videoH) / 2;
+    RECT next = {x, y, x + videoW, y + videoH};
+    if (!g_videoBoundsValid ||
+        next.left != g_videoBounds.left || next.top != g_videoBounds.top ||
+        next.right != g_videoBounds.right || next.bottom != g_videoBounds.bottom) {
+        SetWindowPos(g_video, NULL, x, y, videoW, videoH,
+            SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOREDRAW);
+        g_videoBounds = next;
+        g_videoBoundsValid = TRUE;
+        InvalidateRect(g_main, &R_VIDEO, FALSE);
+    }
+}
+static void RefreshVideoGeometry(void) {
+    if (!g_player || !g_hasMedia || g_selectedRenderer) return;
+    unsigned int width = 0, height = 0;
+    if (libvlc_video_get_size(g_player, 0, &width, &height) == 0 &&
+        width > 0 && height > 0 &&
+        (width != g_videoWidth || height != g_videoHeight)) {
+        g_videoWidth = width;
+        g_videoHeight = height;
+        g_videoBoundsValid = FALSE;
+        PositionVideoWindow();
+    }
+}
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
     int left=32,top=88,bottom=170,gap=24;
@@ -170,11 +218,11 @@ static void UpdateLayout(HWND hwnd) {
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
-        MoveWindow(g_video,0,0,w,h,TRUE);
+        PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
     }
-    MoveWindow(g_video,R_VIDEO.left,R_VIDEO.top,videoW,videoH,TRUE);
+    PositionVideoWindow();
     MoveWindow(g_renderers,R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right-R_RECEIVER.left,30,FALSE);
     R_SEEK=(RECT){left,h-126,w-left,h-120};
     R_PREV=(RECT){w/2-118,h-94,w/2-70,h-46};
@@ -273,6 +321,7 @@ static void DrawUI(HDC dc,RECT client) {
     int glow=(int)(18.0+10.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
     COLORREF edge=Blend(RGB(35,53,78),C_ACCENT,glow);
     Panel(dc,frame,RGB(8,11,16),edge,13);
+    Fill(dc,R_VIDEO,RGB(0,0,0));
     if(g_artworkLoaded) {
         ABM_D2D_DrawImage(&g_ui,(float)R_VIDEO.left+18,(float)R_VIDEO.top+18,(float)R_VIDEO.right-18,(float)R_VIDEO.bottom-18);
         RECT title={R_VIDEO.left+18,R_VIDEO.bottom-64,R_VIDEO.right-18,R_VIDEO.bottom-40};
@@ -603,7 +652,9 @@ static void PlayIndex(int index) {
     BeginArtworkParse(m);
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
+    g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_endHandled=FALSE;
+    PositionVideoWindow();
     AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
     InvalidateRect(g_main,NULL,FALSE);
@@ -941,6 +992,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else {g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);}
         }
         g_visualPulse=(g_visualPulse+1)%10000;
+        if ((++g_videoGeometryPoll % 5u) == 0u) RefreshVideoGeometry();
         BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer && !g_artworkLoaded && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
             if(!g_visualizerTried) { g_visualizerTried=TRUE; g_visualizerActive=ABM_AudioVisualizer_Start(); }
