@@ -1220,9 +1220,53 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=1000; mi->ptMinTrackSize.y=650; return 0; }
-    case WM_MEASUREITEM: if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){((LPMEASUREITEMSTRUCT)lp)->itemHeight=26;return TRUE;}break;
-    case WM_DRAWITEM: if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;Fill(d->hDC,d->rcItem,(d->itemState&ODS_SELECTED)?RGB(48,67,91):C_PANEL2);if(d->itemID!=(UINT)-1){wchar_t t[256];SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);RECT r=d->rcItem;r.left+=10;Txt(d->hDC,t,r,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}return TRUE;}break;
-    case WM_CTLCOLORLISTBOX:SetTextColor((HDC)wp,C_TEXT);SetBkColor((HDC)wp,C_PANEL2);return (LRESULT)g_comboBrush;
+    case WM_MEASUREITEM:
+        if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
+            ((LPMEASUREITEMSTRUCT)lp)->itemHeight=30;
+            return TRUE;
+        }
+        break;
+    case WM_DRAWITEM:
+        if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
+            LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;
+            HBRUSH bg=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(54,59,66):RGB(31,34,38));
+            FillRect(d->hDC,&d->rcItem,bg);
+            DeleteObject(bg);
+            if(d->itemID!=(UINT)-1){
+                wchar_t t[256]=L"";
+                SendMessageW(g_renderers,CB_GETLBTEXT,d->itemID,(LPARAM)t);
+                RECT textRect=d->rcItem;
+                textRect.left+=13;
+                textRect.right-=28;
+                SetBkMode(d->hDC,TRANSPARENT);
+                SetTextColor(d->hDC,RGB(235,238,242));
+                DrawTextW(d->hDC,t,-1,&textRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
+            /* Paint the closed combo's arrow well too; this path uses the
+               combo's own HDC, never the parent Direct2D render target. */
+            if(d->itemState&ODS_COMBOBOXEDIT){
+                RECT arrow=d->rcItem;
+                arrow.left=arrow.right-30;
+                HBRUSH well=CreateSolidBrush(RGB(39,42,47));
+                FillRect(d->hDC,&arrow,well);
+                DeleteObject(well);
+                HPEN pen=CreatePen(PS_SOLID,2,RGB(180,186,194));
+                HPEN oldPen=(HPEN)SelectObject(d->hDC,pen);
+                int cx=(arrow.left+arrow.right)/2,cy=(arrow.top+arrow.bottom)/2;
+                MoveToEx(d->hDC,cx-4,cy-2,NULL);
+                LineTo(d->hDC,cx,cy+2);
+                LineTo(d->hDC,cx+4,cy-2);
+                SelectObject(d->hDC,oldPen);
+                DeleteObject(pen);
+            }
+            if(d->itemState&ODS_FOCUS)DrawFocusRect(d->hDC,&d->rcItem);
+            return TRUE;
+        }
+        break;
+    case WM_CTLCOLORLISTBOX:
+        SetTextColor((HDC)wp,RGB(235,238,242));
+        SetBkColor((HDC)wp,RGB(31,34,38));
+        return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:{
         RefreshRendererList();
