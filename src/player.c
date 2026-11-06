@@ -273,7 +273,7 @@ static void UpdateLayout(HWND hwnd) {
         return;
     }
     PositionVideoWindow();
-    MoveWindow(g_renderers,R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right-R_RECEIVER.left,30,FALSE);
+    if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+42,h-145,w-left-42,h-141};
     R_PREV=(RECT){w/2-108,h-91,w/2-64,h-47};
     R_PLAY=(RECT){w/2-32,h-103,w/2+32,h-39};
@@ -567,17 +567,21 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"Discover devices",scanText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     RECT receiver={R_RECEIVER.left,R_RECEIVER.top,R_RECEIVER.right,R_RECEIVER.bottom};
-    Panel(dc,receiver,RGB(30,32,36),RGB(58,61,66),11);
-    RECT deviceIcon={receiver.left+11,receiver.top+8,receiver.left+29,receiver.bottom-8};
-    RoundBox(dc,deviceIcon,RGB(44,69,98),4);
-    DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,C_ACCENT,2);
+    /* Fully custom Direct2D output selector. */
+    COLORREF receiverFill=g_receiverPopup?RGB(42,45,50):RGB(30,32,36);
+    Panel(dc,receiver,receiverFill,g_receiverPopup?RGB(91,99,110):RGB(58,61,66),12);
+    RECT deviceIcon={receiver.left+12,receiver.top+7,receiver.left+34,receiver.bottom-7};
+    RoundBox(dc,deviceIcon,RGB(43,47,53),6);
+    DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,RGB(197,205,214),2);
+    DrawLine(dc,deviceIcon.left+4,deviceIcon.bottom-5,deviceIcon.right-4,deviceIcon.bottom-5,RGB(197,205,214),2);
     wchar_t deviceName[256]=L"Local playback";
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     if(sel>0)SendMessageW(g_renderers,CB_GETLBTEXT,sel,(LPARAM)deviceName);
-    RECT deviceText={receiver.left+38,receiver.top+2,receiver.right-28,receiver.bottom-2};
+    RECT deviceText={receiver.left+44,receiver.top+2,receiver.right-48,receiver.bottom-2};
     Txt(dc,deviceName,deviceText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    DrawLine(dc,receiver.right-19,receiver.top+12,receiver.right-15,receiver.top+17,C_MUTED,2);
-    DrawLine(dc,receiver.right-15,receiver.top+17,receiver.right-11,receiver.top+12,C_MUTED,2);
+    int arrowX=receiver.right-20,arrowY=(receiver.top+receiver.bottom)/2;
+    DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
+    DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+111,R_SIDEBAR.right-17,R_SIDEBAR.top+137};
     Txt(dc,L"UP NEXT",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -598,15 +602,16 @@ static void DrawUI(HDC dc,RECT client) {
     }
     if(g_receiverPopup) {
         int n=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);if(n>MAX_RENDERERS+1)n=MAX_RENDERERS+1;
-        R_RECEIVER_LIST=(RECT){receiver.left,receiver.bottom+5,receiver.right,receiver.bottom+5+n*32};
-        Panel(dc,R_RECEIVER_LIST,RGB(22,29,41),RGB(65,83,108),9);
-        for(int i=0;i<n;i++) {
-            RECT item={R_RECEIVER_LIST.left+5,R_RECEIVER_LIST.top+3+i*32,R_RECEIVER_LIST.right-5,R_RECEIVER_LIST.top+3+(i+1)*32};
-            if(i==sel)RoundBox(dc,item,RGB(39,66,101),6);
+        int rows=n>6?6:n;
+        R_RECEIVER_LIST=(RECT){receiver.left,receiver.bottom+7,receiver.right,receiver.bottom+7+rows*36};
+        Panel(dc,R_RECEIVER_LIST,RGB(27,29,32),RGB(62,66,72),13);
+        for(int i=0;i<rows;i++) {
+            RECT item={R_RECEIVER_LIST.left+6,R_RECEIVER_LIST.top+4+i*36,R_RECEIVER_LIST.right-6,R_RECEIVER_LIST.top+4+(i+1)*36};
+            if(i==sel)RoundBox(dc,item,RGB(53,57,64),8);
             wchar_t label[256]=L"";
             SendMessageW(g_renderers,CB_GETLBTEXT,i,(LPARAM)label);
-            RECT tx={item.left+10,item.top,item.right-8,item.bottom};
-            Txt(dc,label,tx,i==sel?C_TEXT:RGB(190,201,216),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT tx={item.left+13,item.top,item.right-12,item.bottom};
+            Txt(dc,label,tx,i==sel?RGB(248,249,250):RGB(202,207,214),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
     }
 
@@ -674,9 +679,8 @@ static void DrawUI(HDC dc,RECT client) {
 /* The native renderer combo is a child HWND, so it always paints above
    the parent's Direct2D menu. Hide it while the custom menu overlaps it. */
 static void SyncRendererComboVisibility(void) {
-    if (!g_renderers || !IsWindow(g_renderers)) return;
-    ShowWindow(g_renderers,
-        (!g_fullscreen && !g_menuOpen) ? SW_SHOWNA : SW_HIDE);
+    /* Hidden combo retained only as a data store for renderer selection. */
+    if (g_renderers && IsWindow(g_renderers)) ShowWindow(g_renderers,SW_HIDE);
 }
 
 static void RefreshRendererList(void) {
@@ -1207,9 +1211,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CREATE: {
         g_main=hwnd; LoadPersistentState(); if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
-        g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,0,0,250,220,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
+        /* Hidden item store; the visible selector and popup are Direct2D. */
+        g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-        SetWindowTheme(g_renderers,L"DarkMode_Explorer",NULL);
+        ShowWindow(g_renderers,SW_HIDE);
         libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
