@@ -1600,9 +1600,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if (g_artworkFade > 100) g_artworkFade = 100;
             InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
-        if ((++g_videoGeometryPoll % 5u) == 0u) RefreshVideoGeometry();
-        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_selectedRenderer &&
-            libvlc_media_player_has_vout(g_player)==0;
+        /* Fullscreen video geometry is already established for the active
+           output. Avoid extra synchronous LibVLC output queries on the UI
+           thread while fullscreen input and playback controls are active. */
+        if (!g_fullscreen && (++g_videoGeometryPoll % 5u) == 0u)
+            RefreshVideoGeometry();
+        BOOL audioOnlyLocal=!g_fullscreen && g_hasMedia && g_player &&
+            !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
             if(g_artworkLoaded) {
                 if(g_visualizerActive) ABM_AudioVisualizer_Stop();
@@ -1687,8 +1691,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_dragVolume=1;
                 int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);
                 if(v<0)v=0;if(v>100)v=100;
-                g_volume=v;libvlc_audio_set_volume(g_player,v);
-                InvalidateRect(hwnd,NULL,FALSE);SetCapture(hwnd);return 0;
+                if(v!=g_volume) {
+                    g_volume=v;
+                    libvlc_audio_set_volume(g_player,v);
+                    if(g_fullscreenOverlay)InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+                }
+                SetCapture(hwnd);return 0;
             }
             ReleaseCapture();return 0;
         }
@@ -1840,7 +1848,18 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateButton(g_hoverButton);
         }
         if(g_dragSeek)SeekAt(mx);
-        if(g_dragVolume){int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);}
+        if(g_dragVolume){
+            int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);
+            if(v<0)v=0;if(v>100)v=100;
+            if(v!=g_volume) {
+                g_volume=v;
+                libvlc_audio_set_volume(g_player,v);
+                if(g_fullscreen && g_fullscreenOverlay)
+                    InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
+                else
+                    InvalidateRect(hwnd,&R_VOLUME,FALSE);
+            }
+        }
         return 0;
     }
     case WM_SETCURSOR:
