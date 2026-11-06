@@ -283,11 +283,11 @@ static void UpdateLayout(HWND hwnd) {
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+18,R_SIDEBAR.right-14,R_SIDEBAR.top+54};
     R_VOLUME=(RECT){w-220,h-78,w-48,h-70};
-    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+112,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+150};
-    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+112,R_SIDEBAR.right-14,R_SIDEBAR.top+150};
-    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+158,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+196};
-    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+158,R_SIDEBAR.right-14,R_SIDEBAR.top+196};
-    int y=R_SIDEBAR.top+250;
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+132,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+168};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+132,R_SIDEBAR.right-14,R_SIDEBAR.top+168};
+    R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+174,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+210};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+174,R_SIDEBAR.right-14,R_SIDEBAR.top+210};
+    int y=R_SIDEBAR.top+260;
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_SIDEBAR.left+10,y+(i-g_playlistScroll)*48,R_SIDEBAR.right-10,y+(i-g_playlistScroll+1)*48};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -563,13 +563,13 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
-    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+207,R_SIDEBAR.right-17,R_SIDEBAR.top+233};
+    RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+220,R_SIDEBAR.right-17,R_SIDEBAR.top+246};
     Txt(dc,L"UP NEXT",listHead,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
     Txt(dc,count,countR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     DrawLine(dc,R_SIDEBAR.left+16,listHead.bottom+4,R_SIDEBAR.right-16,listHead.bottom+4,RGB(43,53,69),1);
-    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+250)-18)/48;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
+    int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+260)-18)/48;if(visible<0)visible=0;if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
     for(int i=g_playlistScroll;i<g_playlistCount&&i<g_playlistScroll+visible;i++) {
         RECT row=R_ROW[i];
             if(i==g_selected){RoundBox(dc,row,RGB(43,46,51),10);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,10.0f,RGB(68,72,78),0.75f);}
@@ -1501,7 +1501,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }return 0;
     case WM_MOUSEWHEEL: {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
-        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+250)-18)/48;
+        int visible=(R_SIDEBAR.bottom-(R_SIDEBAR.top+260)-18)/48;
         int maxScroll=g_playlistCount-visible;if(maxScroll<0)maxScroll=0;
         g_playlistScroll-=delta/WHEEL_DELTA;
         if(g_playlistScroll<0)g_playlistScroll=0;
