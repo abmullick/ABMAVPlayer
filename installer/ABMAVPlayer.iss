@@ -4,7 +4,7 @@
 #define MyAppExeName "ABMAVPlayer.exe"
 
 [Setup]
-AppId={{B4D81E1A-2D7C-4F4E-9D0A-ABM0A4B1C026}
+AppId={{B4D81E1A-2D7C-4F4E-9D0A-AB10A4B1C026}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
