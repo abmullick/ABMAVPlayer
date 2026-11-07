@@ -22,7 +22,8 @@ LibVLC handles media decoding and device output. This project owns the desktop i
 - Shuffle playback and repeat-current-track mode
 - Playback speed presets from 0.5x to 2.0x (right-click the video)
 - Audio-track selection, subtitle-track selection and external subtitle loading (right-click the video)
-- LibVLC equalizer presets (right-click the video)
+- LibVLC equalizer presets plus ABM 10-band graphic EQ curves (Flat, Bass boost, Vocal clarity, Treble boost)
+- Optional ReplayGain track normalisation and dynamic-range compressor for newly opened media
 - Basic media metadata dialog (title, artist, album and duration)
 - Keyboard shortcuts: Space, Left/Right, Home, N/P, +/- and F11
 - Dark custom Windows interface rendered with Direct2D and DirectWrite
@@ -63,7 +64,10 @@ If VLC is installed elsewhere, set VLC_DIR before running.
 - Playlist capacity is currently limited to 256 entries; no persistent media-library database yet.
 - No persistent media-library database or recent-history view yet.
 - No exclusive-mode / bit-perfect audio path yet.
-- No hardware-acceleration controls yet.
+- Hardware decoding now uses LibVLC automatic selection by default. Set `ABM_VLC_HW=none` to force software decoding, or `ABM_VLC_HW=d3d11va` to request D3D11VA when supported by the installed VLC build and GPU driver.
+- ABM EQ profiles use LibVLC's fixed 10-band graphic equalizer; a fully parametric EQ with adjustable centre frequency/Q and a true-peak brickwall limiter are not implemented yet.
+- ReplayGain requires suitable track metadata/tags. The compressor is a dynamic-range effect, not a guaranteed true-peak limiter; availability depends on the installed VLC compressor plugin.
+- The visualizer still captures the Windows default render mix, so audio from other applications may appear in it. Process-specific loopback capture is not implemented yet.
 - Codec availability and network-casting capabilities depend on the installed VLC build and its plugins.
 - For casting, allow ABM AV Player/VLC through Windows Defender Firewall on private networks and ensure multicast/mDNS discovery is not blocked.
 - Switching the output recreates the LibVLC media player and restarts the current playlist item; seek-position restoration and receiver compatibility should be tested with the target TV.
@@ -84,3 +88,4 @@ The application uses LibVLC's renderer-discovery and renderer-selection APIs. It
 4. Custom equalizer bands, audio-device selection and DSP beyond the current LibVLC presets
 5. Hardware-acceleration and aspect-ratio controls
 6. Chromecast session health, receiver-loss detection and automatic reconnection
+7. Parametric EQ controls, true-peak limiter, per-process visualizer capture and audio-device selection
