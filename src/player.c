@@ -909,7 +909,8 @@ static void SelectRenderer(void) {
        when changing the output so an already-playing item can move to the TV. */
     if(g_hasMedia&&g_current>=0&&g_current<g_playlistCount){
         int64_t resumeAt=g_useForcedResume?g_forcedResumeMs:libvlc_media_player_get_time(g_player);
-        BOOL wasPlaying=libvlc_media_player_get_state(g_player)==libvlc_Playing;
+        libvlc_state_t oldState=libvlc_media_player_get_state(g_player);
+        BOOL wasPlaying=g_useForcedResume || (oldState!=libvlc_Paused && oldState!=libvlc_Stopped && oldState!=libvlc_Ended && oldState!=libvlc_Error);
         if(resumeAt<0)resumeAt=0;
         libvlc_media_player_stop(g_player);
         libvlc_media_player_release(g_player);
