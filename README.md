@@ -50,7 +50,7 @@ All components must use the same architecture (x64). For casting, use a full VLC
 2. Extract the matching 64-bit LibVLC SDK, for example to C:\vlc-sdk.
 3. Open **x64 Native Tools Command Prompt for VS 2022**.
 4. Set the SDK path: set VLC_SDK=C:\vlc-sdk
-5. Run build.bat from the repository root. The build compiles `src\\player.c` and `src\\ui_d2d.c`, linking `d2d1.lib` and `dwrite.lib` from the Windows SDK.
+5. Run `build.bat` from the repository root. It compiles `src\\player.c`, `src\\ui_d2d.cpp` and `src\\audio_visualizer.cpp`, then links the Windows SDK and LibVLC libraries.
 
 The executable is written to build\ABMAVPlayer.exe.
 
