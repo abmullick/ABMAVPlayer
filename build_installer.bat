@@ -2,7 +2,13 @@
 setlocal EnableExtensions
 
 rem Check the standard 64-bit and 32-bit Inno Setup locations.
+set "ISCC=%ProgramFiles%\Inno Setup 7\ISCC.exe"
+if exist "%ISCC%" goto found_compiler
+
 set "ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe"
+if exist "%ISCC%" goto found_compiler
+
+set "ISCC=%ProgramFiles(x86)%\Inno Setup 7\ISCC.exe"
 if exist "%ISCC%" goto found_compiler
 
 set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
