@@ -65,6 +65,8 @@ static BOOL g_receiverLost=FALSE;
 static BOOL g_pendingResume=FALSE;
 static BOOL g_pendingResumePause=FALSE;
 static int64_t g_pendingResumeMs=0;
+static int64_t g_forcedResumeMs=0;
+static BOOL g_useForcedResume=FALSE;
 static unsigned int g_pendingResumeTicks=0;
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
@@ -906,7 +908,7 @@ static void SelectRenderer(void) {
     /* set_renderer only takes effect before play(). Recreate the media player
        when changing the output so an already-playing item can move to the TV. */
     if(g_hasMedia&&g_current>=0&&g_current<g_playlistCount){
-        int64_t resumeAt=libvlc_media_player_get_time(g_player);
+        int64_t resumeAt=g_useForcedResume?g_forcedResumeMs:libvlc_media_player_get_time(g_player);
         BOOL wasPlaying=libvlc_media_player_get_state(g_player)==libvlc_Playing;
         if(resumeAt<0)resumeAt=0;
         libvlc_media_player_stop(g_player);
@@ -1774,8 +1776,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_pendingResumePause)libvlc_media_player_set_pause(g_player,1);
                 g_pendingResume=FALSE;
             }else if(resumeState==libvlc_Error || resumeState==libvlc_Ended || ++g_pendingResumeTicks>90){
-                g_pendingResume=FALSE;
-                SetStatus(L"Could not restore the previous playback position");
+                if(g_selectedRenderer && g_hasMedia && resumeState!=libvlc_Ended){
+                    g_forcedResumeMs=g_pendingResumeMs;g_useForcedResume=TRUE;
+                    SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+                    g_pendingResume=FALSE;
+                    SelectRenderer();
+                    g_useForcedResume=FALSE;
+                    SetStatus(L"Cast connection did not recover; switched to local playback");
+                }else{
+                    g_pendingResume=FALSE;
+                    SetStatus(L"Could not restore the previous playback position");
+                }
             }
         }
         if(g_hasMedia&&!g_endHandled&&libvlc_media_player_get_state(g_player)==libvlc_Ended) {
