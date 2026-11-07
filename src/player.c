@@ -1034,10 +1034,15 @@ static void LoadAudioPreferences(void) {
     g_replayGain=GetPrivateProfileIntW(L"Audio",L"ReplayGain",1,path)!=0;
     g_compressor=GetPrivateProfileIntW(L"Audio",L"Compressor",0,path)!=0;
     g_eqProfile=GetPrivateProfileIntW(L"Audio",L"EqProfile",0,path);
-    if(g_eqProfile < -1 || g_eqProfile > 3)g_eqProfile=0;
+    if(!((g_eqProfile>=0&&g_eqProfile<=3)||(g_eqProfile>=10&&g_eqProfile<=19)))g_eqProfile=0;
 }
 static void ApplyEqProfile(void) {
-    if(!g_player || g_eqProfile<0)return;
+    if(!g_player)return;
+    if(g_eqProfile>=10&&g_eqProfile<=19){
+        libvlc_equalizer_t *preset=libvlc_audio_equalizer_new_from_preset(g_eqProfile-10);
+        if(preset){libvlc_audio_equalizer_set_preamp(preset,0.0f);libvlc_media_player_set_equalizer(g_player,preset);libvlc_audio_equalizer_release(preset);}
+        return;
+    }
     libvlc_equalizer_t *eq=libvlc_audio_equalizer_new();
     if(!eq)return;
     int n=libvlc_audio_equalizer_get_band_count();
@@ -1273,7 +1278,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==23004)g_repeat=!g_repeat;
     else if(cmd>=25000&&cmd<=25009){
         libvlc_equalizer_t *eqp=libvlc_audio_equalizer_new_from_preset(cmd-25000);
-        if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);g_eqProfile=-1;SaveAudioPreferences();}
+        if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);g_eqProfile=10+(cmd-25000);SaveAudioPreferences();}
     }
     DestroyMenu(menu);
     InvalidateRect(hwnd,NULL,FALSE);
