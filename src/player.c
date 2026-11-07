@@ -1769,6 +1769,22 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 InvalidateButton(HIT_NEXT);InvalidateButton(HIT_SCAN);
             }
         }
+        if(g_hasMedia && g_player && !g_pendingResume &&
+           libvlc_media_player_get_state(g_player)==libvlc_Error){
+            if(g_selectedRenderer){
+                int64_t failedAt=libvlc_media_player_get_time(g_player);
+                g_forcedResumeMs=failedAt>=0?failedAt:g_lastUiTime;
+                if(g_forcedResumeMs<0)g_forcedResumeMs=0;
+                g_useForcedResume=TRUE;
+                SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+                SelectRenderer();
+                g_useForcedResume=FALSE;
+                SetStatus(L"Cast playback failed; attempting local playback");
+            }else{
+                g_hasMedia=FALSE;g_endHandled=TRUE;ResetArtwork();
+                SetStatus(L"Playback failed. Check the media file and VLC codec plugins");
+            }
+        }
         if(g_pendingResume && g_player){
             libvlc_state_t resumeState=libvlc_media_player_get_state(g_player);
             if(resumeState==libvlc_Playing){
