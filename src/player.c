@@ -62,6 +62,10 @@ static wchar_t g_dataDir[PATH_CAP];
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
+static BOOL g_pendingResume=FALSE;
+static BOOL g_pendingResumePause=FALSE;
+static int64_t g_pendingResumeMs=0;
+static unsigned int g_pendingResumeTicks=0;
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_replayGain=TRUE;
@@ -886,6 +890,10 @@ static void StartDiscovery(void) {
         else {libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);libvlc_renderer_discoverer_release(d);}
     }
     libvlc_renderer_discoverer_list_release(services,n);
+    if(!g_discovererCount){
+        MessageBoxW(g_main,L"No network receiver discovery service could be started. Check the VLC renderer plugins and Windows Firewall.",APP_NAME,MB_ICONINFORMATION);
+        return;
+    }
     SetStatus(L"Searching for Google Cast and supported receivers");
 }
 static void SelectRenderer(void) {
@@ -900,30 +908,55 @@ static void SelectRenderer(void) {
     if(g_hasMedia&&g_current>=0&&g_current<g_playlistCount){
         int64_t resumeAt=libvlc_media_player_get_time(g_player);
         BOOL wasPlaying=libvlc_media_player_get_state(g_player)==libvlc_Playing;
+        if(resumeAt<0)resumeAt=0;
         libvlc_media_player_stop(g_player);
         libvlc_media_player_release(g_player);
         g_player=libvlc_media_player_new(g_vlc);
-        if(!g_player){g_hasMedia=FALSE;MessageBoxW(g_main,L"Could not recreate the media player.",APP_NAME,MB_ICONERROR);return;}
+        if(!g_player){g_hasMedia=FALSE;g_pendingResume=FALSE;MessageBoxW(g_main,L"Could not recreate the media player.",APP_NAME,MB_ICONERROR);return;}
         libvlc_media_player_set_hwnd(g_player,g_video);
         g_rendererApplied=FALSE;
-        if(g_selectedRenderer){
-            if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
-                MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);
-                return;
-            }
-            g_rendererApplied=TRUE;
-        }
+        if(g_selectedRenderer && libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
+            libvlc_renderer_item_release(g_selectedRenderer);
+            g_selectedRenderer=NULL;
+            SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+            SetStatus(L"Receiver setup failed; continuing with local playback");
+        } else if(g_selectedRenderer) g_rendererApplied=TRUE;
         char utf8[PATH_CAP*4];
         if(WideCharToMultiByte(CP_UTF8,0,g_playlist[g_current],-1,utf8,sizeof(utf8),NULL,NULL)>0){
             libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8);
             if(m){
                 if(g_replayGain)libvlc_media_add_option(m,":audio-replay-gain-mode=track");
                 if(g_compressor){libvlc_media_add_option(m,":audio-filter=compressor");libvlc_media_add_option(m,":compressor-threshold=-18");libvlc_media_add_option(m,":compressor-ratio=4");libvlc_media_add_option(m,":compressor-attack=20");libvlc_media_add_option(m,":compressor-release=250");libvlc_media_add_option(m,":compressor-makeup-gain=0");}
-                libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);ApplyEqProfile();
+                libvlc_media_player_set_media(g_player,m);ApplyEqProfile();
                 if(libvlc_media_player_play(g_player)==0){
-                    if(resumeAt>0)libvlc_media_player_set_time(g_player,resumeAt);
-                    if(!wasPlaying)libvlc_media_player_set_pause(g_player,1);
-                }else MessageBoxW(g_main,L"Playback could not restart on the selected output.",APP_NAME,MB_ICONERROR);
+                    g_pendingResume=TRUE;g_pendingResumeMs=resumeAt;
+                    g_pendingResumePause=!wasPlaying;g_pendingResumeTicks=0;
+                }else{
+                    g_pendingResume=FALSE;
+                    if(g_selectedRenderer){
+                        libvlc_media_player_stop(g_player);
+                        libvlc_media_player_release(g_player);
+                        libvlc_renderer_item_release(g_selectedRenderer);
+                        g_selectedRenderer=NULL;g_rendererApplied=FALSE;
+                        SendMessageW(g_renderers,CB_SETCURSEL,0,0);
+                        g_player=libvlc_media_player_new(g_vlc);
+                        if(g_player){
+                            libvlc_media_player_set_hwnd(g_player,g_video);
+                            libvlc_media_t *local=libvlc_media_new_path(g_vlc,utf8);
+                            if(local){
+                                if(g_replayGain)libvlc_media_add_option(local,":audio-replay-gain-mode=track");
+                                if(g_compressor){libvlc_media_add_option(local,":audio-filter=compressor");libvlc_media_add_option(local,":compressor-threshold=-18");libvlc_media_add_option(local,":compressor-ratio=4");libvlc_media_add_option(local,":compressor-attack=20");libvlc_media_add_option(local,":compressor-release=250");libvlc_media_add_option(local,":compressor-makeup-gain=0");}
+                                libvlc_media_player_set_media(g_player,local);libvlc_media_release(local);ApplyEqProfile();
+                                if(libvlc_media_player_play(g_player)==0){
+                                    g_pendingResume=TRUE;g_pendingResumeMs=resumeAt;
+                                    g_pendingResumePause=!wasPlaying;g_pendingResumeTicks=0;
+                                    SetStatus(L"Cast failed; resumed on this PC");
+                                }else{g_hasMedia=FALSE;MessageBoxW(g_main,L"Playback failed on the receiver and local output.",APP_NAME,MB_ICONERROR);}
+                            }else g_hasMedia=FALSE;
+                        }else g_hasMedia=FALSE;
+                    }else{g_hasMedia=FALSE;MessageBoxW(g_main,L"Playback could not restart on the selected output.",APP_NAME,MB_ICONERROR);}
+                }
+                libvlc_media_release(m);
             }
         }
     }
@@ -1059,6 +1092,13 @@ static void ApplyEqProfile(void) {
 }
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
+    DWORD attributes=GetFileAttributesW(g_playlist[index]);
+    if(attributes==INVALID_FILE_ATTRIBUTES || (attributes&FILE_ATTRIBUTE_DIRECTORY)){
+        wchar_t message[PATH_CAP+128];
+        swprintf_s(message,_countof(message),L"The selected media file is unavailable:\n%s",g_playlist[index]);
+        MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
+        return;
+    }
     char utf8[PATH_CAP*4]; int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[index],-1,utf8,sizeof(utf8),NULL,NULL); if(n<=0)return;
     libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8); if(!m){MessageBoxW(g_main,L"LibVLC could not open this file.",APP_NAME,MB_ICONERROR);return;}
     libvlc_media_player_stop(g_player);
@@ -1081,6 +1121,7 @@ static void PlayIndex(int index) {
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
+    g_pendingResume=FALSE;g_pendingResumeTicks=0;
     PositionVideoWindow();
     AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
@@ -1694,6 +1735,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 InvalidateButton(HIT_OPEN);InvalidateButton(HIT_PLAY);
                 InvalidateButton(HIT_STOP);InvalidateButton(HIT_PREV);
                 InvalidateButton(HIT_NEXT);InvalidateButton(HIT_SCAN);
+            }
+        }
+        if(g_pendingResume && g_player){
+            libvlc_state_t resumeState=libvlc_media_player_get_state(g_player);
+            if(resumeState==libvlc_Playing){
+                if(g_pendingResumeMs>0)libvlc_media_player_set_time(g_player,g_pendingResumeMs);
+                if(g_pendingResumePause)libvlc_media_player_set_pause(g_player,1);
+                g_pendingResume=FALSE;
+            }else if(resumeState==libvlc_Error || resumeState==libvlc_Ended || ++g_pendingResumeTicks>90){
+                g_pendingResume=FALSE;
+                SetStatus(L"Could not restore the previous playback position");
             }
         }
         if(g_hasMedia&&!g_endHandled&&libvlc_media_player_get_state(g_player)==libvlc_Ended) {
