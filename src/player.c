@@ -916,7 +916,10 @@ static void SelectRenderer(void) {
         char utf8[PATH_CAP*4];
         if(WideCharToMultiByte(CP_UTF8,0,g_playlist[g_current],-1,utf8,sizeof(utf8),NULL,NULL)>0){
             libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8);
-            if(m){libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
+            if(m){
+                if(g_replayGain)libvlc_media_add_option(m,":audio-replay-gain-mode=track");
+                if(g_compressor){libvlc_media_add_option(m,":audio-filter=compressor");libvlc_media_add_option(m,":compressor-threshold=-18");libvlc_media_add_option(m,":compressor-ratio=4");libvlc_media_add_option(m,":compressor-attack=20");libvlc_media_add_option(m,":compressor-release=250");libvlc_media_add_option(m,":compressor-makeup-gain=0");}
+                libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);ApplyEqProfile();
                 if(libvlc_media_player_play(g_player)==0){
                     if(resumeAt>0)libvlc_media_player_set_time(g_player,resumeAt);
                     if(!wasPlaying)libvlc_media_player_set_pause(g_player,1);
@@ -1031,10 +1034,10 @@ static void LoadAudioPreferences(void) {
     g_replayGain=GetPrivateProfileIntW(L"Audio",L"ReplayGain",1,path)!=0;
     g_compressor=GetPrivateProfileIntW(L"Audio",L"Compressor",0,path)!=0;
     g_eqProfile=GetPrivateProfileIntW(L"Audio",L"EqProfile",0,path);
-    if(g_eqProfile<0||g_eqProfile>3)g_eqProfile=0;
+    if(g_eqProfile < -1 || g_eqProfile > 3)g_eqProfile=0;
 }
 static void ApplyEqProfile(void) {
-    if(!g_player)return;
+    if(!g_player || g_eqProfile<0)return;
     libvlc_equalizer_t *eq=libvlc_audio_equalizer_new();
     if(!eq)return;
     int n=libvlc_audio_equalizer_get_band_count();
@@ -1270,7 +1273,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==23004)g_repeat=!g_repeat;
     else if(cmd>=25000&&cmd<=25009){
         libvlc_equalizer_t *eqp=libvlc_audio_equalizer_new_from_preset(cmd-25000);
-        if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);}
+        if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);g_eqProfile=-1;SaveAudioPreferences();}
     }
     DestroyMenu(menu);
     InvalidateRect(hwnd,NULL,FALSE);
