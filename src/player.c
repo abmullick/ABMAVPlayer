@@ -1986,8 +1986,15 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
             _wputenv_s(L"VLC_DATA_PATH",appDir);
         }
     }
-    /* Diagnostic mode: disable hardware decoding to isolate GPU/video-output hangs. */
-    const char *args[]={"--no-video-title-show","--quiet","--avcodec-hw=none"};g_vlc=libvlc_new(3,args);
+    /* Hardware decoding defaults to LibVLC automatic selection. Override with
+       ABM_VLC_HW=none for software-only troubleshooting or d3d11va to request D3D11VA. */
+    const char *args[4]={"--no-video-title-show","--quiet",NULL,NULL};
+    int argCount=2;
+    wchar_t hwMode[32]=L"";
+    GetEnvironmentVariableW(L"ABM_VLC_HW",hwMode,(DWORD)_countof(hwMode));
+    if(!_wcsicmp(hwMode,L"none"))args[argCount++]="--avcodec-hw=none";
+    else if(!_wcsicmp(hwMode,L"d3d11va"))args[argCount++]="--avcodec-hw=d3d11va";
+    g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;
