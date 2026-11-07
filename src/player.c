@@ -64,6 +64,9 @@ static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
+static BOOL g_replayGain=TRUE;
+static BOOL g_compressor=FALSE;
+static int g_eqProfile=0;
 static libvlc_media_t *g_artMedia=NULL;
 static volatile LONG g_artworkGeneration=0;
 static BOOL g_artworkLoaded=FALSE;
@@ -122,6 +125,8 @@ static COLORREF C_ACCENT = RGB(232,235,239);
 static COLORREF C_LINE = RGB(53,57,62);
 
 static void PlayIndex(int index);
+static void SaveAudioPreferences(void);
+static void ApplyEqProfile(void);
 static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque);
 static BOOL EnsureDataDirectory(void);
 static COLORREF Blend(COLORREF a,COLORREF b,int amount);
@@ -1008,6 +1013,42 @@ static void AddRecent(const wchar_t *path) {
     wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();
 }
 
+static void SaveAudioPreferences(void) {
+    if(!EnsureDataDirectory())return;
+    wchar_t path[PATH_CAP],value[24];
+    swprintf_s(path,PATH_CAP,L"%s\\audio.ini",g_dataDir);
+    swprintf_s(value,24,L"%d",g_replayGain?1:0);
+    WritePrivateProfileStringW(L"Audio",L"ReplayGain",value,path);
+    swprintf_s(value,24,L"%d",g_compressor?1:0);
+    WritePrivateProfileStringW(L"Audio",L"Compressor",value,path);
+    swprintf_s(value,24,L"%d",g_eqProfile);
+    WritePrivateProfileStringW(L"Audio",L"EqProfile",value,path);
+}
+static void LoadAudioPreferences(void) {
+    if(!EnsureDataDirectory())return;
+    wchar_t path[PATH_CAP];
+    swprintf_s(path,PATH_CAP,L"%s\\audio.ini",g_dataDir);
+    g_replayGain=GetPrivateProfileIntW(L"Audio",L"ReplayGain",1,path)!=0;
+    g_compressor=GetPrivateProfileIntW(L"Audio",L"Compressor",0,path)!=0;
+    g_eqProfile=GetPrivateProfileIntW(L"Audio",L"EqProfile",0,path);
+    if(g_eqProfile<0||g_eqProfile>3)g_eqProfile=0;
+}
+static void ApplyEqProfile(void) {
+    if(!g_player)return;
+    libvlc_equalizer_t *eq=libvlc_audio_equalizer_new();
+    if(!eq)return;
+    int n=libvlc_audio_equalizer_get_band_count();
+    for(int i=0;i<n;i++){
+        float gain=0.0f;
+        if(g_eqProfile==1){static const float v[10]={5,4,3,2,1,0,0,0,0,0};gain=v[i<10?i:9];}
+        else if(g_eqProfile==2){static const float v[10]={-2,-1,0,2,3,3,2,1,0,-1};gain=v[i<10?i:9];}
+        else if(g_eqProfile==3){static const float v[10]={0,0,0,0,1,2,3,4,5,5};gain=v[i<10?i:9];}
+        libvlc_audio_equalizer_set_amp_at_index(eq,gain,(unsigned)i);
+    }
+    libvlc_audio_equalizer_set_preamp(eq,0.0f);
+    libvlc_media_player_set_equalizer(g_player,eq);
+    libvlc_audio_equalizer_release(eq);
+}
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
     char utf8[PATH_CAP*4]; int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[index],-1,utf8,sizeof(utf8),NULL,NULL); if(n<=0)return;
@@ -1017,8 +1058,18 @@ static void PlayIndex(int index) {
         if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){libvlc_media_release(m);MessageBoxW(g_main,L"Could not select the network receiver.",APP_NAME,MB_ICONERROR);return;}
         g_rendererApplied=TRUE;
     }
+    if(g_replayGain)libvlc_media_add_option(m,":audio-replay-gain-mode=track");
+    if(g_compressor){
+        libvlc_media_add_option(m,":audio-filter=compressor");
+        libvlc_media_add_option(m,":compressor-threshold=-18");
+        libvlc_media_add_option(m,":compressor-ratio=4");
+        libvlc_media_add_option(m,":compressor-attack=20");
+        libvlc_media_add_option(m,":compressor-release=250");
+        libvlc_media_add_option(m,":compressor-makeup-gain=0");
+    }
     BeginArtworkParse(m);
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
+    ApplyEqProfile();
     if(libvlc_media_player_play(g_player)!=0){MessageBoxW(g_main,L"Playback could not start. Check the VLC plugins.",APP_NAME,MB_ICONERROR);return;}
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
@@ -1171,6 +1222,14 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     AppendMenuW(eq,MF_STRING,25008,L"Live");
     AppendMenuW(eq,MF_STRING,25009,L"Rock");
     AppendMenuW(menu,MF_POPUP,(UINT_PTR)eq,L"Equalizer presets");
+    HMENU profiles=CreatePopupMenu();
+    AppendMenuW(profiles,MF_STRING|(g_eqProfile==0?MF_CHECKED:0),25100,L"Flat");
+    AppendMenuW(profiles,MF_STRING|(g_eqProfile==1?MF_CHECKED:0),25101,L"Bass boost");
+    AppendMenuW(profiles,MF_STRING|(g_eqProfile==2?MF_CHECKED:0),25102,L"Vocal clarity");
+    AppendMenuW(profiles,MF_STRING|(g_eqProfile==3?MF_CHECKED:0),25103,L"Treble boost");
+    AppendMenuW(menu,MF_POPUP,(UINT_PTR)profiles,L"ABM graphic EQ");
+    AppendMenuW(menu,MF_STRING|(g_replayGain?MF_CHECKED:0),23005,L"ReplayGain track normalisation");
+    AppendMenuW(menu,MF_STRING|(g_compressor?MF_CHECKED:0),23006,L"Dynamic-range compressor (next track)");
     AppendMenuW(menu,MF_SEPARATOR,0,NULL);
     AppendMenuW(menu,MF_STRING,23002,L"Media information...");
     AppendMenuW(menu,MF_STRING|(g_shuffle?MF_CHECKED:0),23003,L"Shuffle");
@@ -1204,7 +1263,10 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
             libvlc_media_release(m);
         } else wcscpy_s(info,2048,L"Media information is not available yet.");
         MessageBoxW(hwnd,info,L"Media information - ABM AV Player",MB_OK|MB_ICONINFORMATION);
-    } else if(cmd==23003)g_shuffle=!g_shuffle;
+    } else if(cmd==23005){g_replayGain=!g_replayGain;SaveAudioPreferences();}
+    else if(cmd==23006){g_compressor=!g_compressor;SaveAudioPreferences();}
+    else if(cmd>=25100&&cmd<=25103){g_eqProfile=cmd-25100;ApplyEqProfile();SaveAudioPreferences();}
+    else if(cmd==23003)g_shuffle=!g_shuffle;
     else if(cmd==23004)g_repeat=!g_repeat;
     else if(cmd>=25000&&cmd<=25009){
         libvlc_equalizer_t *eqp=libvlc_audio_equalizer_new_from_preset(cmd-25000);
@@ -1489,7 +1551,7 @@ static void ToggleFullscreen(HWND hwnd) {
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        g_main=hwnd; LoadPersistentState(); if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
