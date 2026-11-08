@@ -619,7 +619,6 @@ static void DrawUI(HDC dc,RECT client) {
         int leftX=R_VIDEO.left+areaW/10;
         int textW=areaW*48/100;
         int topY=cy-112;
-        RECT eyebrow={leftX,topY,leftX+textW,topY+25};
         RECT eyebrowPill={leftX,topY+5,leftX+8,topY+13};
         RoundBox(dc,eyebrowPill,RGB(75,211,190),4);
         Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},RGB(120,190,206),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
