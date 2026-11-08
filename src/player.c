@@ -1139,8 +1139,12 @@ static void StartDiscovery(void) {
 
     wchar_t available[256]=L"", started[256]=L"", failed[256]=L"";
     unsigned int failedCount=0;
+    BOOL hasMdnsRenderer=FALSE;
+    BOOL mdnsRendererStarted=FALSE;
     for(size_t i=0;i<n && g_discovererCount<MAX_DISCOVERERS;i++){
         const char *serviceName=services[i]->psz_name;
+        if(serviceName && _stricmp(serviceName,"microdns_renderer")==0)
+            hasMdnsRenderer=TRUE;
         wchar_t name[64]=L"(unnamed)";
         if(serviceName)MultiByteToWideChar(CP_UTF8,0,serviceName,-1,name,_countof(name));
         if(name[0] && wcslen(available)<170){
@@ -1163,6 +1167,8 @@ static void StartDiscovery(void) {
         BOOL delAttached=(libvlc_event_attach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL)==0);
         if(addAttached && delAttached && libvlc_renderer_discoverer_start(d)==0){
             g_discoverers[g_discovererCount++]=d;
+            if(serviceName && _stricmp(serviceName,"microdns_renderer")==0)
+                mdnsRendererStarted=TRUE;
             if(wcslen(started)+wcslen(name)+3<_countof(started)){
                 if(started[0])wcscat_s(started,_countof(started),L", ");
                 wcscat_s(started,_countof(started),name);
@@ -1181,10 +1187,16 @@ static void StartDiscovery(void) {
     libvlc_renderer_discoverer_list_release(services,n);
 
     if(!g_discovererCount){
-        wchar_t message[768];
-        swprintf_s(message,_countof(message),
-            L"No renderer-discovery service could be started.\n\nAvailable services: %s\nFailed services: %s\n\nCheck that the matching VLC services_discovery plugins and dependent DLLs are installed.",
-            available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
+        wchar_t message[900];
+        if(!hasMdnsRenderer){
+            swprintf_s(message,_countof(message),
+                L"Google Cast discovery is unavailable because LibVLC did not expose its mDNS renderer service (microdns_renderer).\n\nInstall a 64-bit VLC runtime that includes the services_discovery\\libmicrodns plugin, then rebuild the installer.\n\nAvailable services: %s",
+                available[0]?available:L"(none)");
+        }else{
+            swprintf_s(message,_countof(message),
+                L"No renderer-discovery service could be started.\n\nAvailable services: %s\nFailed services: %s\n\nCheck the VLC plugin dependencies and Windows network permissions.",
+                available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
+        }
         SetStatus(L"Receiver discovery could not start");
         MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
@@ -1193,10 +1205,14 @@ static void StartDiscovery(void) {
     g_discoveryStartedTick=GetTickCount();
     g_discoveryTimedOut=FALSE;
     wchar_t status[512];
-    if(failedCount)
-        swprintf_s(status,_countof(status),L"Searching: %s | %u service(s) failed to start",started[0]?started:L"VLC discovery",failedCount);
+    if(!hasMdnsRenderer)
+        swprintf_s(status,_countof(status),L"Searching with %s; Google Cast mDNS service is missing",started[0]?started:L"VLC discovery");
+    else if(!mdnsRendererStarted)
+        swprintf_s(status,_countof(status),L"Searching with %s; Google Cast service failed to start",started[0]?started:L"VLC discovery");
+    else if(failedCount)
+        swprintf_s(status,_countof(status),L"Searching for Google Cast and other receivers | %u service(s) failed",failedCount);
     else
-        swprintf_s(status,_countof(status),L"Searching for receivers: %s",started[0]?started:L"VLC discovery");
+        swprintf_s(status,_countof(status),L"Searching for Google Cast and network receivers...");
     SetStatus(status);
 }
 static void SelectRenderer(void) {
