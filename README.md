@@ -11,6 +11,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 - [User Guide](USER_GUIDE.md): Getting started, playback, playlists, audio processing, subtitles, casting, shortcuts and troubleshooting.
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
+- [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 
 ## Features
