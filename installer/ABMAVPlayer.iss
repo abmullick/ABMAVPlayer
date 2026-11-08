@@ -18,6 +18,7 @@ PrivilegesRequired=admin
 OutputDir=..\dist
 OutputBaseFilename=ABM-AV-Player-Setup
 UninstallDisplayIcon={app}\{#MyAppExeName}
+SetupIconFile=..\assets\abm_av_player.ico
 WizardStyle=modern
 Compression=lzma2/ultra64
 SolidCompression=yes
