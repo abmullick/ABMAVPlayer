@@ -2191,10 +2191,19 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
             _wputenv_s(L"VLC_DATA_PATH",appDir);
         }
     }
+    /* Pass the bundled plugin directory explicitly as well as through the
+       environment. This is important for installed copies that must not depend
+       on a separate system-wide VLC installation or its registry settings. */
+    char pluginArg[PATH_CAP*4+32]={0};
+    char pluginUtf8[PATH_CAP*4]={0};
+    if(pluginDir[0] && WideCharToMultiByte(CP_UTF8,0,pluginDir,-1,pluginUtf8,(int)sizeof(pluginUtf8),NULL,NULL)>0)
+        snprintf(pluginArg,sizeof(pluginArg),"--plugin-path=%s",pluginUtf8);
+
     /* Hardware decoding defaults to LibVLC automatic selection. Override with
        ABM_VLC_HW=none for software-only troubleshooting or d3d11va to request D3D11VA. */
-    const char *args[4]={"--no-video-title-show","--quiet",NULL,NULL};
+    const char *args[5]={"--no-video-title-show","--quiet",NULL,NULL,NULL};
     int argCount=2;
+    if(pluginArg[0])args[argCount++]=pluginArg;
     wchar_t hwMode[32]=L"";
     GetEnvironmentVariableW(L"ABM_VLC_HW",hwMode,(DWORD)_countof(hwMode));
     if(!_wcsicmp(hwMode,L"none"))args[argCount++]="--avcodec-hw=none";
