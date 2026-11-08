@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <wchar.h>
 #include <string.h>
+#include <strsafe.h>
 #include <stdlib.h>
 #include <shlobj.h>
 #include <urlmon.h>
@@ -2170,15 +2171,46 @@ static void ShowEqualizer(void) {
 
 static HBITMAP g_aboutPortrait = NULL;
 
+static HBITMAP LoadAboutPortrait(void) {
+    wchar_t exePath[MAX_PATH], candidate[MAX_PATH];
+    DWORD n=GetModuleFileNameW(NULL,exePath,MAX_PATH);
+    if(!n || n>=MAX_PATH) return NULL;
+
+    wchar_t *slash=wcsrchr(exePath,L'\\');
+    if(!slash) return NULL;
+    *slash=0;
+
+    if(SUCCEEDED(StringCchPrintfW(candidate,MAX_PATH,L"%s\\assets\\owner_portrait.bmp",exePath))) {
+        HBITMAP bmp=(HBITMAP)LoadImageW(NULL,candidate,IMAGE_BITMAP,0,0,LR_LOADFROMFILE|LR_CREATEDIBSECTION);
+        if(bmp) return bmp;
+    }
+
+    /* When launched from the build\\ directory, the asset lives one level up. */
+    slash=wcsrchr(exePath,L'\\');
+    if(slash && slash>exePath) {
+        *slash=0;
+        if(SUCCEEDED(StringCchPrintfW(candidate,MAX_PATH,L"%s\\assets\\owner_portrait.bmp",exePath))) {
+            HBITMAP bmp=(HBITMAP)LoadImageW(NULL,candidate,IMAGE_BITMAP,0,0,LR_LOADFROMFILE|LR_CREATEDIBSECTION);
+            if(bmp) return bmp;
+        }
+    }
+
+    /* Also support launching from the repository root with a relative working directory. */
+    DWORD cwd=GetCurrentDirectoryW(MAX_PATH,candidate);
+    if(cwd && cwd<MAX_PATH) {
+        wchar_t path[MAX_PATH];
+        if(SUCCEEDED(StringCchPrintfW(path,MAX_PATH,L"%s\\assets\\owner_portrait.bmp",candidate))) {
+            HBITMAP bmp=(HBITMAP)LoadImageW(NULL,path,IMAGE_BITMAP,0,0,LR_LOADFROMFILE|LR_CREATEDIBSECTION);
+            if(bmp) return bmp;
+        }
+    }
+    return NULL;
+}
+
 static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        wchar_t path[MAX_PATH];
-        GetModuleFileNameW(NULL,path,MAX_PATH);
-        wchar_t *slash=wcsrchr(path,L'\\');
-        if(slash) *(slash+1)=0;
-        wcscat_s(path,MAX_PATH,L"assets\\owner_portrait.bmp");
-        g_aboutPortrait=(HBITMAP)LoadImageW(NULL,path,IMAGE_BITMAP,0,0,LR_LOADFROMFILE|LR_CREATEDIBSECTION);
+        g_aboutPortrait=LoadAboutPortrait();
         return 0;
     }
     case WM_PAINT: {
