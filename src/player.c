@@ -126,13 +126,13 @@ static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_M
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
-static COLORREF C_BG = RGB(10,13,20);
-static COLORREF C_PANEL = RGB(18,23,34);
-static COLORREF C_PANEL2 = RGB(25,33,48);
-static COLORREF C_TEXT = RGB(242,246,255);
-static COLORREF C_MUTED = RGB(144,157,179);
-static COLORREF C_ACCENT = RGB(91,160,255);
-static COLORREF C_LINE = RGB(42,54,73);
+static COLORREF C_BG = RGB(7,10,17);
+static COLORREF C_PANEL = RGB(13,19,30);
+static COLORREF C_PANEL2 = RGB(20,29,44);
+static COLORREF C_TEXT = RGB(244,247,252);
+static COLORREF C_MUTED = RGB(139,153,174);
+static COLORREF C_ACCENT = RGB(76,202,218);
+static COLORREF C_LINE = RGB(35,48,67);
 
 static void PlayIndex(int index);
 static void SaveAudioPreferences(void);
@@ -499,20 +499,20 @@ static void DrawUI(HDC dc,RECT client) {
     }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,96};
-    GradientRect(dc,header,RGB(13,21,35),RGB(10,14,23));
-    Fill(dc,(RECT){0,95,client.right,96},RGB(43,45,49));
+    GradientRect(dc,header,RGB(11,22,37),RGB(7,12,22));
+    Fill(dc,(RECT){0,95,client.right,96},RGB(26,39,57));
     /* A restrained moving light sweep gives the top bar a little life without
        competing with the video or increasing the media-rendering workload. */
-    Fill(dc,(RECT){0,92,client.right,95},RGB(23,31,43));
+    Fill(dc,(RECT){0,92,client.right,95},RGB(17,29,43));
     int sweepWidth=156;
     int sweepX=(int)((g_visualPulse*3u)%(unsigned int)(client.right+sweepWidth))-sweepWidth;
     RECT sweep={sweepX,92,sweepX+sweepWidth,95};
-    GradientRect(dc,sweep,RGB(36,118,166),RGB(91,83,190));
+    GradientRect(dc,sweep,RGB(45,191,207),RGB(125,91,226));
     /* Signature mark: a luminous A-monogram fused with a play glyph. */
     RECT logoHalo={24,9,96,81};
-    Panel(dc,logoHalo,RGB(17,29,49),RGB(64,125,190),22);
+    Panel(dc,logoHalo,RGB(13,28,45),RGB(63,151,180),22);
     RECT logo={31,16,89,74};
-    GradientRound(dc,logo,RGB(27,164,207),RGB(111,82,224),17);
+    GradientRound(dc,logo,RGB(28,177,195),RGB(105,83,225),17);
     RECT logoInset={35,20,85,70};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
         (float)logoInset.right,(float)logoInset.bottom,14.0f,RGB(190,229,255),0.8f);
@@ -530,13 +530,13 @@ static void DrawUI(HDC dc,RECT client) {
     RECT brandSuffix={180,20,390,48};
     Txt(dc,L"AV  PLAYER",brandSuffix,RGB(130,190,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={112,51,294,53};
-    GradientRect(dc,brandRule,RGB(43,188,224),RGB(125,101,237));
+    GradientRect(dc,brandRule,RGB(54,205,209),RGB(139,105,241));
     RECT sub={112,57,540,80};
-    Txt(dc,L"IMMERSIVE AUDIO  •  VIDEO",sub,RGB(165,184,208),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"IMMERSIVE AUDIO   ·   VIDEO",sub,RGB(157,177,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
-    RoundBox(dc,menuBtn,g_menuOpen?RGB(34,76,125):Blend(RGB(19,31,49),RGB(38,58,84),menuHot?g_hoverLevel:0),13);
+    RoundBox(dc,menuBtn,g_menuOpen?RGB(28,75,91):Blend(RGB(15,27,43),RGB(29,53,70),menuHot?g_hoverLevel:0),13);
     ABM_D2D_StrokeRound(&g_ui,(float)menuBtn.left,(float)menuBtn.top,(float)menuBtn.right,(float)menuBtn.bottom,13.0f,menuHot?RGB(84,147,218):RGB(46,69,99),1.0f);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT drawerBtn=R_DRAWER_BUTTON;
@@ -547,7 +547,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
     Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT status={client.right-470,28,client.right-278,59};
-    Panel(dc,status,RGB(17,30,47),RGB(55,91,137),16);
+    Panel(dc,status,RGB(13,25,40),RGB(49,105,126),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
     Txt(dc,g_statusText[0]?g_statusText:(g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER"),statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -555,9 +555,9 @@ static void DrawUI(HDC dc,RECT client) {
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
     int glow=(int)(18.0+10.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
-    COLORREF edge=Blend(RGB(35,53,78),C_ACCENT,glow);
-    Panel(dc,frame,RGB(8,11,16),edge,13);
-    Fill(dc,R_VIDEO,RGB(0,0,0));
+    COLORREF edge=Blend(RGB(29,49,67),RGB(67,195,207),glow);
+    Panel(dc,frame,RGB(7,11,18),edge,16);
+    GradientRect(dc,R_VIDEO,RGB(8,17,29),RGB(5,9,17));
     if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
@@ -602,18 +602,24 @@ static void DrawUI(HDC dc,RECT client) {
         int cx=(R_VIDEO.left+R_VIDEO.right)/2;
         int cy=(R_VIDEO.top+R_VIDEO.bottom)/2-28;
         int breathe=(int)(3.0+3.0*(0.5+0.5*sin((double)g_visualPulse*0.075)));
+        RECT hero={cx-310,cy-132,cx+310,cy+166};
+        Panel(dc,hero,RGB(11,22,36),RGB(54,104,128),24);
+        RECT heroTop={hero.left+28,hero.top+1,hero.right-28,hero.top+3};
+        GradientRect(dc,heroTop,RGB(49,190,204),RGB(125,94,231));
+        RECT kicker={hero.left+24,hero.top+13,hero.right-24,hero.top+38};
+        Txt(dc,L"ABM  /  YOUR MEDIA SPACE",kicker,RGB(113,174,192),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT outer={cx-48-breathe,cy-48-breathe,cx+48+breathe,cy+48+breathe};
         ABM_D2D_StrokeRound(&g_ui,(float)outer.left,(float)outer.top,(float)outer.right,(float)outer.bottom,27.0f,Blend(RGB(34,83,132),RGB(87,91,206),(g_visualPulse%80u)*100/79),1.5f);
         RECT badge={cx-39,cy-39,cx+39,cy+39};
-        GradientRect(dc,badge,RGB(27,112,164),RGB(77,73,173));
-        RoundBox(dc,badge,Blend(RGB(27,112,164),RGB(77,73,173),48),23);
+        GradientRect(dc,badge,RGB(28,151,169),RGB(92,83,205));
+        RoundBox(dc,badge,Blend(RGB(28,151,169),RGB(92,83,205),48),23);
         DrawLine(dc,cx-8,cy-16,cx-8,cy+16,RGB(245,250,255),3);
         DrawLine(dc,cx-8,cy-16,cx+17,cy,RGB(245,250,255),3);
         DrawLine(dc,cx+17,cy,cx-8,cy+16,RGB(245,250,255),3);
         RECT empty={R_VIDEO.left+20,cy+57,R_VIDEO.right-20,cy+86};
-        Txt(dc,L"Your next favourite starts here",empty,RGB(232,241,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Make every moment sound better.",empty,RGB(241,246,252),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT hint={R_VIDEO.left+20,empty.bottom+2,R_VIDEO.right-20,empty.bottom+26};
-        Txt(dc,L"Drop a track or add media to build your listening space",hint,C_MUTED,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Add your music or video library to get started",hint,RGB(154,174,194),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         int bars=25, gap=7, barW=5;
         int total=bars*barW+(bars-1)*gap;
         int start=cx-total/2, base=hint.bottom+25;
@@ -644,15 +650,15 @@ static void DrawUI(HDC dc,RECT client) {
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Slide-out media drawer: output, quick controls, search and queue. */
     /* Premium media-library surface with layered navy and an inset rim. */
-    GradientRound(dc,R_SIDEBAR,RGB(13,24,41),RGB(20,29,49),24);
-    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(62,100,151),1.0f);
+    GradientRound(dc,R_SIDEBAR,RGB(12,22,36),RGB(15,25,41),24);
+    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(43,75,94),0.85f);
     RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
     ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,23.0f,RGB(36,56,82),0.9f);
     RECT drawerInset={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
     ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,23.0f,RGB(39,57,79),0.8f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
-    GradientRect(dc,accent,RGB(48,180,230),RGB(112,105,255));
+    GradientRect(dc,accent,RGB(50,202,207),RGB(130,100,238));
     if(g_drawerSettingsOpen) {
     RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+54,R_SIDEBAR.right-16,R_SIDEBAR.top+73};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -721,7 +727,7 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Search and filters are drawn in Direct2D; keyboard input is handled by
        the main window so no blurry native EDIT control is layered over it. */
-    Panel(dc,R_SEARCH,g_searchFocused?RGB(16,39,65):RGB(11,23,39),g_searchFocused?RGB(86,164,244):RGB(45,75,112),12);
+    Panel(dc,R_SEARCH,g_searchFocused?RGB(15,39,53):RGB(10,20,33),g_searchFocused?RGB(65,173,184):RGB(38,67,83),12);
     RECT searchGlyph={R_SEARCH.left+12,R_SEARCH.top+10,R_SEARCH.left+26,R_SEARCH.bottom-10};
     ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,RGB(139,163,193),1.5f);
     DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,RGB(139,163,193),1.5f);
@@ -733,8 +739,8 @@ static void DrawUI(HDC dc,RECT client) {
     const wchar_t *tabNames[2]={L"Queue",L"Library"};
     for(int ti=0;ti<2;ti++){
         BOOL active=(g_libraryTab==ti);
-        if(active)GradientRound(dc,tabs[ti],RGB(31,112,172),RGB(80,82,184),11);
-        else RoundBox(dc,tabs[ti],RGB(17,29,47),11);
+        if(active)GradientRound(dc,tabs[ti],RGB(28,133,151),RGB(83,85,183),11);
+        else RoundBox(dc,tabs[ti],RGB(13,24,39),11);
         ABM_D2D_StrokeRound(&g_ui,(float)tabs[ti].left,(float)tabs[ti].top,(float)tabs[ti].right,(float)tabs[ti].bottom,11.0f,active?RGB(104,174,241):RGB(39,62,92),0.9f);
         RECT label={tabs[ti].left+3,tabs[ti].top+1,tabs[ti].right-3,tabs[ti].bottom-1};
         Txt(dc,tabNames[ti],label,active?RGB(238,246,255):RGB(171,187,207),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -743,7 +749,7 @@ static void DrawUI(HDC dc,RECT client) {
     const wchar_t *filterNames[3]={L"All",L"Audio",L"Video"};
     for(int fi=0;fi<3;fi++){
         BOOL active=g_mediaFilter==fi;
-        if(active)GradientRound(dc,filters[fi],RGB(35,112,173),RGB(77,82,177),8);
+        if(active)GradientRound(dc,filters[fi],RGB(31,139,153),RGB(83,87,183),8);
         else RoundBox(dc,filters[fi],RGB(18,30,47),8);
         RECT label={filters[fi].left+2,filters[fi].top,filters[fi].right-2,filters[fi].bottom};
         Txt(dc,filterNames[fi],label,active?RGB(244,248,255):RGB(158,174,194),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -774,7 +780,7 @@ static void DrawUI(HDC dc,RECT client) {
         R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
         BOOL current=(i==g_current),selected=(i==g_selected),hot=(i==g_hoverPlaylistIndex);
         if(current||selected||hot){
-            if(current)GradientRound(dc,row,RGB(19,49,81),RGB(32,45,86),12);
+            if(current)GradientRound(dc,row,RGB(15,53,66),RGB(32,43,79),12);
             else RoundBox(dc,row,selected?RGB(22,42,67):RGB(20,36,57),12);
             ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,12.0f,current?RGB(69,151,220):(hot?RGB(62,111,165):RGB(45,75,111)),current?1.25f:0.85f);
             if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
@@ -837,7 +843,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dock={client.right/2-174,client.bottom-105,client.right/2+174,client.bottom-29};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(5,8,14),28);
-    Panel(dc,dock,RGB(19,28,43),RGB(61,91,132),25);
+    Panel(dc,dock,RGB(13,22,36),RGB(54,104,124),25);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
     ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,23.0f,RGB(38,57,82),0.8f);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
@@ -857,7 +863,7 @@ static void DrawUI(HDC dc,RECT client) {
     ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
 
     RECT open=R_OPEN;
-    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?RGB(36,137,203):RGB(23,43,67),(g_hoverButton==HIT_OPEN)?RGB(104,91,218):RGB(37,65,99),14);
+    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?RGB(37,157,169):RGB(17,43,55),(g_hoverButton==HIT_OPEN)?RGB(107,91,213):RGB(35,68,84),14);
     ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?RGB(112,174,241):RGB(62,100,148),1.0f);
     RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
     Txt(dc,L"+",plus,RGB(230,242,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -2232,9 +2238,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     (void)prev;(void)cmd;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
-    g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    g_smallFont=CreateFontW(15,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    g_headingFont=CreateFontW(25,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+    g_smallFont=CreateFontW(14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+    g_headingFont=CreateFontW(27,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
     /* Resolve the bundled LibVLC runtime relative to this executable. This lets
        an installed copy find its own plugins/data without a system VLC install. */
     wchar_t modulePath[PATH_CAP]={0}, appDir[PATH_CAP]={0}, pluginDir[PATH_CAP]={0};
