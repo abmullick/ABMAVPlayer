@@ -2246,9 +2246,49 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
         if(lastSlash) {
             *lastSlash=0;
             wcscpy_s(appDir,PATH_CAP,modulePath);
+
+            /* Prefer a self-contained runtime beside the executable. For a
+               development build in build\\, fall back to the VLC installation
+               supplied by run.bat instead of overriding it with build\\plugins. */
             swprintf_s(pluginDir,PATH_CAP,L"%s\\plugins",appDir);
-            _wputenv_s(L"VLC_PLUGIN_PATH",pluginDir);
-            _wputenv_s(L"VLC_DATA_PATH",appDir);
+            DWORD pluginAttrs=GetFileAttributesW(pluginDir);
+            if(pluginAttrs!=INVALID_FILE_ATTRIBUTES && (pluginAttrs&FILE_ATTRIBUTE_DIRECTORY)) {
+                _wputenv_s(L"VLC_PLUGIN_PATH",pluginDir);
+            } else {
+                DWORD envLen=GetEnvironmentVariableW(L"VLC_PLUGIN_PATH",pluginDir,PATH_CAP);
+                if(envLen==0 || envLen>=PATH_CAP) {
+                    wchar_t vlcDir[PATH_CAP]={0};
+                    DWORD vlcLen=GetEnvironmentVariableW(L"VLC_DIR",vlcDir,PATH_CAP);
+                    if(vlcLen>0 && vlcLen<PATH_CAP) {
+                        swprintf_s(pluginDir,PATH_CAP,L"%s\\plugins",vlcDir);
+                        pluginAttrs=GetFileAttributesW(pluginDir);
+                        if(pluginAttrs!=INVALID_FILE_ATTRIBUTES && (pluginAttrs&FILE_ATTRIBUTE_DIRECTORY))
+                            _wputenv_s(L"VLC_PLUGIN_PATH",pluginDir);
+                        else
+                            pluginDir[0]=0;
+                    } else {
+                        pluginDir[0]=0;
+                    }
+                }
+            }
+
+            /* Keep an explicit data path only when the bundled app has its
+               own VLC data directory; otherwise retain the launcher's VLC path. */
+            wchar_t bundledLua[PATH_CAP]={0};
+            swprintf_s(bundledLua,PATH_CAP,L"%s\\lua",appDir);
+            DWORD luaAttrs=GetFileAttributesW(bundledLua);
+            if(luaAttrs!=INVALID_FILE_ATTRIBUTES && (luaAttrs&FILE_ATTRIBUTE_DIRECTORY)) {
+                _wputenv_s(L"VLC_DATA_PATH",appDir);
+            } else {
+                wchar_t dataDir[PATH_CAP]={0};
+                DWORD dataLen=GetEnvironmentVariableW(L"VLC_DATA_PATH",dataDir,PATH_CAP);
+                if(dataLen==0 || dataLen>=PATH_CAP) {
+                    wchar_t vlcDir[PATH_CAP]={0};
+                    DWORD vlcLen=GetEnvironmentVariableW(L"VLC_DIR",vlcDir,PATH_CAP);
+                    if(vlcLen>0 && vlcLen<PATH_CAP)
+                        _wputenv_s(L"VLC_DATA_PATH",vlcDir);
+                }
+            }
         }
     }
     /* Pass the bundled plugin directory explicitly as well as through the
