@@ -43,6 +43,14 @@ static BOOL EnsureTarget(ABM_D2D *ui) {
     ID2D1HwndRenderTarget *target = nullptr;
     HRESULT hr = Factory(ui)->CreateHwndRenderTarget(rp, hp, &target);
     if (FAILED(hr)) return FALSE;
+
+    /* The Win32 layout engine and hit-testing use client-area pixel
+       coordinates. An HWND render target otherwise inherits the system DPI
+       and interprets those same values as DIPs, stretching the drawing beyond
+       the client area on scaled displays (for example 125% / 150%). Keep the
+       render target in the same 96-DPI coordinate space as the layout. */
+    target->SetDpi(96.0f, 96.0f);
+
     ID2D1SolidColorBrush *brush = nullptr;
     hr = target->CreateSolidColorBrush(D2D1::ColorF(1, 1, 1, 1), &brush);
     if (FAILED(hr)) { target->Release(); return FALSE; }
