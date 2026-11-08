@@ -1114,40 +1114,89 @@ static void RendererEvent(const libvlc_event_t *ev,void *opaque) {
 }
 static void StartDiscovery(void) {
     if(g_discovererCount){
-        g_discoveryStartedTick=GetTickCount();g_discoveryTimedOut=FALSE;
+        g_discoveryStartedTick=GetTickCount();
+        g_discoveryTimedOut=FALSE;
         SetStatus(L"Searching for network receivers...");
         return;
     }
+
+    EnterCriticalSection(&g_rendererLock);
+    for(size_t i=0;i<g_rendererCount;i++)libvlc_renderer_item_release(g_rendererItems[i]);
+    g_rendererCount=0;
+    LeaveCriticalSection(&g_rendererLock);
+    g_discoveryStartedTick=0;
+    g_discoveryTimedOut=FALSE;
+
     libvlc_rd_description_t **services=NULL;
     size_t n=libvlc_renderer_discoverer_list_get(g_vlc,&services);
     if(!n||!services){
         SetStatus(L"No VLC receiver discovery plugins are available");
-        MessageBoxW(g_main,L"LibVLC did not report any renderer-discovery services. The bundled VLC plugins may be missing or could not be loaded. Verify the plugins\\services_discovery directory in the application folder.",APP_NAME,MB_ICONWARNING);
+        MessageBoxW(g_main,
+            L"LibVLC did not report any renderer-discovery services. Compatible VLC discovery plugins and their dependencies are required before network receivers can be discovered.",
+            APP_NAME,MB_ICONWARNING);
         return;
     }
-    wchar_t available[256]=L"";
-    for(size_t i=0;i<n;i++){
-        wchar_t name[64]=L"";
-        if(services[i]->psz_name)MultiByteToWideChar(CP_UTF8,0,services[i]->psz_name,-1,name,_countof(name));
-        if(name[0] && wcslen(available)<170){if(available[0])wcscat_s(available,_countof(available),L", ");wcscat_s(available,_countof(available),name);}
-        libvlc_renderer_discoverer_t *d=services[i]->psz_name?libvlc_renderer_discoverer_new(g_vlc,services[i]->psz_name):NULL;
-        if(!d)continue;
+
+    wchar_t available[256]=L"", started[256]=L"", failed[256]=L"";
+    unsigned int failedCount=0;
+    for(size_t i=0;i<n && g_discovererCount<MAX_DISCOVERERS;i++){
+        const char *serviceName=services[i]->psz_name;
+        wchar_t name[64]=L"(unnamed)";
+        if(serviceName)MultiByteToWideChar(CP_UTF8,0,serviceName,-1,name,_countof(name));
+        if(name[0] && wcslen(available)<170){
+            if(available[0])wcscat_s(available,_countof(available),L", ");
+            wcscat_s(available,_countof(available),name);
+        }
+
+        libvlc_renderer_discoverer_t *d=serviceName?libvlc_renderer_discoverer_new(g_vlc,serviceName):NULL;
+        if(!d){
+            failedCount++;
+            if(wcslen(failed)+wcslen(name)+3<_countof(failed)){
+                if(failed[0])wcscat_s(failed,_countof(failed),L", ");
+                wcscat_s(failed,_countof(failed),name);
+            }
+            continue;
+        }
+
         libvlc_event_manager_t *em=libvlc_renderer_discoverer_event_manager(d);
-        libvlc_event_attach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);
-        libvlc_event_attach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);
-        if(libvlc_renderer_discoverer_start(d)==0)g_discoverers[g_discovererCount++]=d;
-        else {libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);libvlc_renderer_discoverer_release(d);}
-        if(g_discovererCount>=MAX_DISCOVERERS)break;
+        BOOL addAttached=(libvlc_event_attach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL)==0);
+        BOOL delAttached=(libvlc_event_attach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL)==0);
+        if(addAttached && delAttached && libvlc_renderer_discoverer_start(d)==0){
+            g_discoverers[g_discovererCount++]=d;
+            if(wcslen(started)+wcslen(name)+3<_countof(started)){
+                if(started[0])wcscat_s(started,_countof(started),L", ");
+                wcscat_s(started,_countof(started),name);
+            }
+        }else{
+            if(addAttached)libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);
+            if(delAttached)libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);
+            libvlc_renderer_discoverer_release(d);
+            failedCount++;
+            if(wcslen(failed)+wcslen(name)+3<_countof(failed)){
+                if(failed[0])wcscat_s(failed,_countof(failed),L", ");
+                wcscat_s(failed,_countof(failed),name);
+            }
+        }
     }
     libvlc_renderer_discoverer_list_release(services,n);
+
     if(!g_discovererCount){
-        wchar_t message[512];swprintf_s(message,_countof(message),L"VLC found these discovery services but could not start any of them:\n%s\n\nCheck that the VLC renderer discovery plugins and their dependent DLLs are present.",available[0]?available:L"(no service names returned)");
+        wchar_t message[768];
+        swprintf_s(message,_countof(message),
+            L"No renderer-discovery service could be started.\n\nAvailable services: %s\nFailed services: %s\n\nCheck that the matching VLC services_discovery plugins and dependent DLLs are installed.",
+            available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
         SetStatus(L"Receiver discovery could not start");
         MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
-    g_discoveryStartedTick=GetTickCount();g_discoveryTimedOut=FALSE;
-    wchar_t status[256];swprintf_s(status,_countof(status),L"Searching for receivers (%s)",available[0]?available:L"VLC discovery");
+
+    g_discoveryStartedTick=GetTickCount();
+    g_discoveryTimedOut=FALSE;
+    wchar_t status[512];
+    if(failedCount)
+        swprintf_s(status,_countof(status),L"Searching: %s | %u service(s) failed to start",started[0]?started:L"VLC discovery",failedCount);
+    else
+        swprintf_s(status,_countof(status),L"Searching for receivers: %s",started[0]?started:L"VLC discovery");
     SetStatus(status);
 }
 static void SelectRenderer(void) {
@@ -1156,12 +1205,14 @@ static void SelectRenderer(void) {
     if(s>0&&(size_t)(s-1)<g_comboCount)next=libvlc_renderer_item_hold(g_comboItems[s-1]);
     if(g_selectedRenderer)libvlc_renderer_item_release(g_selectedRenderer);
     g_selectedRenderer=next;
+    g_rendererApplied=FALSE;
+
     if(g_selectedRenderer){
         wchar_t selectedName[256]=L"Selected receiver";
         if(s>0)SendMessageW(g_renderers,CB_GETLBTEXT,(WPARAM)s,(LPARAM)selectedName);
         wchar_t status[320];
         if(g_hasMedia && g_current>=0 && g_current<g_playlistCount)
-            swprintf_s(status,_countof(status),L"Casting current media to %s",selectedName);
+            swprintf_s(status,_countof(status),L"Connecting to %s...",selectedName);
         else
             swprintf_s(status,_countof(status),L"Ready to cast to %s when playback starts",selectedName);
         SetStatus(status);
@@ -1169,62 +1220,77 @@ static void SelectRenderer(void) {
         SetStatus(L"Local playback selected");
     }
 
-    /* set_renderer only takes effect before play(). Recreate the media player
-       when changing the output so an already-playing item can move to the TV. */
+    /* Renderer selection must happen before play(). Recreate the player to
+       move an active item to a different output without changing its position. */
     if(g_hasMedia&&g_current>=0&&g_current<g_playlistCount){
         int64_t resumeAt=g_useForcedResume?g_forcedResumeMs:libvlc_media_player_get_time(g_player);
         libvlc_state_t oldState=libvlc_media_player_get_state(g_player);
         BOOL wasPlaying=g_useForcedResume || (oldState!=libvlc_Paused && oldState!=libvlc_Stopped && oldState!=libvlc_Ended && oldState!=libvlc_Error);
         if(resumeAt<0)resumeAt=0;
+
         libvlc_media_player_stop(g_player);
         libvlc_media_player_release(g_player);
         g_player=libvlc_media_player_new(g_vlc);
-        if(!g_player){g_hasMedia=FALSE;g_pendingResume=FALSE;MessageBoxW(g_main,L"Could not recreate the media player.",APP_NAME,MB_ICONERROR);return;}
-        libvlc_media_player_set_hwnd(g_player,g_video);
-        g_rendererApplied=FALSE;
-        if(g_selectedRenderer && libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
-            SetStatus(L"Could not attach selected receiver - cast was not started");
-            MessageBoxW(g_main,L"LibVLC could not attach the selected receiver. The player will not silently switch to local playback. Try another receiver or check that its Cast/renderer service is supported.",APP_NAME,MB_ICONERROR);
-            g_hasMedia=FALSE;
+        if(!g_player){
+            g_hasMedia=FALSE;g_pendingResume=FALSE;g_rendererApplied=FALSE;
+            SetStatus(L"Could not recreate playback engine");
+            MessageBoxW(g_main,L"Could not recreate the playback engine. Select the media again to retry.",APP_NAME,MB_ICONERROR);
             return;
-        } else if(g_selectedRenderer) g_rendererApplied=TRUE;
+        }
+        libvlc_media_player_set_hwnd(g_player,g_video);
+
+        if(g_selectedRenderer && libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
+            g_hasMedia=FALSE;g_pendingResume=FALSE;g_rendererApplied=FALSE;
+            SetStatus(L"Receiver rejected the renderer connection");
+            MessageBoxW(g_main,
+                L"LibVLC could not attach the selected receiver. Playback was not redirected to this PC. Refresh discovery, select the receiver again, or check whether it supports this renderer protocol.",
+                APP_NAME,MB_ICONERROR);
+            InvalidateRect(g_main,NULL,FALSE);
+            return;
+        }
+        if(g_selectedRenderer)g_rendererApplied=TRUE;
+
         char utf8[PATH_CAP*4];
         if(WideCharToMultiByte(CP_UTF8,0,g_playlist[g_current],-1,utf8,sizeof(utf8),NULL,NULL)>0){
             libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8);
             if(m){
                 if(g_replayGain)libvlc_media_add_option(m,":audio-replay-gain-mode=track");
-                if(g_compressor){libvlc_media_add_option(m,":audio-filter=compressor");libvlc_media_add_option(m,":compressor-threshold=-18");libvlc_media_add_option(m,":compressor-ratio=4");libvlc_media_add_option(m,":compressor-attack=20");libvlc_media_add_option(m,":compressor-release=250");libvlc_media_add_option(m,":compressor-makeup-gain=0");}
-                libvlc_media_player_set_media(g_player,m);ApplyEqProfile();
-                if(libvlc_media_player_play(g_player)==0){
+                if(g_compressor){
+                    libvlc_media_add_option(m,":audio-filter=compressor");
+                    libvlc_media_add_option(m,":compressor-threshold=-18");
+                    libvlc_media_add_option(m,":compressor-ratio=4");
+                    libvlc_media_add_option(m,":compressor-attack=20");
+                    libvlc_media_add_option(m,":compressor-release=250");
+                    libvlc_media_add_option(m,":compressor-makeup-gain=0");
+                }
+                libvlc_media_player_set_media(g_player,m);
+                ApplyEqProfile();
+                int playResult=libvlc_media_player_play(g_player);
+                libvlc_media_release(m);
+                if(playResult==0){
                     g_pendingResume=TRUE;g_pendingResumeMs=resumeAt;
                     g_pendingResumePause=!wasPlaying;g_pendingResumeTicks=0;
+                    if(g_selectedRenderer)SetStatus(L"Connecting to selected receiver...");
                 }else{
-                    g_pendingResume=FALSE;
-                    if(g_selectedRenderer){
-                        libvlc_media_player_stop(g_player);
-                        libvlc_media_player_release(g_player);
-                        libvlc_renderer_item_release(g_selectedRenderer);
-                        g_selectedRenderer=NULL;g_rendererApplied=FALSE;
-                        SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-                        g_player=libvlc_media_player_new(g_vlc);
-                        if(g_player){
-                            libvlc_media_player_set_hwnd(g_player,g_video);
-                            libvlc_media_t *local=libvlc_media_new_path(g_vlc,utf8);
-                            if(local){
-                                if(g_replayGain)libvlc_media_add_option(local,":audio-replay-gain-mode=track");
-                                if(g_compressor){libvlc_media_add_option(local,":audio-filter=compressor");libvlc_media_add_option(local,":compressor-threshold=-18");libvlc_media_add_option(local,":compressor-ratio=4");libvlc_media_add_option(local,":compressor-attack=20");libvlc_media_add_option(local,":compressor-release=250");libvlc_media_add_option(local,":compressor-makeup-gain=0");}
-                                libvlc_media_player_set_media(g_player,local);libvlc_media_release(local);ApplyEqProfile();
-                                if(libvlc_media_player_play(g_player)==0){
-                                    g_pendingResume=TRUE;g_pendingResumeMs=resumeAt;
-                                    g_pendingResumePause=!wasPlaying;g_pendingResumeTicks=0;
-                                    SetStatus(L"Cast failed; resumed on this PC");
-                                }else{g_hasMedia=FALSE;MessageBoxW(g_main,L"Playback failed on the receiver and local output.",APP_NAME,MB_ICONERROR);}
-                            }else g_hasMedia=FALSE;
-                        }else g_hasMedia=FALSE;
-                    }else{g_hasMedia=FALSE;MessageBoxW(g_main,L"Playback could not restart on the selected output.",APP_NAME,MB_ICONERROR);}
+                    /* A failed Cast request is never replayed locally without
+                       an explicit user action to select local output. */
+                    g_pendingResume=FALSE;g_hasMedia=FALSE;g_rendererApplied=FALSE;
+                    SetStatus(g_selectedRenderer?
+                        L"Cast request failed - local playback was not started":
+                        L"Playback could not restart on the selected output");
+                    MessageBoxW(g_main,
+                        g_selectedRenderer?
+                        L"LibVLC could not start playback on the selected receiver. No local fallback was attempted. Check receiver compatibility and network connectivity, then retry.":
+                        L"Playback could not restart on the selected output. Select the media again to retry.",
+                        APP_NAME,MB_ICONERROR);
                 }
-                libvlc_media_release(m);
+            }else{
+                g_hasMedia=FALSE;g_pendingResume=FALSE;
+                SetStatus(L"Could not create media for the selected output");
             }
+        }else{
+            g_hasMedia=FALSE;g_pendingResume=FALSE;
+            SetStatus(L"Could not encode the media path");
         }
     }
     InvalidateRect(g_main,NULL,FALSE);
