@@ -757,7 +757,7 @@ static void DrawUI(HDC dc,RECT client) {
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
     DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
     DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
-    RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-18,R_SIDEBAR.top+214+queueShift};
+    RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+214+queueShift,R_SIDEBAR.right-18,R_SIDEBAR.top+238+queueShift};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-164,listHead.top,R_CLEAR_PLAYLIST.left-8,listHead.bottom};
