@@ -342,7 +342,7 @@ static void UpdateLayout(HWND hwnd) {
     int drawerLeft=R_VIDEO.right+(gap*g_drawerProgress/100)+side-drawerWidth;
     R_SIDEBAR=(RECT){drawerLeft,top,drawerLeft+side,h-18};
     int settingsShift=g_drawerSettingsOpen?44:0;
-    int queueShift=g_drawerSettingsOpen?44:-120;
+    int queueShift=g_drawerSettingsOpen?76:-120;
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-198,19,w-150,67};
     R_DRAWER_BUTTON=(RECT){w-136,19,w-20,67};
