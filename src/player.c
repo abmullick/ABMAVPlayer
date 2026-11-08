@@ -291,6 +291,15 @@ static void PositionVideoWindow(void) {
 
     int areaW = R_VIDEO.right - R_VIDEO.left;
     int areaH = R_VIDEO.bottom - R_VIDEO.top;
+    /* The media drawer is an always-visible foreground workspace. LibVLC
+       renders into a native child HWND, which is composited above the main
+       window's GDI/Direct2D paint. Do not let that video HWND extend beneath
+       the drawer: reserve the drawer's full footprint while it is open. */
+    if (g_drawerOpen && !g_fullscreen) {
+        int drawerSafeRight = R_SIDEBAR.left - 12;
+        int availableW = drawerSafeRight - R_VIDEO.left;
+        if (availableW < areaW) areaW = availableW;
+    }
     if (areaW <= 0 || areaH <= 0) return;
 
     /* Always fit the complete video frame inside the available area.
@@ -762,7 +771,11 @@ static void DrawUI(HDC dc,RECT client) {
     /* Premium media-library surface with layered navy and an inset rim. */
     RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
     RoundBox(dc,drawerShadow,RGB(4,8,14),26);
-    GradientRound(dc,R_SIDEBAR,RGB(13,25,42),RGB(17,29,49),28);
+    /* Slightly lighter layered glass treatment while media is playing. */
+    if(g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing)
+        GradientRound(dc,R_SIDEBAR,RGB(18,34,51),RGB(24,37,59),28);
+    else
+        GradientRound(dc,R_SIDEBAR,RGB(13,25,42),RGB(17,29,49),28);
     ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,28.0f,RGB(70,125,158),1.35f);
     RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
     ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,27.0f,RGB(42,69,98),0.9f);
