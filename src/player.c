@@ -62,6 +62,9 @@ static wchar_t g_dataDir[PATH_CAP];
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
+static DWORD g_discoveryStartedTick=0;
+static BOOL g_discoveryTimedOut=FALSE;
+static wchar_t g_statusText[256]=L"LOCAL PLAYER";
 static BOOL g_pendingResume=FALSE;
 static BOOL g_pendingResumePause=FALSE;
 static int64_t g_pendingResumeMs=0;
@@ -183,7 +186,7 @@ static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
                (GetGValue(a)*(100-amount)+GetGValue(b)*amount)/100,
                (GetBValue(a)*(100-amount)+GetBValue(b)*amount)/100);
 }
-static void SetStatus(const wchar_t *s) { (void)s; if(g_main) InvalidateRect(g_main,NULL,FALSE); }
+static void SetStatus(const wchar_t *s) { if(s&&s[0]) wcsncpy_s(g_statusText,_countof(g_statusText),s,_TRUNCATE); if(g_main) InvalidateRect(g_main,NULL,FALSE); }
 static void ResetArtwork(void) {
     if (g_artMedia) {
         libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
@@ -498,7 +501,7 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,status,RGB(31,33,36),RGB(59,62,67),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
-    Txt(dc,g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER",statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_statusText[0]?g_statusText:(g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER"),statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
@@ -880,23 +883,42 @@ static void RendererEvent(const libvlc_event_t *ev,void *opaque) {
     LeaveCriticalSection(&g_rendererLock); if(g_main)PostMessageW(g_main,WM_RENDERERS_CHANGED,0,0);
 }
 static void StartDiscovery(void) {
-    if(g_discovererCount){SetStatus(L"Searching");return;}
-    libvlc_rd_description_t **services=NULL; size_t n=libvlc_renderer_discoverer_list_get(g_vlc,&services);
-    if(!n||!services){MessageBoxW(g_main,L"No renderer discovery services are available in this VLC build.",APP_NAME,MB_ICONINFORMATION);return;}
-    for(size_t i=0;i<n&&g_discovererCount<MAX_DISCOVERERS;i++) {
-        libvlc_renderer_discoverer_t *d=libvlc_renderer_discoverer_new(g_vlc,services[i]->psz_name); if(!d)continue;
+    if(g_discovererCount){
+        g_discoveryStartedTick=GetTickCount();g_discoveryTimedOut=FALSE;
+        SetStatus(L"Searching for network receivers...");
+        return;
+    }
+    libvlc_rd_description_t **services=NULL;
+    size_t n=libvlc_renderer_discoverer_list_get(g_vlc,&services);
+    if(!n||!services){
+        SetStatus(L"No VLC receiver discovery plugins are available");
+        MessageBoxW(g_main,L"LibVLC did not report any renderer-discovery services. The bundled VLC plugins may be missing or could not be loaded. Verify the plugins\\services_discovery directory in the application folder.",APP_NAME,MB_ICONWARNING);
+        return;
+    }
+    wchar_t available[256]=L"";
+    for(size_t i=0;i<n;i++){
+        wchar_t name[64]=L"";
+        if(services[i]->psz_name)MultiByteToWideChar(CP_UTF8,0,services[i]->psz_name,-1,name,_countof(name));
+        if(name[0] && wcslen(available)<170){if(available[0])wcscat_s(available,_countof(available),L", ");wcscat_s(available,_countof(available),name);}
+        libvlc_renderer_discoverer_t *d=services[i]->psz_name?libvlc_renderer_discoverer_new(g_vlc,services[i]->psz_name):NULL;
+        if(!d)continue;
         libvlc_event_manager_t *em=libvlc_renderer_discoverer_event_manager(d);
         libvlc_event_attach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);
         libvlc_event_attach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);
         if(libvlc_renderer_discoverer_start(d)==0)g_discoverers[g_discovererCount++]=d;
         else {libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,RendererEvent,NULL);libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,RendererEvent,NULL);libvlc_renderer_discoverer_release(d);}
+        if(g_discovererCount>=MAX_DISCOVERERS)break;
     }
     libvlc_renderer_discoverer_list_release(services,n);
     if(!g_discovererCount){
-        MessageBoxW(g_main,L"No network receiver discovery service could be started. Check the VLC renderer plugins and Windows Firewall.",APP_NAME,MB_ICONINFORMATION);
+        wchar_t message[512];swprintf_s(message,_countof(message),L"VLC found these discovery services but could not start any of them:\n%s\n\nCheck that the VLC renderer discovery plugins and their dependent DLLs are present.",available[0]?available:L"(no service names returned)");
+        SetStatus(L"Receiver discovery could not start");
+        MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
-    SetStatus(L"Searching for Google Cast and supported receivers");
+    g_discoveryStartedTick=GetTickCount();g_discoveryTimedOut=FALSE;
+    wchar_t status[256];swprintf_s(status,_countof(status),L"Searching for receivers (%s)",available[0]?available:L"VLC discovery");
+    SetStatus(status);
 }
 static void SelectRenderer(void) {
     int s=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
@@ -1695,6 +1717,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_RENDERERS_CHANGED:{
         RefreshRendererList();
+        if(g_rendererCount>0){wchar_t found[128];swprintf_s(found,_countof(found),L"Found %u receiver(s)",(unsigned int)g_rendererCount);SetStatus(found);}
         if(g_selectedRenderer){
             BOOL present=FALSE;
             for(size_t i=0;i<g_comboCount;i++)if(g_comboItems[i]==g_selectedRenderer){present=TRUE;break;}
@@ -1748,6 +1771,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
+        if(g_discovererCount && !g_discoveryTimedOut && g_rendererCount==0 && g_discoveryStartedTick && (DWORD)(GetTickCount()-g_discoveryStartedTick)>=15000){g_discoveryTimedOut=TRUE;SetStatus(L"No receivers found yet - checking network and firewall");}
         int oldDrawerProgress=g_drawerProgress;
         if(g_drawerOpen&&g_drawerProgress<100)g_drawerProgress+=12;
         else if(!g_drawerOpen&&g_drawerProgress>0)g_drawerProgress-=12;
@@ -2177,7 +2201,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
-    WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;
+    WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(101));wc.hIconSm=wc.hIcon;
     if(!RegisterClassW(&wc))return 1;
     WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
     if(!RegisterClassW(&owc))return 1;
