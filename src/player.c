@@ -125,6 +125,7 @@ static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
+static int g_menuSelection = 0;
 static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[14], R_FULLSCREEN;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
@@ -386,8 +387,14 @@ static void UpdateLayout(HWND hwnd) {
     R_MENU_BUTTON=(RECT){w-202,18,w-150,66};
     R_DRAWER_BUTTON=(RECT){w-138,18,w-20,66};
     R_MENU_PANEL=(RECT){w-376,74,w-20,74+640};
-    /* Reserve a dedicated 54 px header zone above the first command row. */
-    for(int i=0;i<14;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
+    /* Keep the complete command menu inside the client area, including at the
+       minimum supported window height. Rows share the remaining space evenly. */
+    if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
+    if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
+    if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
+    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/14;
+    if(menuRowHeight<1)menuRowHeight=1;
+    for(int i=0;i<14;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1041,7 +1048,7 @@ static void DrawUI(HDC dc,RECT client) {
             if(i==11)labels[11]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
-            BOOL hot=(g_hoverMenuItem==i);
+            BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             RECT row=item;InflateRect(&row,-1,-1);
             if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
             else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),10);
@@ -2375,6 +2382,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){g_groupMode=(g_groupMode+1)%3;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
+            if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
             SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
             InvalidateRect(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
@@ -2424,8 +2432,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
                     L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
                 else if(mi==9)PostMessageW(hwnd,WM_CLOSE,0,0);
-                else if(mi==10){g_shuffle=!g_shuffle;}
-                else if(mi==11){g_repeat=!g_repeat;}
+                else if(mi==10){g_shuffle=!g_shuffle;SavePersistentState();}
+                else if(mi==11){g_repeat=!g_repeat;SavePersistentState();}
                 else if(mi==12){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
                 else if(mi==13)ShowEqualizer();
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
@@ -2469,6 +2477,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_KEYDOWN: {
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
+        if(g_menuOpen){
+            if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%14;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+13)%14;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=13;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_RETURN){int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
+        }
+        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
         if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
@@ -2522,7 +2539,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
         if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<14;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
-        if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
+        if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
             SetCursor(LoadCursorW(NULL,IDC_ARROW));
