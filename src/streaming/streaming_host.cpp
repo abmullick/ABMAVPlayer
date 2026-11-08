@@ -36,6 +36,7 @@ RECT g_serviceRects[5]{};
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{};
 int g_activeService=-1;
 bool g_ready=false;
+EventRegistrationToken g_navigationToken{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
 
 COLORREF RGBc(int r,int g,int b){return RGB(r,g,b);}
@@ -159,7 +160,7 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
                 if(args)args->get_IsSuccess(&success);
                 SetStatus(success?L"Streaming page loaded. Sign in using the service's official login.":L"Page navigation failed. The service may restrict embedded playback.");
                 return S_OK;
-            }).Get(),nullptr);
+            }).Get(),&g_navigationToken);
     g_controller->put_IsVisible(TRUE);
     LayoutBrowser();
     g_ready=true;
