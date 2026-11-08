@@ -546,7 +546,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,RGB(220,235,252),2);
     RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
     Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT status={client.right-470,28,client.right-278,59};
+    RECT status={client.right-500,27,client.right-278,60};
     Panel(dc,status,RGB(13,25,40),RGB(49,105,126),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
@@ -603,6 +603,8 @@ static void DrawUI(HDC dc,RECT client) {
         int cy=(R_VIDEO.top+R_VIDEO.bottom)/2-28;
         int breathe=(int)(3.0+3.0*(0.5+0.5*sin((double)g_visualPulse*0.075)));
         RECT hero={cx-310,cy-132,cx+310,cy+166};
+        RECT heroShadow=hero;OffsetRect(&heroShadow,0,10);
+        RoundBox(dc,heroShadow,RGB(3,7,13),26);
         Panel(dc,hero,RGB(11,22,36),RGB(54,104,128),24);
         RECT heroTop={hero.left+28,hero.top+1,hero.right-28,hero.top+3};
         GradientRect(dc,heroTop,RGB(49,190,204),RGB(125,94,231));
@@ -650,6 +652,8 @@ static void DrawUI(HDC dc,RECT client) {
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Slide-out media drawer: output, quick controls, search and queue. */
     /* Premium media-library surface with layered navy and an inset rim. */
+    RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
+    RoundBox(dc,drawerShadow,RGB(4,8,14),26);
     GradientRound(dc,R_SIDEBAR,RGB(12,22,36),RGB(15,25,41),24);
     ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(43,75,94),0.85f);
     RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
@@ -840,7 +844,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
-    RECT dock={client.right/2-174,client.bottom-105,client.right/2+174,client.bottom-29};
+    RECT dock={client.right/2-188,client.bottom-108,client.right/2+188,client.bottom-26};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(5,8,14),28);
     Panel(dc,dock,RGB(13,22,36),RGB(54,104,124),25);
@@ -871,7 +875,7 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     RECT footer={client.right-430,client.bottom-25,client.right-24,client.bottom-8};
-    Txt(dc,L"ABHISEK BASU MULLICK  |  © 2026 ALL RIGHTS RESERVED",footer,RGB(128,143,162),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"ABM AV PLAYER   ·   IMMERSIVE ENTERTAINMENT",footer,RGB(112,132,153),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
 
     /* Animated drop-down menu is painted last so it floats above the player. */
     if(g_menuProgress>0) {
