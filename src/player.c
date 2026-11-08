@@ -2210,7 +2210,8 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=245;r.bottom=295;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
         r.top=318;r.bottom=345;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version 0.4  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));\n        DeleteObject(title);DeleteObject(heading);DeleteObject(body);
+        SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
+        DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
