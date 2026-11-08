@@ -34,3 +34,8 @@ The installer targets C:\Program Files\ABM AV Player, creates a Start Menu short
 
 ## Distribution and licence review
 The application includes proprietary ABM AV Player materials and third-party VLC/LibVLC components. Review the licence for the exact VLC build and every plugin included in the package before distributing it. VLC's plugin folder can contain components under different licences; copying COPYING.txt alone is not proof that all redistribution obligations have been met. This packaging script is a technical staging tool, not a licence audit.
+
+
+## WebView2 streaming prerequisite
+
+The Streaming Centre uses the Microsoft Edge WebView2 Evergreen Runtime. Current Windows 11 systems commonly have this runtime already installed. If it is missing, install the official Microsoft Edge WebView2 Runtime before launching the Streaming Centre. The runtime is not bundled with ABM AV Player.
