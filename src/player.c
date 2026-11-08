@@ -1036,7 +1036,7 @@ static void DrawUI(HDC dc,RECT client) {
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
-            L"Help",L"Exit player",L"About ABM AV Player"
+            L"Help & User Guide",L"Exit player",L"About ABM AV Player"
         };
         const wchar_t *shortcuts[14]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
@@ -2788,10 +2788,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
-        if(wp==VK_F1){
-            MessageBoxW(hwnd,L"ABM AV Player - Quick Help\\n\\nCtrl+O Open media | Ctrl+D Find network devices | Ctrl+Shift+C Cast to TV\\nSpace Play/Pause | F11 Fullscreen | Esc Exit fullscreen\\nCtrl+L Load playlist | Ctrl+S Save playlist | Ctrl+J Recent media\\nCtrl+Shift+H Shuffle | Ctrl+R Repeat | Ctrl+I About | Alt+F4 Exit\\nLeft/Right Seek 10 seconds | +/- Playback speed | N/P Previous/Next",L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
-            return 0;
-        }
+        if(wp==VK_F1){ShowHelpDialog(hwnd);return 0;}
         if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
         if(wp==VK_ESCAPE&&g_drawerOpen){g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(g_searchFocused&&wp==VK_BACK){size_t n=wcslen(g_searchText);if(n)g_searchText[n-1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;}
