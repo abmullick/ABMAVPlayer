@@ -885,7 +885,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dock={client.right/2-222,client.bottom-116,client.right/2+222,client.bottom-20};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(4,7,13),32);
-    GradientRound(dc,dock,RGB(13,27,44),RGB(17,25,48),30);\n    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(47,91,123),1.15f);
+    GradientRound(dc,dock,RGB(13,27,44),RGB(17,25,48),30);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(47,91,123),1.15f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
     ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(35,61,89),0.65f);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
