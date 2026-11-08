@@ -701,6 +701,76 @@ static void DrawUI(HDC dc,RECT client) {
     int collectionTop=g_drawerSettingsOpen?286:82;
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
+    /* Timeline: keep the seek bar strictly inside the video canvas; never underlap the drawer. */
+    RECT timeline={R_SEEK.left,R_SEEK.top-15,R_SEEK.right,R_SEEK.bottom+16};Fill(dc,timeline,C_BG);
+    int pos=0;int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
+    int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
+    if(len>0){pos=(int)((now*1000)/len);if(pos<0)pos=0;if(pos>1000)pos=1000;}
+    RECT track={R_SEEK.left,R_SEEK.top-2,R_SEEK.right,R_SEEK.bottom+2};RoundBox(dc,track,RGB(35,49,70),6);
+    RECT prog=track;prog.right=prog.left+(prog.right-prog.left)*pos/1000;if(prog.right>prog.left)GradientRect(dc,prog,RGB(42,181,231),RGB(125,101,245));
+    int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
+    RECT halo={thumb-10,R_SEEK.top-10,thumb+10,R_SEEK.bottom+10};RoundBox(dc,halo,RGB(36,66,104),12);
+    RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};RoundBox(dc,dot,RGB(235,244,255),10);
+    wchar_t t1[24],t2[24],times[64];FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);swprintf_s(times,64,L"%s  /  %s",t1,t2);
+    RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+    /* Control dock */
+    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
+    RECT dock={dockLeft,client.bottom-120,dockLeft+720,client.bottom-18};
+    RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
+    RoundBox(dc,dockShadow,RGB(4,7,13),34);
+    GradientRound(dc,dock,RGB(11,29,46),RGB(18,22,47),30);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(67,139,169),1.25f);
+    RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(35,61,89),0.55f);
+    /* Dedicated Now Playing identity block makes the transport dock a real
+       player surface rather than a floating row of generic buttons. */
+    RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
+    GradientRound(dc,miniArt,RGB(24,145,164),RGB(88,75,177),14);
+    RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
+    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,RGB(180,222,245),0.85f);
+    if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
+    else {
+        int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
+        DrawLine(dc,mx-12,my+13,mx,my-14,RGB(244,250,255),2);
+        DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
+        DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
+    }
+    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+346,dock.top+34};
+    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+346,dock.top+61};
+    const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
+    Txt(dc,dockTitle,nowTitle,RGB(245,248,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-8};
+    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,RGB(151,174,199),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
+    Fill(dc,transportDivider,RGB(43,67,96));
+    DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
+    DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
+    DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
+    DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
+    if(g_drawerOpen) {
+    RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
+    Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
+    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
+     RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
+    Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
+    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
+    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
+    int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
+    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
+
+    RECT open=R_OPEN;
+    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?RGB(37,157,169):RGB(17,43,55),(g_hoverButton==HIT_OPEN)?RGB(107,91,213):RGB(35,68,84),14);
+    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?RGB(112,174,241):RGB(62,100,148),1.0f);
+    RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
+    Txt(dc,L"+",plus,RGB(230,242,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
+    Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+
     /* Slide-out media drawer: output, quick controls, search and queue. */
     /* Premium media-library surface with layered navy and an inset rim. */
     RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
@@ -890,75 +960,6 @@ static void DrawUI(HDC dc,RECT client) {
     }
 
     }
-
-    /* Timeline: keep the seek bar strictly inside the video canvas; never underlap the drawer. */
-    RECT timeline={R_SEEK.left,R_SEEK.top-15,R_SEEK.right,R_SEEK.bottom+16};Fill(dc,timeline,C_BG);
-    int pos=0;int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
-    int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
-    if(len>0){pos=(int)((now*1000)/len);if(pos<0)pos=0;if(pos>1000)pos=1000;}
-    RECT track={R_SEEK.left,R_SEEK.top-2,R_SEEK.right,R_SEEK.bottom+2};RoundBox(dc,track,RGB(35,49,70),6);
-    RECT prog=track;prog.right=prog.left+(prog.right-prog.left)*pos/1000;if(prog.right>prog.left)GradientRect(dc,prog,RGB(42,181,231),RGB(125,101,245));
-    int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
-    RECT halo={thumb-10,R_SEEK.top-10,thumb+10,R_SEEK.bottom+10};RoundBox(dc,halo,RGB(36,66,104),12);
-    RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};RoundBox(dc,dot,RGB(235,244,255),10);
-    wchar_t t1[24],t2[24],times[64];FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);swprintf_s(times,64,L"%s  /  %s",t1,t2);
-    RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-
-    /* Control dock */
-    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
-    RECT dock={dockLeft,client.bottom-120,dockLeft+720,client.bottom-18};
-    RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
-    RoundBox(dc,dockShadow,RGB(4,7,13),34);
-    GradientRound(dc,dock,RGB(11,29,46),RGB(18,22,47),30);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(67,139,169),1.25f);
-    RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(35,61,89),0.55f);
-    /* Dedicated Now Playing identity block makes the transport dock a real
-       player surface rather than a floating row of generic buttons. */
-    RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
-    GradientRound(dc,miniArt,RGB(24,145,164),RGB(88,75,177),14);
-    RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
-    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,RGB(180,222,245),0.85f);
-    if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
-    else {
-        int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
-        DrawLine(dc,mx-12,my+13,mx,my-14,RGB(244,250,255),2);
-        DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
-        DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
-    }
-    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+346,dock.top+34};
-    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+346,dock.top+61};
-    const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
-    Txt(dc,dockTitle,nowTitle,RGB(245,248,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-8};
-    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,RGB(151,174,199),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
-    Fill(dc,transportDivider,RGB(43,67,96));
-    DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
-    DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
-    DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
-    DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
-    if(g_drawerOpen) {
-    RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
-    Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
-    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
-     RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
-    Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    }
-    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
-    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
-    int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
-    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
-    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
-
-    RECT open=R_OPEN;
-    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?RGB(37,157,169):RGB(17,43,55),(g_hoverButton==HIT_OPEN)?RGB(107,91,213):RGB(35,68,84),14);
-    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?RGB(112,174,241):RGB(62,100,148),1.0f);
-    RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
-    Txt(dc,L"+",plus,RGB(230,242,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
-    Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Bottom-edge branding removed: playback and volume surfaces own this area. */
 
@@ -2292,7 +2293,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         /* Clicking anywhere outside the open menu dismisses it. Continue
            processing the click so the underlying control still responds. */
-        if(g_drawerOpen&&!g_fullscreen&&!Inside(R_SIDEBAR,x,y)&&!Inside(R_DRAWER_BUTTON,x,y)){
+        if(g_drawerOpen&&!g_fullscreen&&!Inside(R_SIDEBAR,x,y)&&!Inside(R_SETTINGS_BUTTON,x,y)&&!Inside(R_DRAWER_BUTTON,x,y)){
             g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;
             SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);
         }
