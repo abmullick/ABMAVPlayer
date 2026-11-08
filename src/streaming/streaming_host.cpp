@@ -1,6 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
+#include <shellapi.h>
+#include <wchar.h>
 #include <dwmapi.h>
 #include <shlobj.h>
 #include <strsafe.h>
