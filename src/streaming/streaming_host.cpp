@@ -33,7 +33,7 @@ ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
-RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{};
+RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_externalRect{};
 int g_activeService=-1;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
@@ -109,7 +109,12 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"ABM AV PLAYER",title,RGBc(244,249,255),18,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT sub={77,38,rc.right-220,58};
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    const int serviceLeft=22,serviceY=72,serviceH=34,serviceW=148,gap=9;
+    g_externalRect=(RECT){rc.right-190,17,rc.right-22,51};
+    Rounded(dc,g_externalRect,RGBc(22,49,64),9);
+    Text(dc,L"Open in browser",g_externalRect,RGBc(160,220,216),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    const int serviceLeft=22,serviceY=72,serviceH=34;
+    const int serviceW=rc.right<1100?118:148;
+    const int gap=rc.right<1100?6:9;
     for(int i=0;i<5;i++){
         g_serviceRects[i]=(RECT){serviceLeft+i*(serviceW+gap),serviceY,
             serviceLeft+i*(serviceW+gap)+serviceW,serviceY+serviceH};
@@ -137,6 +142,7 @@ void PaintChrome(HWND hwnd){
     EndPaint(hwnd,&ps);
 }
 void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
+    if(!g_window||!IsWindow(g_window)){if(controller)controller->Close();return;}
     if(FAILED(result)||!controller){
         SetStatus(L"WebView2 Runtime is unavailable. Install the Microsoft Edge WebView2 Evergreen Runtime.");
         return;
@@ -202,7 +208,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         return 0;
     }
     case WM_SIZE:LayoutBrowser();InvalidateRect(hwnd,nullptr,FALSE);return 0;
-    case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=1000;info->ptMinTrackSize.y=700;return 0;}
+    case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=960;info->ptMinTrackSize.y=700;return 0;}
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -211,6 +217,15 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(PtInRect(&g_forwardRect,POINT{x,y})&&g_webView){g_webView->GoForward();return 0;}
         if(PtInRect(&g_reloadRect,POINT{x,y})&&g_webView){g_webView->Reload();return 0;}
         if(PtInRect(&g_homeRect,POINT{x,y})){NavigateHome();return 0;}
+        if(PtInRect(&g_externalRect,POINT{x,y})){
+            LPWSTR current=nullptr;
+            if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
+                if(wcsncmp(current,L"https://",8)==0||wcsncmp(current,L"http://",7)==0)
+                    ShellExecuteW(nullptr,L"open",current,nullptr,nullptr,SW_SHOWNORMAL);
+                CoTaskMemFree(current);
+            }else if(g_activeService>=0)ShellExecuteW(nullptr,L"open",kUrls[g_activeService],nullptr,nullptr,SW_SHOWNORMAL);
+            return 0;
+        }
         return 0;
     }
     case WM_KEYDOWN:
