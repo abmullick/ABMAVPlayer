@@ -749,19 +749,6 @@ static void DrawUI(HDC dc,RECT client) {
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
-    if(g_drawerOpen) {
-    RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
-    Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
-    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
-     RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
-    Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    }
-    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
-    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
-    int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
-    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
-    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
-
     RECT open=R_OPEN;
     GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?RGB(37,157,169):RGB(17,43,55),(g_hoverButton==HIT_OPEN)?RGB(107,91,213):RGB(35,68,84),14);
     ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?RGB(112,174,241):RGB(62,100,148),1.0f);
@@ -958,6 +945,21 @@ static void DrawUI(HDC dc,RECT client) {
             Txt(dc,label,tx,i==sel?RGB(248,249,250):RGB(202,207,214),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
     }
+
+    if(g_drawerOpen) {
+    RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
+    Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
+    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
+     RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
+    Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
+    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
+    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
+    int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
+    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
+
+
 
     }
 
@@ -2275,7 +2277,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ReleaseCapture();return 0;
         }
         if(!g_fullscreen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=!g_drawerOpen;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_SETTINGS_BUTTON,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_CLEAR_PLAYLIST,x,y)){if(g_playlistCount&&MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();ReleaseCapture();return 0;}
@@ -2293,7 +2295,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         /* Clicking anywhere outside the open menu dismisses it. Continue
            processing the click so the underlying control still responds. */
-        if(g_drawerOpen&&!g_fullscreen&&!Inside(R_SIDEBAR,x,y)&&!Inside(R_SETTINGS_BUTTON,x,y)&&!Inside(R_DRAWER_BUTTON,x,y)){
+        if(g_drawerOpen&&!g_fullscreen&&!Inside(R_SIDEBAR,x,y)&&!Inside(R_DRAWER_BUTTON,x,y)){
             g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;
             SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);
         }
