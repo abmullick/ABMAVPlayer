@@ -1818,11 +1818,11 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         SelectObject(mem,oldBrush);DeleteObject(panel);SelectObject(mem,oldPen);DeleteObject(border);
         SetBkMode(mem,TRANSPARENT);
         HFONT title=CreateFontW(23,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        HFONT small=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HFONT smallFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         HFONT normal=CreateFontW(14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         HGDIOBJ oldFont=SelectObject(mem,title);SetTextColor(mem,RGB(240,247,253));
         TextOutW(mem,28,23,L"ADVANCED EQUALIZER",18);
-        SelectObject(mem,small);SetTextColor(mem,RGB(127,171,190));
+        SelectObject(mem,smallFont);SetTextColor(mem,RGB(127,171,190));
         TextOutW(mem,30,52,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",48);
         SelectObject(mem,normal);SetTextColor(mem,RGB(202,218,232));
         TextOutW(mem,30,105,L"PREAMP",6);
@@ -1833,7 +1833,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         HBRUSH knob=CreateSolidBrush(RGB(104,113,231));HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
         wchar_t preText[32];swprintf_s(preText,_countof(preText),L"%+.1f dB",g_eqPreamp);
         RECT pr={565,102,650,132};DrawTextW(mem,preText,-1,&pr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(mem,small);SetTextColor(mem,RGB(110,139,165));
+        SelectObject(mem,smallFont);SetTextColor(mem,RGB(110,139,165));
         for(int line=-12;line<=12;line+=6){
             int yy=155+(12-line)*160/24;
             HPEN grid=CreatePen(PS_DOT,1,RGB(40,57,75));oldPen=SelectObject(mem,grid);
@@ -1854,7 +1854,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
             wchar_t val[24];swprintf_s(val,_countof(val),L"%+.1f",g_eqBandGain[i]);
             SelectObject(mem,normal);SetTextColor(mem,RGB(222,234,244));
             RECT vr={cx-26,thumbY-28,cx+26,thumbY-10};DrawTextW(mem,val,-1,&vr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            SelectObject(mem,small);SetTextColor(mem,RGB(139,164,187));
+            SelectObject(mem,smallFont);SetTextColor(mem,RGB(139,164,187));
             RECT fr={cx-28,321,cx+28,340};DrawTextW(mem,fallback[i],-1,&fr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
@@ -1862,10 +1862,10 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
             RECT r={30+i*126,354,145+i*126,383};
             HBRUSH pb=CreateSolidBrush(RGB(24,43,63));ob=SelectObject(mem,pb);
             RoundRect(mem,r.left,r.top,r.right,r.bottom,10,10);SelectObject(mem,ob);DeleteObject(pb);
-            SelectObject(mem,small);SetTextColor(mem,RGB(174,207,226));
+            SelectObject(mem,smallFont);SetTextColor(mem,RGB(174,207,226));
             DrawTextW(mem,presetNames[i],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
-        SelectObject(mem,oldFont);DeleteObject(title);DeleteObject(small);DeleteObject(normal);
+        SelectObject(mem,oldFont);DeleteObject(title);DeleteObject(smallFont);DeleteObject(normal);
         BitBlt(dc,0,0,client.right,client.bottom,mem,0,0,SRCCOPY);
         SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);EndPaint(hwnd,&ps);return 0;
     }
