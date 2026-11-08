@@ -37,8 +37,17 @@ echo [3/4] Compiling WASAPI audio visualizer...
 cl /nologo /W4 /O2 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\audio_visualizer.cpp /Fo:build\audio_visualizer.obj
 if errorlevel 1 goto build_failed
 
-echo [4/4] Linking ABM AV Player...
-cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj /link /LIBPATH:"%VLC_SDK%\lib" libvlc.lib ^
+echo [4/5] Compiling application icon resource...
+where rc >nul 2>nul
+if errorlevel 1 (
+  echo Windows Resource Compiler rc.exe not found. Run from the x64 Native Tools Command Prompt.
+  goto build_failed
+)
+rc /nologo /fo build\player.res src\player.rc
+if errorlevel 1 goto build_failed
+
+echo [5/5] Linking ABM AV Player...
+cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" libvlc.lib ^
   comctl32.lib comdlg32.lib shell32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
