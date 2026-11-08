@@ -334,20 +334,21 @@ static void RefreshVideoGeometry(void) {
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
     int left=28,top=104,bottom=150,gap=22;
-    int side=w>=1700?520:(w>=1400?488:(w>=1180?448:400));
+    int side=w>=1700?640:(w>=1400?600:(w>=1180?540:460));
     int drawerWidth=side*g_drawerProgress/100;
     int videoW=w-left*2; if(videoW<260)videoW=260;
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
     R_VIDEO=(RECT){left,top,left+videoW,top+videoH};
     /* Detached overlay: preserve the video stage and slide the library over it. */
-    int drawerRight=w-24;
+    int drawerRight=w-18;
     int drawerLeft=drawerRight-drawerWidth;
     /* Keep the drawer above the transport/seek region. The previous h-28
        bottom edge let its volume footer paint over the player controls. */
-    int drawerBottom=h-170;
-    if(drawerBottom<470)drawerBottom=470;
-    if(drawerBottom>h-28)drawerBottom=h-28;
-    R_SIDEBAR=(RECT){drawerLeft,28,drawerLeft+side,drawerBottom};
+    /* Full-height floating library: it opens from the top edge and owns its
+       complete vertical space, including the volume footer. */
+    int drawerBottom=h-18;
+    if(drawerBottom<520)drawerBottom=520;
+    R_SIDEBAR=(RECT){drawerLeft,18,drawerLeft+side,drawerBottom};
     /* Collection-first drawer. Settings occupy a separate expandable region;
        all library controls are laid out below it with no negative offsets. */
     int collectionTop=g_drawerSettingsOpen?286:82;
@@ -704,12 +705,12 @@ static void DrawUI(HDC dc,RECT client) {
     /* Premium media-library surface with layered navy and an inset rim. */
     RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
     RoundBox(dc,drawerShadow,RGB(4,8,14),26);
-    GradientRound(dc,R_SIDEBAR,RGB(11,19,32),RGB(15,25,42),24);
-    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(58,96,126),1.15f);
+    GradientRound(dc,R_SIDEBAR,RGB(13,25,42),RGB(17,29,49),28);
+    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,28.0f,RGB(70,125,158),1.35f);
     RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
-    ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,23.0f,RGB(36,56,82),0.9f);
+    ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,27.0f,RGB(42,69,98),0.9f);
     RECT drawerInset={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
-    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,23.0f,RGB(39,57,79),0.8f);
+    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,27.0f,RGB(45,68,94),0.8f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
     GradientRect(dc,accent,RGB(50,202,207),RGB(130,100,238));
@@ -939,7 +940,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     if(g_drawerOpen) {
-    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-66,R_SIDEBAR.right-10,R_SIDEBAR.bottom-8};
+    RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
     Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
      RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
