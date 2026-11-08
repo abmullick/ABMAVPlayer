@@ -17,11 +17,17 @@ if exist "%ISCC%" goto found_compiler
 goto missing_compiler
 
 :found_compiler
-rem Always rebuild the release staging folder from the latest successful build.
+rem Build the application from current source before staging anything.
+rem This prevents an old build\ABMAVPlayer.exe from being silently packaged.
+echo Building ABM AV Player from current source...
+call build.bat
+if errorlevel 1 goto app_build_failed
+
+rem Always recreate the release staging folder from that fresh build.
 rem Never package an existing staging folder: it may contain an older EXE.
 if not exist "build\ABMAVPlayer.exe" goto missing_build
 
-echo Refreshing installer payload from build\ABMAVPlayer.exe...
+echo Refreshing installer payload from the fresh build...
 call prepare_installer.bat
 if errorlevel 1 goto staging_failed
 
@@ -44,6 +50,11 @@ exit /b 0
 :missing_compiler
 echo ERROR: Inno Setup 6/7 compiler (ISCC.exe) was not found.
 echo Install Inno Setup, then run this script again.
+endlocal
+exit /b 1
+
+:app_build_failed
+echo ERROR: Application build failed. The installer was NOT built.
 endlocal
 exit /b 1
 
