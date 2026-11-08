@@ -28,6 +28,14 @@ if exist "%DEST%" rmdir /s /q "%DEST%"
 mkdir "%DEST%" || exit /b 1
 copy /y "build\ABMAVPlayer.exe" "%DEST%\ABMAVPlayer.exe" >nul || exit /b 1
 
+rem Optional owner portrait used by the About the Creator window.
+if exist "assets\owner_portrait.bmp" (
+  mkdir "%DEST%\assets" 2>nul
+  copy /y "assets\owner_portrait.bmp" "%DEST%\assets\owner_portrait.bmp" >nul || exit /b 1
+) else (
+  echo NOTE: assets\owner_portrait.bmp not found; About window will show its portrait placeholder.
+)
+
 rem LibVLC and VLC plugin dependencies. Copying the DLL set from the same
 rem 64-bit VLC installation keeps the runtime dependency versions aligned.
 copy /y "%VLC_DIR%\*.dll" "%DEST%\" >nul
