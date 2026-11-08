@@ -1769,10 +1769,24 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
         WPARAM wp, LPARAM lp, UINT_PTR subclassId, DWORD_PTR refData) {
     (void)subclassId;
     HWND owner = (HWND)refData;
-    if (msg == WM_MOUSEMOVE && IsWindow(owner) && g_fullscreen) {
+    if (IsWindow(owner) && (msg == WM_MOUSEMOVE || msg == WM_LBUTTONDOWN ||
+        msg == WM_LBUTTONUP || msg == WM_MOUSEWHEEL)) {
         POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
-        MapWindowPoints(video,owner,&pt,1);
-        SendMessageW(owner,WM_MOUSEMOVE,wp,MAKELPARAM(pt.x,pt.y));
+        if (msg == WM_MOUSEWHEEL) {
+            /* Wheel coordinates are screen-relative, unlike client mouse messages. */
+            ScreenToClient(owner,&pt);
+        } else {
+            MapWindowPoints(video,owner,&pt,1);
+        }
+        /* The LibVLC child HWND can physically cover the drawer even though the
+           drawer is painted as a foreground overlay by the owner. Forward pointer
+           input over the drawer to the owner so its header/chevron and controls
+           receive the click instead of VLC's video surface. */
+        if ((g_drawerOpen && !g_fullscreen && PtInRect(&R_SIDEBAR,pt)) ||
+            (g_fullscreen && msg == WM_MOUSEMOVE)) {
+            SendMessageW(owner,msg,wp,MAKELPARAM(pt.x,pt.y));
+            return 0;
+        }
     }
     if (msg == WM_SETCURSOR && g_fullscreen && !g_fullscreenControlsVisible) {
         SetCursor(NULL);
