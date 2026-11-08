@@ -86,6 +86,9 @@ static wchar_t g_trackArtist[256]=L"";
 static wchar_t g_trackAlbum[256]=L"";
 static wchar_t g_trackGenre[256]=L"";
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
+static BOOL g_dragPlaylistScroll = FALSE;
+static int g_playlistScrollGrabY = 0, g_playlistScrollStart = 0;
+static RECT R_PLAYLIST_SCROLL, R_PLAYLIST_THUMB;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
 static unsigned int g_videoWidth = 0, g_videoHeight = 0;
@@ -377,6 +380,8 @@ static void UpdateLayout(HWND hwnd) {
     R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+collectionTop+136,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+168};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+collectionTop-2,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+26};
     R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+collectionTop+176,R_SIDEBAR.right-12,R_SIDEBAR.bottom-112};
+    R_PLAYLIST_SCROLL=(RECT){R_LIST.right-8,R_LIST.top+8,R_LIST.right-3,R_LIST.bottom-8};
+    R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
     R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
     R_MENU_BUTTON=(RECT){w-202,18,w-150,66};
     R_DRAWER_BUTTON=(RECT){w-138,18,w-20,66};
@@ -941,6 +946,29 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?RGB(164,193,239):RGB(116,215,211),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         if(current){int cx=row.right-23,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
         shown++;
+    }
+    /* Premium slim scrollbar: quiet rail, luminous gradient thumb and a
+       generous hit target. It appears only when the filtered collection overflows. */
+    int filteredCount=CountFilteredMedia();
+    int maxPlaylistScroll=filteredCount-visible;
+    if(maxPlaylistScroll<0)maxPlaylistScroll=0;
+    if(maxPlaylistScroll>0 && R_PLAYLIST_SCROLL.bottom>R_PLAYLIST_SCROLL.top) {
+        RECT rail=R_PLAYLIST_SCROLL;
+        RoundBox(dc,rail,RGB(23,39,59),3);
+        int railH=rail.bottom-rail.top;
+        int thumbH=(int)((long long)railH*visible/filteredCount);
+        if(thumbH<42)thumbH=42;
+        if(thumbH>railH)thumbH=railH;
+        int thumbTravel=railH-thumbH;
+        int thumbTop=rail.top+(maxPlaylistScroll?thumbTravel*g_playlistScroll/maxPlaylistScroll:0);
+        R_PLAYLIST_THUMB=(RECT){rail.left-2,thumbTop,rail.right+2,thumbTop+thumbH};
+        RECT thumbGlow=R_PLAYLIST_THUMB;InflateRect(&thumbGlow,2,1);
+        RoundBox(dc,thumbGlow,RGB(24,61,82),5);
+        GradientRect(dc,R_PLAYLIST_THUMB,RGB(40,190,211),RGB(111,105,239));
+        RECT shine={R_PLAYLIST_THUMB.left+1,R_PLAYLIST_THUMB.top+4,R_PLAYLIST_THUMB.right-1,R_PLAYLIST_THUMB.bottom-4};
+        ABM_D2D_StrokeRound(&g_ui,(float)shine.left,(float)shine.top,(float)shine.right,(float)shine.bottom,3.0f,RGB(170,222,255),0.45f);
+    } else {
+        R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
     }
     if(shown==0){
         RECT empty={R_LIST.left+8,R_LIST.top+18,R_LIST.right-8,R_LIST.top+76};
@@ -2290,10 +2318,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int delta=GET_WHEEL_DELTA_WPARAM(wp);
         int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/80:0;
         int maxScroll=CountFilteredMedia()-visible;if(maxScroll<0)maxScroll=0;
-        g_playlistScroll-=delta/WHEEL_DELTA;
+        int wheelSteps=delta/WHEEL_DELTA;
+        g_playlistScroll-=wheelSteps*3;
         if(g_playlistScroll<0)g_playlistScroll=0;
         if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
-        InvalidateRect(hwnd,NULL,FALSE);return 0;
+        InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;
     }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -2323,6 +2352,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ReleaseCapture();return 0;
         }
         if(!g_fullscreen&&!g_drawerOpen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=TRUE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&max(0,0)==0&&Inside(R_PLAYLIST_SCROLL,x,y)){
+            g_dragPlaylistScroll=TRUE;
+            g_playlistScrollGrabY=y;
+            g_playlistScrollStart=g_playlistScroll;
+            SetCapture(hwnd);
+            return 0;
+        }
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_PLAYLIST_THUMB,x,y)){
+            g_dragPlaylistScroll=TRUE;g_playlistScrollGrabY=y;g_playlistScrollStart=g_playlistScroll;
+            SetCapture(hwnd);return 0;
+        }
         if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){/* The header is an expand affordance, not a toggle-to-dismiss control. Once open, keep settings open; the drawer itself closes only on an outside click. */if(!g_drawerSettingsOpen){g_drawerSettingsOpen=TRUE;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
@@ -2502,6 +2542,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateButton(previous);
             InvalidateButton(g_hoverButton);
         }
+        if(g_dragPlaylistScroll){
+            int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/80:0;
+            int total=CountFilteredMedia(),maxScroll=total-visible;if(maxScroll<0)maxScroll=0;
+            int railH=R_PLAYLIST_SCROLL.bottom-R_PLAYLIST_SCROLL.top;
+            int thumbH=(total>0)?(int)((long long)railH*visible/total):railH;
+            if(thumbH<42)thumbH=42;if(thumbH>railH)thumbH=railH;
+            int travel=railH-thumbH;
+            if(travel>0){int dy=my-g_playlistScrollGrabY;g_playlistScroll=g_playlistScrollStart+(int)((long long)dy*maxScroll/travel);}
+            if(g_playlistScroll<0)g_playlistScroll=0;if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
+            InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
+        }
         if(g_dragSeek)SeekAt(mx);
         if(g_dragVolume){
             int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);
@@ -2527,7 +2578,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             return TRUE;
         }
         break;
-    case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;ReleaseCapture();return 0;
+    case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;g_dragPlaylistScroll=FALSE;ReleaseCapture();return 0;
     case WM_PAINT: {
         PAINTSTRUCT ps;
         BeginPaint(hwnd, &ps);
