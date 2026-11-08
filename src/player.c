@@ -130,13 +130,13 @@ static int g_eqDragBand=-1;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
-static COLORREF C_BG = RGB(7,10,17);
-static COLORREF C_PANEL = RGB(13,19,30);
-static COLORREF C_PANEL2 = RGB(20,29,44);
-static COLORREF C_TEXT = RGB(244,247,252);
-static COLORREF C_MUTED = RGB(139,153,174);
-static COLORREF C_ACCENT = RGB(76,202,218);
-static COLORREF C_LINE = RGB(35,48,67);
+static COLORREF C_BG = RGB(6,9,16);
+static COLORREF C_PANEL = RGB(12,18,29);
+static COLORREF C_PANEL2 = RGB(20,29,43);
+static COLORREF C_TEXT = RGB(245,248,255);
+static COLORREF C_MUTED = RGB(145,160,181);
+static COLORREF C_ACCENT = RGB(82,205,224);
+static COLORREF C_LINE = RGB(39,51,70);
 
 static void PlayIndex(int index);
 static void SaveAudioPreferences(void);
@@ -507,11 +507,11 @@ static void DrawUI(HDC dc,RECT client) {
     }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,96};
-    GradientRect(dc,header,RGB(11,22,37),RGB(7,12,22));
-    Fill(dc,(RECT){0,95,client.right,96},RGB(26,39,57));
+    GradientRect(dc,header,RGB(12,24,41),RGB(6,10,19));
+    Fill(dc,(RECT){0,95,client.right,96},RGB(34,51,72));
     /* A restrained moving light sweep gives the top bar a little life without
        competing with the video or increasing the media-rendering workload. */
-    Fill(dc,(RECT){0,92,client.right,95},RGB(17,29,43));
+    Fill(dc,(RECT){0,92,client.right,95},RGB(13,24,39));
     int sweepWidth=156;
     int sweepX=(int)((g_visualPulse*3u)%(unsigned int)(client.right+sweepWidth))-sweepWidth;
     RECT sweep={sweepX,92,sweepX+sweepWidth,95};
@@ -562,8 +562,8 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
-    int glow=(int)(18.0+10.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
-    COLORREF edge=Blend(RGB(29,49,67),RGB(67,195,207),glow);
+    int glow=(int)(24.0+12.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
+    COLORREF edge=Blend(RGB(34,49,70),RGB(73,190,210),glow);
     Panel(dc,frame,RGB(7,11,18),edge,16);
     GradientRect(dc,R_VIDEO,RGB(8,17,29),RGB(5,9,17));
     if(g_artworkLoaded) {
@@ -662,7 +662,7 @@ static void DrawUI(HDC dc,RECT client) {
     /* Premium media-library surface with layered navy and an inset rim. */
     RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
     RoundBox(dc,drawerShadow,RGB(4,8,14),26);
-    GradientRound(dc,R_SIDEBAR,RGB(12,22,36),RGB(15,25,41),24);
+    GradientRound(dc,R_SIDEBAR,RGB(13,23,38),RGB(17,27,44),24);
     ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(43,75,94),0.85f);
     RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
     ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,23.0f,RGB(36,56,82),0.9f);
@@ -773,7 +773,7 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=68;
+    int rowHeight=72;
     int listHeight=R_LIST.bottom-R_LIST.top;
     /* Render complete rows only; partial final rows previously bled into
        the volume area and made adjacent titles appear superimposed. */
@@ -800,7 +800,7 @@ static void DrawUI(HDC dc,RECT client) {
             ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,12.0f,current?RGB(69,151,220):(hot?RGB(62,111,165):RGB(45,75,111)),current?1.25f:0.85f);
             if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
         }
-        RECT thumb={row.left+8,row.top+9,row.left+56,row.bottom-9};
+        RECT thumb={row.left+9,row.top+9,row.left+61,row.bottom-9};
         GradientRect(dc,thumb,current?RGB(34,120,184):RGB(28+(i*7)%14,45+(i*5)%14,69+(i*3)%18),current?RGB(91,93,190):RGB(38+(i*5)%16,57+(i*4)%16,84+(i*3)%18));
         RoundBox(dc,thumb,current?RGB(49,103,166):RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),9);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
@@ -810,8 +810,8 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+67,row.top+9,row.right-14,row.top+34};
-        RECT subline={row.left+67,row.top+35,row.right-14,row.bottom-7};
+        RECT name={row.left+73,row.top+9,row.right-14,row.top+35};
+        RECT subline={row.left+73,row.top+36,row.right-14,row.bottom-7};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(225,232,242),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"Local file";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
@@ -2434,8 +2434,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
     g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-    g_smallFont=CreateFontW(14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-    g_headingFont=CreateFontW(27,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+    g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+    g_headingFont=CreateFontW(30,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
     /* Resolve the bundled LibVLC runtime relative to this executable. This lets
        an installed copy find its own plugins/data without a system VLC install. */
     wchar_t modulePath[PATH_CAP]={0}, appDir[PATH_CAP]={0}, pluginDir[PATH_CAP]={0};
