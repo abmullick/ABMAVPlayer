@@ -689,8 +689,8 @@ static void DrawUI(HDC dc,RECT client) {
     /* Premium media-library surface with layered navy and an inset rim. */
     RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
     RoundBox(dc,drawerShadow,RGB(4,8,14),26);
-    GradientRound(dc,R_SIDEBAR,RGB(13,23,38),RGB(17,27,44),24);
-    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(43,75,94),0.85f);
+    GradientRound(dc,R_SIDEBAR,RGB(12,20,34),RGB(17,28,46),24);
+    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,24.0f,RGB(53,83,112),1.15f);
     RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
     ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,23.0f,RGB(36,56,82),0.9f);
     RECT drawerInset={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
@@ -702,8 +702,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+54,R_SIDEBAR.right-16,R_SIDEBAR.top+73};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
-    RoundBox(dc,scan,Blend(RGB(43,46,51),RGB(61,65,71),(g_hoverButton==HIT_SCAN)?g_hoverLevel:0),12);
-    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,RGB(67,71,77),0.75f);
+    GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?RGB(28,102,116):RGB(17,48,62),(g_hoverButton==HIT_SCAN)?RGB(45,77,139):RGB(22,57,77),12);
+    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,RGB(53,119,143),0.95f);
     RECT scanIcon={scan.left+14,scan.top+8,scan.left+34,scan.bottom-8};
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.left+2,scanIcon.bottom-7,RGB(220,236,255),2);
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.right-2,scanIcon.top+8,RGB(220,236,255),2);
@@ -712,10 +712,10 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"Discover devices",scanText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Fully custom Direct2D output selector. */
-    COLORREF receiverFill=g_receiverPopup?RGB(42,45,50):RGB(30,32,36);
-    Panel(dc,receiver,g_receiverPopup?RGB(30,54,82):RGB(20,34,53),g_receiverPopup?RGB(91,151,211):RGB(52,82,119),12);
+    COLORREF receiverFill=g_receiverPopup?RGB(42,45,50):RGB(30,32,36); (void)receiverFill;
+    Panel(dc,receiver,g_receiverPopup?RGB(25,63,88):RGB(18,38,58),g_receiverPopup?RGB(82,174,210):RGB(48,91,125),12);
     RECT deviceIcon={receiver.left+12,receiver.top+7,receiver.left+34,receiver.bottom-7};
-    RoundBox(dc,deviceIcon,RGB(43,47,53),6);
+    GradientRound(dc,deviceIcon,RGB(27,126,145),RGB(70,82,163),6);
     DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,RGB(197,205,214),2);
     DrawLine(dc,deviceIcon.left+4,deviceIcon.bottom-5,deviceIcon.right-4,deviceIcon.bottom-5,RGB(197,205,214),2);
     wchar_t deviceName[256]=L"Local playback";
@@ -727,7 +727,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
     RECT toolsHead={R_SIDEBAR.left+17,R_SIDEBAR.top+144,R_SIDEBAR.right-17,R_SIDEBAR.top+164};
-    Txt(dc,L"QUICK CONTROLS",toolsHead,RGB(133,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"QUICK ACTIONS",toolsHead,RGB(118,164,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
     const wchar_t *actionIcons[4]={L"S",L"R",L"1x",L"..."};
@@ -736,9 +736,9 @@ static void DrawUI(HDC dc,RECT client) {
         RECT ar=actions[ai];
         POINT cursor; BOOL actionHot=FALSE;
         if(GetCursorPos(&cursor)){ScreenToClient(g_main,&cursor);actionHot=PtInRect(&ar,cursor);}
-        COLORREF fill=actionActive[ai]?RGB(29,61,99):(actionHot?RGB(30,48,72):RGB(19,32,50));
-        COLORREF edge=actionActive[ai]?RGB(79,148,224):(actionHot?RGB(67,111,164):RGB(42,64,94));
-        if(actionActive[ai])GradientRound(dc,ar,RGB(24,68,112),RGB(42,55,112),10);
+        COLORREF fill=actionActive[ai]?RGB(25,67,94):(actionHot?RGB(27,48,72):RGB(17,31,49));
+        COLORREF edge=actionActive[ai]?RGB(72,174,203):(actionHot?RGB(70,124,165):RGB(39,66,94));
+        if(actionActive[ai])GradientRound(dc,ar,RGB(19,105,126),RGB(61,66,147),10);
         else RoundBox(dc,ar,fill,10);
         ABM_D2D_StrokeRound(&g_ui,(float)ar.left,(float)ar.top,(float)ar.right,(float)ar.bottom,10.0f,edge,0.9f);
         RECT glyph={ar.left+8,ar.top+3,ar.left+31,ar.bottom-3};
@@ -751,17 +751,17 @@ static void DrawUI(HDC dc,RECT client) {
     }
 
     }
-    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(35,58,86):RGB(25,34,47),g_drawerSettingsOpen?RGB(77,132,194):RGB(49,66,88),11);
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(23,65,83):RGB(20,35,53),g_drawerSettingsOpen?RGB(62,151,181):RGB(48,79,108),11);
     RECT settingsLabel={R_SETTINGS_BUTTON.left+14,R_SETTINGS_BUTTON.top+2,R_SETTINGS_BUTTON.right-38,R_SETTINGS_BUTTON.bottom-2};
-    Txt(dc,g_drawerSettingsOpen?L"Hide playback settings":L"Playback & output",settingsLabel,RGB(231,240,252),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_drawerSettingsOpen?L"Playback settings  ·  expanded":L"Playback & output",settingsLabel,RGB(231,240,252),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
     DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
     DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-17,R_SIDEBAR.top+212+queueShift};
-    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(169,190,218),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-150,listHead.top,R_SIDEBAR.right-86,listHead.bottom};
-    Txt(dc,count,countR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,count,countR,RGB(153,174,200),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     RoundBox(dc,R_CLEAR_PLAYLIST,g_playlistCount?RGB(49,31,43):RGB(25,30,40),8);
     ABM_D2D_StrokeRound(&g_ui,(float)R_CLEAR_PLAYLIST.left,(float)R_CLEAR_PLAYLIST.top,(float)R_CLEAR_PLAYLIST.right,(float)R_CLEAR_PLAYLIST.bottom,8.0f,g_playlistCount?RGB(139,74,99):RGB(48,58,72),0.8f);
     Txt(dc,L"Clear",R_CLEAR_PLAYLIST,g_playlistCount?RGB(255,190,205):RGB(115,130,151),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -769,7 +769,7 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Search and filters are drawn in Direct2D; keyboard input is handled by
        the main window so no blurry native EDIT control is layered over it. */
-    Panel(dc,R_SEARCH,g_searchFocused?RGB(15,39,53):RGB(10,20,33),g_searchFocused?RGB(65,173,184):RGB(38,67,83),12);
+    Panel(dc,R_SEARCH,g_searchFocused?RGB(13,47,58):RGB(11,23,39),g_searchFocused?RGB(67,183,194):RGB(42,75,103),12);
     RECT searchGlyph={R_SEARCH.left+12,R_SEARCH.top+10,R_SEARCH.left+26,R_SEARCH.bottom-10};
     ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,RGB(139,163,193),1.5f);
     DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,RGB(139,163,193),1.5f);
@@ -781,9 +781,9 @@ static void DrawUI(HDC dc,RECT client) {
     const wchar_t *tabNames[2]={L"Queue",L"Library"};
     for(int ti=0;ti<2;ti++){
         BOOL active=(g_libraryTab==ti);
-        if(active)GradientRound(dc,tabs[ti],RGB(28,133,151),RGB(83,85,183),11);
-        else RoundBox(dc,tabs[ti],RGB(13,24,39),11);
-        ABM_D2D_StrokeRound(&g_ui,(float)tabs[ti].left,(float)tabs[ti].top,(float)tabs[ti].right,(float)tabs[ti].bottom,11.0f,active?RGB(104,174,241):RGB(39,62,92),0.9f);
+        if(active)GradientRound(dc,tabs[ti],RGB(24,133,151),RGB(79,83,184),11);
+        else RoundBox(dc,tabs[ti],RGB(13,25,42),11);
+        ABM_D2D_StrokeRound(&g_ui,(float)tabs[ti].left,(float)tabs[ti].top,(float)tabs[ti].right,(float)tabs[ti].bottom,11.0f,active?RGB(104,190,224):RGB(43,72,101),0.95f);
         RECT label={tabs[ti].left+3,tabs[ti].top+1,tabs[ti].right-3,tabs[ti].bottom-1};
         Txt(dc,tabNames[ti],label,active?RGB(238,246,255):RGB(171,187,207),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
@@ -791,12 +791,12 @@ static void DrawUI(HDC dc,RECT client) {
     const wchar_t *filterNames[3]={L"All",L"Audio",L"Video"};
     for(int fi=0;fi<3;fi++){
         BOOL active=g_mediaFilter==fi;
-        if(active)GradientRound(dc,filters[fi],RGB(31,139,153),RGB(83,87,183),8);
-        else RoundBox(dc,filters[fi],RGB(18,30,47),8);
+        if(active)GradientRound(dc,filters[fi],RGB(24,132,151),RGB(76,83,174),8);
+        else RoundBox(dc,filters[fi],RGB(15,28,46),8);
         RECT label={filters[fi].left+2,filters[fi].top,filters[fi].right-2,filters[fi].bottom};
         Txt(dc,filterNames[fi],label,active?RGB(244,248,255):RGB(158,174,194),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
-    RoundBox(dc,R_GROUP,RGB(25,32,42),8);
+    RoundBox(dc,R_GROUP,RGB(18,34,51),8);
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
@@ -821,13 +821,13 @@ static void DrawUI(HDC dc,RECT client) {
         if(row.bottom>R_LIST.bottom)row.bottom=R_LIST.bottom;
         R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
         BOOL current=(i==g_current),selected=(i==g_selected),hot=(i==g_hoverPlaylistIndex);
-        if(current||selected||hot){
-            if(current)GradientRound(dc,row,RGB(15,53,66),RGB(32,43,79),12);
-            else RoundBox(dc,row,selected?RGB(22,42,67):RGB(20,36,57),12);
-            ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,12.0f,current?RGB(69,151,220):(hot?RGB(62,111,165):RGB(45,75,111)),current?1.25f:0.85f);
-            if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
-        }
-        RECT thumb={row.left+9,row.top+9,row.left+61,row.bottom-9};
+        /* Every queue entry is a deliberate media card, not bare text on a panel. */
+        if(current)GradientRound(dc,row,RGB(17,56,75),RGB(34,43,82),13);
+        else if(selected)GradientRound(dc,row,RGB(23,43,67),RGB(24,38,63),13);
+        else RoundBox(dc,row,hot?RGB(24,43,64):RGB(16,29,47),13);
+        ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?RGB(67,164,202):(selected?RGB(66,119,164):(hot?RGB(54,101,143):RGB(30,52,77))),current?1.25f:0.75f);
+        if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
+        RECT thumb={row.left+9,row.top+9,row.left+65,row.bottom-9};
         GradientRect(dc,thumb,current?RGB(34,120,184):RGB(28+(i*7)%14,45+(i*5)%14,69+(i*3)%18),current?RGB(91,93,190):RGB(38+(i*5)%16,57+(i*4)%16,84+(i*3)%18));
         RoundBox(dc,thumb,current?RGB(49,103,166):RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),9);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
@@ -837,9 +837,9 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+73,row.top+9,row.right-14,row.top+35};
-        RECT subline={row.left+73,row.top+36,row.right-14,row.bottom-7};
-        Txt(dc,leaf,name,current?RGB(255,255,255):RGB(225,232,242),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        RECT name={row.left+78,row.top+9,row.right-14,row.top+36};
+        RECT subline={row.left+78,row.top+38,row.right-14,row.bottom-7};
+        Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"Local file";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
         else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album details appear when track is played";
