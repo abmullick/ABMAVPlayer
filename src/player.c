@@ -122,7 +122,7 @@ static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[14], R_FULLSCREEN;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -339,9 +339,9 @@ static void UpdateLayout(HWND hwnd) {
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-190,17,w-146,61};
     R_DRAWER_BUTTON=(RECT){w-132,17,w-18,61};
-    R_MENU_PANEL=(RECT){w-350,66,w-18,66+580};
+    R_MENU_PANEL=(RECT){w-350,66,w-18,66+620};
     /* Reserve a dedicated 54 px header zone above the first command row. */
-    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
+    for(int i=0;i<14;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -880,29 +880,29 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+14,menu.top+10,menu.right-14,menu.top+43};
         Txt(dc,L"PLAYER CONTROLS",menuHeader,RGB(112,174,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+14,menu.top+45,menu.right-14,menu.top+45,RGB(48,68,94),1);
-        const wchar_t *labels[13]={
+        const wchar_t *labels[14]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
-            L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",
-            L"About ABM AV Player",L"Exit player",L"Shuffle: Off",
-            L"Repeat current: Off",L"Recent media"
+            L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
+            L"Shuffle: Off",L"Repeat current: Off",L"Equalizer",
+            L"Exit player",L"Help & User Guide",L"About ABM AV Player"
         };
-        const wchar_t *shortcuts[13]={
+        const wchar_t *shortcuts[14]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
-            L"F11",L"Ctrl+L",L"Ctrl+S",L"F1",
-            L"Ctrl+I",L"Alt+F4",L"Ctrl+Shift+H",
-            L"Ctrl+R",L"Ctrl+J"
+            L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
+            L"Ctrl+Shift+H",L"Ctrl+R",L"",
+            L"Alt+F4",L"F1",L"Ctrl+I"
         };
-        const wchar_t *icons[13]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷"};
-        for(int i=0;i<13;i++) {
+        const wchar_t *icons[14]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"×",L"?",L"i"};
+        for(int i=0;i<14;i++) {
             RECT item=R_MENU_ITEMS[i];
-            if(i==10)labels[10]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
-            if(i==11)labels[11]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
+            if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
+            if(i==9)labels[9]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i);
             RECT row=item;InflateRect(&row,-1,-1);
             if(hot){GradientRound(dc,row,RGB(31,66,105),RGB(48,56,112),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(91,153,220),1.0f);}
-            else if(i==3||i==9)RoundBox(dc,row,RGB(22,38,59),10);
+            else if(i==3||i==11)RoundBox(dc,row,RGB(22,38,59),10);
             RECT glyph={item.left+9,item.top+5,item.left+39,item.bottom-5};
             RoundBox(dc,glyph,hot?RGB(58,104,159):RGB(32,49,72),8);
             Txt(dc,icons[i],glyph,hot?RGB(244,249,255):RGB(154,190,232),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -2029,7 +2029,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<14;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
@@ -2039,30 +2039,27 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==4)ToggleFullscreen(hwnd);
                 else if(mi==5)LoadPlaylist();
                 else if(mi==6)SavePlaylist();
-                else if(mi==7)MessageBoxW(hwnd,
-                    L"ABM AV Player - Quick Help\n\n"
-                    L"Open media: Add audio or video files to the playlist.\n"
-                    L"Double-click a playlist item to play it.\n"
-                    L"Right-click the playlist for remove, reorder and clear options.\n"
-                    L"Load / Save playlist: Use M3U playlist files.\n"
-                    L"Seek: Drag the timeline. Volume: Drag the volume slider.\n"
-                    L"Drag files into the player to add them. Space: play/pause, arrows: seek 10 seconds. +/-: speed. N/P: next/previous.\n"
-                    L"Cast to TV: Discover receivers, then choose your TV in Playback Output.\n\n"
-                    L"Keyboard shortcuts:\nF11 - Toggle fullscreen\nEsc - Exit fullscreen or close the menu\n"
-                    L"Double-click the video - Toggle fullscreen\n"\
-                    L"Space - Play/Pause | Left/Right - Seek 10 seconds\n"\
-                    L"+/- - Playback speed | N/P - Next/Previous",
+                else if(mi==7){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
+                else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
+                else if(mi==9){g_repeat=!g_repeat;SavePersistentState();}
+                else if(mi==10)ShowPlaybackContextMenu(hwnd,x,y);
+                else if(mi==11)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==12)MessageBoxW(hwnd,
+                    L"ABM AV Player - Help & User Guide\n\n"
+                    L"GETTING STARTED\nOpen media with Ctrl+O or drag files into the player. Double-click a playlist item to play it.\n\n"
+                    L"PLAYBACK\nSpace: Play/Pause. Left/Right: seek 10 seconds. Home: restart. N/P: next/previous track. +/-: change playback speed. F11: fullscreen. Esc: exit fullscreen or close this menu.\n"
+                    L"Drag the timeline to seek and the volume slider to change volume. Double-click the video to toggle fullscreen.\n\n"
+                    L"PLAYLISTS & LIBRARY\nCtrl+L loads an M3U/M3U8 playlist. Ctrl+S saves the current playlist. Ctrl+J opens recent media. Right-click a playlist item for remove, reorder and clear actions.\n\n"
+                    L"NETWORK & CASTING\nCtrl+D discovers network receivers. Ctrl+Shift+C starts receiver discovery; select your TV in Playback Output. Receiver discovery depends on the TV, network and firewall allowing discovery traffic.\n\n"
+                    L"AUDIO\nUse the playback context menu for audio tracks, equalizer presets, ReplayGain and dynamic-range compression. Shuffle: Ctrl+Shift+H. Repeat current: Ctrl+R.\n\n"
+                    L"KEYBOARD SHORTCUTS\nCtrl+O Open media | Ctrl+D Find network devices | Ctrl+Shift+C Cast to TV\nCtrl+L Load playlist | Ctrl+S Save playlist | Ctrl+J Recent media\nSpace Play/Pause | F11 Fullscreen | F1 Help | Ctrl+I About | Alt+F4 Exit",
                     L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
-                else if(mi==8)MessageBoxW(hwnd,
+                else if(mi==13)MessageBoxW(hwnd,
                     L"ABM AV Player\nVersion 0.4\n\n"
                     L"A Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\n\n"
                     L"Product Owner: Abhisek Basu Mullick\n"
                     L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
                     L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
-                else if(mi==9)PostMessageW(hwnd,WM_CLOSE,0,0);
-                else if(mi==10){g_shuffle=!g_shuffle;}
-                else if(mi==11){g_repeat=!g_repeat;}
-                else if(mi==12){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -2154,7 +2151,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
-        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<14;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
