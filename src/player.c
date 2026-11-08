@@ -2202,15 +2202,15 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         } else {
             RECT photo={34,55,284,305}; HBRUSH ph=CreateSolidBrush(RGB(24,43,63)); FillRect(dc,&photo,ph); DeleteObject(ph);
             SetTextColor(dc,RGB(155,180,198)); HFONT hint=body; SelectObject(dc,hint);
-            DrawTextW(dc,L"Add your portrait to\\nassets\\owner_portrait.bmp",-1,&photo,DT_CENTER|DT_VCENTER|DT_WORDBREAK);
+            DrawTextW(dc,L"Add your portrait to\nassets\\owner_portrait.bmp",-1,&photo,DT_CENTER|DT_VCENTER|DT_WORDBREAK);
         }
         RECT r={320,58,rc.right-28,105}; SelectObject(dc,title); SetTextColor(dc,RGB(239,246,252)); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=112;r.bottom=150;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=151;r.bottom=190;SelectObject(dc,heading);SetTextColor(dc,RGB(242,246,250));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=245;r.bottom=295;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
+        r.top=245;r.bottom=295;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
         r.top=318;r.bottom=345;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version 0.4  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        DeleteObject(title);DeleteObject(heading);DeleteObject(body);
+        SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));\n        DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
