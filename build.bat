@@ -38,15 +38,15 @@ if errorlevel 1 (
 
 if not exist build mkdir build
 
-echo [1/5] Compiling C playback engine...
+echo [1/6] Compiling C playback engine...
 cl /nologo /W4 /O2 /utf-8 /std:c11 /TC /DUNICODE /D_UNICODE /I"%VLC_SDK%\include" /c src\player.c /Fo:build\player.obj
 if errorlevel 1 goto build_failed
 
-echo [2/5] Compiling C++ Direct2D bridge...
+echo [2/6] Compiling C++ Direct2D bridge...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\ui_d2d.cpp /Fo:build\ui_d2d.obj
 if errorlevel 1 goto build_failed
 
-echo [3/5] Compiling WASAPI audio visualizer...
+echo [3/6] Compiling WASAPI audio visualizer...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\audio_visualizer.cpp /Fo:build\audio_visualizer.obj
 if errorlevel 1 goto build_failed
 
@@ -63,7 +63,7 @@ if errorlevel 1 (
 rc /nologo /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
-echo [5/5] Linking ABM AV Player...
+echo [6/6] Linking ABM AV Player...
 cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
   comctl32.lib comdlg32.lib shell32.lib shlwapi.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
