@@ -68,6 +68,10 @@ The selected curve is applied through LibVLC's equalizer API. These are fixed gr
 
 Use boosts conservatively. Strong bass/treble boosts can reduce headroom and may cause clipping depending on the source and output device.
 
+## 6. Now-playing display and visualizer
+
+During audio playback, the player can display now-playing information and a live audio spectrum/visualizer when the required playback data is available. The visualizer currently captures the Windows default render mix, so sounds from other applications may also contribute to the display. Process-specific audio capture is not implemented.
+
 ## 6. Playback output and casting
 
 1. Open the Media / Settings drawer.
