@@ -386,7 +386,7 @@ static void UpdateLayout(HWND hwnd) {
     R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+318+queueShift};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-78,R_SIDEBAR.top+186+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+212+queueShift};
     R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-10,R_SIDEBAR.bottom-94};
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*68,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*68};
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*72,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*72};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
