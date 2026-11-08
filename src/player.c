@@ -977,6 +977,7 @@ static void DrawUI(HDC dc,RECT client) {
 
 
     }
+    } /* End permanent playback surface block. */
 
     /* Bottom-edge branding removed: playback and volume surfaces own this area. */
 
