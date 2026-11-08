@@ -2179,7 +2179,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_headingFont=CreateFontW(25,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     /* Resolve the bundled LibVLC runtime relative to this executable. This lets
        an installed copy find its own plugins/data without a system VLC install. */
-    wchar_t modulePath[PATH_CAP], appDir[PATH_CAP], pluginDir[PATH_CAP];
+    wchar_t modulePath[PATH_CAP]={0}, appDir[PATH_CAP]={0}, pluginDir[PATH_CAP]={0};
     DWORD moduleLen=GetModuleFileNameW(NULL,modulePath,PATH_CAP);
     if(moduleLen>0 && moduleLen<PATH_CAP) {
         wchar_t *lastSlash=wcsrchr(modulePath,L'\\');
