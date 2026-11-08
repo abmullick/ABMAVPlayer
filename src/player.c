@@ -334,7 +334,7 @@ static void RefreshVideoGeometry(void) {
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
     int left=28,top=104,bottom=150,gap=22;
-    int side=w>=1700?420:(w>=1400?390:(w>=1180?350:320));
+    int side=w>=1700?448:(w>=1400?420:(w>=1180?374:332));
     int drawerWidth=side*g_drawerProgress/100;
     int videoW=w-drawerWidth-left*2-(g_drawerProgress?gap*g_drawerProgress/100:0); if(videoW<260)videoW=260;
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
@@ -365,11 +365,11 @@ static void UpdateLayout(HWND hwnd) {
     PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+38,h-151,R_VIDEO.right-10,h-147};
-    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-700)/2;
-    R_PREV=(RECT){dockLeft+354,h-88,dockLeft+402,h-40};
-    R_PLAY=(RECT){dockLeft+426,h-101,dockLeft+490,h-37};
-    R_NEXT=(RECT){dockLeft+514,h-88,dockLeft+562,h-40};
-    R_STOP=(RECT){dockLeft+584,h-84,dockLeft+630,h-38};
+    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
+    R_PREV=(RECT){dockLeft+368,h-88,dockLeft+416,h-40};
+    R_PLAY=(RECT){dockLeft+440,h-101,dockLeft+504,h-37};
+    R_NEXT=(RECT){dockLeft+528,h-88,dockLeft+576,h-40};
+    R_STOP=(RECT){dockLeft+598,h-84,dockLeft+644,h-38};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+54};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
@@ -890,18 +890,18 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-760)/2;
-    RECT dock={dockLeft,client.bottom-120,dockLeft+700,client.bottom-18};
+    RECT dock={dockLeft,client.bottom-120,dockLeft+720,client.bottom-18};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(4,7,13),34);
-    GradientRound(dc,dock,RGB(12,27,43),RGB(17,22,43),30);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(64,127,157),1.15f);
+    GradientRound(dc,dock,RGB(11,29,46),RGB(18,22,47),30);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(67,139,169),1.25f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
     ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(35,61,89),0.55f);
     /* Dedicated Now Playing identity block makes the transport dock a real
        player surface rather than a floating row of generic buttons. */
-    RECT miniArt={dock.left+18,dock.top+19,dock.left+78,dock.bottom-19};
-    GradientRound(dc,miniArt,RGB(24,137,155),RGB(85,73,166),13);
-    RECT miniInner={miniArt.left+7,miniArt.top+7,miniArt.right-7,miniArt.bottom-7};
+    RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
+    GradientRound(dc,miniArt,RGB(24,145,164),RGB(88,75,177),14);
+    RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
     ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,RGB(180,222,245),0.85f);
     if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
     else {
@@ -910,23 +910,23 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
         DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
     }
-    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+328,dock.top+34};
-    Txt(dc,g_hasMedia?L"NOW PLAYING":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+328,dock.top+61};
-    const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Ready for your next session";
-    Txt(dc,dockTitle,nowTitle,RGB(239,246,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+328,dock.bottom-8};
-    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Choose a track to begin",nowMeta,RGB(143,166,192),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT transportDivider={dock.left+342,dock.top+17,dock.left+343,dock.bottom-17};
+    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+346,dock.top+34};
+    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+346,dock.top+61};
+    const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
+    Txt(dc,dockTitle,nowTitle,RGB(245,248,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-8};
+    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,RGB(151,174,199),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
     Fill(dc,transportDivider,RGB(43,67,96));
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     if(g_drawerOpen) {
-    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-78,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
+    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-82,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
     Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
-    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+78,volPanel.bottom-3};
+    RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
     Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
     RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
