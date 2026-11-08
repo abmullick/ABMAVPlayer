@@ -543,7 +543,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT brandRule={116,52,354,54};
     GradientRect(dc,brandRule,RGB(50,204,211),RGB(132,105,242));
     RECT sub={116,60,510,83};
-    Txt(dc,L"IMMERSIVE AUDIO   ·   VIDEO",sub,RGB(157,177,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",sub,RGB(157,177,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
@@ -761,7 +761,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
     DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
     RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+214+queueShift,R_SIDEBAR.right-18,R_SIDEBAR.top+238+queueShift};
-    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"YOUR QUEUE",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-164,listHead.top,R_CLEAR_PLAYLIST.left-8,listHead.bottom};
     Txt(dc,count,countR,RGB(153,174,200),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
@@ -840,14 +840,18 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+78,row.top+10,row.right-88,row.top+39};
-        RECT subline={row.left+78,row.top+41,row.right-88,row.bottom-8};
+        RECT name={row.left+78,row.top+10,row.right-84,row.top+39};
+        RECT subline={row.left+78,row.top+41,row.right-84,row.bottom-8};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"LOCAL FILE";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"ARTIST  ·  LOCAL FILE";
         else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"ALBUM  ·  LOCAL FILE";
-        Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        RECT typePill={row.right-78,row.top+24,row.right-10,row.top+49};
+        wchar_t metaLine[320];
+        if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
+        else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
+        else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
+        Txt(dc,metaLine,subline,RGB(145,166,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        RECT typePill={row.right-74,row.top+24,row.right-10,row.top+49};
         RoundBox(dc,typePill,isVideo?RGB(38,54,83):RGB(19,65,75),8);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?RGB(164,193,239):RGB(116,215,211),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
