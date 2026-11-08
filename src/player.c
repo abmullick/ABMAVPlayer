@@ -342,7 +342,7 @@ static void UpdateLayout(HWND hwnd) {
     int drawerLeft=R_VIDEO.right+(gap*g_drawerProgress/100)+side-drawerWidth;
     R_SIDEBAR=(RECT){drawerLeft,top,drawerLeft+side,h-18};
     int settingsShift=g_drawerSettingsOpen?40:0;
-    int queueShift=g_drawerSettingsOpen?44:-120;
+    int queueShift=g_drawerSettingsOpen?60:-120;
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-202,18,w-150,66};
     R_DRAWER_BUTTON=(RECT){w-138,18,w-20,66};
@@ -387,7 +387,7 @@ static void UpdateLayout(HWND hwnd) {
     R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+368+queueShift};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+218+queueShift};
     R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+374+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-124};
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*88,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*88};
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
@@ -508,21 +508,23 @@ static void DrawUI(HDC dc,RECT client) {
     }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,96};
-    GradientRect(dc,header,RGB(12,24,41),RGB(6,10,19));
-    Fill(dc,(RECT){0,95,client.right,96},RGB(34,51,72));
+    GradientRect(dc,header,RGB(13,27,45),RGB(5,10,19));
+    RECT headerShade={0,82,client.right,96};
+    GradientRect(dc,headerShade,RGB(8,17,29),RGB(5,10,18));
+    Fill(dc,(RECT){0,95,client.right,96},RGB(39,61,83));
     /* A restrained moving light sweep gives the top bar a little life without
        competing with the video or increasing the media-rendering workload. */
     Fill(dc,(RECT){0,92,client.right,95},RGB(13,24,39));
-    int sweepWidth=156;
+    int sweepWidth=112;
     int sweepX=(int)((g_visualPulse*3u)%(unsigned int)(client.right+sweepWidth))-sweepWidth;
     RECT sweep={sweepX,92,sweepX+sweepWidth,95};
     GradientRect(dc,sweep,RGB(45,191,207),RGB(125,91,226));
     /* Signature mark: a luminous A-monogram fused with a play glyph. */
-    RECT logoHalo={22,8,100,86};
+    RECT logoHalo={20,7,102,87};
     Panel(dc,logoHalo,RGB(13,28,45),RGB(63,151,180),22);
-    RECT logo={29,15,93,79};
+    RECT logo={28,14,94,80};
     GradientRound(dc,logo,RGB(28,177,195),RGB(105,83,225),17);
-    RECT logoInset={34,20,88,74};
+    RECT logoInset={33,19,89,75};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
         (float)logoInset.right,(float)logoInset.bottom,14.0f,RGB(190,229,255),0.8f);
     /* Geometric A: crisp strokes remain legible at small window sizes. */
@@ -538,9 +540,9 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"ABM",brandMain,RGB(247,250,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandSuffix={188,20,390,48};
     Txt(dc,L"AV  PLAYER",brandSuffix,RGB(130,190,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandRule={116,52,326,54};
+    RECT brandRule={116,52,354,54};
     GradientRect(dc,brandRule,RGB(50,204,211),RGB(132,105,242));
-    RECT sub={116,60,540,83};
+    RECT sub={116,60,510,83};
     Txt(dc,L"IMMERSIVE AUDIO   ·   VIDEO",sub,RGB(157,177,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
@@ -801,7 +803,7 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=88;
+    int rowHeight=80;
     int listHeight=R_LIST.bottom-R_LIST.top;
     /* Render complete rows only; partial final rows previously bled into
        the volume area and made adjacent titles appear superimposed. */
@@ -828,7 +830,7 @@ static void DrawUI(HDC dc,RECT client) {
         else RoundBox(dc,row,hot?RGB(24,43,64):RGB(16,29,47),13);
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?RGB(67,164,202):(selected?RGB(66,119,164):(hot?RGB(54,101,143):RGB(30,52,77))),current?1.25f:0.75f);
         if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
-        RECT thumb={row.left+11,row.top+11,row.left+77,row.bottom-11};
+        RECT thumb={row.left+10,row.top+10,row.left+68,row.bottom-10};
         GradientRect(dc,thumb,current?RGB(34,120,184):RGB(28+(i*7)%14,45+(i*5)%14,69+(i*3)%18),current?RGB(91,93,190):RGB(38+(i*5)%16,57+(i*4)%16,84+(i*3)%18));
         RoundBox(dc,thumb,current?RGB(49,103,166):RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),9);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
@@ -838,18 +840,18 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+86,row.top+12,row.right-91,row.top+44};
-        RECT subline={row.left+86,row.top+48,row.right-91,row.bottom-9};
+        RECT name={row.left+78,row.top+10,row.right-88,row.top+39};
+        RECT subline={row.left+78,row.top+41,row.right-88,row.bottom-8};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"LOCAL FILE";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"ARTIST  ·  LOCAL FILE";
         else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"ALBUM  ·  LOCAL FILE";
         Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        RECT typePill={row.right-82,row.top+25,row.right-12,row.top+51};
+        RECT typePill={row.right-78,row.top+24,row.right-10,row.top+49};
         RoundBox(dc,typePill,isVideo?RGB(38,54,83):RGB(19,65,75),8);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?RGB(164,193,239):RGB(116,215,211),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        if(current){int cx=row.right-25,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
+        if(current){int cx=row.right-23,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
         shown++;
     }
     if(shown==0){
@@ -908,12 +910,12 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
         DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
     }
-    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+330,dock.top+34};
+    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+328,dock.top+34};
     Txt(dc,g_hasMedia?L"NOW PLAYING":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+330,dock.top+61};
+    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+328,dock.top+61};
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Ready for your next session";
     Txt(dc,dockTitle,nowTitle,RGB(239,246,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+330,dock.bottom-8};
+    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+328,dock.bottom-8};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Choose a track from Queue or Library",nowMeta,RGB(143,166,192),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+342,dock.top+17,dock.left+343,dock.bottom-17};
     Fill(dc,transportDivider,RGB(43,67,96));
