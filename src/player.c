@@ -2550,14 +2550,22 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        /* The receiver popup is painted over the quick-action area. Its hit
+           test must run before shuffle/speed/recent hit tests, otherwise the
+           first receiver rows are consumed by the controls underneath. */
         if(g_drawerOpen&&g_drawerSettingsOpen&&g_receiverPopup && Inside(R_RECEIVER_LIST,x,y)) {
-            int item=(y-R_RECEIVER_LIST.top-4)/36;
+            int rowY=y-(R_RECEIVER_LIST.top+4);
+            int item=rowY>=0?rowY/36:-1;
             int count=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);
-            if(item>=0&&item<count) {
-                SendMessageW(g_renderers,CB_SETCURSEL,item,0);
+            int rows=count>6?6:count;
+            if(item>=0&&item<rows && rowY%36<32) {
+                SendMessageW(g_renderers,CB_SETCURSEL,(WPARAM)item,0);
                 SelectRenderer();
             }
-            g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
+            g_receiverPopup=FALSE;
+            InvalidateRect(hwnd,NULL,FALSE);
+            ReleaseCapture();
+            return 0;
         }
         if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
