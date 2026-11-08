@@ -24,7 +24,7 @@ This allows provider cookies and supported login sessions to remain available be
 
 A valid subscription does not guarantee embedded playback. Providers may restrict playback in embedded browsers, require browser/device certification, or depend on DRM capabilities not available in a particular WebView2 Runtime configuration. Compatibility can vary by service, content, account, region and runtime version.
 
-If a provider blocks embedded playback or protected video fails, use that provider's official supported browser or application. ABM AV Player must not attempt to extract protected streams or circumvent DRM.
+If a provider blocks embedded playback or protected video fails, use the **Open in browser** control in the Streaming Centre or that provider's official application. ABM AV Player must not attempt to extract protected streams or circumvent DRM.
 
 ## Runtime and build requirements
 
