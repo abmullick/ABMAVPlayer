@@ -122,7 +122,11 @@ static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[13], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[14], R_FULLSCREEN;
+static HWND g_eqWindow=NULL;
+static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
+static float g_eqPreamp=0.0f;
+static int g_eqDragBand=-1;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
@@ -137,6 +141,9 @@ static COLORREF C_LINE = RGB(35,48,67);
 static void PlayIndex(int index);
 static void SaveAudioPreferences(void);
 static void ApplyEqProfile(void);
+static void ShowEqualizer(void);
+static void ApplyCustomEqualizer(void);
+static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp);
 static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque);
 static BOOL EnsureDataDirectory(void);
 static COLORREF Blend(COLORREF a,COLORREF b,int amount);
@@ -339,9 +346,9 @@ static void UpdateLayout(HWND hwnd) {
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
     R_MENU_BUTTON=(RECT){w-190,17,w-146,61};
     R_DRAWER_BUTTON=(RECT){w-132,17,w-18,61};
-    R_MENU_PANEL=(RECT){w-350,66,w-18,66+580};
+    R_MENU_PANEL=(RECT){w-350,66,w-18,66+640};
     /* Reserve a dedicated 54 px header zone above the first command row. */
-    for(int i=0;i<13;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
+    for(int i=0;i<14;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -890,20 +897,20 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+14,menu.top+10,menu.right-14,menu.top+43};
         Txt(dc,L"PLAYER CONTROLS",menuHeader,RGB(112,174,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+14,menu.top+45,menu.right-14,menu.top+45,RGB(48,68,94),1);
-        const wchar_t *labels[13]={
+        const wchar_t *labels[14]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",
             L"About ABM AV Player",L"Exit player",L"Shuffle: Off",
-            L"Repeat current: Off",L"Recent media"
+            L"Repeat current: Off",L"Recent media",L"Advanced equalizer"
         };
-        const wchar_t *shortcuts[13]={
+        const wchar_t *shortcuts[14]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"F1",
             L"Ctrl+I",L"Alt+F4",L"Ctrl+Shift+H",
-            L"Ctrl+R",L"Ctrl+J"
+            L"Ctrl+R",L"Ctrl+J",L"Ctrl+E"
         };
-        const wchar_t *icons[13]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷"};
-        for(int i=0;i<13;i++) {
+        const wchar_t *icons[14]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷",L"EQ"};
+        for(int i=0;i<14;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==10)labels[10]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==11)labels[11]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
@@ -1187,6 +1194,9 @@ static void SaveAudioPreferences(void) {
     WritePrivateProfileStringW(L"Audio",L"Compressor",value,path);
     swprintf_s(value,24,L"%d",g_eqProfile);
     WritePrivateProfileStringW(L"Audio",L"EqProfile",value,path);
+    swprintf_s(value,24,L"%d",(int)(g_eqPreamp*10.0f));
+    WritePrivateProfileStringW(L"Audio",L"EqPreamp",value,path);
+    for(int i=0;i<10;i++){wchar_t key[24];swprintf_s(key,_countof(key),L"EqBand%d",i);swprintf_s(value,24,L"%d",(int)(g_eqBandGain[i]*10.0f));WritePrivateProfileStringW(L"Audio",key,value,path);}
 }
 static void LoadAudioPreferences(void) {
     if(!EnsureDataDirectory())return;
@@ -1195,10 +1205,13 @@ static void LoadAudioPreferences(void) {
     g_replayGain=GetPrivateProfileIntW(L"Audio",L"ReplayGain",1,path)!=0;
     g_compressor=GetPrivateProfileIntW(L"Audio",L"Compressor",0,path)!=0;
     g_eqProfile=GetPrivateProfileIntW(L"Audio",L"EqProfile",0,path);
-    if(!((g_eqProfile>=0&&g_eqProfile<=3)||(g_eqProfile>=10&&g_eqProfile<=19)))g_eqProfile=0;
+    if(!((g_eqProfile>=0&&g_eqProfile<=4)||(g_eqProfile>=10&&g_eqProfile<=19)))g_eqProfile=0;
+    g_eqPreamp=(float)GetPrivateProfileIntW(L"Audio",L"EqPreamp",0,path)/10.0f;
+    for(int i=0;i<10;i++){wchar_t key[24];swprintf_s(key,_countof(key),L"EqBand%d",i);g_eqBandGain[i]=(float)GetPrivateProfileIntW(L"Audio",key,0,path)/10.0f;}
 }
 static void ApplyEqProfile(void) {
     if(!g_player)return;
+    if(g_eqProfile==4){ApplyCustomEqualizer();return;}
     if(g_eqProfile>=10&&g_eqProfile<=19){
         libvlc_equalizer_t *preset=libvlc_audio_equalizer_new_from_preset(g_eqProfile-10);
         if(preset){libvlc_audio_equalizer_set_preamp(preset,0.0f);libvlc_media_player_set_equalizer(g_player,preset);libvlc_audio_equalizer_release(preset);}
@@ -1682,6 +1695,7 @@ static void ToggleFullscreen(HWND hwnd) {
            fullscreen. VLC can otherwise consume WM_MOUSEMOVE in its child
            HWND, especially after the child is resized to cover the monitor. */
         g_menuOpen=FALSE;g_receiverPopup=FALSE;
+        if(g_eqWindow)ShowWindow(g_eqWindow,SW_HIDE);
         ShowWindow(g_renderers,SW_HIDE);
         SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
         SetWindowPos(hwnd,HWND_TOP,mi.rcMonitor.left,mi.rcMonitor.top,
@@ -2037,7 +2051,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<14;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
@@ -2071,6 +2085,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==10){g_shuffle=!g_shuffle;}
                 else if(mi==11){g_repeat=!g_repeat;}
                 else if(mi==12){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
+                else if(mi==13)ShowEqualizer();
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -2114,6 +2129,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
+        if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
         if(ctrl && shift && wp=='C'){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);return 0;}
         if(ctrl && !shift && wp=='L'){LoadPlaylist();return 0;}
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
@@ -2162,7 +2178,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
-        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<13;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<14;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
@@ -2234,7 +2250,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
-    case WM_DESTROY:SavePersistentState();DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+    case WM_DESTROY:SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
