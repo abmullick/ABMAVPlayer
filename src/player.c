@@ -343,9 +343,26 @@ static void UpdateLayout(HWND hwnd) {
     int drawerRight=w-24;
     int drawerLeft=drawerRight-drawerWidth;
     R_SIDEBAR=(RECT){drawerLeft,28,drawerLeft+side,h-28};
-    int settingsShift=g_drawerSettingsOpen?40:0;
-    int queueShift=g_drawerSettingsOpen?60:-120;
-    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
+    /* Collection-first drawer. Settings occupy a separate expandable region;
+       all library controls are laid out below it with no negative offsets. */
+    int collectionTop=g_drawerSettingsOpen?286:82;
+    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+16,R_SIDEBAR.right-16,R_SIDEBAR.top+58};
+    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+84,R_SIDEBAR.right-14,R_SIDEBAR.top+118};
+    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+126,R_SIDEBAR.right-14,R_SIDEBAR.top+162};
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+204,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+240};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+204,R_SIDEBAR.right-16,R_SIDEBAR.top+240};
+    R_SPEED=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+246,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+282};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+246,R_SIDEBAR.right-16,R_SIDEBAR.top+282};
+    R_SEARCH=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+collectionTop+34,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+76};
+    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+collectionTop+86,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+collectionTop+126};
+    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+collectionTop+86,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+126};
+    R_FILTER_ALL=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+collectionTop+136,R_SIDEBAR.left+80,R_SIDEBAR.top+collectionTop+168};
+    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+86,R_SIDEBAR.top+collectionTop+136,R_SIDEBAR.left+158,R_SIDEBAR.top+collectionTop+168};
+    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+164,R_SIDEBAR.top+collectionTop+136,R_SIDEBAR.left+236,R_SIDEBAR.top+collectionTop+168};
+    R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+collectionTop+136,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+168};
+    R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+collectionTop-2,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+26};
+    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+collectionTop+176,R_SIDEBAR.right-12,R_SIDEBAR.bottom-112};
+    R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-54,R_SIDEBAR.right-30,R_SIDEBAR.bottom-46};
     R_MENU_BUTTON=(RECT){w-202,18,w-150,66};
     R_DRAWER_BUTTON=(RECT){w-138,18,w-20,66};
     R_MENU_PANEL=(RECT){w-376,74,w-20,74+640};
@@ -373,22 +390,7 @@ static void UpdateLayout(HWND hwnd) {
     R_NEXT=(RECT){dockLeft+528,h-88,dockLeft+576,h-40};
     R_STOP=(RECT){dockLeft+598,h-84,dockLeft+644,h-38};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
-    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+54};
-    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
-    R_VOLUME=(RECT){R_SIDEBAR.left+100,h-59,R_SIDEBAR.right-30,h-51};
-    R_SHUFFLE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+122+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+158+settingsShift};
-    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+122+settingsShift,R_SIDEBAR.right-16,R_SIDEBAR.top+158+settingsShift};
-    R_SPEED=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+166+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+202+settingsShift};
-    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+166+settingsShift,R_SIDEBAR.right-16,R_SIDEBAR.top+202+settingsShift};
-    R_SEARCH=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+244+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+284+queueShift};
-    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+292+queueShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+330+queueShift};
-    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+292+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+330+queueShift};
-    R_FILTER_ALL=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+80,R_SIDEBAR.top+368+queueShift};
-    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+86,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+158,R_SIDEBAR.top+368+queueShift};
-    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+164,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+236,R_SIDEBAR.top+368+queueShift};
-    R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+368+queueShift};
-    R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+218+queueShift};
-    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+374+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-124};
+    /* All drawer hit targets are assigned in the collection-first layout above. */
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -690,8 +692,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
     if(g_drawerProgress>0) {
-    int settingsShift=g_drawerSettingsOpen?44:0;
-    int queueShift=g_drawerSettingsOpen?44:-120;
+    int collectionTop=g_drawerSettingsOpen?286:82;
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Slide-out media drawer: output, quick controls, search and queue. */
@@ -708,7 +709,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
     GradientRect(dc,accent,RGB(50,202,207),RGB(130,100,238));
     if(g_drawerSettingsOpen) {
-    RECT sideTitle={R_SIDEBAR.left+17,R_SIDEBAR.top+54,R_SIDEBAR.right-16,R_SIDEBAR.top+73};
+    RECT sideTitle={R_SIDEBAR.left+18,R_SIDEBAR.top+64,R_SIDEBAR.right-18,R_SIDEBAR.top+82};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
     GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?RGB(28,102,116):RGB(17,48,62),(g_hoverButton==HIT_SCAN)?RGB(45,77,139):RGB(22,57,77),12);
@@ -735,7 +736,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
-    RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+142,R_SIDEBAR.right-18,R_SIDEBAR.top+164};
+    RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+178,R_SIDEBAR.right-18,R_SIDEBAR.top+198};
     Txt(dc,L"QUICK ACTIONS",toolsHead,RGB(118,164,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
@@ -766,7 +767,7 @@ static void DrawUI(HDC dc,RECT client) {
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
     DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
     DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
-    RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+214+queueShift,R_SIDEBAR.right-18,R_SIDEBAR.top+238+queueShift};
+    RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+collectionTop,R_SIDEBAR.right-18,R_SIDEBAR.top+collectionTop+24};
     Txt(dc,g_libraryTab?L"YOUR COLLECTION":L"YOUR QUEUE",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-164,listHead.top,R_CLEAR_PLAYLIST.left-8,listHead.bottom};
@@ -933,9 +934,10 @@ static void DrawUI(HDC dc,RECT client) {
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     if(g_drawerOpen) {
-    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-82,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
+    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-88,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
     Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
+     RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
     Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
     RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
