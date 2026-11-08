@@ -1331,7 +1331,7 @@ static void AddFiles(void) {
         while(*p&&g_playlistCount<MAX_PLAYLIST){wchar_t full[PATH_CAP];swprintf_s(full,PATH_CAP,L"%s\\%s",dir,p);wcsncpy_s(g_playlist[g_playlistCount++],PATH_CAP,full,_TRUNCATE);p+=wcslen(p)+1;}
     }
     if(g_selected<0&&g_playlistCount>0)g_selected=0;
-    InvalidateRect(g_main,NULL,FALSE);
+    SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
 }
 static void ClearPlaylist(void) {
     if(g_hasMedia)libvlc_media_player_stop(g_player);
@@ -1402,7 +1402,7 @@ static void LoadPlaylist(void) {
             g_playlistCount++;
         }
     }
-    fclose(fp);if(g_playlistCount)g_selected=0;
+    fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;
     InvalidateRect(g_main,NULL,FALSE);
 }
 static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
