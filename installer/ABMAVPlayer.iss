@@ -42,4 +42,8 @@ Name: "{autoprograms}\ABM AV Player"; Filename: "{app}\{#MyAppExeName}"; Working
 Name: "{autodesktop}\ABM AV Player"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""ABM AV Player mDNS"" dir=in action=allow protocol=UDP localport=5353 remoteip=LocalSubnet profile=private"; Tasks: castfirewall; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch ABM AV Player"; Flags: postinstall nowait skipifsilent
+
+[UninstallRun]
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ABM AV Player mDNS"""; Flags: runhidden waituntilterminated
