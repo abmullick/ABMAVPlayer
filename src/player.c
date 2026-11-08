@@ -365,10 +365,10 @@ static void UpdateLayout(HWND hwnd) {
     PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+42,h-145,R_VIDEO.right-4,h-141};
-    R_PREV=(RECT){w/2-126,h-91,w/2-74,h-39};
-    R_PLAY=(RECT){w/2-34,h-105,w/2+34,h-37};
-    R_NEXT=(RECT){w/2+74,h-91,w/2+126,h-39};
-    R_STOP=(RECT){w/2+148,h-87,w/2+198,h-37};
+    int transportShift=w>=1500?130:90;\n    R_PREV=(RECT){w/2-126+transportShift,h-91,w/2-74+transportShift,h-39};
+    R_PLAY=(RECT){w/2-34+transportShift,h-105,w/2+34+transportShift,h-37};
+    R_NEXT=(RECT){w/2+74+transportShift,h-91,w/2+126+transportShift,h-39};
+    R_STOP=(RECT){w/2+148+transportShift,h-87,w/2+198+transportShift,h-37};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+54};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
@@ -386,7 +386,7 @@ static void UpdateLayout(HWND hwnd) {
     R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+368+queueShift};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+218+queueShift};
     R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+378+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-98};
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*88,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*88};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
@@ -800,7 +800,7 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=80;
+    int rowHeight=88;
     int listHeight=R_LIST.bottom-R_LIST.top;
     /* Render complete rows only; partial final rows previously bled into
        the volume area and made adjacent titles appear superimposed. */
@@ -827,7 +827,7 @@ static void DrawUI(HDC dc,RECT client) {
         else RoundBox(dc,row,hot?RGB(24,43,64):RGB(16,29,47),13);
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?RGB(67,164,202):(selected?RGB(66,119,164):(hot?RGB(54,101,143):RGB(30,52,77))),current?1.25f:0.75f);
         if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
-        RECT thumb={row.left+10,row.top+10,row.left+70,row.bottom-10};
+        RECT thumb={row.left+11,row.top+11,row.left+77,row.bottom-11};
         GradientRect(dc,thumb,current?RGB(34,120,184):RGB(28+(i*7)%14,45+(i*5)%14,69+(i*3)%18),current?RGB(91,93,190):RGB(38+(i*5)%16,57+(i*4)%16,84+(i*3)%18));
         RoundBox(dc,thumb,current?RGB(49,103,166):RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),9);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
@@ -837,8 +837,8 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+84,row.top+13,row.right-18,row.top+42};
-        RECT subline={row.left+84,row.top+44,row.right-18,row.bottom-9};
+        RECT name={row.left+86,row.top+13,row.right-18,row.top+44};
+        RECT subline={row.left+86,row.top+48,row.right-18,row.bottom-9};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"Local file";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
@@ -882,13 +882,13 @@ static void DrawUI(HDC dc,RECT client) {
     RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
-    RECT dock={client.right/2-222,client.bottom-116,client.right/2+222,client.bottom-20};
+    RECT dock={client.right/2-382,client.bottom-126,client.right/2+382,client.bottom-18};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
-    RoundBox(dc,dockShadow,RGB(4,7,13),32);
-    GradientRound(dc,dock,RGB(13,27,44),RGB(17,25,48),30);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(47,91,123),1.15f);
+    RoundBox(dc,dockShadow,RGB(4,7,13),34);
+    GradientRound(dc,dock,RGB(12,29,47),RGB(19,24,49),34);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,34.0f,RGB(56,112,145),1.25f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(35,61,89),0.65f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,32.0f,RGB(35,61,89),0.65f);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
