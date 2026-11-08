@@ -81,9 +81,13 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     IDWriteTextFormat *body = nullptr, *smallFormat = nullptr, *heading = nullptr;
     /* Segoe UI Variable gives the interface a contemporary Windows 11
        typographic voice; DirectWrite performs normal font fallback on older PCs. */
-    if (!MakeFormat(writeFactory, L"Segoe UI Variable Text", 17.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Text", 14.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 26.0f, DWRITE_FONT_WEIGHT_BOLD, &heading)) {
+    /* A tighter typographic scale gives the interface a calmer, more
+       deliberate hierarchy: readable body copy, compact utility labels and
+       confident display text without the heavy, oversized feel of a generic
+       gaming UI. Segoe UI Variable falls back cleanly on older Windows builds. */
+    if (!MakeFormat(writeFactory, L"Segoe UI Variable Text", 16.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
+        !MakeFormat(writeFactory, L"Segoe UI Variable Text", 12.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
+        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 28.0f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading)) {
         SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
         ABM_D2D_Destroy(ui);
         return FALSE;
