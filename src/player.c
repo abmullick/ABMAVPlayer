@@ -2256,6 +2256,101 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 
+static HBRUSH g_helpBrush=NULL;
+static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
+    case WM_CREATE: {
+        const wchar_t *help=
+            L"ABM AV PLAYER  |  USER GUIDE\r\n"
+            L"\r\n"
+            L"GETTING STARTED\r\n"
+            L"Choose Open media or press Ctrl+O, then select audio or video files. You can also drag files from File Explorer into the player. Added files appear in the playlist. Double-click a playlist row to play it.\r\n"
+            L"\r\n"
+            L"PLAYBACK CONTROLS\r\n"
+            L"Play/Pause starts or pauses the selected item. Stop ends playback. Previous and Next move through the playlist. Drag the seek bar to move within the current item. Drag the volume control to change loudness. Fullscreen is available from the fullscreen control or F11; press Esc to leave fullscreen.\r\n"
+            L"\r\n"
+            L"PLAYLISTS AND LIBRARY\r\n"
+            L"Add multiple files, select an item to play, and use the playlist context menu (right-click) to remove an item, clear the playlist, or save it. Load Playlist and Save Playlist use M3U files. Recent media opens the recent-items list. Shuffle changes the next-item order; Repeat current repeats the active item. The playlist supports up to 256 entries. Removing an entry does not delete its source file.\r\n"
+            L"\r\n"
+            L"AUDIO, VIDEO AND SUBTITLES\r\n"
+            L"Right-click the video surface during playback for available media actions: choose an audio track, choose or disable subtitles, load an external subtitle file, change playback speed, select an equalizer preset, toggle ReplayGain normalisation or the dynamic-range compressor, and open Media information. Available tracks and options depend on the media and VLC plugins. Playback speed presets range from 0.5x to 2.0x.\r\n"
+            L"\r\n"
+            L"EQUALIZER AND SOUND\r\n"
+            L"Advanced equalizer opens the ABM 10-band graphic EQ. Choose Flat, Bass boost, Vocal clarity or Treble boost; changes are applied to playback. The EQ is a fixed-band graphic equalizer, not a parametric EQ. ReplayGain needs suitable track metadata. The compressor is a dynamic-range effect, not a guaranteed peak limiter.\r\n"
+            L"\r\n"
+            L"CAST TO TV / NETWORK RECEIVERS\r\n"
+            L"Open the Media / Settings drawer, find Playback Output, choose Find TVs / Find network devices and wait several seconds. Select a discovered receiver before playback or while a file is playing. Choose Local playback to return to the PC. Google Cast requires a compatible Chromecast receiver, a full VLC runtime with renderer-discovery and Chromecast plugins, and the PC and TV on the same non-guest network. Allow the app/VLC through Windows Defender Firewall on Private networks; VPNs, guest Wi-Fi, router client isolation or blocked mDNS can prevent discovery. Android TV branding alone does not guarantee Google Cast support.\r\n"
+            L"\r\n"
+            L"SUPPORTED MEDIA\r\n"
+            L"Common audio formats include MP3, WAV, FLAC, AAC, M4A and OGG. Common video formats include MP4, MKV, AVI, MOV, WMV and WebM. Actual format/codec support depends on the installed 64-bit VLC build and its plugins.\r\n"
+            L"\r\n"
+            L"SETTINGS AND SAVED DATA\r\n"
+            L"Volume, shuffle, repeat, playback speed, recent media and playlist-related state are saved under %APPDATA%\\ABMAVPlayer. Audio preferences are stored separately in audio.ini. These files are local to your Windows user profile.\r\n"
+            L"\r\n"
+            L"KEYBOARD SHORTCUTS\r\n"
+            L"Ctrl+O  Open media\r\n"
+            L"Ctrl+D  Find network devices\r\n"
+            L"Ctrl+Shift+C  Cast to TV / start receiver discovery\r\n"
+            L"Space  Play / Pause\r\n"
+            L"Left / Right  Seek backward / forward 10 seconds\r\n"
+            L"Home  Seek to the beginning\r\n"
+            L"N / P  Next / Previous item\r\n"
+            L"+ / -  Increase / decrease playback speed\r\n"
+            L"F11  Toggle fullscreen\r\n"
+            L"Ctrl+L  Load playlist   |   Ctrl+S  Save playlist\r\n"
+            L"Ctrl+J  Recent media   |   Ctrl+E  Advanced equalizer\r\n"
+            L"Ctrl+Shift+H  Toggle shuffle   |   Ctrl+R  Toggle repeat\r\n"
+            L"F1  Open this help   |   Ctrl+I  About   |   Alt+F4  Exit\r\n"
+            L"Esc  Close the menu / leave fullscreen\r\n"
+            L"\r\n"
+            L"TROUBLESHOOTING\r\n"
+            L"If a file will not play, check that it exists and that the installed VLC build includes the required codec/plugin. If a TV is not listed, check same-network connectivity, mDNS/multicast, VPN, router isolation and Windows Firewall. If a receiver appears but playback fails, try a common MP4/H.264 file and verify the TV supports the stream. Casting and transcoding are dependent on VLC and receiver capabilities; not every format is guaranteed to work.\r\n"
+            L"\r\n"
+            L"ABM AV Player is a desktop media player built on LibVLC. It does not install a separate audio/video driver.";
+        HWND edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",help,
+            WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY,
+            18,18,700,540,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
+        if(edit)SendMessageW(edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        if(!g_helpBrush)g_helpBrush=CreateSolidBrush(RGB(12,22,35));
+        return 0;
+    }
+    case WM_SIZE: {
+        HWND edit=GetDlgItem(hwnd,1);
+        if(edit)MoveWindow(edit,18,18,LOWORD(lp)-36,HIWORD(lp)-36,TRUE);
+        return 0;
+    }
+    case WM_CTLCOLOREDIT: {
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(220,232,242));SetBkColor(dc,RGB(12,22,35));
+        return (LRESULT)g_helpBrush;
+    }
+    case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
+    case WM_DESTROY: return 0;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
+static void ShowHelpDialog(HWND owner) {
+    static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+    if(!registered) {
+        WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HelpWndProc;
+        wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+        wc.hbrBackground=CreateSolidBrush(RGB(12,22,35));wc.lpszClassName=L"ABMAVPlayerHelp";
+        if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
+        registered=TRUE;
+    }
+    RECT wr={0,0,760,620};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU|WS_THICKFRAME,FALSE,WS_EX_DLGMODALFRAME);
+    int w=wr.right-wr.left,h=wr.bottom-wr.top;
+    int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
+    HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerHelp",
+        L"ABM AV Player - Help & User Guide",WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_POPUP,
+        x,y,w,h,owner,NULL,inst,NULL);
+    if(!dlg)return;
+    EnableWindow(owner,FALSE);ShowWindow(dlg,SW_SHOW);UpdateWindow(dlg);
+    MSG m;while(IsWindow(dlg)&&GetMessageW(&m,NULL,0,0)>0) {
+        if(!IsDialogMessageW(dlg,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
+    }
+    EnableWindow(owner,TRUE);SetActiveWindow(owner);
+}
+
 static void ShowAboutDialog(HWND owner) {
     static BOOL registered=FALSE;
     HINSTANCE inst=GetModuleHandleW(NULL);
@@ -2619,20 +2714,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
                 else if(mi==9){g_repeat=!g_repeat;SavePersistentState();}
                 else if(mi==10)ShowEqualizer();
-                else if(mi==11)MessageBoxW(hwnd,
-                    L"ABM AV Player - Quick Help\n\n"
-                    L"Open media: Add audio or video files to the playlist.\n"
-                    L"Double-click a playlist item to play it.\n"
-                    L"Right-click the playlist for remove, reorder and clear options.\n"
-                    L"Load / Save playlist: Use M3U playlist files.\n"
-                    L"Seek: Drag the timeline. Volume: Drag the volume slider.\n"
-                    L"Drag files into the player to add them. Space: play/pause, arrows: seek 10 seconds. +/-: speed. N/P: next/previous.\n"
-                    L"Cast to TV: Discover receivers, then choose your TV in Playback Output.\n\n"
-                    L"Keyboard shortcuts:\nF11 - Toggle fullscreen\nEsc - Exit fullscreen or close the menu\n"
-                    L"Double-click the video - Toggle fullscreen\n"
-                    L"Space - Play/Pause | Left/Right - Seek 10 seconds\n"
-                    L"+/- - Playback speed | N/P - Next/Previous",
-                    L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
+                else if(mi==11)ShowHelpDialog(hwnd);
                 else if(mi==12)PostMessageW(hwnd,WM_CLOSE,0,0);
                 else if(mi==13)ShowAboutDialog(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
