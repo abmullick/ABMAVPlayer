@@ -365,11 +365,11 @@ static void UpdateLayout(HWND hwnd) {
     PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+42,h-145,R_VIDEO.right-4,h-141};
-    int transportShift=w>=1500?130:90;
-    R_PREV=(RECT){w/2-126+transportShift,h-91,w/2-74+transportShift,h-39};
-    R_PLAY=(RECT){w/2-34+transportShift,h-105,w/2+34+transportShift,h-37};
-    R_NEXT=(RECT){w/2+74+transportShift,h-91,w/2+126+transportShift,h-39};
-    R_STOP=(RECT){w/2+148+transportShift,h-87,w/2+198+transportShift,h-37};
+    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-760)/2;
+    R_PREV=(RECT){dockLeft+398,h-91,dockLeft+450,h-39};
+    R_PLAY=(RECT){dockLeft+478,h-105,dockLeft+546,h-37};
+    R_NEXT=(RECT){dockLeft+574,h-91,dockLeft+626,h-39};
+    R_STOP=(RECT){dockLeft+656,h-87,dockLeft+706,h-37};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+54};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
@@ -386,7 +386,7 @@ static void UpdateLayout(HWND hwnd) {
     R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+164,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+236,R_SIDEBAR.top+368+queueShift};
     R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+368+queueShift};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+218+queueShift};
-    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+378+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-98};
+    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+378+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-132};
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*88,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*88};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -887,7 +887,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
-    RECT dock={client.right/2-382,client.bottom-126,client.right/2+382,client.bottom-18};
+    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-760)/2;
+    RECT dock={dockLeft,client.bottom-126,dockLeft+760,client.bottom-18};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(4,7,13),34);
     GradientRound(dc,dock,RGB(12,29,47),RGB(19,24,49),34);
@@ -907,14 +908,14 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
         DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
     }
-    RECT nowLabel={miniArt.right+14,dock.top+18,dock.left+300,dock.top+39};
+    RECT nowLabel={miniArt.right+14,dock.top+18,dock.left+360,dock.top+39};
     Txt(dc,g_hasMedia?L"NOW PLAYING":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT nowTitle={miniArt.right+14,dock.top+39,dock.left+300,dock.top+68};
+    RECT nowTitle={miniArt.right+14,dock.top+39,dock.left+360,dock.top+68};
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Ready for your next session";
     Txt(dc,dockTitle,nowTitle,RGB(239,246,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowMeta={miniArt.right+14,dock.top+68,dock.left+300,dock.bottom-10};
+    RECT nowMeta={miniArt.right+14,dock.top+68,dock.left+360,dock.bottom-10};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Choose a track from Queue or Library",nowMeta,RGB(143,166,192),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT transportDivider={dock.left+306,dock.top+19,dock.left+307,dock.bottom-19};
+    RECT transportDivider={dock.left+378,dock.top+19,dock.left+379,dock.bottom-19};
     Fill(dc,transportDivider,RGB(43,67,96));
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
@@ -940,8 +941,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
     Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-    RECT footer={g_drawerOpen?R_VIDEO.right-430:client.right-430,client.bottom-25,g_drawerOpen?R_VIDEO.right-20:client.right-24,client.bottom-8};
-    Txt(dc,L"ABM AV PLAYER   ·   IMMERSIVE ENTERTAINMENT",footer,RGB(112,132,153),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    /* Bottom-edge branding removed: playback and volume surfaces own this area. */
 
     /* Animated drop-down menu is painted last so it floats above the player. */
     if(g_menuProgress>0) {
