@@ -31,6 +31,12 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 - Optional ReplayGain track normalisation and dynamic-range compressor for newly opened media.
 - Hardware decoding uses LibVLC automatic selection by default. ABM_VLC_HW=none forces software decoding; ABM_VLC_HW=d3d11va requests D3D11VA when supported.
 
+### Streaming services
+- Separate WebView2-powered Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar and Sony LIV.
+- Users navigate to each provider's official website and sign in with their own accounts; ABM AV Player does not collect or proxy credentials.
+- WebView2 browser profile is persisted under %LOCALAPPDATA%\\ABMAVPlayer\\WebView2 so provider sign-in sessions can survive application restarts.
+- Protected playback is subject to each provider's embedded-browser and DRM policies. If a provider blocks WebView2 or its DRM requirements are not met, use the provider's official browser/app instead. A subscription alone does not guarantee embedded playback.
+
 ### Network playback
 - Receiver discovery and renderer selection through LibVLC, including compatible Google Cast / Chromecast devices and other renderer services exposed by the installed VLC build.
 - Choose a receiver before playback or switch output while an item is playing.
@@ -51,6 +57,8 @@ LibVLC handles media decoding and device output. ABM AV Player owns the desktop 
 
 - Windows 11 x64.
 - Visual Studio / Build Tools with Desktop development with C++ and Windows 10/11 SDK.
+- Microsoft Edge WebView2 Evergreen Runtime (normally present on current Windows 11 installations).
+- Microsoft.Web.WebView2 NuGet SDK package for compiling the streaming module.
 - 64-bit VLC installation and matching 64-bit LibVLC SDK (LibVLC 3.0 or later for renderer discovery).
 - For Google Cast, use a full VLC runtime containing its renderer-discovery and Chromecast plugins. The SDK alone is not a complete runtime.
 
