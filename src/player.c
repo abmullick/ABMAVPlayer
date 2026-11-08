@@ -1047,8 +1047,8 @@ static void DrawUI(HDC dc,RECT client) {
         const wchar_t *icons[14]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"?",L"×",L"i"};
         for(int i=0;i<14;i++) {
             RECT item=R_MENU_ITEMS[i];
-            if(i==10)labels[10]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
-            if(i==11)labels[11]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
+            if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
+            if(i==9)labels[9]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
