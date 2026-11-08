@@ -324,8 +324,8 @@ static void PositionVideoWindow(void) {
     if (!g_videoBoundsValid ||
         next.left != g_videoBounds.left || next.top != g_videoBounds.top ||
         next.right != g_videoBounds.right || next.bottom != g_videoBounds.bottom) {
-        SetWindowPos(g_video, NULL, x, y, videoW, videoH,
-            SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(g_video, HWND_TOP, x, y, videoW, videoH,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW);
         g_videoBounds = next;
         g_videoBoundsValid = TRUE;
         InvalidateRect(g_main, &R_VIDEO, FALSE);
@@ -790,13 +790,13 @@ static void DrawUI(HDC dc,RECT client) {
     ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,27.0f,RGB(45,61,80),0.65f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
-    GradientRect(dc,accent,RGB(50,202,207),RGB(130,100,238));
+    GradientRect(dc,accent,RGB(48,169,157),RGB(104,187,151));
     if(g_drawerSettingsOpen) {
     RECT sideTitle={R_SIDEBAR.left+18,R_SIDEBAR.top+64,R_SIDEBAR.right-18,R_SIDEBAR.top+82};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
-    GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?RGB(28,102,116):RGB(17,48,62),(g_hoverButton==HIT_SCAN)?RGB(45,77,139):RGB(22,57,77),12);
-    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,RGB(53,119,143),0.95f);
+    GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?RGB(37,123,112):RGB(20,49,51),(g_hoverButton==HIT_SCAN)?RGB(67,151,126):RGB(31,72,68),12);
+    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,RGB(66,132,116),0.95f);
     RECT scanIcon={scan.left+14,scan.top+8,scan.left+34,scan.bottom-8};
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.left+2,scanIcon.bottom-7,RGB(220,236,255),2);
     DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.right-2,scanIcon.top+8,RGB(220,236,255),2);
@@ -806,9 +806,9 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Fully custom Direct2D output selector. */
     COLORREF receiverFill=g_receiverPopup?RGB(42,45,50):RGB(30,32,36); (void)receiverFill;
-    Panel(dc,receiver,g_receiverPopup?RGB(25,63,88):RGB(18,38,58),g_receiverPopup?RGB(82,174,210):RGB(48,91,125),12);
+    Panel(dc,receiver,g_receiverPopup?RGB(27,73,68):RGB(19,43,43),g_receiverPopup?RGB(82,166,137):RGB(57,104,91),12);
     RECT deviceIcon={receiver.left+12,receiver.top+7,receiver.left+34,receiver.bottom-7};
-    GradientRound(dc,deviceIcon,RGB(27,126,145),RGB(70,82,163),6);
+    GradientRound(dc,deviceIcon,RGB(29,130,119),RGB(48,101,103),6);
     DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,RGB(197,205,214),2);
     DrawLine(dc,deviceIcon.left+4,deviceIcon.bottom-5,deviceIcon.right-4,deviceIcon.bottom-5,RGB(197,205,214),2);
     wchar_t deviceName[256]=L"Local playback";
@@ -820,7 +820,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
 
     RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+178,R_SIDEBAR.right-18,R_SIDEBAR.top+198};
-    Txt(dc,L"QUICK ACTIONS",toolsHead,RGB(118,164,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"QUICK ACTIONS",toolsHead,RGB(119,177,164),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
     const wchar_t *actionIcons[4]={L"S",L"R",L"1x",L"..."};
@@ -831,20 +831,20 @@ static void DrawUI(HDC dc,RECT client) {
         if(GetCursorPos(&cursor)){ScreenToClient(g_main,&cursor);actionHot=PtInRect(&ar,cursor);}
         COLORREF fill=actionActive[ai]?RGB(27,55,65):(actionHot?RGB(30,48,59):RGB(23,32,44));
         COLORREF edge=actionActive[ai]?RGB(65,135,143):(actionHot?RGB(70,111,125):RGB(52,69,86));
-        if(actionActive[ai])GradientRound(dc,ar,RGB(25,105,111),RGB(28,83,99),10);
+        if(actionActive[ai])GradientRound(dc,ar,RGB(27,105,91),RGB(30,82,78),10);
         else RoundBox(dc,ar,fill,10);
         ABM_D2D_StrokeRound(&g_ui,(float)ar.left,(float)ar.top,(float)ar.right,(float)ar.bottom,10.0f,edge,0.9f);
         RECT glyph={ar.left+8,ar.top+3,ar.left+31,ar.bottom-3};
-        Txt(dc,actionIcons[ai],glyph,actionActive[ai]?RGB(126,184,255):RGB(157,177,202),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,actionIcons[ai],glyph,actionActive[ai]?RGB(143,210,184):RGB(157,184,180),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT label={ar.left+34,ar.top+2,ar.right-5,ar.bottom-2};
         wchar_t speedLabel[32];
         const wchar_t *shown=actionLabels[ai];
         if(ai==2){swprintf_s(speedLabel,32,L"Speed  %.2gx",g_playbackRate);shown=speedLabel;}
-        Txt(dc,shown,label,actionActive[ai]?RGB(232,241,255):RGB(210,220,233),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,shown,label,actionActive[ai]?RGB(235,246,239):RGB(210,225,219),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
     }
-    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(28,65,72):RGB(25,36,49),g_drawerSettingsOpen?RGB(67,137,145):RGB(54,73,94),11);
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(27,67,62):RGB(25,38,45),g_drawerSettingsOpen?RGB(76,151,127):RGB(58,83,78),11);
     RECT settingsLabel={R_SETTINGS_BUTTON.left+14,R_SETTINGS_BUTTON.top+2,R_SETTINGS_BUTTON.right-38,R_SETTINGS_BUTTON.bottom-2};
     Txt(dc,g_drawerSettingsOpen?L"Playback settings  ·  expanded":L"Playback settings  ·  tap to expand",settingsLabel,RGB(231,240,252),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
@@ -978,10 +978,10 @@ static void DrawUI(HDC dc,RECT client) {
         int n=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);if(n>MAX_RENDERERS+1)n=MAX_RENDERERS+1;
         int rows=n>6?6:n;
         R_RECEIVER_LIST=(RECT){receiver.left,receiver.bottom+7,receiver.right,receiver.bottom+7+rows*36};
-        Panel(dc,R_RECEIVER_LIST,RGB(27,29,32),RGB(62,66,72),13);
+        Panel(dc,R_RECEIVER_LIST,RGB(20,37,38),RGB(59,91,79),13);
         for(int i=0;i<rows;i++) {
             RECT item={R_RECEIVER_LIST.left+6,R_RECEIVER_LIST.top+4+i*36,R_RECEIVER_LIST.right-6,R_RECEIVER_LIST.top+4+(i+1)*36};
-            if(i==sel)RoundBox(dc,item,RGB(53,57,64),8);
+            if(i==sel)RoundBox(dc,item,RGB(34,69,59),8);
             wchar_t label[256]=L"";
             SendMessageW(g_renderers,CB_GETLBTEXT,i,(LPARAM)label);
             RECT tx={item.left+13,item.top,item.right-12,item.bottom};
@@ -991,7 +991,7 @@ static void DrawUI(HDC dc,RECT client) {
 
     if(g_drawerOpen) {
     RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
-    Panel(dc,volPanel,RGB(23,34,47),RGB(50,69,86),16);
+    Panel(dc,volPanel,RGB(23,38,40),RGB(55,87,77),16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
      RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
     Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -2001,9 +2001,9 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         TextOutW(mem,30,105,L"PREAMP",6);
         RECT preTrack={145,116,555,120};HBRUSH track=CreateSolidBrush(RGB(44,61,78));FillRect(mem,&preTrack,track);DeleteObject(track);
         int preX=145+(int)((g_eqPreamp+12.0f)/24.0f*410.0f);
-        HPEN accent=CreatePen(PS_SOLID,3,RGB(66,195,207));oldPen=SelectObject(mem,accent);
+        HPEN accent=CreatePen(PS_SOLID,3,RGB(72,181,151));oldPen=SelectObject(mem,accent);
         MoveToEx(mem,145,118,NULL);LineTo(mem,preX,118);SelectObject(mem,oldPen);DeleteObject(accent);
-        HBRUSH knob=CreateSolidBrush(RGB(104,113,231));HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
+        HBRUSH knob=CreateSolidBrush(RGB(91,173,145));HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
         wchar_t preText[32];swprintf_s(preText,_countof(preText),L"%+.1f dB",g_eqPreamp);
         RECT pr={565,102,650,132};DrawTextW(mem,preText,-1,&pr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         SelectObject(mem,smallFont);SetTextColor(mem,RGB(110,139,165));
