@@ -1753,6 +1753,158 @@ static void ToggleFullscreen(HWND hwnd) {
         RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
     SetFocus(hwnd);
 }
+
+static void ApplyCustomEqualizer(void) {
+    if(!g_player)return;
+    libvlc_equalizer_t *eq=libvlc_audio_equalizer_new();
+    if(!eq)return;
+    int count=libvlc_audio_equalizer_get_band_count();
+    if(count>10)count=10;
+    for(int i=0;i<count;i++)
+        libvlc_audio_equalizer_set_amp_at_index(eq,g_eqBandGain[i],(unsigned)i);
+    libvlc_audio_equalizer_set_preamp(eq,g_eqPreamp);
+    libvlc_media_player_set_equalizer(g_player,eq);
+    libvlc_audio_equalizer_release(eq);
+}
+static void EqSetPreset(int preset) {
+    static const float presets[5][10]={
+        {0,0,0,0,0,0,0,0,0,0},
+        {7,6,4,1,-1,-1,1,3,5,6},
+        {-2,0,2,4,4,2,0,-1,-2,-2},
+        {4,3,1,0,-1,1,3,4,4,3},
+        {3,2,0,-2,-2,0,2,4,5,5}
+    };
+    if(preset<0||preset>4)return;
+    for(int i=0;i<10;i++)g_eqBandGain[i]=presets[preset][i];
+    g_eqPreamp=preset==1?-3.0f:0.0f;
+    g_eqProfile=4;
+    ApplyCustomEqualizer();
+    SaveAudioPreferences();
+    if(g_eqWindow)InvalidateRect(g_eqWindow,NULL,FALSE);
+}
+static void EqSetFromPoint(HWND hwnd,int x,int y) {
+    (void)hwnd;
+    if(y>=102&&y<=132&&x>=145&&x<=555){
+        g_eqPreamp=-12.0f+24.0f*(float)(x-145)/410.0f;
+        if(g_eqPreamp<-12)g_eqPreamp=-12;if(g_eqPreamp>12)g_eqPreamp=12;
+        g_eqProfile=4;ApplyCustomEqualizer();SaveAudioPreferences();return;
+    }
+    for(int i=0;i<10;i++){
+        int cx=58+i*62;
+        if(x>=cx-23&&x<=cx+23&&y>=145&&y<=330){
+            float gain=12.0f-24.0f*(float)(y-155)/160.0f;
+            if(gain>12)gain=12;if(gain<-12)gain=-12;
+            g_eqBandGain[i]=gain;g_eqProfile=4;
+            ApplyCustomEqualizer();SaveAudioPreferences();InvalidateRect(g_eqWindow,NULL,FALSE);
+            return;
+        }
+    }
+}
+static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg){
+    case WM_ACTIVATE:
+        if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
+        return 0;
+    case WM_ERASEBKGND:return 1;
+    case WM_PAINT:{
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);
+        RECT client;GetClientRect(hwnd,&client);
+        HDC mem=CreateCompatibleDC(dc);HBITMAP bmp=CreateCompatibleBitmap(dc,client.right,client.bottom);
+        HBITMAP old=(HBITMAP)SelectObject(mem,bmp);
+        HBRUSH bg=CreateSolidBrush(RGB(10,17,29));FillRect(mem,&client,bg);DeleteObject(bg);
+        HPEN border=CreatePen(PS_SOLID,1,RGB(49,102,126));HGDIOBJ oldPen=SelectObject(mem,border);
+        HBRUSH panel=CreateSolidBrush(RGB(14,26,42));HGDIOBJ oldBrush=SelectObject(mem,panel);
+        RoundRect(mem,8,8,client.right-8,client.bottom-8,22,22);
+        SelectObject(mem,oldBrush);DeleteObject(panel);SelectObject(mem,oldPen);DeleteObject(border);
+        SetBkMode(mem,TRANSPARENT);
+        HFONT title=CreateFontW(23,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        HFONT small=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECISION,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HFONT normal=CreateFontW(14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECISION,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HGDIOBJ oldFont=SelectObject(mem,title);SetTextColor(mem,RGB(240,247,253));
+        TextOutW(mem,28,23,L"ADVANCED EQUALIZER",18);
+        SelectObject(mem,small);SetTextColor(mem,RGB(127,171,190));
+        TextOutW(mem,30,52,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",48);
+        SelectObject(mem,normal);SetTextColor(mem,RGB(202,218,232));
+        TextOutW(mem,30,105,L"PREAMP",6);
+        RECT preTrack={145,116,555,120};HBRUSH track=CreateSolidBrush(RGB(44,61,78));FillRect(mem,&preTrack,track);DeleteObject(track);
+        int preX=145+(int)((g_eqPreamp+12.0f)/24.0f*410.0f);
+        HPEN accent=CreatePen(PS_SOLID,3,RGB(66,195,207));oldPen=SelectObject(mem,accent);
+        MoveToEx(mem,145,118,NULL);LineTo(mem,preX,118);SelectObject(mem,oldPen);DeleteObject(accent);
+        HBRUSH knob=CreateSolidBrush(RGB(104,113,231));HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
+        wchar_t preText[32];swprintf_s(preText,_countof(preText),L"%+.1f dB",g_eqPreamp);
+        RECT pr={565,102,650,132};DrawTextW(mem,preText,-1,&pr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(mem,small);SetTextColor(mem,RGB(110,139,165));
+        for(int line=-12;line<=12;line+=6){
+            int yy=155+(12-line)*160/24;
+            HPEN grid=CreatePen(PS_DOT,1,RGB(40,57,75));oldPen=SelectObject(mem,grid);
+            MoveToEx(mem,32,yy,NULL);LineTo(mem,648,yy);SelectObject(mem,oldPen);DeleteObject(grid);
+            wchar_t db[20];swprintf_s(db,_countof(db),L"%+d",line);
+            RECT lr={15,yy-8,37,yy+8};DrawTextW(mem,db,-1,&lr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        }
+        static const wchar_t *fallback[10]={L"31",L"63",L"125",L"250",L"500",L"1k",L"2k",L"4k",L"8k",L"16k"};
+        for(int i=0;i<10;i++){
+            int cx=58+i*62,zeroY=235;
+            int thumbY=155+(int)((12.0f-g_eqBandGain[i])*160.0f/24.0f);
+            HPEN rail=CreatePen(PS_SOLID,5,RGB(42,59,77));oldPen=SelectObject(mem,rail);
+            MoveToEx(mem,cx,155,NULL);LineTo(mem,cx,315);SelectObject(mem,oldPen);DeleteObject(rail);
+            HPEN active=CreatePen(PS_SOLID,5,RGB(57,190,202));oldPen=SelectObject(mem,active);
+            MoveToEx(mem,cx,zeroY,NULL);LineTo(mem,cx,thumbY);SelectObject(mem,oldPen);DeleteObject(active);
+            HBRUSH dot=CreateSolidBrush(RGB(119,105,232));ob=SelectObject(mem,dot);
+            Ellipse(mem,cx-8,thumbY-8,cx+8,thumbY+8);SelectObject(mem,ob);DeleteObject(dot);
+            wchar_t val[24];swprintf_s(val,_countof(val),L"%+.1f",g_eqBandGain[i]);
+            SelectObject(mem,normal);SetTextColor(mem,RGB(222,234,244));
+            RECT vr={cx-26,thumbY-28,cx+26,thumbY-10};DrawTextW(mem,val,-1,&vr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(mem,small);SetTextColor(mem,RGB(139,164,187));
+            RECT fr={cx-28,321,cx+28,340};DrawTextW(mem,fallback[i],-1,&fr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        }
+        static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
+        for(int i=0;i<5;i++){
+            RECT r={30+i*126,354,145+i*126,383};
+            HBRUSH pb=CreateSolidBrush(RGB(24,43,63));ob=SelectObject(mem,pb);
+            RoundRect(mem,r.left,r.top,r.right,r.bottom,10,10);SelectObject(mem,ob);DeleteObject(pb);
+            SelectObject(mem,small);SetTextColor(mem,RGB(174,207,226));
+            DrawTextW(mem,presetNames[i],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        }
+        SelectObject(mem,oldFont);DeleteObject(title);DeleteObject(small);DeleteObject(normal);
+        BitBlt(dc,0,0,client.right,client.bottom,mem,0,0,SRCCOPY);
+        SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);EndPaint(hwnd,&ps);return 0;
+    }
+    case WM_LBUTTONDOWN:{
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        if(y>=354&&y<=386&&x>=30&&x<=649){
+            int preset=(x-30)/126;if(preset>4)preset=4;
+            EqSetPreset(preset);InvalidateRect(hwnd,NULL,FALSE);return 0;
+        }
+        g_eqDragBand=-2;EqSetFromPoint(hwnd,x,y);SetCapture(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
+    case WM_MOUSEMOVE:
+        if(g_eqDragBand==-2&&(wp&MK_LBUTTON)){EqSetFromPoint(hwnd,GET_X_LPARAM(lp),GET_Y_LPARAM(lp));InvalidateRect(hwnd,NULL,FALSE);}return 0;
+    case WM_LBUTTONUP:g_eqDragBand=-1;ReleaseCapture();return 0;
+    case WM_KEYDOWN:if(wp==VK_ESCAPE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);return 0;}break;
+    case WM_CLOSE:SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);return 0;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
+static void ShowEqualizer(void) {
+    if(!g_eqWindow){
+        WNDCLASSEXW wc={sizeof(wc)};wc.lpfnWndProc=EqualizerWndProc;wc.hInstance=GetModuleHandleW(NULL);
+        wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
+        wc.lpszClassName=L"ABMAVPlayer.Equalizer";
+        RegisterClassExW(&wc);
+        g_eqWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_LAYERED|WS_EX_TOPMOST,
+            wc.lpszClassName,L"ABM AV Player - Advanced Equalizer",WS_POPUP,
+            CW_USEDEFAULT,CW_USEDEFAULT,680,405,g_main,NULL,wc.hInstance,NULL);
+        if(!g_eqWindow){MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
+        SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);
+    }
+    RECT owner;GetWindowRect(g_main,&owner);
+    int x=owner.left+(owner.right-owner.left-680)/2;
+    int y=owner.top+(owner.bottom-owner.top-405)/2;
+    SetWindowPos(g_eqWindow,HWND_TOPMOST,x,y,680,405,SWP_SHOWWINDOW);
+    ShowWindow(g_eqWindow,SW_SHOWNORMAL);SetForegroundWindow(g_eqWindow);SetFocus(g_eqWindow);
+    InvalidateRect(g_eqWindow,NULL,TRUE);
+}
+
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
