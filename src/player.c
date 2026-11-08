@@ -651,12 +651,14 @@ static void DrawUI(HDC dc,RECT client) {
         int cy=(R_VIDEO.top+R_VIDEO.bottom)/2;
         /* Ambient colour fields make the stage feel like a listening space,
            not an empty black video rectangle. */
-        RECT ambient={R_VIDEO.left+areaW/5,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
+        /* Keep the copy in a dedicated left column. The teal hero panel
+           begins farther right so the text never crosses its rounded edge. */
+        RECT ambient={R_VIDEO.left+areaW*36/100,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
         GradientRound(dc,ambient,RGB(10,35,39),RGB(17,27,34),34);
         RECT glowLine={ambient.left+26,ambient.top+1,ambient.right-26,ambient.top+3};
         GradientRect(dc,glowLine,RGB(47,171,158),RGB(112,187,150));
-        int leftX=R_VIDEO.left+areaW/10;
-        int textW=areaW*48/100;
+        int leftX=R_VIDEO.left+areaW*7/100;
+        int textW=areaW*27/100;
         int topY=cy-112;
         RECT eyebrowPill={leftX,topY+5,leftX+8,topY+13};
         RoundBox(dc,eyebrowPill,RGB(75,211,190),4);
