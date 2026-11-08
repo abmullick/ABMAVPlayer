@@ -18,7 +18,7 @@ using Microsoft::WRL::ComPtr;
 namespace {
 const wchar_t *kClassName=L"ABMAVPlayer.Streaming";
 const wchar_t *kServices[5]={
-    L"YouTube",L"Netflix",L"Prime Video",L"Disney+ Hotstar",L"Sony LIV"
+    L"YouTube",L"Netflix",L"Prime Video",L"JioHotstar",L"Sony LIV"
 };
 const wchar_t *kUrls[5]={
     L"https://www.youtube.com/",
@@ -36,6 +36,7 @@ RECT g_serviceRects[5]{};
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{};
 int g_activeService=-1;
 bool g_ready=false;
+bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
 
@@ -170,6 +171,9 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_CREATE:{
         g_window=hwnd;
+        HRESULT comResult=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
+        if(SUCCEEDED(comResult))g_comInitialized=true;
+        else {SetStatus(L"Could not initialise the Windows browser COM apartment.");return 0;}
         SetStatus(L"Starting Microsoft Edge WebView2…");
         wchar_t local[MAX_PATH]{},profile[MAX_PATH]{};
         if(FAILED(SHGetFolderPathW(nullptr,CSIDL_LOCAL_APPDATA,nullptr,SHGFP_TYPE_CURRENT,local))||
@@ -217,6 +221,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_DESTROY:
         g_window=nullptr;g_webView.Reset();g_controller.Reset();g_environment.Reset();
         g_ready=false;
+        if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
         g_mainWindow=nullptr;
         return 0;
