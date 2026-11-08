@@ -929,7 +929,20 @@ static void RefreshRendererList(void) {
     EnterCriticalSection(&g_rendererLock);
     for(size_t i=0;i<g_rendererCount && g_comboCount<MAX_RENDERERS;i++) {
         libvlc_renderer_item_t *it=libvlc_renderer_item_hold(g_rendererItems[i]);
-        const char *name=libvlc_renderer_item_name(it); wchar_t wide[256]=L"Network receiver";
+        const char *name=libvlc_renderer_item_name(it);
+        /* VLC can report the same physical TV through more than one renderer
+           discovery service. Collapse identical friendly names in the UI,
+           while retaining all underlying discovery items so removal of one
+           service does not make the receiver disappear prematurely. */
+        BOOL duplicateName=FALSE;
+        if(name){
+            for(size_t j=0;j<g_comboCount;j++){
+                const char *existing=libvlc_renderer_item_name(g_comboItems[j]);
+                if(existing && _stricmp(existing,name)==0){duplicateName=TRUE;break;}
+            }
+        }
+        if(duplicateName){libvlc_renderer_item_release(it);continue;}
+        wchar_t wide[256]=L"Network receiver";
         if(name) MultiByteToWideChar(CP_UTF8,0,name,-1,wide,256);
         int ix=(int)SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)wide);
         if(ix!=CB_ERR && ix!=CB_ERRSPACE) {
@@ -998,7 +1011,10 @@ static void SelectRenderer(void) {
         wchar_t selectedName[256]=L"Selected receiver";
         if(s>0)SendMessageW(g_renderers,CB_GETLBTEXT,(WPARAM)s,(LPARAM)selectedName);
         wchar_t status[320];
-        swprintf_s(status,_countof(status),L"Selected: %s - choose media to cast",selectedName);
+        if(g_hasMedia && g_current>=0 && g_current<g_playlistCount)
+            swprintf_s(status,_countof(status),L"Casting current media to %s",selectedName);
+        else
+            swprintf_s(status,_countof(status),L"Ready to cast to %s when playback starts",selectedName);
         SetStatus(status);
     }else{
         SetStatus(L"Local playback selected");
