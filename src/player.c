@@ -894,12 +894,12 @@ static void DrawUI(HDC dc,RECT client) {
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     if(g_drawerOpen) {
     RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-78,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
-    Panel(dc,volPanel,RGB(23,31,43),RGB(57,83,116),16);
+    Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+78,volPanel.bottom-3};
     Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
-    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(39,54,76),6);
-    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(44,174,226),RGB(119,105,245));
+    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
+    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
     int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
     RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
     ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
@@ -922,12 +922,12 @@ static void DrawUI(HDC dc,RECT client) {
         /* Floating command surface with a soft shadow, refined rim and section label. */
         RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,RGB(7,11,18),19);
         RECT menuGlow=menu; InflateRect(&menuGlow,2,2); RoundBox(dc,menuGlow,RGB(7,12,22),21);
-        Panel(dc,menu,RGB(17,27,44),RGB(75,125,184),18);
+        Panel(dc,menu,RGB(13,23,39),RGB(67,112,151),18);
         RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+5};
         GradientRect(dc,menuTop,RGB(43,179,230),RGB(127,102,244));
-        RECT menuHeader={menu.left+14,menu.top+10,menu.right-14,menu.top+43};
-        Txt(dc,L"PLAYER CONTROLS",menuHeader,RGB(112,174,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        DrawLine(dc,menu.left+14,menu.top+45,menu.right-14,menu.top+45,RGB(48,68,94),1);
+        RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
+        Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
         const wchar_t *labels[14]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",
@@ -949,15 +949,15 @@ static void DrawUI(HDC dc,RECT client) {
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i);
             RECT row=item;InflateRect(&row,-1,-1);
-            if(hot){GradientRound(dc,row,RGB(31,66,105),RGB(48,56,112),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(91,153,220),1.0f);}
-            else if(i==3||i==9)RoundBox(dc,row,RGB(22,38,59),10);
+            if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
+            else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),10);
             RECT glyph={item.left+9,item.top+5,item.left+39,item.bottom-5};
-            RoundBox(dc,glyph,hot?RGB(58,104,159):RGB(32,49,72),8);
-            Txt(dc,icons[i],glyph,hot?RGB(244,249,255):RGB(154,190,232),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            GradientRound(dc,glyph,hot?RGB(34,132,157):RGB(27,48,73),hot?RGB(75,82,166):RGB(42,53,91),8);
+            Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+49,item.top+2,item.right-104,item.bottom-2};
             Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             RECT shortcut={item.right-100,item.top+2,item.right-10,item.bottom-2};
-            Txt(dc,shortcuts[i],shortcut,hot?RGB(190,216,247):RGB(137,160,190),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,shortcuts[i],shortcut,hot?RGB(201,231,248):RGB(144,171,198),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
     }
 }
