@@ -365,7 +365,8 @@ static void UpdateLayout(HWND hwnd) {
     PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+42,h-145,R_VIDEO.right-4,h-141};
-    int transportShift=w>=1500?130:90;\n    R_PREV=(RECT){w/2-126+transportShift,h-91,w/2-74+transportShift,h-39};
+    int transportShift=w>=1500?130:90;
+    R_PREV=(RECT){w/2-126+transportShift,h-91,w/2-74+transportShift,h-39};
     R_PLAY=(RECT){w/2-34+transportShift,h-105,w/2+34+transportShift,h-37};
     R_NEXT=(RECT){w/2+74+transportShift,h-91,w/2+126+transportShift,h-39};
     R_STOP=(RECT){w/2+148+transportShift,h-87,w/2+198+transportShift,h-37};
@@ -889,6 +890,28 @@ static void DrawUI(HDC dc,RECT client) {
     ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,34.0f,RGB(56,112,145),1.25f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
     ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,32.0f,RGB(35,61,89),0.65f);
+    /* Dedicated Now Playing identity block makes the transport dock a real
+       player surface rather than a floating row of generic buttons. */
+    RECT miniArt={dock.left+20,dock.top+20,dock.left+82,dock.bottom-20};
+    GradientRound(dc,miniArt,RGB(24,137,155),RGB(85,73,166),13);
+    RECT miniInner={miniArt.left+7,miniArt.top+7,miniArt.right-7,miniArt.bottom-7};
+    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,RGB(180,222,245),0.85f);
+    if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
+    else {
+        int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
+        DrawLine(dc,mx-12,my+13,mx,my-14,RGB(244,250,255),2);
+        DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
+        DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
+    }
+    RECT nowLabel={miniArt.right+14,dock.top+18,dock.left+300,dock.top+39};
+    Txt(dc,g_hasMedia?L"NOW PLAYING":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(104,198,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT nowTitle={miniArt.right+14,dock.top+39,dock.left+300,dock.top+68};
+    const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Ready for your next session";
+    Txt(dc,dockTitle,nowTitle,RGB(239,246,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT nowMeta={miniArt.right+14,dock.top+68,dock.left+300,dock.bottom-10};
+    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Choose a track from Queue or Library",nowMeta,RGB(143,166,192),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT transportDivider={dock.left+306,dock.top+19,dock.left+307,dock.bottom-19};
+    Fill(dc,transportDivider,RGB(43,67,96));
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
