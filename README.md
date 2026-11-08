@@ -70,9 +70,13 @@ All components must use the same architecture (x64).
 
 1. Install 64-bit VLC.
 2. Extract the matching 64-bit LibVLC SDK, for example to C:\vlc-sdk.
-3. Open x64 Native Tools Command Prompt for VS 2022.
-4. Set the SDK path: set VLC_SDK=C:\vlc-sdk.
-5. Run build.bat from the repository root.
+3. Install the WebView2 SDK package from the repository root:
+   `nuget install Microsoft.Web.WebView2 -OutputDirectory packages -ExcludeVersion`
+4. Open x64 Native Tools Command Prompt for Visual Studio.
+5. Set SDK paths if they are not in the default locations:
+   `set VLC_SDK=C:\vlc-sdk`
+   `set WEBVIEW2_SDK=%CD%\packages\Microsoft.Web.WebView2`
+6. Run build.bat from the repository root.
 
 The executable is written to build\ABMAVPlayer.exe.
 
