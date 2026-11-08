@@ -2257,6 +2257,8 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 }
 
 static HBRUSH g_helpBrush=NULL;
+static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
+static HWND g_helpEdit=NULL;
 static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -2310,24 +2312,71 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"If a file will not play, check that it exists and that the installed VLC build includes the required codec/plugin. If a TV is not listed, check same-network connectivity, mDNS/multicast, VPN, router isolation and Windows Firewall. If a receiver appears but playback fails, try a common MP4/H.264 file and verify the TV supports the stream. Casting and transcoding are dependent on VLC and receiver capabilities; not every format is guaranteed to work.\r\n"
             L"\r\n"
             L"ABM AV Player is a desktop media player built on LibVLC. It does not install a separate audio/video driver.";
-        HWND edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",help,
-            WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY,
-            18,18,700,540,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
-        if(edit)SendMessageW(edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         if(!g_helpBrush)g_helpBrush=CreateSolidBrush(RGB(12,22,35));
+        if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(25,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(15,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        g_helpEdit=CreateWindowExW(0,L"EDIT",help,
+            WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY,
+            24,105,820,540,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
+        if(g_helpEdit)SendMessageW(g_helpEdit,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
         return 0;
     }
     case WM_SIZE: {
-        HWND edit=GetDlgItem(hwnd,1);
-        if(edit)MoveWindow(edit,18,18,LOWORD(lp)-36,HIWORD(lp)-36,TRUE);
+        int w=LOWORD(lp),h=HIWORD(lp);
+        if(g_helpEdit)MoveWindow(g_helpEdit,24,105,w-48,h-165,TRUE);
+        InvalidateRect(hwnd,NULL,FALSE);
         return 0;
     }
-    case WM_CTLCOLOREDIT: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(220,232,242));SetBkColor(dc,RGB(12,22,35));
+    case WM_PAINT: {
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
+        HBRUSH bg=CreateSolidBrush(RGB(7,12,21));FillRect(dc,&rc,bg);DeleteObject(bg);
+        RECT header={0,0,rc.right,88};HBRUSH head=CreateSolidBrush(RGB(13,27,43));FillRect(dc,&header,head);DeleteObject(head);
+        RECT accent={0,86,rc.right,89};HBRUSH accentBrush=CreateSolidBrush(RGB(53,174,171));FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
+        SetBkMode(dc,TRANSPARENT);
+        HFONT old=(HFONT)SelectObject(dc,g_helpTitleFont);SetTextColor(dc,RGB(245,249,255));
+        RECT title={26,13,rc.right-70,47};DrawTextW(dc,L"Help Centre",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,RGB(111,197,204));
+        RECT kicker={28,48,rc.right-70,69};DrawTextW(dc,L"ABM AV PLAYER   /   USER GUIDE",-1,&kicker,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT close={rc.right-52,18,rc.right-16,54};
+        HBRUSH closeBrush=CreateSolidBrush(RGB(27,43,59));RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);DeleteObject(closeBrush);
+        HPEN pen=CreatePen(PS_SOLID,2,RGB(190,210,224));HGDIOBJ oldPen=SelectObject(dc,pen);
+        MoveToEx(dc,close.left+13,close.top+12,NULL);LineTo(dc,close.right-13,close.bottom-12);
+        MoveToEx(dc,close.right-13,close.top+12,NULL);LineTo(dc,close.left+13,close.bottom-12);
+        SelectObject(dc,oldPen);DeleteObject(pen);
+        RECT footer={0,rc.bottom-48,rc.right,rc.bottom};HBRUSH foot=CreateSolidBrush(RGB(11,20,33));FillRect(dc,&footer,foot);DeleteObject(foot);
+        HPEN line=CreatePen(PS_SOLID,1,RGB(39,59,78));oldPen=SelectObject(dc,line);
+        MoveToEx(dc,0,rc.bottom-48,NULL);LineTo(dc,rc.right,rc.bottom-48);
+        SelectObject(dc,oldPen);DeleteObject(line);
+        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,RGB(130,157,181));
+        RECT footText={26,rc.bottom-42,rc.right-24,rc.bottom-12};
+        DrawTextW(dc,L"TIP   Press F1 to open this guide   •   Scroll to explore all features",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
+    }
+    case WM_NCHITTEST: {
+        LRESULT hit=DefWindowProcW(hwnd,msg,wp,lp);
+        if(hit==HTCLIENT) {
+            POINT p={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};ScreenToClient(hwnd,&p);
+            RECT rc;GetClientRect(hwnd,&rc);
+            if(p.y>=0&&p.y<88&&p.x<rc.right-58)return HTCAPTION;
+        }
+        return hit;
+    }
+    case WM_LBUTTONDOWN: {
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);RECT rc;GetClientRect(hwnd,&rc);
+        if(x>=rc.right-58&&y>=8&&y<=62){DestroyWindow(hwnd);return 0;}
+        break;
+    }
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORSTATIC: {
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(218,231,243));SetBkColor(dc,RGB(12,22,35));
         return (LRESULT)g_helpBrush;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
-    case WM_DESTROY: return 0;
+    case WM_DESTROY:
+        g_helpEdit=NULL;
+        return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -2336,17 +2385,24 @@ static void ShowHelpDialog(HWND owner) {
     if(!registered) {
         WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HelpWndProc;
         wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
-        wc.hbrBackground=CreateSolidBrush(RGB(12,22,35));wc.lpszClassName=L"ABMAVPlayerHelp";
+        wc.hbrBackground=CreateSolidBrush(RGB(7,12,21));wc.lpszClassName=L"ABMAVPlayerHelp";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    RECT wr={0,0,760,620};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU|WS_THICKFRAME,FALSE,WS_EX_DLGMODALFRAME);
-    int w=wr.right-wr.left,h=wr.bottom-wr.top;
-    int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
+    int w=920,h=760;
+    RECT ownerRect;GetWindowRect(owner,&ownerRect);
+    int x=ownerRect.left+(ownerRect.right-ownerRect.left-w)/2;
+    int y=ownerRect.top+(ownerRect.bottom-ownerRect.top-h)/2;
+    if(x<0)x=20;if(y<0)y=20;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerHelp",
-        L"ABM AV Player - Help & User Guide",WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_POPUP,
+        L"ABM AV Player - Help Centre",WS_POPUP|WS_THICKFRAME,
         x,y,w,h,owner,NULL,inst,NULL);
     if(!dlg)return;
+    BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+    {int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);
+     DwmSetWindowAttribute(dlg,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+     DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+     DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
     EnableWindow(owner,FALSE);ShowWindow(dlg,SW_SHOW);UpdateWindow(dlg);
     MSG m;while(IsWindow(dlg)&&GetMessageW(&m,NULL,0,0)>0) {
         if(!IsDialogMessageW(dlg,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
