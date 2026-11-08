@@ -342,7 +342,12 @@ static void UpdateLayout(HWND hwnd) {
     /* Detached overlay: preserve the video stage and slide the library over it. */
     int drawerRight=w-24;
     int drawerLeft=drawerRight-drawerWidth;
-    R_SIDEBAR=(RECT){drawerLeft,28,drawerLeft+side,h-28};
+    /* Keep the drawer above the transport/seek region. The previous h-28
+       bottom edge let its volume footer paint over the player controls. */
+    int drawerBottom=h-170;
+    if(drawerBottom<470)drawerBottom=470;
+    if(drawerBottom>h-28)drawerBottom=h-28;
+    R_SIDEBAR=(RECT){drawerLeft,28,drawerLeft+side,drawerBottom};
     /* Collection-first drawer. Settings occupy a separate expandable region;
        all library controls are laid out below it with no negative offsets. */
     int collectionTop=g_drawerSettingsOpen?286:82;
@@ -362,7 +367,7 @@ static void UpdateLayout(HWND hwnd) {
     R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+collectionTop+136,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+168};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+collectionTop-2,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+26};
     R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+collectionTop+176,R_SIDEBAR.right-12,R_SIDEBAR.bottom-112};
-    R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-54,R_SIDEBAR.right-30,R_SIDEBAR.bottom-46};
+    R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
     R_MENU_BUTTON=(RECT){w-202,18,w-150,66};
     R_DRAWER_BUTTON=(RECT){w-138,18,w-20,66};
     R_MENU_PANEL=(RECT){w-376,74,w-20,74+640};
@@ -934,7 +939,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     if(g_drawerOpen) {
-    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-88,R_SIDEBAR.right-10,R_SIDEBAR.bottom-12};
+    RECT volPanel={R_SIDEBAR.left+10,R_SIDEBAR.bottom-66,R_SIDEBAR.right-10,R_SIDEBAR.bottom-8};
     Panel(dc,volPanel,RGB(16,31,49),RGB(43,75,105),16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
      RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
