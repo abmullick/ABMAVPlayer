@@ -97,7 +97,7 @@ static int64_t g_overlayLength = 0;
 static BOOL g_overlayPlaying = FALSE;
 static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
 static RECT R_ROW[MAX_PLAYLIST];
-static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT;
+static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
 static RECT R_SEARCH, R_TAB_QUEUE, R_TAB_LIBRARY, R_FILTER_ALL, R_FILTER_AUDIO, R_FILTER_VIDEO, R_GROUP;
 static wchar_t g_searchText[128]=L"";
 static BOOL g_searchFocused=FALSE;
@@ -384,6 +384,7 @@ static void UpdateLayout(HWND hwnd) {
     R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+78,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+145,R_SIDEBAR.top+318+queueShift};
     R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+218,R_SIDEBAR.top+318+queueShift};
     R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+318+queueShift};
+    R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-78,R_SIDEBAR.top+186+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+212+queueShift};
     R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-10,R_SIDEBAR.bottom-94};
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*68,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*68};
 }
@@ -732,8 +733,11 @@ static void DrawUI(HDC dc,RECT client) {
     RECT listHead={R_SIDEBAR.left+17,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-17,R_SIDEBAR.top+212+queueShift};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(169,190,218),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
-    RECT countR={R_SIDEBAR.right-112,listHead.top,R_SIDEBAR.right-17,listHead.bottom};
+    RECT countR={R_SIDEBAR.right-150,listHead.top,R_SIDEBAR.right-86,listHead.bottom};
     Txt(dc,count,countR,C_MUTED,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    RoundBox(dc,R_CLEAR_PLAYLIST,g_playlistCount?RGB(49,31,43):RGB(25,30,40),8);
+    ABM_D2D_StrokeRound(&g_ui,(float)R_CLEAR_PLAYLIST.left,(float)R_CLEAR_PLAYLIST.top,(float)R_CLEAR_PLAYLIST.right,(float)R_CLEAR_PLAYLIST.bottom,8.0f,g_playlistCount?RGB(139,74,99):RGB(48,58,72),0.8f);
+    Txt(dc,L"Clear",R_CLEAR_PLAYLIST,g_playlistCount?RGB(255,190,205):RGB(115,130,151),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     DrawLine(dc,R_SIDEBAR.left+16,listHead.bottom+4,R_SIDEBAR.right-16,listHead.bottom+4,RGB(43,53,69),1);
 
     /* Search and filters are drawn in Direct2D; keyboard input is handled by
@@ -1111,6 +1115,17 @@ static BOOL EnsureDataDirectory(void) {
     if(!CreateDirectoryW(g_dataDir,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
     return TRUE;
 }
+static void SavePersistentState(void);
+static void PruneUnavailablePlaylistItems(void) {
+    int write=0,removed=0;
+    for(int read=0;read<g_playlistCount;read++){
+        DWORD attrs=GetFileAttributesW(g_playlist[read]);
+        if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY)){removed++;continue;}
+        if(write!=read)wcsncpy_s(g_playlist[write],PATH_CAP,g_playlist[read],_TRUNCATE);
+        write++;
+    }
+    if(removed){g_playlistCount=write;g_current=-1;g_selected=write?0:-1;g_playlistScroll=0;SavePersistentState();}
+}
 static void SavePersistentState(void) {
     if(!EnsureDataDirectory())return;
     wchar_t path[PATH_CAP];swprintf_s(path,PATH_CAP,L"%s\\library.m3u",g_dataDir);
@@ -1156,6 +1171,7 @@ static void LoadPersistentState(void) {
         fclose(fp);
         if(which)g_recentCount=count;else g_playlistCount=count;
     }
+    PruneUnavailablePlaylistItems();
     if(g_playlistCount)g_selected=0;
     g_libraryReady=TRUE;
 }
@@ -1316,6 +1332,12 @@ static void AddFiles(void) {
     }
     if(g_selected<0&&g_playlistCount>0)g_selected=0;
     InvalidateRect(g_main,NULL,FALSE);
+}
+static void ClearPlaylist(void) {
+    if(g_hasMedia)libvlc_media_player_stop(g_player);
+    g_hasMedia=FALSE;g_current=-1;g_selected=-1;g_playlistCount=0;g_playlistScroll=0;
+    g_endHandled=FALSE;g_pendingResume=FALSE;ResetArtwork();SavePersistentState();
+    SetStatus(L"Playlist cleared");InvalidateRect(g_main,NULL,FALSE);
 }
 static void RemovePlaylistItem(int index) {
     if(index<0||index>=g_playlistCount)return;
@@ -1501,7 +1523,7 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         case 2:RemovePlaylistItem(g_selected);break;
         case 3:MovePlaylistItem(g_selected,g_selected-1);break;
         case 4:MovePlaylistItem(g_selected,g_selected+1);break;
-        case 5:if(MessageBoxW(hwnd,L"Clear all items from the playlist?",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES){if(g_hasMedia)libvlc_media_player_stop(g_player);g_hasMedia=FALSE;g_playlistCount=0;g_current=g_selected=-1;g_playlistScroll=0;InvalidateRect(hwnd,NULL,FALSE);}break;
+        case 5:if(MessageBoxW(hwnd,L"Clear all items from the playlist?",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();break;
         case 6:SavePlaylist();break;
     }
 }
@@ -2181,6 +2203,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SETTINGS_BUTTON,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_CLEAR_PLAYLIST,x,y)){if(g_playlistCount&&MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_LIBRARY,x,y)){g_libraryTab=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
