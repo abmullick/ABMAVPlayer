@@ -10,6 +10,19 @@
 #include <WebView2.h>
 #include "streaming_host.h"
 
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+#ifndef DWMWA_BORDER_COLOR
+#define DWMWA_BORDER_COLOR 34
+#endif
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
+#endif
+
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -39,6 +52,7 @@ RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_externalRect{};
 int g_activeService=-1;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
+EventRegistrationToken g_popupToken{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
 
 COLORREF RGBc(int r,int g,int b){return RGB(r,g,b);}
@@ -169,6 +183,20 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
                 SetStatus(success?L"Streaming page loaded. Sign in using the service's official login.":L"Page navigation failed. The service may restrict embedded playback.");
                 return S_OK;
             }).Get(),&g_navigationToken);
+    /* Some providers open authentication or account pages in a new window.
+       Keep navigation inside the same trusted WebView rather than spawning
+       an unmanaged browser surface. */
+    g_webView->add_NewWindowRequested(
+        Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+            [](ICoreWebView2 *sender,ICoreWebView2NewWindowRequestedEventArgs *args)->HRESULT{
+                LPWSTR target=nullptr;
+                if(args&&SUCCEEDED(args->get_Uri(&target))&&target){
+                    sender->Navigate(target);
+                    CoTaskMemFree(target);
+                    args->put_Handled(TRUE);
+                }
+                return S_OK;
+            }).Get(),&g_popupToken);
     g_controller->put_IsVisible(TRUE);
     LayoutBrowser();
     NavigateHome();
