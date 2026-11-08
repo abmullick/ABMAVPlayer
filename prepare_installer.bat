@@ -38,6 +38,22 @@ if errorlevel 1 (
 xcopy "%VLC_DIR%\plugins" "%DEST%\plugins\" /E /I /H /Y >nul
 if errorlevel 2 exit /b 1
 
+rem Google Cast requires both the mDNS renderer-discovery module and the
+rem Chromecast demux module. Fail the release staging step instead of silently
+rem shipping an installer that can never discover or play to Cast receivers.
+if not exist "%DEST%\plugins\services_discovery\libmicrodns_plugin.dll" (
+  echo ERROR: Google Cast discovery plugin is missing:
+  echo   %VLC_DIR%\plugins\services_discovery\libmicrodns_plugin.dll
+  echo Use a 64-bit VLC runtime that includes the microdns services-discovery plugin.
+  exit /b 1
+)
+if not exist "%DEST%\plugins\demux\libdemux_chromecast_plugin.dll" (
+  echo ERROR: Chromecast playback plugin is missing:
+  echo   %VLC_DIR%\plugins\demux\libdemux_chromecast_plugin.dll
+  echo Use a 64-bit VLC runtime that includes the Chromecast demux plugin.
+  exit /b 1
+)
+
 rem VLC data folders are optional in some builds; copy them when present.
 for %%D in (lua hrtfs locale) do (
   if exist "%VLC_DIR%\%%D" (
