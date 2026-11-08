@@ -32,6 +32,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+Name: "castfirewall"; Description: "Allow Google Cast discovery on private networks"; GroupDescription: "Network access:"; Flags: checkedonce
 
 [Files]
 Source: "..\release\ABM AV Player\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
