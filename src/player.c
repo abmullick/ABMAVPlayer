@@ -377,15 +377,15 @@ static void UpdateLayout(HWND hwnd) {
     R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+122+settingsShift,R_SIDEBAR.right-16,R_SIDEBAR.top+158+settingsShift};
     R_SPEED=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+166+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+202+settingsShift};
     R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+166+settingsShift,R_SIDEBAR.right-16,R_SIDEBAR.top+202+settingsShift};
-    R_SEARCH=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+220+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+260+queueShift};
-    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+268+queueShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+306+queueShift};
-    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+268+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+306+queueShift};
-    R_FILTER_ALL=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+314+queueShift,R_SIDEBAR.left+80,R_SIDEBAR.top+344+queueShift};
-    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+86,R_SIDEBAR.top+314+queueShift,R_SIDEBAR.left+158,R_SIDEBAR.top+344+queueShift};
-    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+164,R_SIDEBAR.top+314+queueShift,R_SIDEBAR.left+236,R_SIDEBAR.top+344+queueShift};
-    R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+314+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+344+queueShift};
-    R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+188+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+216+queueShift};
-    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+354+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-98};
+    R_SEARCH=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+244+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+284+queueShift};
+    R_TAB_QUEUE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+292+queueShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+330+queueShift};
+    R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+292+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+330+queueShift};
+    R_FILTER_ALL=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+80,R_SIDEBAR.top+368+queueShift};
+    R_FILTER_AUDIO=(RECT){R_SIDEBAR.left+86,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+158,R_SIDEBAR.top+368+queueShift};
+    R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+164,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.left+236,R_SIDEBAR.top+368+queueShift};
+    R_GROUP=(RECT){R_SIDEBAR.right-112,R_SIDEBAR.top+338+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+368+queueShift};
+    R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-82,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-16,R_SIDEBAR.top+218+queueShift};
+    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+378+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-98};
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
@@ -760,7 +760,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+190+queueShift,R_SIDEBAR.right-18,R_SIDEBAR.top+214+queueShift};
     Txt(dc,g_libraryTab?L"YOUR LIBRARY":L"UP NEXT",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
-    RECT countR={R_SIDEBAR.right-150,listHead.top,R_SIDEBAR.right-86,listHead.bottom};
+    RECT countR={R_SIDEBAR.right-164,listHead.top,R_CLEAR_PLAYLIST.left-8,listHead.bottom};
     Txt(dc,count,countR,RGB(153,174,200),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     RoundBox(dc,R_CLEAR_PLAYLIST,g_playlistCount?RGB(49,31,43):RGB(25,30,40),8);
     ABM_D2D_StrokeRound(&g_ui,(float)R_CLEAR_PLAYLIST.left,(float)R_CLEAR_PLAYLIST.top,(float)R_CLEAR_PLAYLIST.right,(float)R_CLEAR_PLAYLIST.bottom,8.0f,g_playlistCount?RGB(139,74,99):RGB(48,58,72),0.8f);
@@ -913,7 +913,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
     Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-    RECT footer={client.right-430,client.bottom-25,client.right-24,client.bottom-8};
+    RECT footer={g_drawerOpen?R_VIDEO.right-430:client.right-430,client.bottom-25,g_drawerOpen?R_VIDEO.right-20:client.right-24,client.bottom-8};
     Txt(dc,L"ABM AV PLAYER   ·   IMMERSIVE ENTERTAINMENT",footer,RGB(112,132,153),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
 
     /* Animated drop-down menu is painted last so it floats above the player. */
