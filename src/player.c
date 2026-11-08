@@ -2222,11 +2222,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
-            g_hasMedia=FALSE;g_endHandled=TRUE;ResetArtwork();
+            /* Keep the failed queue entry selected: pressing Play retries it,
+               while Next or another queue item remains available as recovery. */
+            g_hasMedia=FALSE;g_endHandled=TRUE;g_pendingResume=FALSE;
+            g_videoBoundsValid=FALSE;ResetArtwork();
+            if(g_visualizerActive)ABM_AudioVisualizer_Stop();
+            g_visualizerActive=FALSE;g_visualizerTried=FALSE;
+            if(g_video&&!g_fullscreen)ShowWindow(g_video,SW_HIDE);
             if(g_selectedRenderer)
-                SetStatus(L"Cast failed on selected receiver - no local fallback was started");
+                SetStatus(L"Cast failed - select Play to retry or choose another receiver; no local fallback");
             else
-                SetStatus(L"Playback failed. Check the media file and VLC codec plugins");
+                SetStatus(L"Playback failed - select Play to retry or choose another file; check the media and VLC plugins");
             InvalidateRect(hwnd,NULL,FALSE);
         }
         if(g_pendingResume && g_player){
@@ -2625,7 +2631,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
+static void EnableDpiAwareness(void) {
+    /* Declare awareness before creating any HWND. System-DPI awareness keeps
+       Win32 coordinates and the hand-authored Direct2D layout in one stable
+       coordinate space, while avoiding Windows bitmap-stretching the window
+       on the primary display. Per-monitor scaling needs a full layout pass. */
+    HMODULE user32=GetModuleHandleW(L"user32.dll");
+    if(user32) {
+        typedef BOOL (WINAPI *SetDpiContextFn)(DPI_AWARENESS_CONTEXT);
+        SetDpiContextFn setContext=(SetDpiContextFn)GetProcAddress(user32,"SetProcessDpiAwarenessContext");
+        if(setContext && setContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE))return;
+    }
+    SetProcessDPIAware();
+}
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
+    EnableDpiAwareness();
     (void)prev;(void)cmd;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
