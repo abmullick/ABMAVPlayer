@@ -1839,7 +1839,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
-        if(g_discovererCount && !g_discoveryTimedOut && g_rendererCount==0 && g_discoveryStartedTick && (DWORD)(GetTickCount()-g_discoveryStartedTick)>=15000){g_discoveryTimedOut=TRUE;SetStatus(L"No receivers found yet - checking network and firewall");}
+        if(g_discovererCount && !g_discoveryTimedOut && g_rendererCount==0 && g_discoveryStartedTick && (DWORD)(GetTickCount()-g_discoveryStartedTick)>=15000){g_discoveryTimedOut=TRUE;SetStatus(L"No TVs found - check Cast plugin, Wi-Fi and firewall");}
         int oldDrawerProgress=g_drawerProgress;
         g_drawerProgress=EaseToward(g_drawerProgress,g_drawerOpen?100:0,24);
         if(oldDrawerProgress!=g_drawerProgress){UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}
@@ -2301,8 +2301,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
 
     /* Hardware decoding defaults to LibVLC automatic selection. Override with
        ABM_VLC_HW=none for software-only troubleshooting or d3d11va to request D3D11VA. */
-    const char *args[6]={"--no-video-title-show","--quiet","--no-plugins-cache",NULL,NULL,NULL};
-    int argCount=3;
+    const char *args[6]={"--no-video-title-show","--quiet",NULL,NULL,NULL,NULL};
+    /* Keep LibVLC plugin caching enabled. Disabling its cache forces a full
+       plugin scan on every launch and makes startup unnecessarily slow. */
+    int argCount=2;
     if(pluginArg[0])args[argCount++]=pluginArg;
     wchar_t hwMode[32]=L"";
     GetEnvironmentVariableW(L"ABM_VLC_HW",hwMode,(DWORD)_countof(hwMode));
