@@ -79,9 +79,11 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     ui->writeFactory = writeFactory;
 
     IDWriteTextFormat *body = nullptr, *smallFormat = nullptr, *heading = nullptr;
-    if (!MakeFormat(writeFactory, L"Segoe UI", 17.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(writeFactory, L"Segoe UI", 14.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
-        !MakeFormat(writeFactory, L"Segoe UI", 25.0f, DWRITE_FONT_WEIGHT_BOLD, &heading)) {
+    /* Segoe UI Variable gives the interface a contemporary Windows 11
+       typographic voice; DirectWrite performs normal font fallback on older PCs. */
+    if (!MakeFormat(writeFactory, L"Segoe UI Variable Text", 17.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
+        !MakeFormat(writeFactory, L"Segoe UI Variable Text", 14.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
+        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 26.0f, DWRITE_FONT_WEIGHT_BOLD, &heading)) {
         SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
         ABM_D2D_Destroy(ui);
         return FALSE;
@@ -155,6 +157,32 @@ extern "C" void ABM_D2D_Round(ABM_D2D *ui, float l, float t, float r, float b,
     SetColor(ui, color);
     D2D1_ROUNDED_RECT rect{D2D1::RectF(l, t, r, b), radius, radius};
     Target(ui)->FillRoundedRectangle(rect, Brush(ui));
+}
+
+extern "C" void ABM_D2D_GradientRound(ABM_D2D *ui, float l, float t, float r, float b,
+                                         float radius, COLORREF start, COLORREF end) {
+    if (!ui || !EnsureTarget(ui) || r <= l || b <= t) return;
+    D2D1_GRADIENT_STOP stops[2] = {
+        {0.0f, ToD2D(start)}, {1.0f, ToD2D(end)}
+    };
+    ID2D1GradientStopCollection *collection = nullptr;
+    ID2D1LinearGradientBrush *gradient = nullptr;
+    HRESULT hr = Target(ui)->CreateGradientStopCollection(stops, 2,
+        D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP, &collection);
+    if (SUCCEEDED(hr)) {
+        D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES props = {
+            D2D1::Point2F(l, t), D2D1::Point2F(r, t)
+        };
+        hr = Target(ui)->CreateLinearGradientBrush(props,
+            D2D1::BrushProperties(1.0f, D2D1::Matrix3x2F::Identity()),
+            collection, &gradient);
+    }
+    if (SUCCEEDED(hr)) {
+        D2D1_ROUNDED_RECT rect{D2D1::RectF(l, t, r, b), radius, radius};
+        Target(ui)->FillRoundedRectangle(rect, gradient);
+    }
+    SafeRelease(&gradient);
+    SafeRelease(&collection);
 }
 
 extern "C" void ABM_D2D_StrokeRound(ABM_D2D *ui, float l, float t, float r, float b,
