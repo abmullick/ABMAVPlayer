@@ -838,13 +838,17 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+86,row.top+13,row.right-18,row.top+44};
-        RECT subline={row.left+86,row.top+48,row.right-18,row.bottom-9};
+        RECT name={row.left+86,row.top+12,row.right-91,row.top+44};
+        RECT subline={row.left+86,row.top+48,row.right-91,row.bottom-9};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        const wchar_t *group=L"Local file";
-        if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
-        else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album details appear when track is played";
+        const wchar_t *group=L"LOCAL FILE";
+        if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"ARTIST  ·  LOCAL FILE";
+        else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"ALBUM  ·  LOCAL FILE";
         Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        RECT typePill={row.right-82,row.top+25,row.right-12,row.top+51};
+        RoundBox(dc,typePill,isVideo?RGB(38,54,83):RGB(19,65,75),8);
+        RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
+        Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?RGB(164,193,239):RGB(116,215,211),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         if(current){int cx=row.right-25,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
         shown++;
     }
