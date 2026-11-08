@@ -2286,7 +2286,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
-        if(g_discovererCount && !g_discoveryTimedOut && g_rendererCount==0 && g_discoveryStartedTick && (DWORD)(GetTickCount()-g_discoveryStartedTick)>=15000){g_discoveryTimedOut=TRUE;SetStatus(L"No TVs found - check Cast plugin, Wi-Fi and firewall");}
+        if(g_discovererCount && !g_discoveryTimedOut && g_rendererCount==0 && g_discoveryStartedTick && (DWORD)(GetTickCount()-g_discoveryStartedTick)>=15000){
+            g_discoveryTimedOut=TRUE;
+            SetStatus(L"No Google Cast receivers found - check Cast support, same Wi-Fi and mDNS");
+        }
         int oldDrawerProgress=g_drawerProgress;
         g_drawerProgress=EaseToward(g_drawerProgress,g_drawerOpen?100:0,24);
         if(oldDrawerProgress!=g_drawerProgress){UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}
