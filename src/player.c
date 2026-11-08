@@ -482,10 +482,10 @@ static void DrawUI(HDC dc,RECT client) {
     RECT logoHalo={28,13,91,76};
     Panel(dc,logoHalo,RGB(27,37,52),RGB(65,105,157),18);
     RECT logo={35,20,84,69};RoundBox(dc,logo,RGB(45,111,177),14);
-    RECT mark={45,30,74,59};
-    ABM_D2D_StrokeRound(&g_ui,(float)mark.left,(float)mark.top,(float)mark.right,(float)mark.bottom,8.0f,RGB(244,249,255),2.2f);
-    DrawLine(dc,52,38,52,51,RGB(255,255,255),2);
-    DrawLine(dc,52,38,67,38,RGB(255,255,255),2);
+    /* Match the embedded ABM AV Player icon: a clean white play mark. */
+    DrawLine(dc,51,34,51,55,RGB(255,255,255),3);
+    DrawLine(dc,51,34,69,44,RGB(255,255,255),3);
+    DrawLine(dc,69,44,51,55,RGB(255,255,255),3);
     RECT brand={108,12,520,55};Txt(dc,L"ABM AV PLAYER",brand,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT sub={110,54,540,79};Txt(dc,L"YOUR MEDIA. YOUR EXPERIENCE.",sub,RGB(170,185,205),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
