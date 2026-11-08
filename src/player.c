@@ -843,9 +843,6 @@ static void DrawUI(HDC dc,RECT client) {
         RECT name={row.left+78,row.top+10,row.right-84,row.top+39};
         RECT subline={row.left+78,row.top+41,row.right-84,row.bottom-8};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        const wchar_t *group=L"LOCAL FILE";
-        if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"ARTIST  ·  LOCAL FILE";
-        else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"ALBUM  ·  LOCAL FILE";
         wchar_t metaLine[320];
         if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
@@ -893,7 +890,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
-    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-760)/2;
+    int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
     RECT dock={dockLeft,client.bottom-120,dockLeft+720,client.bottom-18};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(4,7,13),34);
