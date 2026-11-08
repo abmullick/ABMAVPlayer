@@ -916,7 +916,7 @@ static void DrawUI(HDC dc,RECT client) {
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Ready for your next session";
     Txt(dc,dockTitle,nowTitle,RGB(239,246,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+328,dock.bottom-8};
-    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Choose a track from Queue or Library",nowMeta,RGB(143,166,192),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Choose a track to begin",nowMeta,RGB(143,166,192),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+342,dock.top+17,dock.left+343,dock.bottom-17};
     Fill(dc,transportDivider,RGB(43,67,96));
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
