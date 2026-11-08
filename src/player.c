@@ -1849,8 +1849,12 @@ static void ToggleFullscreen(HWND hwnd) {
         int vw = vr.right - vr.left;
         int vh = vr.bottom - vr.top;
         if (vw > 0 && vh > 0) {
-            SetWindowPos(g_video, HWND_BOTTOM, vr.left, vr.top, vw, vh,
+            /* Keep LibVLC's native child surface at the top of the child
+               z-order. HWND_BOTTOM can place it behind the fullscreen parent
+               after the WS_OVERLAPPEDWINDOW -> WS_POPUP transition. */
+            SetWindowPos(g_video, HWND_TOP, vr.left, vr.top, vw, vh,
                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            ShowWindow(g_video, SW_SHOWNOACTIVATE);
         }
     }
     /* Re-sync the Direct2D HWND target with the restored client size.
@@ -1860,6 +1864,18 @@ static void ToggleFullscreen(HWND hwnd) {
     GetClientRect(hwnd, &clientRect);
     if (clientRect.right > 0 && clientRect.bottom > 0) {
         ABM_D2D_Resize(&g_ui, (UINT)clientRect.right, (UINT)clientRect.bottom);
+    }
+    /* Re-apply video placement after frame/style and D2D transitions settle. */
+    g_videoBoundsValid = FALSE;
+    UpdateLayout(hwnd);
+    if (g_video && IsWindow(g_video) && g_hasMedia) {
+        RECT vr = g_videoBounds;
+        int vw = vr.right - vr.left, vh = vr.bottom - vr.top;
+        if (vw > 0 && vh > 0) {
+            SetWindowPos(g_video, HWND_TOP, vr.left, vr.top, vw, vh,
+                SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            ShowWindow(g_video, SW_SHOWNOACTIVATE);
+        }
     }
     RedrawWindow(hwnd, NULL, NULL,
         RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
