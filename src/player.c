@@ -994,6 +994,15 @@ static void SelectRenderer(void) {
     if(s>0&&(size_t)(s-1)<g_comboCount)next=libvlc_renderer_item_hold(g_comboItems[s-1]);
     if(g_selectedRenderer)libvlc_renderer_item_release(g_selectedRenderer);
     g_selectedRenderer=next;
+    if(g_selectedRenderer){
+        wchar_t selectedName[256]=L"Selected receiver";
+        if(s>0)SendMessageW(g_renderers,CB_GETLBTEXT,(WPARAM)s,(LPARAM)selectedName);
+        wchar_t status[320];
+        swprintf_s(status,_countof(status),L"Selected: %s - choose media to cast",selectedName);
+        SetStatus(status);
+    }else{
+        SetStatus(L"Local playback selected");
+    }
 
     /* set_renderer only takes effect before play(). Recreate the media player
        when changing the output so an already-playing item can move to the TV. */
@@ -1009,10 +1018,10 @@ static void SelectRenderer(void) {
         libvlc_media_player_set_hwnd(g_player,g_video);
         g_rendererApplied=FALSE;
         if(g_selectedRenderer && libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
-            libvlc_renderer_item_release(g_selectedRenderer);
-            g_selectedRenderer=NULL;
-            SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-            SetStatus(L"Receiver setup failed; continuing with local playback");
+            SetStatus(L"Could not attach selected receiver - cast was not started");
+            MessageBoxW(g_main,L"LibVLC could not attach the selected receiver. The player will not silently switch to local playback. Try another receiver or check that its Cast/renderer service is supported.",APP_NAME,MB_ICONERROR);
+            g_hasMedia=FALSE;
+            return;
         } else if(g_selectedRenderer) g_rendererApplied=TRUE;
         char utf8[PATH_CAP*4];
         if(WideCharToMultiByte(CP_UTF8,0,g_playlist[g_current],-1,utf8,sizeof(utf8),NULL,NULL)>0){
@@ -1198,10 +1207,8 @@ static void PlayIndex(int index) {
     if(g_selectedRenderer&&!g_rendererApplied){
         if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
             libvlc_media_release(m);
-            libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;g_rendererApplied=FALSE;
-            SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-            SetStatus(L"Receiver setup failed; using local playback");
-            PlayIndex(index);
+            SetStatus(L"Receiver setup failed - playback cancelled, not sent locally");
+            MessageBoxW(g_main,L"LibVLC rejected the selected receiver. No local playback was started. Try selecting the receiver again or choose another device.",APP_NAME,MB_ICONERROR);
             return;
         }
         g_rendererApplied=TRUE;
@@ -1219,28 +1226,14 @@ static void PlayIndex(int index) {
     libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
     ApplyEqProfile();
     if(libvlc_media_player_play(g_player)!=0){
+        g_hasMedia=FALSE;g_pendingResume=FALSE;ResetArtwork();
         if(g_selectedRenderer){
-            libvlc_media_player_stop(g_player);
-            libvlc_media_player_release(g_player);
-            libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;g_rendererApplied=FALSE;
-            SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-            g_player=libvlc_media_player_new(g_vlc);
-            if(g_player){
-                libvlc_media_player_set_hwnd(g_player,g_video);
-                libvlc_media_t *local=libvlc_media_new_path(g_vlc,utf8);
-                if(local){
-                    if(g_replayGain)libvlc_media_add_option(local,":audio-replay-gain-mode=track");
-                    if(g_compressor){libvlc_media_add_option(local,":audio-filter=compressor");libvlc_media_add_option(local,":compressor-threshold=-18");libvlc_media_add_option(local,":compressor-ratio=4");libvlc_media_add_option(local,":compressor-attack=20");libvlc_media_add_option(local,":compressor-release=250");libvlc_media_add_option(local,":compressor-makeup-gain=0");}
-                    libvlc_media_player_set_media(g_player,local);libvlc_media_release(local);ApplyEqProfile();
-                }
-            }
+            SetStatus(L"Receiver rejected playback - check the TV and supported format");
+            MessageBoxW(g_main,L"LibVLC could not start playback on the selected receiver. The video was not redirected to local playback. Check that the TV is awake and supports this media format.",APP_NAME,MB_ICONERROR);
+        }else{
+            MessageBoxW(g_main,L"Playback could not start. Check the media file and VLC plugins.",APP_NAME,MB_ICONERROR);
         }
-        if(!g_player || libvlc_media_player_play(g_player)!=0){
-            g_hasMedia=FALSE;g_pendingResume=FALSE;ResetArtwork();
-            MessageBoxW(g_main,L"Playback could not start locally or on the selected receiver. Check the media file and VLC plugins.",APP_NAME,MB_ICONERROR);
-            return;
-        }
-        SetStatus(L"Cast could not start; playing locally");
+        return;
     }
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
@@ -1857,19 +1850,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
-            if(g_selectedRenderer){
-                int64_t failedAt=libvlc_media_player_get_time(g_player);
-                g_forcedResumeMs=failedAt>=0?failedAt:g_lastUiTime;
-                if(g_forcedResumeMs<0)g_forcedResumeMs=0;
-                g_useForcedResume=TRUE;
-                SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-                SelectRenderer();
-                g_useForcedResume=FALSE;
-                SetStatus(L"Cast playback failed; attempting local playback");
-            }else{
-                g_hasMedia=FALSE;g_endHandled=TRUE;ResetArtwork();
+            g_hasMedia=FALSE;g_endHandled=TRUE;ResetArtwork();
+            if(g_selectedRenderer)
+                SetStatus(L"Cast failed on selected receiver - no local fallback was started");
+            else
                 SetStatus(L"Playback failed. Check the media file and VLC codec plugins");
-            }
+            InvalidateRect(hwnd,NULL,FALSE);
         }
         if(g_pendingResume && g_player){
             libvlc_state_t resumeState=libvlc_media_player_get_state(g_player);
@@ -1878,15 +1864,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_pendingResumePause)libvlc_media_player_set_pause(g_player,1);
                 g_pendingResume=FALSE;
             }else if(resumeState==libvlc_Error || resumeState==libvlc_Ended || ++g_pendingResumeTicks>90){
-                if(g_selectedRenderer && g_hasMedia && resumeState!=libvlc_Ended){
-                    g_forcedResumeMs=g_pendingResumeMs;g_useForcedResume=TRUE;
-                    SendMessageW(g_renderers,CB_SETCURSEL,0,0);
-                    g_pendingResume=FALSE;
-                    SelectRenderer();
-                    g_useForcedResume=FALSE;
-                    SetStatus(L"Cast connection did not recover; switched to local playback");
+                g_pendingResume=FALSE;
+                if(g_selectedRenderer && g_hasMedia){
+                    g_hasMedia=FALSE;g_endHandled=TRUE;ResetArtwork();
+                    SetStatus(L"Cast connection failed - playback was not switched to this PC");
                 }else{
-                    g_pendingResume=FALSE;
                     SetStatus(L"Could not restore the previous playback position");
                 }
             }
@@ -2087,7 +2069,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&g_receiverPopup && Inside(R_RECEIVER_LIST,x,y)) {
-            int item=(y-R_RECEIVER_LIST.top-3)/32;
+            int item=(y-R_RECEIVER_LIST.top-4)/36;
             int count=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);
             if(item>=0&&item<count) {
                 SendMessageW(g_renderers,CB_SETCURSEL,item,0);
