@@ -1034,17 +1034,17 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
         const wchar_t *labels[14]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
-            L"Fullscreen",L"Load playlist",L"Save playlist",L"Help",
-            L"About ABM AV Player",L"Exit player",L"Shuffle: Off",
-            L"Repeat current: Off",L"Recent media",L"Advanced equalizer"
+            L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
+            L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
+            L"Help",L"Exit player",L"About ABM AV Player"
         };
         const wchar_t *shortcuts[14]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
-            L"F11",L"Ctrl+L",L"Ctrl+S",L"F1",
-            L"Ctrl+I",L"Alt+F4",L"Ctrl+Shift+H",
-            L"Ctrl+R",L"Ctrl+J",L"Ctrl+E"
+            L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
+            L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
+            L"F1",L"Alt+F4",L"Ctrl+I"
         };
-        const wchar_t *icons[14]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"?",L"i",L"×",L"⇄",L"↻",L"◷",L"EQ"};
+        const wchar_t *icons[14]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"?",L"×",L"i"};
         for(int i=0;i<14;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==10)labels[10]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -2242,8 +2242,10 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         r.top=112;r.bottom=150;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=151;r.bottom=190;SelectObject(dc,heading);SetTextColor(dc,RGB(242,246,250));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=245;r.bottom=295;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-        r.top=318;r.bottom=345;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version 0.4  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=228;r.bottom=249;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=250;r.bottom=274;SetTextColor(dc,RGB(225,235,244));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=278;r.bottom=316;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
+        r.top=326;r.bottom=350;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version 0.4  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
         DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
@@ -2613,7 +2615,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==4)ToggleFullscreen(hwnd);
                 else if(mi==5)LoadPlaylist();
                 else if(mi==6)SavePlaylist();
-                else if(mi==7)MessageBoxW(hwnd,
+                else if(mi==7){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
+                else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
+                else if(mi==9){g_repeat=!g_repeat;SavePersistentState();}
+                else if(mi==10)ShowEqualizer();
+                else if(mi==11)MessageBoxW(hwnd,
                     L"ABM AV Player - Quick Help\n\n"
                     L"Open media: Add audio or video files to the playlist.\n"
                     L"Double-click a playlist item to play it.\n"
@@ -2623,16 +2629,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     L"Drag files into the player to add them. Space: play/pause, arrows: seek 10 seconds. +/-: speed. N/P: next/previous.\n"
                     L"Cast to TV: Discover receivers, then choose your TV in Playback Output.\n\n"
                     L"Keyboard shortcuts:\nF11 - Toggle fullscreen\nEsc - Exit fullscreen or close the menu\n"
-                    L"Double-click the video - Toggle fullscreen\n"\
-                    L"Space - Play/Pause | Left/Right - Seek 10 seconds\n"\
+                    L"Double-click the video - Toggle fullscreen\n"
+                    L"Space - Play/Pause | Left/Right - Seek 10 seconds\n"
                     L"+/- - Playback speed | N/P - Next/Previous",
                     L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
-                else if(mi==8)ShowAboutDialog(hwnd);
-                else if(mi==9)PostMessageW(hwnd,WM_CLOSE,0,0);
-                else if(mi==10){g_shuffle=!g_shuffle;SavePersistentState();}
-                else if(mi==11){g_repeat=!g_repeat;SavePersistentState();}
-                else if(mi==12){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
-                else if(mi==13)ShowEqualizer();
+                else if(mi==12)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==13)ShowAboutDialog(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
