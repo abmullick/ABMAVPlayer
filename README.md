@@ -46,9 +46,10 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 ## Interface and architecture
 
-- Application and windowing: C + Win32 API.
+- Application and windowing: C/C++ + Win32 API.
 - Interface: Direct2D antialiased rendering and DirectWrite typography.
 - Media decoding, demuxing, audio/video output and renderer integration: LibVLC.
+- Streaming website rendering and provider sign-in: Microsoft Edge WebView2 in a separate top-level window.
 - Video is displayed in an embedded Win32 child window.
 - Audio output uses LibVLC's Windows audio backend.
 
