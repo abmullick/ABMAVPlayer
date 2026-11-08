@@ -1,44 +1,74 @@
-# Google Cast and network receiver guide
+# Google Cast and Network Receiver Guide
 
 **Product:** ABM AV Player  
 **Product Owner:** Abhisek Basu Mullick  
 **Copyright:** © 2026 Abhisek Basu Mullick. All rights reserved.
 
-## Current implementation
+## How receiver discovery works
 
-ABM AV Player uses LibVLC's renderer-discovery API to enumerate receiver-discovery services available in the installed VLC build. It listens for receiver-added and receiver-removed events and presents discovered receivers in the player.
+ABM AV Player uses LibVLC's renderer-discovery API. It enumerates the renderer-discovery services exposed by the installed VLC runtime, listens for receiver-added/removed events and presents discovered receivers in the Playback Output selector.
 
-The player can select a receiver before playback or switch output during playback. When the output changes, ABM AV Player recreates the LibVLC media player, reapplies the selected renderer, and attempts to resume the current item at its previous position and play/pause state.
+The application does not implement a separate Google Cast protocol stack. Google Cast discovery and playback depend on the VLC build's mDNS renderer-discovery service, Chromecast renderer plugin, their dependencies and the receiver's capabilities.
 
-## How to cast
+## Requirements
 
-1. Install the full 64-bit VLC desktop application and the matching 64-bit LibVLC SDK.
-2. Run ABM AV Player.
-3. Open **Playback Output** in the Media / Settings drawer.
-4. Click **Find TVs** and wait for discovery events.
-5. Select the desired receiver. You can do this before playback or while a file is playing.
-6. Open media and use the player's playback controls. The TV becomes the active renderer.
+- A 64-bit Windows PC and matching 64-bit ABM AV Player/VLC runtime.
+- A TV or dongle exposing a compatible Google Cast / Chromecast receiver service.
+- Full VLC runtime with renderer-discovery and Chromecast plugins; the LibVLC SDK alone is not a complete runtime.
+- PC and TV connected to the same non-guest Wi-Fi/LAN.
+- Windows Defender Firewall allowing ABM AV Player and VLC on Private networks.
+- Multicast DNS (mDNS) traffic not blocked by the router, VPN or endpoint security.
 
-## Automatic compatibility conversion
+Android TV branding alone does not guarantee Google Cast support. Miracast-only devices are not Google Cast receivers. Some televisions expose DLNA/UPnP or other renderer services; these are available only if supported by the installed VLC build.
 
-For Chromecast rendering, conversion is handled by the VLC engine's Chromecast renderer/stream-output modules and their installed encoder plugins. VLC can pass through compatible audio/video streams and transcode incompatible streams to formats supported by the receiver. The exact fallback behavior depends on the VLC version, renderer, media streams, subtitles, and available encoders.
+## Connect to a receiver
 
-ABM AV Player does not currently ship or invoke a separate FFmpeg executable. Do not assume every unusual codec, subtitle format, or container can be converted successfully.
+1. Start ABM AV Player.
+2. Open the Media / Settings drawer.
+3. Locate Playback Output.
+4. Select Find TVs or Find network devices.
+5. Wait several seconds. Discovery is asynchronous.
+6. Select the receiver in the output selector.
+7. Start a local file, or select a receiver while a file is already playing.
 
-## Network troubleshooting
+Choose Local playback to return output to the PC.
 
-- Connect the laptop and Google TV to the same non-guest local network.
-- Disable client/AP isolation on the router if enabled.
-- Allow ABM AV Player and/or VLC through Windows Defender Firewall on **Private** networks.
-- Ensure multicast DNS (mDNS) traffic is not blocked by the router, VPN, or endpoint security software.
-- Confirm the installed VLC folder contains its normal `plugins` directory. The player sets `VLC_PLUGIN_PATH` and LibVLC's explicit `--plugin-path` to the bundled `plugins` folder, and disables the plugin cache so newly copied receiver-discovery modules are scanned.
-- Some TVs expose Cast receivers only while awake and available on the network.
+## Switching output during playback
+
+When the output changes, ABM AV Player recreates the LibVLC media player, reapplies the selected renderer and attempts to restore the previous media position and paused/playing state after the new output reports that playback has started.
+
+This is best-effort and depends on the receiver, stream, VLC version and available transcoding plugins. The current implementation reports Cast start/resume failures; automatic local fallback is not guaranteed. Select Local playback or retry playback if the receiver session fails.
+
+## Codec conversion
+
+For Chromecast rendering, conversion is handled by VLC's Chromecast renderer/stream-output modules and installed encoder plugins. VLC may pass through a compatible stream or transcode an incompatible stream when the required encoders and formats are available.
+
+ABM AV Player does not bundle or invoke a separate FFmpeg executable. Do not assume every codec, container, subtitle format or stream combination can be converted successfully.
+
+## Troubleshooting
+
+### No receivers appear
+- Ensure the TV is awake and its Google Cast receiver is enabled.
+- Confirm both devices are on the same non-guest LAN.
+- Avoid guest Wi-Fi and disable router client/AP isolation for the test.
+- Temporarily disconnect VPNs that may block multicast.
+- Allow ABM AV Player and VLC through Windows Defender Firewall on Private networks.
+- Confirm the installed VLC folder contains the normal plugins directory and the renderer-discovery/Chromecast plugins with their dependent DLLs.
+- Some receivers advertise services only while awake or available on the network.
+
+### VLC reports missing discovery services
+The installed LibVLC runtime may not expose its mDNS renderer-discovery service (often named microdns_renderer). Install a full compatible 64-bit VLC distribution and ensure the services_discovery and Chromecast renderer plugins are included in the staged/installed runtime.
+
+### A receiver appears but playback does not start
+- Test with a common H.264/AAC MP4.
+- Confirm the TV/dongle is a compatible Cast receiver, not merely a Miracast or generic screen-mirroring device.
+- Check VLC's Chromecast and encoder plugins and their dependencies.
+- Try Local playback and retry with a different media file.
 
 ## Current limitations
 
-- Discovery requires a Google Cast / Chromecast-capable receiver and working multicast DNS on the local network; Miracast-only devices are not Google Cast receivers.
-- Some codecs, subtitle combinations, and media containers may not be supported by the receiver or VLC's available transcoding modules.
-- Select **Local playback** in Playback Output to return audio/video to the PC.
-- No independent transcoding settings or quality selector yet.
-- Successful discovery and playback depend on the installed VLC build and receiver compatibility.
-
+- Discovery and playback depend on the installed VLC runtime and network environment.
+- Android TV devices without a compatible Cast receiver service may not appear as Google Cast devices.
+- Transcoding is not guaranteed for all codecs, containers, subtitles or receivers.
+- No independent transcoding quality/bitrate settings are exposed in the current UI.
+- Output-switch recovery is best-effort; test against the actual receiver and VLC build before relying on it.
