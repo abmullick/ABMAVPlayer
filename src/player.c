@@ -450,7 +450,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
     ABM_AudioVisualizer_GetBands(levels,24);
-    Fill(dc,area,RGB(7,11,18));
+    Fill(dc,area,RGB(8,15,20));
     RECT inset=area; InflateRect(&inset,-22,-24);
     int width=inset.right-inset.left;
     int gap=5;
@@ -465,21 +465,21 @@ static void DrawVisualizer(HDC dc,RECT area) {
         int height=(int)(level*(float)maxHeight);
         int x=inset.left+i*(barWidth+gap);
         RECT bar={x,base-height,x+barWidth,base};
-        COLORREF color=Blend(RGB(38,105,181),RGB(74,210,190),(i*100)/23);
+        COLORREF color=Blend(RGB(35,116,122),RGB(100,202,166),(i*100)/23);
         ABM_D2D_Round(&g_ui,(float)bar.left,(float)bar.top,(float)bar.right,(float)bar.bottom,(float)(barWidth/2),color);
     }
     RECT label={area.left+20,area.top+14,area.right-20,area.top+38};
-    Txt(dc,L"NOW PLAYING  •  LIVE AUDIO SPECTRUM",label,RGB(153,174,201),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"NOW PLAYING  •  LIVE AUDIO SPECTRUM",label,RGB(151,184,180),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT baseline={inset.left,base+8,inset.right,base+9};
-    Fill(dc,baseline,RGB(36,54,76));
+    Fill(dc,baseline,RGB(43,67,68));
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
         /* Immersive now-playing view: artwork, track metadata and transport
            controls are composed as one screen rather than a centered cover. */
-        GradientRect(dc,client,RGB(7,13,24),RGB(12,10,27));
+        GradientRect(dc,client,RGB(7,15,21),RGB(12,20,25));
         RECT ambientTop={0,0,client.right,client.bottom/2};
-        GradientRect(dc,ambientTop,RGB(10,30,49),RGB(8,13,25));
+        GradientRect(dc,ambientTop,RGB(10,35,39),RGB(8,16,23));
         if(g_artworkLoaded) {
             int artSize=client.bottom-270;
             if(artSize>500)artSize=500;
@@ -489,8 +489,8 @@ static void DrawUI(HDC dc,RECT client) {
             int artY=(client.bottom-170-artSize)/2+12;
             RECT tile={artX,artY,artX+artSize,artY+artSize};
             RECT tileShadow=tile;OffsetRect(&tileShadow,0,14);RoundBox(dc,tileShadow,RGB(3,6,13),22);
-            GradientRound(dc,tile,RGB(18,55,78),RGB(41,34,83),22);
-            ABM_D2D_StrokeRound(&g_ui,(float)tile.left,(float)tile.top,(float)tile.right,(float)tile.bottom,22.0f,RGB(82,151,185),1.25f);
+            GradientRound(dc,tile,RGB(18,55,59),RGB(34,48,59),22);
+            ABM_D2D_StrokeRound(&g_ui,(float)tile.left,(float)tile.top,(float)tile.right,(float)tile.bottom,22.0f,RGB(83,151,143),1.25f);
             ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+7,(float)tile.top+7,
                 (float)tile.right-7,(float)tile.bottom-7,(float)g_artworkFade/100.0f);
 
@@ -499,7 +499,7 @@ static void DrawUI(HDC dc,RECT client) {
             RECT kicker={infoX,artY+4,infoX+infoW,artY+34};
             RECT title={infoX,artY+50,infoX+infoW,artY+105};
             RECT artist={infoX,artY+112,infoX+infoW,artY+145};
-            Txt(dc,L"ABM  /  NOW PLAYING",kicker,RGB(94,204,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"ABM  /  NOW PLAYING",kicker,RGB(104,194,177),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             Txt(dc,g_trackTitle[0]?g_trackTitle:L"Untitled track",title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             Txt(dc,g_trackArtist[0]?g_trackArtist:L"Unknown artist",artist,RGB(194,198,204),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
@@ -593,8 +593,8 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
-    int glow=(int)(18.0+8.0*(0.5+0.5*sin((double)g_visualPulse*0.06)));
-    COLORREF edge=Blend(RGB(30,47,68),RGB(64,153,180),glow);
+    int glow=(int)(14.0+5.0*(0.5+0.5*sin((double)g_visualPulse*0.045)));
+    COLORREF edge=Blend(RGB(30,48,53),RGB(55,127,117),glow);
     Panel(dc,frame,RGB(6,10,17),edge,20);
     GradientRect(dc,R_VIDEO,RGB(7,15,26),RGB(4,8,15));
     if(g_artworkLoaded) {
@@ -617,7 +617,7 @@ static void DrawUI(HDC dc,RECT client) {
         RECT title={infoX,R_VIDEO.top+areaH/2-76,R_VIDEO.right-42,R_VIDEO.top+areaH/2-25};
         RECT artist={infoX,R_VIDEO.top+areaH/2-17,R_VIDEO.right-42,R_VIDEO.top+areaH/2+16};
         RECT detail={infoX,R_VIDEO.top+areaH/2+38,R_VIDEO.right-42,R_VIDEO.top+areaH/2+64};
-        Txt(dc,L"NOW PLAYING  /  ABM AUDIO",kicker,RGB(92,184,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"NOW PLAYING  /  ABM AUDIO",kicker,RGB(105,190,177),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         else Txt(dc,L"Untitled track",title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,RGB(191,207,229),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -633,7 +633,7 @@ static void DrawUI(HDC dc,RECT client) {
             double pulse=0.22+0.78*(0.5+0.5*sin((double)g_visualPulse*0.095+i*0.47));
             int bh=5+(int)(pulse*25.0);
             RECT bar={waveX+i*(bw+gap),waveY-bh/2,waveX+i*(bw+gap)+bw,waveY+bh/2};
-            COLORREF col=Blend(RGB(44,169,218),RGB(125,91,229),i*100/(bars-1));
+            COLORREF col=Blend(RGB(43,151,145),RGB(108,184,151),i*100/(bars-1));
             RoundBox(dc,bar,col,3);
         }
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
@@ -644,9 +644,9 @@ static void DrawUI(HDC dc,RECT client) {
         /* Ambient colour fields make the stage feel like a listening space,
            not an empty black video rectangle. */
         RECT ambient={R_VIDEO.left+areaW/5,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
-        GradientRound(dc,ambient,RGB(10,31,48),RGB(15,17,43),34);
+        GradientRound(dc,ambient,RGB(10,35,39),RGB(17,27,34),34);
         RECT glowLine={ambient.left+26,ambient.top+1,ambient.right-26,ambient.top+3};
-        GradientRect(dc,glowLine,RGB(42,188,203),RGB(119,91,222));
+        GradientRect(dc,glowLine,RGB(47,171,158),RGB(112,187,150));
         int leftX=R_VIDEO.left+areaW/10;
         int textW=areaW*48/100;
         int topY=cy-112;
@@ -656,13 +656,13 @@ static void DrawUI(HDC dc,RECT client) {
         RECT headline1={leftX,topY+42,leftX+textW,topY+91};
         RECT headline2={leftX,topY+88,leftX+textW,topY+137};
         Txt(dc,L"Your media.",headline1,RGB(247,249,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        Txt(dc,L"Your moment.",headline2,RGB(116,190,241),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Your moment.",headline2,RGB(126,199,181),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail={leftX,topY+151,leftX+textW,topY+194};
         Txt(dc,L"A refined home for music, movies and",detail,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail2={leftX,topY+177,leftX+textW,topY+218};
         Txt(dc,L"everything you love to watch and hear.",detail2,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT hint={leftX,topY+237,leftX+textW,topY+263};
-        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,RGB(91,202,208),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,RGB(112,195,179),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
         /* Abstract, layered album sleeves create a distinctive visual anchor.
            The cards are decorative only; playback remains on the real controls. */
@@ -671,21 +671,21 @@ static void DrawUI(HDC dc,RECT client) {
         int stackY=cy-cardH/2-8;
         int drift=(int)(4.0*sin((double)g_visualPulse*0.045));
         RECT backCard={stackX+52,stackY-25+drift,stackX+52+cardW,stackY-25+drift+cardH};
-        GradientRound(dc,backCard,RGB(39,57,116),RGB(25,111,133),22);
+        GradientRound(dc,backCard,RGB(34,62,75),RGB(25,104,96),22);
         RECT backInset={backCard.left+12,backCard.top+12,backCard.right-12,backCard.bottom-12};
-        ABM_D2D_StrokeRound(&g_ui,(float)backInset.left,(float)backInset.top,(float)backInset.right,(float)backInset.bottom,16.0f,RGB(125,153,232),1.0f);
+        ABM_D2D_StrokeRound(&g_ui,(float)backInset.left,(float)backInset.top,(float)backInset.right,(float)backInset.bottom,16.0f,RGB(130,183,164),1.0f);
         RECT frontCard={stackX,stackY,stackX+cardW,stackY+cardH};
         RECT cardShadow=frontCard;OffsetRect(&cardShadow,0,10);
         RoundBox(dc,cardShadow,RGB(3,7,16),23);
-        GradientRound(dc,frontCard,RGB(19,137,151),RGB(84,65,164),22);
+        GradientRound(dc,frontCard,RGB(24,132,126),RGB(55,91,100),22);
         RECT inner={frontCard.left+12,frontCard.top+12,frontCard.right-12,frontCard.bottom-12};
-        ABM_D2D_StrokeRound(&g_ui,(float)inner.left,(float)inner.top,(float)inner.right,(float)inner.bottom,16.0f,RGB(190,218,245),0.8f);
+        ABM_D2D_StrokeRound(&g_ui,(float)inner.left,(float)inner.top,(float)inner.right,(float)inner.bottom,16.0f,RGB(171,218,199),0.8f);
         int icx=(frontCard.left+frontCard.right)/2, icy=(frontCard.top+frontCard.bottom)/2;
         int ring=(int)(42.0+3.0*sin((double)g_visualPulse*0.06));
         RECT vinyl={icx-ring,icy-ring,icx+ring,icy+ring};
-        ABM_D2D_StrokeRound(&g_ui,(float)vinyl.left,(float)vinyl.top,(float)vinyl.right,(float)vinyl.bottom,(float)ring,RGB(221,235,255),1.6f);
+        ABM_D2D_StrokeRound(&g_ui,(float)vinyl.left,(float)vinyl.top,(float)vinyl.right,(float)vinyl.bottom,(float)ring,RGB(211,235,224),1.6f);
         RECT vinyl2={icx-23,icy-23,icx+23,icy+23};
-        ABM_D2D_StrokeRound(&g_ui,(float)vinyl2.left,(float)vinyl2.top,(float)vinyl2.right,(float)vinyl2.bottom,23.0f,RGB(203,224,255),1.0f);
+        ABM_D2D_StrokeRound(&g_ui,(float)vinyl2.left,(float)vinyl2.top,(float)vinyl2.right,(float)vinyl2.bottom,23.0f,RGB(184,218,204),1.0f);
         RECT vinylDot={icx-5,icy-5,icx+5,icy+5};
         RoundBox(dc,vinylDot,RGB(240,247,255),5);
         int bars=19, gap=5, barW=4;
@@ -695,10 +695,10 @@ static void DrawUI(HDC dc,RECT client) {
             double wave=0.18+0.82*(0.5+0.5*sin((double)g_visualPulse*0.11+i*0.58));
             int bh=5+(int)(wave*24.0);
             RECT bar={icx-total/2+i*(barW+gap),base-bh,icx-total/2+i*(barW+gap)+barW,base};
-            RoundBox(dc,bar,Blend(RGB(48,190,206),RGB(132,102,237),i*100/(bars-1)),2);
+            RoundBox(dc,bar,Blend(RGB(44,164,151),RGB(117,195,151),i*100/(bars-1)),2);
         }
         RECT caption={stackX-30,base+9,stackX+cardW+85,base+34};
-        Txt(dc,L"MUSIC  •  CINEMA  •  YOU",caption,RGB(131,158,191),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"MUSIC  •  CINEMA  •  YOU",caption,RGB(132,171,165),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     RECT fs=R_FULLSCREEN;
     RoundBox(dc,fs,RGB(20,29,42),8);
