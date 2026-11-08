@@ -2261,8 +2261,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
 
     /* Hardware decoding defaults to LibVLC automatic selection. Override with
        ABM_VLC_HW=none for software-only troubleshooting or d3d11va to request D3D11VA. */
-    const char *args[4]={"--no-video-title-show","--quiet",NULL,NULL};
-    int argCount=2;
+    const char *args[6]={"--no-video-title-show","--quiet","--no-plugins-cache",NULL,NULL,NULL};
+    int argCount=3;
+    if(pluginArg[0])args[argCount++]=pluginArg;
     wchar_t hwMode[32]=L"";
     GetEnvironmentVariableW(L"ABM_VLC_HW",hwMode,(DWORD)_countof(hwMode));
     if(!_wcsicmp(hwMode,L"none"))args[argCount++]="--avcodec-hw=none";
