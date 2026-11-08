@@ -2167,6 +2167,82 @@ static void ShowEqualizer(void) {
     InvalidateRect(g_eqWindow,NULL,TRUE);
 }
 
+
+static HBITMAP g_aboutPortrait = NULL;
+
+static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
+    case WM_CREATE: {
+        wchar_t path[MAX_PATH];
+        GetModuleFileNameW(NULL,path,MAX_PATH);
+        wchar_t *slash=wcsrchr(path,L'\\');
+        if(slash) *(slash+1)=0;
+        wcscat_s(path,MAX_PATH,L"assets\\owner_portrait.bmp");
+        g_aboutPortrait=(HBITMAP)LoadImageW(NULL,path,IMAGE_BITMAP,0,0,LR_LOADFROMFILE|LR_CREATEDIBSECTION);
+        return 0;
+    }
+    case WM_PAINT: {
+        PAINTSTRUCT ps; HDC dc=BeginPaint(hwnd,&ps);
+        RECT rc; GetClientRect(hwnd,&rc);
+        HBRUSH bg=CreateSolidBrush(RGB(10,20,35)); FillRect(dc,&rc,bg); DeleteObject(bg);
+        RECT band={0,0,rc.right,7};
+        HBRUSH accent=CreateSolidBrush(RGB(47,185,205)); FillRect(dc,&band,accent); DeleteObject(accent);
+        SetBkMode(dc,TRANSPARENT);
+        HFONT title=CreateFontW(27,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        HFONT heading=CreateFontW(19,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        HFONT body=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        if(g_aboutPortrait) {
+            HDC mem=CreateCompatibleDC(dc); HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
+            BITMAP bm; GetObjectW(g_aboutPortrait,sizeof(bm),&bm);
+            int side=250, sw=bm.bmWidth<bm.bmHeight?bm.bmWidth:bm.bmHeight;
+            int sx=(bm.bmWidth-sw)/2, sy=(bm.bmHeight-sw)/2;
+            SetStretchBltMode(dc,HALFTONE);
+            StretchBlt(dc,34,55,side,side,mem,sx,sy,sw,sw,SRCCOPY);
+            SelectObject(mem,old); DeleteDC(mem);
+        } else {
+            RECT photo={34,55,284,305}; HBRUSH ph=CreateSolidBrush(RGB(24,43,63)); FillRect(dc,&photo,ph); DeleteObject(ph);
+            SetTextColor(dc,RGB(155,180,198)); HFONT hint=body; SelectObject(dc,hint);
+            DrawTextW(dc,L"Add your portrait to\\nassets\\owner_portrait.bmp",-1,&photo,DT_CENTER|DT_VCENTER|DT_WORDBREAK);
+        }
+        RECT r={320,58,rc.right-28,105}; SelectObject(dc,title); SetTextColor(dc,RGB(239,246,252)); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=112;r.bottom=150;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=151;r.bottom=190;SelectObject(dc,heading);SetTextColor(dc,RGB(242,246,250));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=245;r.bottom=295;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
+        r.top=318;r.bottom=345;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version 0.4  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        DeleteObject(title);DeleteObject(heading);DeleteObject(body);
+        EndPaint(hwnd,&ps);return 0;
+    }
+    case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
+    case WM_DESTROY: if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} return 0;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
+
+static void ShowAboutDialog(HWND owner) {
+    static BOOL registered=FALSE;
+    HINSTANCE inst=GetModuleHandleW(NULL);
+    if(!registered) {
+        WNDCLASSEXW wc={0}; wc.cbSize=sizeof(wc); wc.lpfnWndProc=AboutWndProc;
+        wc.hInstance=inst; wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+        wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName=L"ABMAVPlayerAbout";
+        if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
+        registered=TRUE;
+    }
+    RECT wr={0,0,700,390}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
+    int w=wr.right-wr.left,h=wr.bottom-wr.top;
+    int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
+    HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerAbout",
+        L"About ABM AV Player",WS_CAPTION|WS_SYSMENU|WS_POPUP,
+        x,y,w,h,owner,NULL,inst,NULL);
+    if(!dlg)return;
+    EnableWindow(owner,FALSE); ShowWindow(dlg,SW_SHOW); UpdateWindow(dlg);
+    MSG m; while(IsWindow(dlg) && GetMessageW(&m,NULL,0,0)>0) {
+        if(!IsDialogMessageW(dlg,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
+    }
+    EnableWindow(owner,TRUE); SetActiveWindow(owner);
+}
+
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -2516,12 +2592,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     L"Space - Play/Pause | Left/Right - Seek 10 seconds\n"\
                     L"+/- - Playback speed | N/P - Next/Previous",
                     L"ABM AV Player Help",MB_OK|MB_ICONINFORMATION);
-                else if(mi==8)MessageBoxW(hwnd,
-                    L"ABM AV Player\nVersion 0.4\n\n"
-                    L"A Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\n\n"
-                    L"Product Owner: Abhisek Basu Mullick\n"
-                    L"Copyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",
-                    L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
+                else if(mi==8)ShowAboutDialog(hwnd);
                 else if(mi==9)PostMessageW(hwnd,WM_CLOSE,0,0);
                 else if(mi==10){g_shuffle=!g_shuffle;SavePersistentState();}
                 else if(mi==11){g_repeat=!g_repeat;SavePersistentState();}
@@ -2591,10 +2662,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && shift && wp=='C'){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);return 0;}
         if(ctrl && !shift && wp=='L'){LoadPlaylist();return 0;}
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
-        if(ctrl && !shift && wp=='I'){
-            MessageBoxW(hwnd,L"ABM AV Player\\nVersion 0.4\\n\\nA Windows desktop media player powered by LibVLC, Direct2D and DirectWrite.\\n\\nProduct Owner: Abhisek Basu Mullick\\nCopyright (c) 2026 Abhisek Basu Mullick. All rights reserved.",L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
-            return 0;
-        }
+        if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
