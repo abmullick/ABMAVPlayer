@@ -607,41 +607,69 @@ static void DrawUI(HDC dc,RECT client) {
         }
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
+        int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         int cx=(R_VIDEO.left+R_VIDEO.right)/2;
-        int cy=(R_VIDEO.top+R_VIDEO.bottom)/2-28;
-        int breathe=(int)(3.0+3.0*(0.5+0.5*sin((double)g_visualPulse*0.075)));
-        RECT hero={cx-310,cy-132,cx+310,cy+166};
-        RECT heroShadow=hero;OffsetRect(&heroShadow,0,10);
-        RoundBox(dc,heroShadow,RGB(3,7,13),26);
-        Panel(dc,hero,RGB(11,22,36),RGB(54,104,128),24);
-        RECT heroTop={hero.left+28,hero.top+1,hero.right-28,hero.top+3};
-        GradientRect(dc,heroTop,RGB(49,190,204),RGB(125,94,231));
-        RECT kicker={hero.left+24,hero.top+13,hero.right-24,hero.top+38};
-        Txt(dc,L"ABM  /  YOUR MEDIA SPACE",kicker,RGB(113,174,192),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        RECT outer={cx-48-breathe,cy-48-breathe,cx+48+breathe,cy+48+breathe};
-        ABM_D2D_StrokeRound(&g_ui,(float)outer.left,(float)outer.top,(float)outer.right,(float)outer.bottom,27.0f,Blend(RGB(34,83,132),RGB(87,91,206),(g_visualPulse%80u)*100/79),1.5f);
-        RECT badge={cx-39,cy-39,cx+39,cy+39};
-        GradientRect(dc,badge,RGB(28,151,169),RGB(92,83,205));
-        RoundBox(dc,badge,Blend(RGB(28,151,169),RGB(92,83,205),48),23);
-        DrawLine(dc,cx-8,cy-16,cx-8,cy+16,RGB(245,250,255),3);
-        DrawLine(dc,cx-8,cy-16,cx+17,cy,RGB(245,250,255),3);
-        DrawLine(dc,cx+17,cy,cx-8,cy+16,RGB(245,250,255),3);
-        RECT empty={R_VIDEO.left+20,cy+57,R_VIDEO.right-20,cy+86};
-        Txt(dc,L"Make every moment sound better.",empty,RGB(241,246,252),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        RECT hint={R_VIDEO.left+20,empty.bottom+2,R_VIDEO.right-20,empty.bottom+26};
-        Txt(dc,L"Add your music or video library to get started",hint,RGB(154,174,194),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        int bars=25, gap=7, barW=5;
-        int total=bars*barW+(bars-1)*gap;
-        int start=cx-total/2, base=hint.bottom+25;
-        for(int i=0;i<bars;i++) {
-            double wave=0.5+0.5*sin((double)g_visualPulse*0.12+(double)i*0.52);
-            int bh=5+(int)(wave*19.0);
-            RECT bar={start+i*(barW+gap),base-bh,start+i*(barW+gap)+barW,base};
-            COLORREF bc=Blend(RGB(47,153,207),RGB(125,94,232),i*100/(bars-1));
-            RoundBox(dc,bar,bc,3);
-        }
-    }
+        int cy=(R_VIDEO.top+R_VIDEO.bottom)/2;
+        /* Ambient colour fields make the stage feel like a listening space,
+           not an empty black video rectangle. */
+        RECT ambient={R_VIDEO.left+areaW/5,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
+        GradientRound(dc,ambient,RGB(10,31,48),RGB(15,17,43),34);
+        RECT glowLine={ambient.left+26,ambient.top+1,ambient.right-26,ambient.top+3};
+        GradientRect(dc,glowLine,RGB(42,188,203),RGB(119,91,222));
+        int leftX=R_VIDEO.left+areaW/10;
+        int textW=areaW*48/100;
+        int topY=cy-112;
+        RECT eyebrow={leftX,topY,leftX+textW,topY+25};
+        RECT eyebrowPill={leftX,topY+5,leftX+8,topY+13};
+        RoundBox(dc,eyebrowPill,RGB(75,211,190),4);
+        Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},RGB(120,190,206),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT headline1={leftX,topY+42,leftX+textW,topY+91};
+        RECT headline2={leftX,topY+88,leftX+textW,topY+137};
+        Txt(dc,L"Your media.",headline1,RGB(247,249,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Your moment.",headline2,RGB(116,190,241),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT detail={leftX,topY+151,leftX+textW,topY+194};
+        Txt(dc,L"A refined home for music, movies and",detail,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT detail2={leftX,topY+177,leftX+textW,topY+218};
+        Txt(dc,L"everything you love to watch and hear.",detail2,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT hint={leftX,topY+237,leftX+textW,topY+263};
+        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,RGB(91,202,208),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
+        /* Abstract, layered album sleeves create a distinctive visual anchor.
+           The cards are decorative only; playback remains on the real controls. */
+        int cardW=areaW>900?190:150, cardH=cardW;
+        int stackX=R_VIDEO.right-areaW/5-cardW;
+        int stackY=cy-cardH/2-8;
+        int drift=(int)(4.0*sin((double)g_visualPulse*0.045));
+        RECT backCard={stackX+52,stackY-25+drift,stackX+52+cardW,stackY-25+drift+cardH};
+        GradientRound(dc,backCard,RGB(39,57,116),RGB(25,111,133),22);
+        RECT backInset={backCard.left+12,backCard.top+12,backCard.right-12,backCard.bottom-12};
+        ABM_D2D_StrokeRound(&g_ui,(float)backInset.left,(float)backInset.top,(float)backInset.right,(float)backInset.bottom,16.0f,RGB(125,153,232),1.0f);
+        RECT frontCard={stackX,stackY,stackX+cardW,stackY+cardH};
+        RECT cardShadow=frontCard;OffsetRect(&cardShadow,0,10);
+        RoundBox(dc,cardShadow,RGB(3,7,16),23);
+        GradientRound(dc,frontCard,RGB(19,137,151),RGB(84,65,164),22);
+        RECT inner={frontCard.left+12,frontCard.top+12,frontCard.right-12,frontCard.bottom-12};
+        ABM_D2D_StrokeRound(&g_ui,(float)inner.left,(float)inner.top,(float)inner.right,(float)inner.bottom,16.0f,RGB(190,218,245),0.8f);
+        int icx=(frontCard.left+frontCard.right)/2, icy=(frontCard.top+frontCard.bottom)/2;
+        int ring=(int)(42.0+3.0*sin((double)g_visualPulse*0.06));
+        RECT vinyl={icx-ring,icy-ring,icx+ring,icy+ring};
+        ABM_D2D_StrokeRound(&g_ui,(float)vinyl.left,(float)vinyl.top,(float)vinyl.right,(float)vinyl.bottom,(float)ring,RGB(221,235,255),1.6f);
+        RECT vinyl2={icx-23,icy-23,icx+23,icy+23};
+        ABM_D2D_StrokeRound(&g_ui,(float)vinyl2.left,(float)vinyl2.top,(float)vinyl2.right,(float)vinyl2.bottom,23.0f,RGB(203,224,255),1.0f);
+        RECT vinylDot={icx-5,icy-5,icx+5,icy+5};
+        RoundBox(dc,vinylDot,RGB(240,247,255),5);
+        int bars=19, gap=5, barW=4;
+        int total=bars*barW+(bars-1)*gap;
+        int base=frontCard.bottom+30;
+        for(int i=0;i<bars;i++) {
+            double wave=0.18+0.82*(0.5+0.5*sin((double)g_visualPulse*0.11+i*0.58));
+            int bh=5+(int)(wave*24.0);
+            RECT bar={icx-total/2+i*(barW+gap),base-bh,icx-total/2+i*(barW+gap)+barW,base};
+            RoundBox(dc,bar,Blend(RGB(48,190,206),RGB(132,102,237),i*100/(bars-1)),2);
+        }
+        RECT caption={stackX-30,base+9,stackX+cardW+85,base+34};
+        Txt(dc,L"MUSIC  •  CINEMA  •  YOU",caption,RGB(131,158,191),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
     RECT fs=R_FULLSCREEN;
     RoundBox(dc,fs,RGB(20,29,42),8);
     DrawLine(dc,fs.left+9,fs.top+13,fs.left+9,fs.top+7,C_TEXT,2);
