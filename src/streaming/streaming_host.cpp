@@ -35,7 +35,6 @@ ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{};
 int g_activeService=-1;
-bool g_ready=false;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
@@ -164,7 +163,6 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
             }).Get(),&g_navigationToken);
     g_controller->put_IsVisible(TRUE);
     LayoutBrowser();
-    g_ready=true;
     NavigateHome();
 }
 LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
@@ -204,6 +202,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         return 0;
     }
     case WM_SIZE:LayoutBrowser();InvalidateRect(hwnd,nullptr,FALSE);return 0;
+    case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=1000;info->ptMinTrackSize.y=700;return 0;}
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -219,8 +218,9 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
-        g_window=nullptr;g_webView.Reset();g_controller.Reset();g_environment.Reset();
-        g_ready=false;
+        g_window=nullptr;
+        if(g_controller)g_controller->Close();
+        g_webView.Reset();g_controller.Reset();g_environment.Reset();
         if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
         g_mainWindow=nullptr;
@@ -254,5 +254,6 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
     ShowWindow(window,SW_SHOW);UpdateWindow(window);
 }
 extern "C" void ABM_Streaming_Close(void){
+    g_mainWindow=nullptr;
     if(g_window&&IsWindow(g_window))DestroyWindow(g_window);
 }
