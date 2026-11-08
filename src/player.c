@@ -333,8 +333,8 @@ static void RefreshVideoGeometry(void) {
 }
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
-    int left=28,top=108,bottom=164,gap=22;
-    int side=w>=1700?420:(w>=1400?390:(w>=1180?350:320));
+    int left=30,top=112,bottom=166,gap=24;
+    int side=w>=1700?440:(w>=1400?410:(w>=1180?370:330));
     int drawerWidth=side*g_drawerProgress/100;
     int videoW=w-drawerWidth-left*2-(g_drawerProgress?gap*g_drawerProgress/100:0); if(videoW<260)videoW=260;
     int videoH=h-top-bottom; if(videoH<140)videoH=140;
@@ -344,9 +344,9 @@ static void UpdateLayout(HWND hwnd) {
     int settingsShift=g_drawerSettingsOpen?44:0;
     int queueShift=g_drawerSettingsOpen?44:-120;
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+66+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+98+settingsShift};
-    R_MENU_BUTTON=(RECT){w-190,17,w-146,61};
-    R_DRAWER_BUTTON=(RECT){w-132,17,w-18,61};
-    R_MENU_PANEL=(RECT){w-350,66,w-18,66+640};
+    R_MENU_BUTTON=(RECT){w-198,19,w-150,67};
+    R_DRAWER_BUTTON=(RECT){w-136,19,w-20,67};
+    R_MENU_PANEL=(RECT){w-372,76,w-20,76+640};
     /* Reserve a dedicated 54 px header zone above the first command row. */
     for(int i=0;i<14;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*39,R_MENU_PANEL.right-10,R_MENU_PANEL.top+90+i*39};
     R_FULLSCREEN=(RECT){R_VIDEO.right-48,R_VIDEO.top+14,R_VIDEO.right-14,R_VIDEO.top+48};
@@ -365,14 +365,14 @@ static void UpdateLayout(HWND hwnd) {
     PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+42,h-145,R_VIDEO.right-4,h-141};
-    R_PREV=(RECT){w/2-108,h-91,w/2-64,h-47};
-    R_PLAY=(RECT){w/2-32,h-103,w/2+32,h-39};
-    R_NEXT=(RECT){w/2+64,h-91,w/2+108,h-47};
-    R_STOP=(RECT){w/2+126,h-91,w/2+170,h-47};
+    R_PREV=(RECT){w/2-126,h-91,w/2-74,h-39};
+    R_PLAY=(RECT){w/2-34,h-105,w/2+34,h-37};
+    R_NEXT=(RECT){w/2+74,h-91,w/2+126,h-39};
+    R_STOP=(RECT){w/2+148,h-87,w/2+198,h-37};
     R_OPEN=(RECT){left+8,h-94,left+142,h-48};
-    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+12,R_SIDEBAR.right-14,R_SIDEBAR.top+48};
+    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+54};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+32+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+62+settingsShift};
-    R_VOLUME=(RECT){R_SIDEBAR.left+92,h-59,R_SIDEBAR.right-30,h-51};
+    R_VOLUME=(RECT){R_SIDEBAR.left+104,h-61,R_SIDEBAR.right-34,h-53};
     R_SHUFFLE=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+124+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+152+settingsShift};
     R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+124+settingsShift,R_SIDEBAR.right-14,R_SIDEBAR.top+152+settingsShift};
     R_SPEED=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+156+settingsShift,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+184+settingsShift};
@@ -385,8 +385,8 @@ static void UpdateLayout(HWND hwnd) {
     R_FILTER_VIDEO=(RECT){R_SIDEBAR.left+151,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.left+218,R_SIDEBAR.top+318+queueShift};
     R_GROUP=(RECT){R_SIDEBAR.right-102,R_SIDEBAR.top+294+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+318+queueShift};
     R_CLEAR_PLAYLIST=(RECT){R_SIDEBAR.right-78,R_SIDEBAR.top+186+queueShift,R_SIDEBAR.right-14,R_SIDEBAR.top+212+queueShift};
-    R_LIST=(RECT){R_SIDEBAR.left+10,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-10,R_SIDEBAR.bottom-94};
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*72,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*72};
+    R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+326+queueShift,R_SIDEBAR.right-12,R_SIDEBAR.bottom-98};
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
@@ -517,29 +517,29 @@ static void DrawUI(HDC dc,RECT client) {
     RECT sweep={sweepX,92,sweepX+sweepWidth,95};
     GradientRect(dc,sweep,RGB(45,191,207),RGB(125,91,226));
     /* Signature mark: a luminous A-monogram fused with a play glyph. */
-    RECT logoHalo={24,9,96,81};
+    RECT logoHalo={22,8,100,86};
     Panel(dc,logoHalo,RGB(13,28,45),RGB(63,151,180),22);
-    RECT logo={31,16,89,74};
+    RECT logo={29,15,93,79};
     GradientRound(dc,logo,RGB(28,177,195),RGB(105,83,225),17);
-    RECT logoInset={35,20,85,70};
+    RECT logoInset={34,20,88,74};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
         (float)logoInset.right,(float)logoInset.bottom,14.0f,RGB(190,229,255),0.8f);
     /* Geometric A: crisp strokes remain legible at small window sizes. */
-    DrawLine(dc,43,59,57,31,RGB(255,255,255),3);
-    DrawLine(dc,57,31,70,59,RGB(255,255,255),3);
-    DrawLine(dc,49,48,64,48,RGB(226,245,255),2);
+    DrawLine(dc,42,63,59,30,RGB(255,255,255),3);
+    DrawLine(dc,59,30,76,63,RGB(255,255,255),3);
+    DrawLine(dc,49,49,68,49,RGB(226,245,255),2);
     /* Play triangle, offset into the A to make the mark distinctive. */
     DrawLine(dc,62,40,75,48,RGB(255,255,255),2);
     DrawLine(dc,75,48,62,56,RGB(255,255,255),2);
     DrawLine(dc,62,56,62,40,RGB(255,255,255),2);
 
-    RECT brandMain={111,8,420,49};
+    RECT brandMain={116,8,420,49};
     Txt(dc,L"ABM",brandMain,RGB(247,250,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandSuffix={180,20,390,48};
+    RECT brandSuffix={188,20,390,48};
     Txt(dc,L"AV  PLAYER",brandSuffix,RGB(130,190,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandRule={112,51,294,53};
+    RECT brandRule={116,52,326,54};
     GradientRect(dc,brandRule,RGB(54,205,209),RGB(139,105,241));
-    RECT sub={112,57,540,80};
+    RECT sub={116,60,540,83};
     Txt(dc,L"IMMERSIVE AUDIO   ·   VIDEO",sub,RGB(157,177,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
@@ -554,7 +554,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,RGB(220,235,252),2);
     RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
     Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT status={client.right-500,27,client.right-278,60};
+    RECT status={client.right-520,27,client.right-282,63};
     Panel(dc,status,RGB(13,25,40),RGB(49,105,126),16);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
@@ -800,7 +800,7 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=72;
+    int rowHeight=80;
     int listHeight=R_LIST.bottom-R_LIST.top;
     /* Render complete rows only; partial final rows previously bled into
        the volume area and made adjacent titles appear superimposed. */
@@ -827,7 +827,7 @@ static void DrawUI(HDC dc,RECT client) {
         else RoundBox(dc,row,hot?RGB(24,43,64):RGB(16,29,47),13);
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?RGB(67,164,202):(selected?RGB(66,119,164):(hot?RGB(54,101,143):RGB(30,52,77))),current?1.25f:0.75f);
         if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(47,190,231),RGB(126,103,245));}
-        RECT thumb={row.left+9,row.top+9,row.left+65,row.bottom-9};
+        RECT thumb={row.left+10,row.top+10,row.left+70,row.bottom-10};
         GradientRect(dc,thumb,current?RGB(34,120,184):RGB(28+(i*7)%14,45+(i*5)%14,69+(i*3)%18),current?RGB(91,93,190):RGB(38+(i*5)%16,57+(i*4)%16,84+(i*3)%18));
         RoundBox(dc,thumb,current?RGB(49,103,166):RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),9);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
@@ -837,14 +837,14 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
         }
-        RECT name={row.left+78,row.top+9,row.right-14,row.top+36};
-        RECT subline={row.left+78,row.top+38,row.right-14,row.bottom-7};
+        RECT name={row.left+84,row.top+13,row.right-18,row.top+42};
+        RECT subline={row.left+84,row.top+44,row.right-18,row.bottom-9};
         Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         const wchar_t *group=L"Local file";
         if(g_groupMode==1)group=current&&g_trackArtist[0]?g_trackArtist:L"Artist details appear when track is played";
         else if(g_groupMode==2)group=current&&g_trackAlbum[0]?g_trackAlbum:L"Album details appear when track is played";
         Txt(dc,group,subline,RGB(139,157,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(current){int cx=row.right-22,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
+        if(current){int cx=row.right-25,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
         shown++;
     }
     if(shown==0){
@@ -882,12 +882,12 @@ static void DrawUI(HDC dc,RECT client) {
     RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
-    RECT dock={client.right/2-188,client.bottom-108,client.right/2+188,client.bottom-26};
+    RECT dock={client.right/2-222,client.bottom-116,client.right/2+222,client.bottom-20};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
-    RoundBox(dc,dockShadow,RGB(5,8,14),28);
-    Panel(dc,dock,RGB(13,22,36),RGB(54,104,124),25);
+    RoundBox(dc,dockShadow,RGB(4,7,13),32);
+    GradientRound(dc,dock,RGB(13,27,44),RGB(17,25,48),30);\n    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(47,91,123),1.15f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,23.0f,RGB(38,57,82),0.8f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(35,61,89),0.65f);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
