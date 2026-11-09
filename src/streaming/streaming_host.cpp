@@ -19,6 +19,7 @@
 #include <gdiplus.h>
 #include "streaming_host.h"
 #include "dlna_cast.h"
+#include "youtube_dial.h"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -71,7 +72,8 @@ HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
 bool g_devicePanelVisible=false;
 int g_streamSelectedIndex=-1;
 bool g_streamSelectedIsDlna=false;
-struct StreamReceiverRow { int castIndex; int dlnaIndex; };
+struct StreamReceiverRow { int castIndex; int dlnaIndex; int dialIndex; };
+int g_streamSelectedDialIndex=-1;
 std::vector<StreamReceiverRow> g_streamReceiverRows;
 
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
@@ -252,7 +254,7 @@ void RefreshDevicePanel(bool force){
         wchar_t name[256]=L"Google Cast receiver";
         if(ABM_Cast_StreamDeviceName(i,name,_countof(name))){
             castNames[i]=name;
-            rows.push_back({(int)i,-1});
+            rows.push_back({(int)i,-1,-1});
         }
     }
     for(unsigned int i=0;i<dlnaCount;i++){
@@ -263,12 +265,26 @@ void RefreshDevicePanel(bool force){
             return row.castIndex>=0 && SameReceiverName(castNames[(size_t)row.castIndex],name);
         });
         if(match!=rows.end())match->dlnaIndex=(int)i;
-        else rows.push_back({-1,(int)i});
+        else rows.push_back({-1,(int)i,-1});
+    }
+    unsigned int dialCount=ABM_Dial_DeviceCount();
+    std::vector<std::wstring> dialNames(dialCount);
+    for(unsigned int i=0;i<dialCount;i++){
+        wchar_t name[256]=L"YouTube receiver";
+        if(!ABM_Dial_DeviceName(i,name,_countof(name)))continue;
+        dialNames[i]=name;
+        auto match=std::find_if(rows.begin(),rows.end(),[&](const StreamReceiverRow &row){
+            if(row.castIndex>=0)return SameReceiverName(castNames[(size_t)row.castIndex],name);
+            if(row.dlnaIndex>=0)return SameReceiverName(dlnaNames[(size_t)row.dlnaIndex],name);
+            return false;
+        });
+        if(match!=rows.end())match->dialIndex=(int)i;
+        else rows.push_back({-1,-1,(int)i});
     }
     if(!force && rows.size()==g_streamReceiverRows.size() &&
        std::equal(rows.begin(),rows.end(),g_streamReceiverRows.begin(),
            [](const StreamReceiverRow &a,const StreamReceiverRow &b){
-               return a.castIndex==b.castIndex && a.dlnaIndex==b.dlnaIndex;
+               return a.castIndex==b.castIndex && a.dlnaIndex==b.dlnaIndex && a.dialIndex==b.dialIndex;
            })) return;
     g_streamReceiverRows=rows;
     SendMessageW(g_deviceList,LB_RESETCONTENT,0,0);
@@ -276,8 +292,10 @@ void RefreshDevicePanel(bool force){
         std::wstring name;
         if(row.castIndex>=0)name=castNames[(size_t)row.castIndex];
         else if(row.dlnaIndex>=0)name=dlnaNames[(size_t)row.dlnaIndex];
+        else if(row.dialIndex>=0)name=dialNames[(size_t)row.dialIndex];
         std::wstring label=row.castIndex>=0&&row.dlnaIndex>=0?L"[Google Cast + DLNA] ":
-            row.castIndex>=0?L"[Google Cast] ":L"[DLNA] ";
+            row.castIndex>=0?L"[Google Cast] ":row.dlnaIndex>=0?L"[DLNA] ":L"[YouTube DIAL] ";
+        if(row.dialIndex>=0 && (row.castIndex>=0||row.dlnaIndex>=0))label=L"[YouTube + "+label.substr(1);
         label+=name;
         SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
     }
@@ -330,6 +348,7 @@ void ShowDevicePanel(){
     LayoutDevicePanel();
     ABM_Cast_StreamDiscoveryStart();
     ABM_Dlna_StartDiscovery();
+    ABM_Dial_StartDiscovery();
     RefreshDevicePanel(true);
     SetTimer(g_window,ID_STREAM_DEVICE_TIMER,800,nullptr);
     SetStatus(L"Searching for TVs. Select a receiver in this panel; local-media casting remains separate.");
@@ -595,37 +614,40 @@ void CastCurrentBrowserVideo(){
         SetStatus(L"Select a receiver in this Streaming Centre panel first. The main player will not be opened.");
         return;
     }
-    SetStatus(L"Checking whether this page exposes a direct video URL…");
+    SetStatus(L"Checking for a YouTube video or a directly addressable media URL…");
     HRESULT hr=g_webView->ExecuteScript(
-        L"(()=>{const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2);if(!vs.length)return '';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));const u=vs[0].currentSrc;return encodeURIComponent(u);})()",
+        L"(()=>{const u=new URL(location.href);let id='';if(u.hostname==='youtu.be')id=u.pathname.split('/').filter(Boolean)[0]||'';else if(u.hostname.endsWith('youtube.com')){id=u.searchParams.get('v')||'';if(!id){const m=u.pathname.match(/^\\/(?:shorts|embed|live)\\/([A-Za-z0-9_-]{11})/);if(m)id=m[1];}}if(/^[A-Za-z0-9_-]{11}$/.test(id))return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2);if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
         Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
             [](HRESULT result,LPCWSTR value)->HRESULT{
                 if(FAILED(result)||!value||value[0]!=L'"'){
-                    SetStatus(L"Could not inspect the current page for a video element.");
+                    SetStatus(L"Could not inspect the current page for a playable video.");return S_OK;
+                }
+                std::wstring payload=value+1;size_t quote=payload.find(L'"');if(quote!=std::wstring::npos)payload.resize(quote);
+                if(payload.rfind(L"YT:",0)==0){
+                    std::wstring id=payload.substr(3);
+                    if(g_streamSelectedDialIndex>=0){
+                        if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
+                            SetStatus(L"YouTube app launch accepted by the TV. The TV should now open the selected video.");
+                        else SetStatus(L"The TV's DIAL service did not accept the YouTube launch. Check that YouTube casting is enabled on the TV.");
+                    }else if(g_streamSelectedIsDlna)
+                        SetStatus(L"This TV is selected through DLNA only. YouTube requires its DIAL or Google Cast app-control service; DLNA cannot launch the YouTube app.");
+                    else SetStatus(L"This receiver has no discovered YouTube app-control endpoint. Generic URL casting cannot launch YouTube.");
                     return S_OK;
                 }
-                char encoded[32768]{};size_t out=0;
-                const wchar_t *p=value+1;
-                while(*p&&*p!=L'"'&&out+1<sizeof(encoded)){
+                if(payload.rfind(L"URL:",0)!=0){
+                    SetStatus(L"No direct video URL was found. Protected or segmented browser streams cannot be handed off as ordinary URLs.");return S_OK;
+                }
+                const wchar_t *p=payload.c_str()+4;char encoded[32768]{};size_t out=0;
+                while(*p&&out+1<sizeof(encoded)){
                     if(*p==L'%'&&p[1]&&p[2]){
                         auto hex=[](wchar_t c)->int{if(c>=L'0'&&c<=L'9')return c-L'0';if(c>=L'a'&&c<=L'f')return c-L'a'+10;if(c>=L'A'&&c<=L'F')return c-L'A'+10;return -1;};
-                        int hi=hex(p[1]),lo=hex(p[2]);
-                        if(hi<0||lo<0){SetStatus(L"The browser returned an invalid video URL.");return S_OK;}
+                        int hi=hex(p[1]),lo=hex(p[2]);if(hi<0||lo<0){SetStatus(L"The browser returned an invalid video URL.");return S_OK;}
                         encoded[out++]=(char)((hi<<4)|lo);p+=3;
-                    }else{
-                        if(*p>0x7f){SetStatus(L"The browser returned an invalid encoded video URL.");return S_OK;}
-                        encoded[out++]=(char)*p++;
-                    }
+                    }else{if(*p>0x7f){SetStatus(L"The browser returned an invalid encoded video URL.");return S_OK;}encoded[out++]=(char)*p++;}
                 }
-                encoded[out]=0;
-                if(!out){SetStatus(L"No directly addressable HTML5 video was found. DRM and segmented browser streams may not be castable.");return S_OK;}
-                wchar_t url[8192]{};
+                encoded[out]=0;wchar_t url[8192]{};
                 int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,encoded,-1,url,(int)_countof(url));
                 if(chars<=0){SetStatus(L"Could not decode the browser video URL.");return S_OK;}
-                /* ABM_Cast_StreamUrl owns failure reporting. Do not replace its
-                   specific diagnosis (URL policy, renderer rejection, VLC setup)
-                   with a generic message here. A successful LibVLC start is only
-                   a handoff attempt; the receiver's later playback result is async. */
                 if(g_streamSelectedIsDlna){
                     if(ABM_Dlna_PlayUrl(url))SetStatus(L"DLNA receiver accepted the media URL and Play command.");
                     else SetStatus(L"DLNA receiver rejected the media URL or did not accept SetAVTransportURI/Play.");
@@ -1092,8 +1114,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_COMMAND:{
         switch(LOWORD(wp)){
         case ID_STREAM_DEVICE_REFRESH:
-            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedIsDlna=false;
-            ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();RefreshDevicePanel(true);
+            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedIsDlna=false;
+            ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();ABM_Dial_StartDiscovery();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
         case ID_STREAM_DEVICE_SELECT:{
             LRESULT selected=SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
@@ -1103,6 +1125,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             }
             const StreamReceiverRow row=g_streamReceiverRows[(size_t)selected];
             bool selectedOk=false;
+            g_streamSelectedDialIndex=row.dialIndex;
             /* Prefer Google Cast when the same TV advertises both protocols.
                DLNA remains selectable automatically when it is the only route. */
             if(row.castIndex>=0){
@@ -1111,6 +1134,9 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             }else if(row.dlnaIndex>=0){
                 selectedOk=ABM_Dlna_SelectDevice((unsigned int)row.dlnaIndex)!=FALSE;
                 g_streamSelectedIsDlna=true;
+            }else if(row.dialIndex>=0){
+                selectedOk=true;
+                g_streamSelectedIsDlna=false;
             }
             if(selectedOk){
                 g_streamSelectedIndex=(int)selected;
@@ -1118,7 +1144,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SendMessageW(g_deviceList,LB_GETTEXT,selected,(LPARAM)name);
                 SetStatus((std::wstring(L"Streaming Centre selected: ")+name+L". Now choose Cast video.").c_str());
                 SetWindowTextW(g_deviceHint,(std::wstring(L"Selected: ")+name).c_str());
-            }else SetStatus(L"That receiver is no longer available. Refresh the list.");
+            }else {g_streamSelectedDialIndex=-1;SetStatus(L"That receiver is no longer available. Refresh the list.");}
             return 0;
         }
         case ID_STREAM_DEVICE_CLOSE:HideDevicePanel();return 0;
@@ -1130,7 +1156,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
-        ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();
+        ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();
         KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
         HideDevicePanel();
         g_window=nullptr;
