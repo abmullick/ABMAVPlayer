@@ -47,6 +47,8 @@
 
 static libvlc_instance_t *g_vlc;
 static libvlc_media_player_t *g_player;
+/* Dedicated browser-to-TV player; never stop or replace the local player. */
+static libvlc_media_player_t *g_streamCastPlayer;
 static HWND g_video, g_renderers, g_main, g_fullscreenOverlay;
 static ABM_D2D g_ui;
 static HFONT g_font, g_smallFont, g_headingFont;
@@ -1693,8 +1695,11 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
         return FALSE;
     }
     if(!g_streamSelectedRenderer){
-        SetStatus(L"Select a TV in Playback Output first, then choose Cast video again in Streaming Centre.");
-        ABM_Cast_ShowPicker(g_main);
+        SetStatus(L"No streaming receiver is selected. Open Find TVs in the Streaming Centre and select a receiver there.");
+        return FALSE;
+    }
+    if(!g_streamCastPlayer){
+        SetStatus(L"The independent streaming cast engine is unavailable. Local playback has not been changed.");
         return FALSE;
     }
     char *utf8=(char*)malloc(length*4+1);
@@ -1704,8 +1709,9 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
     libvlc_media_t *media=libvlc_media_new_location(g_vlc,utf8);
     free(utf8);
     if(!media){SetStatus(L"LibVLC could not open the browser video URL.");return FALSE;}
-    libvlc_media_player_stop(g_player);
-    if(libvlc_media_player_set_renderer(g_player,g_streamSelectedRenderer)!=0){
+    /* Do not touch g_player: local playback and local casting remain independent. */
+    libvlc_media_player_stop(g_streamCastPlayer);
+    if(libvlc_media_player_set_renderer(g_streamCastPlayer,g_streamSelectedRenderer)!=0){
         libvlc_media_release(media);
         g_rendererApplied=FALSE;
         SetStatus(L"The selected receiver rejected the browser video stream.");
@@ -1713,8 +1719,8 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
     }
     g_rendererApplied=TRUE;
     ResetArtwork();
-    libvlc_media_player_set_media(g_player,media);
-    int result=libvlc_media_player_play(g_player);
+    libvlc_media_player_set_media(g_streamCastPlayer,media);
+    int result=libvlc_media_player_play(g_streamCastPlayer);
     libvlc_media_release(media);
     if(result!=0){
         g_hasMedia=FALSE;g_current=-1;g_pendingResume=FALSE;
@@ -3405,7 +3411,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
-    case WM_DESTROY:ABM_Streaming_Close();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+    case WM_DESTROY:ABM_Streaming_Close();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3506,6 +3512,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
+    /* Failure of the optional streaming cast player must not affect local playback. */
+    g_streamCastPlayer=libvlc_media_player_new(g_vlc);
     WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
     if(!RegisterClassW(&wc))return 1;
     WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
