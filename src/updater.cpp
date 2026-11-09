@@ -6,6 +6,7 @@
 #include <strsafe.h>
 #include <wchar.h>
 #include <stdlib.h>
+#include <string.h>
 #include "updater.h"
 
 #pragma comment(lib,"wininet.lib")
