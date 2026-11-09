@@ -1352,6 +1352,20 @@ static void StopDiscovery(void) {
     if(g_selectedRenderer)libvlc_renderer_item_release(g_selectedRenderer);g_selectedRenderer=NULL;
     EnterCriticalSection(&g_rendererLock);for(size_t i=0;i<g_rendererCount;i++)libvlc_renderer_item_release(g_rendererItems[i]);g_rendererCount=0;LeaveCriticalSection(&g_rendererLock);
 }
+/* Called by the Streaming Centre so it can reuse the main player's
+   existing LibVLC renderer-discovery and receiver-selection workflow. */
+void ABM_Cast_ShowPicker(HWND owner) {
+    if(!g_main || !IsWindow(g_main))return;
+    g_drawerOpen=TRUE;
+    g_drawerProgress=100;
+    g_drawerSettingsOpen=TRUE;
+    g_receiverPopup=FALSE;
+    StartDiscovery();
+    SetStatus(L"Choose Playback Output, then select your Google Cast / network receiver. The selection applies to LibVLC media playback.");
+    InvalidateRect(g_main,NULL,FALSE);
+    ShowWindow(g_main,SW_RESTORE);
+    SetForegroundWindow(g_main);
+}
 static BOOL EnsureDataDirectory(void) {
     if(g_dataDir[0])return TRUE;
     wchar_t base[PATH_CAP];
