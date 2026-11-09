@@ -1,111 +1,100 @@
 # ABM AV Player — User Guide
 
-This guide describes the controls and behaviour currently implemented in ABM AV Player. Some capabilities depend on the media file and the installed 64-bit VLC runtime/plugins.
+This guide covers the Windows desktop player and its separate Streaming Centre. Some playback, discovery and casting features depend on the installed 64-bit VLC runtime/plugins, receiver capabilities, WebView2 and provider policies.
 
 ## 1. First launch and adding media
 
 1. Start ABM AV Player.
-2. Select Open media or press Ctrl+O.
+2. Select **Open media** or press **Ctrl+O**.
 3. Choose one or more audio/video files.
-4. Alternatively, drag files from Windows File Explorer and drop them onto the player.
-5. Select a playlist item and double-click it to start playback.
+4. Alternatively, drag files from Windows File Explorer into the player.
+5. Double-click a playlist row to start playback.
 
-The playlist is a list of references to media files. Removing an item from the playlist does not delete the original file from disk.
+The playlist stores references to media files. Removing an item from the playlist does not delete the original file from disk.
 
-## 2. Playback
+## 2. Playback and fullscreen
 
 | Control | What it does |
 |---|---|
-| Play / Pause | Starts the selected item, or pauses/resumes the current item |
-| Stop | Stops the current playback |
-| Previous / Next | Moves to the previous or next playlist item |
+| Play / Pause | Starts the selected item, or pauses/resumes current playback |
+| Stop | Stops current playback |
+| Previous / Next | Moves through the playlist |
 | Seek bar | Drag to a different position in the current media |
 | Volume | Drag to adjust playback volume |
-| Fullscreen | Toggles fullscreen video; F11 is the keyboard shortcut |
+| Fullscreen | Toggles fullscreen video; use F11 or double-click the video |
 
-Use the video surface's right-click menu for additional media-specific actions. Double-clicking the video toggles fullscreen.
+In fullscreen, move the pointer to reveal the playback overlay. Drag the timeline to seek and use the overlay controls. Press **Esc** or **F11** to return to the windowed player.
 
 ## 3. Playlist and recent media
 
-- Add media: Add more files to the current playlist.
-- Remove: Right-click a playlist entry to remove it from the list.
-- Clear playlist: Removes all entries from the current list; it does not delete source files.
-- Load playlist: Opens an M3U playlist.
-- Save playlist: Saves the current list as an M3U playlist.
-- Recent media: Opens the recent-items list, when entries are available.
-- Shuffle: Randomises the next-item selection.
-- Repeat current: Repeats the currently playing item.
-- Capacity: The current playlist limit is 256 entries.
+- **Add media:** Add more files to the current playlist.
+- **Remove:** Right-click a playlist entry to remove it from the list.
+- **Clear playlist:** Removes all entries from the current list; it does not delete source files.
+- **Load playlist / Save playlist:** Opens or saves M3U playlists.
+- **Recent media:** Opens the recent-items list, when entries are available.
+- **Shuffle:** Changes the next-item selection order.
+- **Repeat current:** Repeats the currently playing item.
+- **Capacity:** The playlist currently supports up to 256 entries.
 
 Recent items and playback preferences are stored in the current Windows user's application data folder.
 
-## 4. Audio and video options
+## 4. Audio, video and subtitles
 
-Right-click the video surface while media is playing to access context actions. The options available can depend on the current file:
+Right-click the video surface while media is playing to access available media actions:
 
-- Audio track: Select an available audio stream.
-- Subtitles: Select an embedded subtitle stream or disable subtitles.
-- Load external subtitle: Load a subtitle file from disk. Supported extensions exposed by the file picker include SRT, ASS, SSA, SUB and VTT.
-- Playback speed: Choose a supported speed preset (0.5x–2.0x).
-- Equalizer presets: Apply an available equalizer preset.
-- Media information: View basic metadata such as title, artist, album and duration when LibVLC has made it available.
-- Shuffle / Repeat: Change playlist playback behaviour.
-- ReplayGain: Toggle track-mode loudness normalisation for media opened after changing the setting. ReplayGain works only when usable tags are present.
-- Dynamic-range compressor: Toggle the VLC compressor filter for media opened after changing the setting. This is not a guaranteed true-peak limiter.
+- **Audio track:** Select an available audio stream.
+- **Subtitles:** Select an embedded subtitle stream or disable subtitles.
+- **Load external subtitle:** Load a subtitle file from disk. The file picker exposes SRT, ASS, SSA, SUB and VTT extensions.
+- **Playback speed:** Choose a preset from 0.5x to 2.0x.
+- **Equalizer presets:** Apply an available LibVLC equalizer preset.
+- **Media information:** View title, artist, album and duration when LibVLC provides them.
+- **ReplayGain:** Toggle track-mode loudness normalisation for media opened after changing the setting. Usable ReplayGain tags are required.
+- **Dynamic-range compressor:** Toggle the VLC compressor filter for media opened after changing the setting. This is a dynamic-range effect, not a guaranteed true-peak limiter.
 
-The audio-track and subtitle menus show only streams exposed by the current media/VLC build.
+The audio-track and subtitle menus show only streams exposed by the current media and VLC build.
 
-## 5. Advanced equalizer
+## 5. Advanced equalizer, now playing and visualizer
 
-Open Advanced equalizer from the command menu or press Ctrl+E. The ABM graphic EQ provides 10 fixed frequency bands and profile curves:
+Open **Advanced equalizer** from the Command Centre or press **Ctrl+E**. The ABM 10-band graphic EQ provides these fixed profiles:
 
 - Flat
 - Bass boost
 - Vocal clarity
 - Treble boost
 
-The selected curve is applied through LibVLC's equalizer API. These are fixed graphic-EQ profiles; the player does not currently offer a fully parametric EQ with adjustable centre frequency and Q. Audio preferences are stored under %APPDATA%\ABMAVPlayer\audio.ini.
+The selected curve is applied through LibVLC's equalizer API. This is a fixed-band graphic equalizer, not a parametric EQ with adjustable centre frequency and Q. Audio preferences are stored in:
 
-Use boosts conservatively. Strong bass/treble boosts can reduce headroom and may cause clipping depending on the source and output device.
+`%APPDATA%\\ABMAVPlayer\\audio.ini`
 
-## 6. Now-playing display and visualizer
+During audio playback, the player can show now-playing metadata and a live spectrum/visualizer when the required playback data is available. The visualizer currently captures the Windows default render mix, so sounds from other applications may also contribute. Process-specific audio capture is not implemented.
 
-During audio playback, the player can display now-playing information and a live audio spectrum/visualizer when the required playback data is available. The visualizer currently captures the Windows default render mix, so sounds from other applications may also contribute to the display. Process-specific audio capture is not implemented.
+## 6. Local playback output — Find network devices / Cast to TV
 
-## 6. Playback output and casting
+The main player's local casting controls are in the **Media / Settings** drawer under **Playback Output**.
 
-1. Open the Media / Settings drawer.
-2. Find Playback Output.
-3. Choose Find TVs / Find network devices and allow several seconds for asynchronous discovery.
-4. Select a discovered receiver. You can select it before starting a file or while playback is active.
-5. Choose Local playback to use the PC's normal output again.
+1. Open the drawer and expand Playback Output.
+2. Choose **Find TVs / Find network devices** or press **Ctrl+D** (Ctrl+Shift+C also starts discovery).
+3. Wait several seconds for asynchronous discovery.
+4. Select a discovered receiver. You can select it before opening a file or while playback is active.
+5. Choose **Local playback** to return output to the PC.
 
-### Requirements for Google Cast
+The main player uses LibVLC renderer discovery. Compatible Google Cast / Chromecast receivers and other renderer services exposed by the installed VLC build may appear. Duplicate receiver names from multiple discovery services are consolidated in the visible list.
 
-- The TV/dongle must expose a compatible Google Cast / Chromecast receiver. Miracast-only devices are not Google Cast receivers.
-- Install a full 64-bit VLC runtime with the renderer-discovery and Chromecast plugins and their dependencies. A minimal LibVLC SDK alone is insufficient.
+### Google Cast requirements and troubleshooting
+
+- The TV/dongle must expose a compatible Google Cast / Chromecast receiver. Miracast-only devices are not Google Cast receivers; Android TV branding alone does not guarantee Google Cast support.
+- Install a full 64-bit VLC runtime with renderer-discovery and Chromecast plugins and their dependencies. A minimal LibVLC SDK alone is insufficient.
 - Connect the PC and TV to the same non-guest Wi-Fi/LAN.
 - Allow ABM AV Player and VLC through Windows Defender Firewall on Private networks.
 - Ensure router multicast/mDNS is not blocked. Guest Wi-Fi, client/AP isolation, VPNs and endpoint security can prevent discovery.
 
-When output is switched during playback, ABM AV Player recreates the LibVLC media player and attempts to restore the previous position and play/pause state once the new output reports that playback has started. This is best-effort. If Cast playback fails, the app reports the failure; automatic local fallback is not guaranteed by the current implementation.
+When output is switched during playback, ABM AV Player recreates the LibVLC media player and attempts to restore the previous position and play/pause state after the new output reports that playback has started. This is best-effort. If Cast playback fails, the app reports the failure; automatic local fallback is not guaranteed.
 
-Android TV branding does not by itself guarantee Google Cast support. Some televisions expose only DLNA/UPnP or proprietary renderer services, and support depends on the VLC build.
-
-For more detail see CASTING.md.
-
-## 7. Supported formats
-
-Common formats include:
-
-- Audio: MP3, WAV, FLAC, AAC, M4A and OGG.
-- Video: MP4, MKV, AVI, MOV, WMV and WebM.
-
-These are container/format examples, not a guarantee that every codec profile will play. Actual decoding depends on the installed VLC build and its plugins.
+See [CASTING.md](CASTING.md) for additional network and receiver troubleshooting.
 
 ## 7. Streaming Centre — online video services
 
-ABM AV Player includes a separate, built-in browser window for popular streaming websites. Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. Choose a provider from the service strip:
+Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 browser window with six service cards:
 
 - YouTube
 - Netflix
@@ -114,34 +103,79 @@ ABM AV Player includes a separate, built-in browser window for popular streaming
 - Sony LIV
 - ZEE5
 
-The Streaming Centre opens each provider's **official website** in Microsoft Edge WebView2. Sign in directly on that website using your own account and subscription. ABM AV Player does not collect, proxy or store provider passwords.
+Each card opens the provider's official website. Sign in directly with your own provider account and subscription. ABM AV Player does not collect, proxy or store provider passwords.
 
-### Browser sessions and privacy
+### Browser navigation and controls
 
-The WebView2 profile is stored locally at:
+- **Back / Forward:** Navigate browser history.
+- **Reload:** Refresh the current provider page.
+- **Home:** Return to the Streaming Centre landing page.
+- **Fullscreen:** Request fullscreen for the provider's active video element or its fullscreen control. Use **F11** or **Esc** to enter/leave as supported by the provider and WebView2.
+- **Open in browser:** Open the current page in the default desktop browser.
+- **Help / About:** Open Streaming Centre help or product information.
+- **Previous / Next:** Intended for supported YouTube playlist navigation; behaviour depends on the page/provider.
 
-`%LOCALAPPDATA%\ABMAVPlayer\WebView2`
+The Streaming Centre's browser profile is stored locally at:
 
-Supported cookies and sign-in sessions can persist between application launches for the current Windows user. Sign out through the provider's website. Removing this WebView2 profile after closing the player clears its locally stored browser data and signs out of sites using that profile.
+`%LOCALAPPDATA%\\ABMAVPlayer\\WebView2`
 
-### Playback compatibility
+Supported cookies and sign-in sessions can persist between launches for the current Windows user. Sign out through the provider's website. To clear the local browser profile, close ABM AV Player first and remove that WebView2 profile folder; this signs out of sites stored in the profile.
 
-A subscription does not guarantee that protected video will play in an embedded browser. Provider policy, DRM requirements, browser allow-lists, device certification, region and runtime version can affect compatibility. If a provider blocks embedded playback or a video fails to start, use the Streaming Centre's **Open in browser** control or the provider's official supported browser/app. The player does not extract protected streams or bypass DRM.
+### Streaming compatibility and privacy
 
-### Requirements
+A subscription does not guarantee that protected video will play in an embedded browser. Provider policy, DRM requirements, browser allow-lists, device certification, region and WebView2 runtime version can affect compatibility. If a provider blocks embedded playback or a video fails to start, use **Open in browser** or the provider's official supported browser/app. The player does not extract protected streams or bypass DRM.
 
-The Microsoft Edge WebView2 Evergreen Runtime is required to use the Streaming Centre. It is normally present on current Windows 11 systems, but should be verified on managed or customized Windows installations. The WebView2 SDK is required only when building the application.
+## 8. Streaming Centre — Find TVs and Cast video
 
-See [STREAMING.md](STREAMING.md) for additional setup and troubleshooting information.
+The Streaming Centre has its own **Find TVs** button and integrated receiver-selection panel. This is separate from the main player's Playback Output selector.
 
-## 8. Keyboard shortcuts
+1. Open **Find TVs** in the Streaming Centre.
+2. Wait for discovery, or choose **Refresh devices** to search again.
+3. Select a receiver from the list.
+4. Click **Use selected TV**. The panel displays the selected receiver.
+5. Start a video in the provider page and click **Cast video**.
 
+The Streaming Centre discovers receivers through:
+- **Google Cast / Chromecast** renderer discovery.
+- **DLNA / UPnP** MediaRenderer discovery.
+- **DIAL** app discovery, used for compatible app-launch targets such as YouTube.
+
+If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. A discovered DIAL endpoint can be used for YouTube app launch.
+
+### What can be cast
+
+- **YouTube:** The player recognises a YouTube video URL and asks a discovered DIAL YouTube app endpoint on the selected TV to launch that video. This requires the TV's YouTube app/DIAL service to accept the request. DLNA alone cannot launch the YouTube app.
+- **Direct video URL:** For other pages, the Streaming Centre looks for a currently active HTML video element with a directly addressable media URL and hands that URL to the selected compatible Google Cast or DLNA renderer.
+- **Not browser mirroring:** This feature does not mirror the browser tab or desktop and is not a general-purpose Google Cast sender.
+
+Many streaming services use Media Source Extensions, adaptive HLS/DASH manifests, short-lived signed URLs, authentication headers, cookies, DRM or encrypted segments. Those sources may not be directly accessible to LibVLC or the TV. Protected, segmented, encrypted, blob: and data: streams are not extracted or bypassed. The player does not copy browser cookies or provider credentials to the TV.
+
+A successful launch/request does not guarantee that the TV can fetch or decode the content. If handoff fails, use the provider's own Cast control or its official TV app. Streaming Centre receiver selection and casting do not stop, replace or reconfigure local file playback or the main player's local casting selection.
+
+See [STREAMING.md](STREAMING.md) for implementation details and limitations.
+
+## 9. In-app updates
+
+Choose **Check for updates** in the Command Centre.
+
+1. The player checks the latest published release on the public ABM AV Player GitHub repository.
+2. If a newer version exists, it displays the release version and release notes.
+3. If you accept, it downloads the official installer over HTTPS.
+4. The updater verifies the downloaded installer against the SHA-256 digest supplied by GitHub for that release asset.
+5. If the digest is missing or does not match, the installer is not launched.
+6. If verification succeeds, the installer starts and Windows asks for the normal elevation approval.
+
+No GitHub account, login, access token or code-signing certificate is required for this SHA-256 integrity check. SHA-256 confirms the downloaded bytes match the digest GitHub reports; it does not independently authenticate the publisher like Authenticode signing. Windows SmartScreen or antivirus software may still show warnings for an unsigned installer.
+
+Users can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases). Older installed versions that do not include the SHA-256-only updater may need one manual update before using this certificate-free update flow.
+
+## 10. Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
 | Ctrl+O | Open media |
 | Ctrl+D | Find network devices |
-| Ctrl+Shift+C | Start Cast / receiver discovery |
+| Ctrl+Shift+C | Start local-player receiver discovery |
 | Space | Play / Pause |
 | Left / Right | Seek backward / forward 10 seconds |
 | Home | Seek to the beginning |
@@ -154,44 +188,60 @@ See [STREAMING.md](STREAMING.md) for additional setup and troubleshooting inform
 | Ctrl+E | Open Advanced equalizer |
 | Ctrl+Shift+H | Toggle shuffle |
 | Ctrl+R | Toggle repeat-current-track |
-| F1 | Open Help |
+| Ctrl+Shift+S | Open Streaming Centre |
+| F1 | Open main-player Help |
 | Ctrl+I | Open About |
 | Esc | Close the menu or leave fullscreen |
 | Alt+F4 | Exit the application |
 
-## 9. Preferences and local data
+Streaming Centre keyboard controls: **F5** reloads the page; **F11** requests provider fullscreen; **Esc** exits fullscreen; **Ctrl+R** reloads; **Ctrl+L** opens the active provider page in the default browser; **Ctrl+W** minimises the Streaming Centre. Browser Back/Forward keys navigate history.
 
-ABM AV Player stores preferences and recent/playlist state under:
+## 11. Preferences and local data
 
-%APPDATA%\ABMAVPlayer
+General preferences, recent items and playlist-related state are stored under:
 
-Audio preferences are stored in audio.ini. The application does not currently maintain a database-backed, automatically indexed media library.
+`%APPDATA%\\ABMAVPlayer`
 
-## 10. Troubleshooting
+Audio preferences are stored in `audio.ini`. The WebView2 browser profile is separate under `%LOCALAPPDATA%\\ABMAVPlayer\\WebView2`. The application does not currently maintain a database-backed, automatically indexed media library.
+
+## 12. Troubleshooting
 
 ### A file does not play
-- Confirm that the source file still exists and can be opened by VLC.
+- Confirm that the source file exists and can be opened by VLC.
 - Check that the installed VLC build includes the required codec/plugin.
 - Try a common MP4/H.264 video or MP3 audio file to distinguish a codec issue from a general playback issue.
 
-### The TV is not discovered
-- Confirm the PC and TV are on the same non-guest LAN.
-- Wake the TV and ensure its Cast receiver is enabled.
-- Allow ABM AV Player and VLC through Windows Defender Firewall on Private networks.
-- Temporarily test without a VPN; check router client isolation and multicast/mDNS filtering.
-- Confirm that the VLC installation includes the renderer-discovery and Chromecast plugins.
+### The TV is not discovered by the main player
+- Confirm PC and TV are on the same non-guest network.
+- Check Windows Defender Firewall permissions for ABM AV Player and VLC on Private networks.
+- Disable VPN temporarily and check router guest-network/client isolation and multicast/mDNS settings.
+- Confirm that the TV exposes a compatible renderer service and that the installed VLC runtime includes the corresponding discovery plugin.
 
-### The TV appears, but playback fails
-- Try a common H.264/AAC MP4 file.
-- Check receiver compatibility and the VLC plugin/encoder set.
-- Some containers, codecs and subtitle combinations cannot be transcoded for every receiver. Output switching and recovery are best-effort.
+### The Streaming Centre does not show a TV
+- Open its own **Find TVs** panel and click **Refresh devices**.
+- Check that the TV is on the same LAN and that multicast/SSDP discovery is not blocked.
+- A TV may expose DLNA or DIAL but not Google Cast; discovery protocols are independent.
 
-### The equalizer or ReplayGain has no audible effect
-- Confirm media is playing and reopen the media after changing ReplayGain/compressor settings.
-- ReplayGain requires usable track tags. EQ and filter availability can vary with the installed VLC build.
+### A TV is listed but Cast video does not start
+- Confirm the correct TV is selected in the Streaming Centre panel, then try **Cast video** again.
+- For YouTube app handoff, the TV must expose and accept the DIAL YouTube app launch (or compatible Cast app-control route); DLNA alone is not sufficient.
+- For other pages, the video must expose a direct media URL and the receiver must be able to fetch/decode it.
+- Protected, adaptive or segmented streaming content may not be handoff-compatible. Use the provider's own Cast control or TV app.
 
-## 11. Product boundaries
+### The Streaming Centre is blank or cannot start
+- Install or repair the Microsoft Edge WebView2 Evergreen Runtime.
+- Check network connectivity and provider availability.
+- If the embedded browser process fails, the app attempts bounded automatic recovery. If it cannot recover, close and reopen the Streaming Centre.
+- Try **Open in browser** for provider compatibility issues.
 
-ABM AV Player uses LibVLC for decoding and device output. It is a desktop media player, not an audio/video driver. It currently has no exclusive/bit-perfect audio path, no dedicated audio-device selector, no parametric EQ, and no process-specific audio loopback visualizer.
+### Automatic update is unavailable
+- Check internet access to GitHub Releases.
+- Confirm that the latest release includes an asset named exactly `ABM-AV-Player-Setup.exe`.
+- The release asset must have a GitHub SHA-256 digest; if GitHub does not provide one, the updater blocks automatic installation.
+- Download the installer manually from the official Releases page if necessary.
 
+## 13. Application architecture
 
+ABM AV Player is a native Windows desktop application. Win32 owns the application window and controls; Direct2D/DirectWrite render the main interface; LibVLC handles local media decoding and renderer output; Microsoft Edge WebView2 renders the separate Streaming Centre. The Streaming Centre's receiver discovery and cast handoff are isolated from the main player's local playback and casting state.
+
+The application is a media player, not a separate kernel audio/video driver.
