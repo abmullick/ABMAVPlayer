@@ -126,14 +126,14 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"ABM AV PLAYER",title,RGBc(244,249,255),18,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT sub={77,38,rc.right-220,58};
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    g_externalRect=(RECT){rc.right-190,17,rc.right-22,51};
+    g_externalRect=RECT{rc.right-190,17,rc.right-22,51};
     Rounded(dc,g_externalRect,RGBc(22,49,64),9);
     Text(dc,L"Open in browser",g_externalRect,RGBc(160,220,216),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     const int serviceLeft=22,serviceY=72,serviceH=34;
     const int serviceW=rc.right<1100?118:148;
     const int gap=rc.right<1100?6:9;
     for(int i=0;i<5;i++){
-        g_serviceRects[i]=(RECT){serviceLeft+i*(serviceW+gap),serviceY,
+        g_serviceRects[i]=RECT{serviceLeft+i*(serviceW+gap),serviceY,
             serviceLeft+i*(serviceW+gap)+serviceW,serviceY+serviceH};
         bool active=(i==g_activeService);
         Rounded(dc,g_serviceRects[i],active?RGBc(27,104,103):RGBc(20,38,56),9);
@@ -142,10 +142,10 @@ void PaintChrome(HWND hwnd){
             12,active?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
     int right=rc.right-22;
-    g_homeRect=(RECT){right-42,73,right-4,105};right-=50;
-    g_reloadRect=(RECT){right-42,73,right-4,105};right-=50;
-    g_forwardRect=(RECT){right-42,73,right-4,105};right-=50;
-    g_backRect=(RECT){right-42,73,right-4,105};
+    g_homeRect=RECT{right-42,73,right-4,105};right-=50;
+    g_reloadRect=RECT{right-42,73,right-4,105};right-=50;
+    g_forwardRect=RECT{right-42,73,right-4,105};right-=50;
+    g_backRect=RECT{right-42,73,right-4,105};
     const RECT buttons[4]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect};
     const wchar_t *glyphs[4]={L"‹",L"›",L"↻",L"⌂"};
     for(int i=0;i<4;i++){
