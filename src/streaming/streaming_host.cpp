@@ -386,8 +386,8 @@ void PaintChrome(HWND hwnd){
     if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
     int width=rc.right-rc.left,height=rc.bottom-rc.top;
     HDC dc=CreateCompatibleDC(paintDc);
-    HBITMAP buffer=(width>0&&height>0)?CreateCompatibleBitmap(paintDc,width,height):nullptr;
-    HGDIOBJ previousBitmap=buffer?SelectObject(dc,buffer):nullptr;
+    HBITMAP buffer=(dc&&width>0&&height>0)?CreateCompatibleBitmap(paintDc,width,height):nullptr;
+    HGDIOBJ previousBitmap=(dc&&buffer)?SelectObject(dc,buffer):nullptr;
     if(!dc||!buffer||!previousBitmap){
         if(buffer)DeleteObject(buffer);
         if(dc)DeleteDC(dc);
