@@ -5,6 +5,14 @@
 
 A native Windows desktop audio/video player written in C, with a custom Direct2D/DirectWrite interface and LibVLC playback engine.
 
+## Download ABM AV Player for Windows
+
+<**[Download the latest Windows installer (ABM-AV-Player-Setup.exe)](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)**>
+
+**Current stable release:** [ABM AV Player v1.0.0](https://github.com/abmullick/ABMAVPlayer/releases/tag/v1.0.0) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+
+Download the installer, run it, and follow the setup instructions. The installer is provided through GitHub Releases. See [RELEASES.md](RELEASES.md) for release and update information.
+
 > Public repository visibility does not grant permission to copy, modify, redistribute, sublicense, or commercially exploit this software. See [LICENSE](LICENSE) and [COPYRIGHT.md](COPYRIGHT.md).
 
 ## User documentation
@@ -106,20 +114,20 @@ Updates are installed over the existing ABM AV Player installation. User prefere
 ## Build
 
 1. Install 64-bit VLC.
-2. Extract the matching 64-bit LibVLC SDK, for example to C:\vlc-sdk.
+2. Extract the matching 64-bit LibVLC SDK, for example to C:\\vlc-sdk.
 3. Install the WebView2 SDK package from the repository root:
    `nuget install Microsoft.Web.WebView2 -OutputDirectory packages -ExcludeVersion`
 4. Open x64 Native Tools Command Prompt for Visual Studio.
 5. Set SDK paths if they are not in the default locations:
-   `set VLC_SDK=C:\vlc-sdk`
-   `set WEBVIEW2_SDK=%CD%\packages\Microsoft.Web.WebView2`
+   `set VLC_SDK=C:\\vlc-sdk`
+   `set WEBVIEW2_SDK=%CD%\\packages\\Microsoft.Web.WebView2`
 6. Run build.bat from the repository root.
 
-The executable is written to build\ABMAVPlayer.exe.
+The executable is written to build\\ABMAVPlayer.exe.
 
 ## Run
 
-Run run.bat. It defaults to the standard VLC installation directory: C:\Program Files\VideoLAN\VLC.
+Run run.bat. It defaults to the standard VLC installation directory: C:\\Program Files\\VideoLAN\\VLC.
 
 If VLC is installed elsewhere, set VLC_DIR before running.
 
@@ -132,11 +140,11 @@ See installer/README.md. The normal flow is:
 3. Test the staged application.
 4. Run build_installer.bat with Inno Setup installed.
 
-The installer output is dist\ABM-AV-Player-Setup.exe.
+The installer output is dist\\ABM-AV-Player-Setup.exe.
 
 ## Data and preferences
 
-User preferences and recent/playlist state are stored under %APPDATA%\ABMAVPlayer. Audio preferences are stored separately in audio.ini. Uninstalling the application is intended to preserve this user data.
+User preferences and recent/playlist state are stored under %APPDATA%\\ABMAVPlayer. Audio preferences are stored separately in audio.ini. Uninstalling the application is intended to preserve this user data.
 
 ## Known limitations
 
