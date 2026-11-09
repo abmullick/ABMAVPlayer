@@ -2233,18 +2233,32 @@ static void PaintFullscreenOverlay(HWND hwnd) {
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HFONT oldFont=(HFONT)SelectObject(mem,font);
 
-    /* Timeline floats independently above the transport buttons. */
-    RECT tr={R_SEEK.left,h-112,R_SEEK.right,h-108};
-    HBRUSH track=CreateSolidBrush(RGB(82,87,94));FillRect(mem,&tr,track);DeleteObject(track);
-    /* Keep the layered-window paint path independent of LibVLC locks. */
+    /* High-contrast fullscreen timeline: thick track, distinct played/unplayed
+       segments and a large playhead marker so position is visible at a glance. */
     int64_t len=g_overlayLength;
     int64_t now=g_lastUiTime>0?g_lastUiTime:0;
-    int pos=len>0?(int)(now*1000/len):0;if(pos<0)pos=0;if(pos>1000)pos=1000;
-    RECT progress=tr;progress.right=progress.left+(progress.right-progress.left)*pos/1000;
-    HBRUSH played=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&progress,played);DeleteObject(played);
+    int pos=len>0?(int)(now*1000/len):0;
+    if(pos<0)pos=0;if(pos>1000)pos=1000;
+    int timelineLeft=R_SEEK.left;
+    int timelineRight=R_SEEK.right;
+    if(timelineLeft<24)timelineLeft=24;
+    if(timelineRight>w-24)timelineRight=w-24;
+    if(timelineRight-timelineLeft<160){timelineLeft=24;timelineRight=w-24;}
+    int playheadX=timelineLeft+(timelineRight-timelineLeft)*pos/1000;
+    RECT tr={timelineLeft,h-116,timelineRight,h-106};
+    HBRUSH track=CreateSolidBrush(RGB(105,116,130));FillRect(mem,&tr,track);DeleteObject(track);
+    RECT progress=tr;progress.right=playheadX;
+    HBRUSH played=CreateSolidBrush(RGB(40,211,185));FillRect(mem,&progress,played);DeleteObject(played);
+    /* A dark halo keeps the bright playhead legible over any video frame. */
+    HBRUSH halo=CreateSolidBrush(RGB(12,19,28));
+    RECT haloRect={playheadX-9,h-124,playheadX+9,h-98};
+    FillRect(mem,&haloRect,halo);DeleteObject(halo);
+    HBRUSH head=CreateSolidBrush(RGB(255,255,255));
+    RECT headRect={playheadX-5,h-121,playheadX+5,h-101};
+    FillRect(mem,&headRect,head);DeleteObject(head);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
-    RECT et={R_SEEK.left,h-139,R_SEEK.left+70,h-120};
-    RECT tt={R_SEEK.right-70,h-139,R_SEEK.right,h-120};
+    RECT et={timelineLeft,h-145,timelineLeft+90,h-124};
+    RECT tt={timelineRight-90,h-145,timelineRight,h-124};
     DrawTextW(mem,elapsed,-1,&et,DT_LEFT|DT_SINGLELINE|DT_VCENTER);
     DrawTextW(mem,total,-1,&tt,DT_RIGHT|DT_SINGLELINE|DT_VCENTER);
 
