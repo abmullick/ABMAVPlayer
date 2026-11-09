@@ -243,7 +243,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT creator={322,180,rc.right-28,212};
             Text(dc,L"Abhisek Basu Mullick",creator,RGBc(246,249,255),16,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT role={322,219,rc.right-28,245};
-            Text(dc,L"Founder & Developer",role,RGBc(207,220,235),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Founder & Developer",role,RGBc(207,220,235),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
             RECT contactLabel={322,263,rc.right-28,284};
             Text(dc,L"CONTACT",contactLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT email={322,287,rc.right-28,310};
