@@ -28,6 +28,14 @@ if exist "%DEST%" rmdir /s /q "%DEST%"
 mkdir "%DEST%" || exit /b 1
 copy /y "build\ABMAVPlayer.exe" "%DEST%\ABMAVPlayer.exe" >nul || exit /b 1
 
+rem Creator portrait used by the Streaming Centre About window.
+if not exist "assets\owner_portrait.jpg" (
+  echo ERROR: Required creator portrait assets\owner_portrait.jpg is missing.
+  exit /b 1
+)
+mkdir "%DEST%\assets" 2>nul
+copy /y "assets\owner_portrait.jpg" "%DEST%\assets\owner_portrait.jpg" >nul || exit /b 1
+
 rem Streaming Centre service logos are loaded from the installed assets folder.
 mkdir "%DEST%\assets" 2>nul
 for %%L in (youtube.png netflix.png primevideo.png jiohotstar.png sonyliv.png) do (
