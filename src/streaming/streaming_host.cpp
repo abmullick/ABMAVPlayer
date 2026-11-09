@@ -42,15 +42,17 @@ namespace {
 const wchar_t *kClassName=L"ABMAVPlayer.Streaming";
 constexpr UINT WM_APP_WEBVIEW_RECOVER=WM_APP+20;
 constexpr int kMaxWebViewRecoveries=3;
-const wchar_t *kServices[5]={
-    L"YouTube",L"Netflix",L"Prime Video",L"JioHotstar",L"Sony LIV"
+constexpr int kServiceCount=6;
+const wchar_t *kServices[kServiceCount]={
+    L"YouTube",L"Netflix",L"Prime Video",L"JioHotstar",L"Sony LIV",L"ZEE5"
 };
-const wchar_t *kUrls[5]={
+const wchar_t *kUrls[kServiceCount]={
     L"https://www.youtube.com/",
     L"https://www.netflix.com/",
     L"https://www.primevideo.com/",
     L"https://www.hotstar.com/in",
-    L"https://www.sonyliv.com/"
+    L"https://www.sonyliv.com/",
+    L"https://www.zee5.com/"
 };
 HWND g_window=nullptr;
 HWND g_mainWindow=nullptr;
@@ -60,7 +62,7 @@ bool g_infoAbout=false;
 ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
-RECT g_serviceRects[5]{};
+RECT g_serviceRects[kServiceCount]{};
 HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
 HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
 bool g_devicePanelVisible=false;
@@ -86,8 +88,8 @@ LONG_PTR g_savedWindowExStyle=0;
 RECT g_savedWindowRect{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
 ULONG_PTR g_gdiplusToken=0;
-Gdiplus::Bitmap *g_serviceLogos[5]{};
-const wchar_t *kLogoFiles[5]={L"youtube.png",L"netflix.png",L"primevideo.png",L"jiohotstar.png",L"sonyliv.png"};
+Gdiplus::Bitmap *g_serviceLogos[kServiceCount]{};
+const wchar_t *kLogoFiles[kServiceCount]={L"youtube.png",L"netflix.png",L"primevideo.png",L"jiohotstar.png",L"sonyliv.png",L"zee5.png"};
 struct CachedTextFont{int height;int weight;HFONT font;};
 CachedTextFont g_textFonts[24]{};
 
@@ -109,7 +111,7 @@ void LoadServiceLogos(){
     wchar_t assetPath[MAX_PATH]{};
     wchar_t fallbackPath[MAX_PATH]{};
     int loaded=0;
-    for(int i=0;i<5;i++){
+    for(int i=0;i<kServiceCount;i++){
         if(FAILED(StringCchPrintfW(assetPath,_countof(assetPath),L"%sassets\\%s",exePath,kLogoFiles[i])))continue;
         Gdiplus::Bitmap *bitmap=Gdiplus::Bitmap::FromFile(assetPath,FALSE);
         if(!bitmap||bitmap->GetLastStatus()!=Gdiplus::Ok){
@@ -126,10 +128,10 @@ void LoadServiceLogos(){
             delete bitmap;
         }
     }
-    if(loaded==5)StringCchCopyW(g_status,_countof(g_status),L"All five streaming service logos loaded.");
+    if(loaded==kServiceCount)StringCchCopyW(g_status,_countof(g_status),L"All six streaming service logos loaded.");
     else{
         wchar_t message[128];
-        StringCchPrintfW(message,_countof(message),L"Loaded %d of 5 service logos. Check the assets folder beside the application.",loaded);
+        StringCchPrintfW(message,_countof(message),L"Loaded %d of 6 service logos. Check the assets folder beside the application.",loaded);
         StringCchCopyW(g_status,_countof(g_status),message);
     }
 }
@@ -421,7 +423,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,RGBc(238,245,252),16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *heads[5]={L"1. CHOOSE A SERVICE",L"2. SIGN IN SECURELY",L"3. NAVIGATION & PLAYBACK",L"4. FULLSCREEN",L"5. OPEN IN BROWSER"};
             const wchar_t *body[5]={
-                L"Select YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the large service cards.",
+                L"Select YouTube, Netflix, Prime Video, JioHotstar, Sony LIV or ZEE5 from the large service cards.",
                 L"Sign in on the provider's official website using your own account. Browser sessions are stored locally in your Windows profile.",
                 L"Back and Forward navigate browser history. Previous and Next are intended for YouTube playlists and mixes. Reload refreshes the page; Home returns to the Streaming Centre.",
                 L"Use the fullscreen button beside Home, or the provider's own fullscreen control. Fullscreen behaviour depends on the service and WebView2 support. Press Esc to exit.",
@@ -539,7 +541,7 @@ void CastCurrentBrowserVideo(){
     if(FAILED(hr))SetStatus(L"Could not inspect the current page for a video element.");
 }
 void Navigate(int service){
-    if(service<0||service>=5)return;
+    if(service<0||service>=kServiceCount)return;
     g_activeService=service;
     if(g_webView){
         HRESULT hr=g_webView->Navigate(kUrls[service]);
@@ -653,8 +655,8 @@ void PaintChrome(HWND hwnd){
     }
 
     const int serviceLeft=22,serviceRight=rc.right-22,serviceY=132,serviceH=116,gap=12;
-    const int serviceW=(serviceRight-serviceLeft-4*gap)/5;
-    for(int i=0;i<5;i++){
+    const int serviceW=(serviceRight-serviceLeft-(kServiceCount-1)*gap)/kServiceCount;
+    for(int i=0;i<kServiceCount;i++){
         int left=serviceLeft+i*(serviceW+gap);
         g_serviceRects[i]=RECT{left,serviceY,left+serviceW,serviceY+serviceH};
         bool active=(i==g_activeService),hover=(i==g_hoverService);
@@ -900,7 +902,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(!g_trackingMouseLeave){TRACKMOUSEEVENT track{sizeof(track),TME_LEAVE,hwnd,0};if(TrackMouseEvent(&track))g_trackingMouseLeave=true;}
         POINT pt{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
         int service=-1,control=-1;
-        for(int i=0;i<5;i++)if(PtInRect(&g_serviceRects[i],pt)){service=i;break;}
+        for(int i=0;i<kServiceCount;i++)if(PtInRect(&g_serviceRects[i],pt)){service=i;break;}
         if(PtInRect(&g_backRect,pt))control=0;
         else if(PtInRect(&g_forwardRect,pt))control=1;
         else if(PtInRect(&g_reloadRect,pt))control=2;
@@ -921,7 +923,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-        for(int i=0;i<5;i++)if(PtInRect(&g_serviceRects[i],POINT{x,y})){Navigate(i);return 0;}
+        for(int i=0;i<kServiceCount;i++)if(PtInRect(&g_serviceRects[i],POINT{x,y})){Navigate(i);return 0;}
         if(PtInRect(&g_backRect,POINT{x,y})){NavigateHistory(FALSE);return 0;}
         if(PtInRect(&g_forwardRect,POINT{x,y})){NavigateHistory(TRUE);return 0;}
         if(PtInRect(&g_reloadRect,POINT{x,y})){if(g_webView)g_webView->Reload();else SetStatus(L"Browser is still starting.");return 0;}

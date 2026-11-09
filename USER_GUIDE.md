@@ -112,6 +112,7 @@ ABM AV Player includes a separate, built-in browser window for popular streaming
 - Prime Video
 - JioHotstar
 - Sony LIV
+- ZEE5
 
 The Streaming Centre opens each provider's **official website** in Microsoft Edge WebView2. Sign in directly on that website using your own account and subscription. ABM AV Player does not collect, proxy or store provider passwords.
 
