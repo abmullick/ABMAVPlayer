@@ -2348,6 +2348,14 @@ static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARA
         POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};MapWindowPoints(hwnd,owner,&pt,1);
         SendMessageW(owner,msg,wp,MAKELPARAM(pt.x,pt.y));return 0;
     }
+    if((msg==WM_KEYDOWN||msg==WM_SYSKEYDOWN) &&
+       (wp==VK_ESCAPE||wp==VK_F11)) {
+        FullscreenDiag(wp==VK_ESCAPE ? "overlay-escape-keydown" : "overlay-f11-keydown",0);
+        if(IsWindow(owner)) {
+            SendMessageW(owner,WM_KEYDOWN,wp,lp);
+            return 0;
+        }
+    }
     if(msg==WM_SETCURSOR){SetCursor(LoadCursorW(NULL,IDC_ARROW));return TRUE;}
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -2380,10 +2388,14 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
     }
     if ((msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) &&
         (wp == VK_ESCAPE || wp == VK_F11)) {
-        /* LibVLC's child HWND can own keyboard focus. Route fullscreen
-           shortcuts to the player window so they are never swallowed by VLC. */
-        PostMessageW(owner, WM_KEYDOWN, wp, lp);
-        return 0;
+        /* Record the actual input route and deliver synchronously so the owner
+           processes the shortcut before LibVLC's child consumes the key. */
+        FullscreenDiag(wp == VK_ESCAPE ? "video-child-escape-keydown" :
+                       "video-child-f11-keydown", 0);
+        if (IsWindow(owner)) {
+            SendMessageW(owner, WM_KEYDOWN, wp, lp);
+            return 0;
+        }
     }
     return DefSubclassProc(video, msg, wp, lp);
 }
@@ -2933,6 +2945,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return 0;
     }
+    case WM_SYSKEYDOWN:
+        if(wp==VK_ESCAPE && g_fullscreen) {
+            FullscreenDiag("main-wndproc-escape-syskeydown",0);
+            ToggleFullscreen(hwnd);
+            return 0;
+        }
+        break;
     case WM_SIZE: {
         /* SetWindowPlacement/SetWindowPos generate intermediate size messages
            during fullscreen transitions. Do not let those messages resize
@@ -3333,7 +3352,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         /* Fullscreen Escape has priority over drawer/search/menu shortcuts.
            Otherwise a stale focus state can consume Escape without restoring
            the compact player. */
-        if(wp==VK_ESCAPE && g_fullscreen){ToggleFullscreen(hwnd);return 0;}
+        if(wp==VK_ESCAPE && g_fullscreen){
+            FullscreenDiag("main-wndproc-escape-keydown",0);
+            ToggleFullscreen(hwnd);
+            return 0;
+        }
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
