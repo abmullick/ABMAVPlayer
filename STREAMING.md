@@ -43,3 +43,13 @@ If a provider blocks embedded playback or protected video fails, use the **Open 
 - WebView2 owns streaming website rendering and provider sign-in.
 - The streaming browser runs in a separate top-level window so its native browser surface does not interfere with the Direct2D video child window.
 - Browser profile data is isolated from the existing playlist/preferences directory.
+
+## Streaming window controls
+
+- **Back / Forward:** Navigate WebView2 browsing history for the current provider.
+- **Reload / Home:** Refresh the current page or return to the Streaming Centre landing page.
+- **Fullscreen:** Focuses the embedded provider player and sends its standard fullscreen shortcut. When the provider enters fullscreen, WebView2 reports its fullscreen element and ABM AV Player switches the Streaming Centre window to a borderless monitor-sized surface. Press **Esc** to exit. Provider support and keyboard shortcuts can vary.
+- **Open in browser:** Opens the current provider URL in the user's default desktop browser.
+- **Help / About:** Available in the Streaming Centre header.
+
+Fullscreen is intended for the actual provider video player, not merely enlarging the normal application window. Some providers may restrict fullscreen or require using their own on-player fullscreen control.
