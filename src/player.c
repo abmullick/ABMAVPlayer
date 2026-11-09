@@ -21,6 +21,9 @@
 #include <stdlib.h>
 #include <shlobj.h>
 #include <urlmon.h>
+#include <winhttp.h>
+#include <wincodec.h>
+#include <ws2tcpip.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
 
@@ -254,14 +257,166 @@ typedef struct ArtworkDownloadRequest {
     wchar_t path[PATH_CAP];
 } ArtworkDownloadRequest;
 
+#define ARTWORK_MAX_BYTES (10u * 1024u * 1024u)
+#define ARTWORK_MAX_PIXELS (16u * 1024u * 1024u)
+#define ARTWORK_MAX_REDIRECTS 4
+
+/* Metadata is untrusted input. Only public HTTPS image hosts are eligible.
+   Reject local/private destinations before opening a connection; redirects
+   are deliberately not followed so a public URL cannot redirect into LAN. */
+static BOOL ArtworkHostIsPublic(const wchar_t *host) {
+    ADDRINFOW hints={0}, *addresses=NULL, *it;
+    hints.ai_family=AF_UNSPEC;
+    hints.ai_socktype=SOCK_STREAM;
+    if(GetAddrInfoW(host,NULL,&hints,&addresses)!=0 || !addresses) return FALSE;
+    BOOL valid=TRUE;
+    for(it=addresses;it;it=it->ai_next) {
+        if(it->ai_family==AF_INET) {
+            const unsigned char *a=(const unsigned char *)&((struct sockaddr_in *)it->ai_addr)->sin_addr;
+            if(a[0]==0 || a[0]==10 || a[0]==127 || (a[0]==169&&a[1]==254) ||
+               (a[0]==172&&a[1]>=16&&a[1]<=31) || (a[0]==192&&a[1]==168) ||
+               (a[0]>=224)) valid=FALSE;
+        } else if(it->ai_family==AF_INET6) {
+            const unsigned char *a=(const unsigned char *)&((struct sockaddr_in6 *)it->ai_addr)->sin6_addr;
+            static const unsigned char loopback[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+            if((a[0]&0xfe)==0xfc || (a[0]==0xfe&&(a[1]&0xc0)==0x80) ||
+               memcmp(a,loopback,16)==0 ||
+               (a[0]==0&&a[1]==0&&a[2]==0&&a[3]==0&&a[4]==0&&a[5]==0&&a[6]==0&&a[7]==0&&a[8]==0&&a[9]==0&&a[10]==0xff&&a[11]==0xff))
+                valid=FALSE;
+        }
+        if(!valid) break;
+    }
+    FreeAddrInfoW(addresses);
+    return valid;
+}
+
+static BOOL ArtworkUrlIsSafe(const wchar_t *url, URL_COMPONENTSW *parts,
+                             wchar_t *host, DWORD hostCount) {
+    ZeroMemory(parts,sizeof(*parts));
+    parts->dwStructSize=sizeof(*parts);
+    parts->dwHostNameLength=(DWORD)-1;
+    parts->dwSchemeLength=(DWORD)-1;
+    parts->dwUrlPathLength=(DWORD)-1;
+    parts->dwExtraInfoLength=(DWORD)-1;
+    if(!WinHttpCrackUrl(url,0,0,parts) || parts->nScheme!=INTERNET_SCHEME_HTTPS ||
+       parts->dwHostNameLength==0 || parts->dwHostNameLength>=hostCount ||
+       parts->dwUserNameLength!=0 || parts->dwPasswordLength!=0) return FALSE;
+    if(parts->dwHostNameLength>=hostCount) return FALSE;
+    wcsncpy_s(host,hostCount,parts->lpszHostName,parts->dwHostNameLength);
+    if(!_wcsicmp(host,L"localhost") || !_wcsicmp(host,L"localhost.localdomain")) return FALSE;
+    return ArtworkHostIsPublic(host);
+}
+
+static BOOL ValidateArtworkImage(const wchar_t *path) {
+    IWICImagingFactory *factory=NULL;
+    IWICBitmapDecoder *decoder=NULL;
+    IWICBitmapFrameDecode *frame=NULL;
+    BOOL valid=FALSE;
+    UINT width=0,height=0;
+    HRESULT hr=CoCreateInstance(&CLSID_WICImagingFactory,NULL,CLSCTX_INPROC_SERVER,
+                                &IID_IWICImagingFactory,(void **)&factory);
+    if(SUCCEEDED(hr) && factory)
+        hr=factory->lpVtbl->CreateDecoderFromFilename(factory,path,NULL,GENERIC_READ,
+                 WICDecodeMetadataCacheOnLoad,&decoder);
+    if(SUCCEEDED(hr) && decoder)
+        hr=decoder->lpVtbl->GetFrame(decoder,0,&frame);
+    if(SUCCEEDED(hr) && frame)
+        hr=frame->lpVtbl->GetSize(frame,&width,&height);
+    if(SUCCEEDED(hr) && width>0 && height>0 &&
+       (ULONGLONG)width*(ULONGLONG)height<=ARTWORK_MAX_PIXELS &&
+       width<=8192 && height<=8192) {
+        /* Force a full pixel decode before the file is accepted. */
+        IWICFormatConverter *converter=NULL;
+        hr=factory->lpVtbl->CreateFormatConverter(factory,&converter);
+        if(SUCCEEDED(hr) && converter) {
+            hr=converter->lpVtbl->Initialize(converter,(IWICBitmapFrameDecode *)frame,
+                &GUID_WICPixelFormat32bppBGRA,WICBitmapDitherTypeNone,NULL,0.0,
+                WICBitmapPaletteTypeCustom);
+            if(SUCCEEDED(hr)) {
+                UINT stride=width*4, bytes=stride*height;
+                BYTE *pixels=(BYTE *)malloc(bytes);
+                if(pixels) {
+                    hr=converter->lpVtbl->CopyPixels(converter,NULL,stride,bytes,pixels);
+                    free(pixels);
+                    valid=SUCCEEDED(hr);
+                }
+            }
+            converter->lpVtbl->Release(converter);
+        }
+    }
+    if(frame)frame->lpVtbl->Release(frame);
+    if(decoder)decoder->lpVtbl->Release(decoder);
+    if(factory)factory->lpVtbl->Release(factory);
+    return valid;
+}
+
+static BOOL DownloadArtworkSecurely(const wchar_t *url,const wchar_t *finalPath,
+                                    LONG generation) {
+    URL_COMPONENTSW parts;
+    wchar_t host[256]={0}, tempPath[PATH_CAP]={0};
+    HINTERNET session=NULL,connection=NULL,request=NULL;
+    HANDLE file=INVALID_HANDLE_VALUE;
+    BOOL ok=FALSE;
+    DWORD status=0,statusSize=sizeof(status),read=0,written=0;
+    BYTE buffer[16384];
+    if(!ArtworkUrlIsSafe(url,&parts,host,_countof(host))) return FALSE;
+    if(FAILED(StringCchPrintfW(tempPath,_countof(tempPath),L"%s.tmp-%ld",finalPath,(long)generation)))
+        return FALSE;
+    session=WinHttpOpen(L"ABM AV Player/Artwork",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+                        WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
+    if(!session) goto cleanup;
+    WinHttpSetTimeouts(session,5000,5000,7000,7000);
+    connection=WinHttpConnect(session,host,parts.nPort,0);
+    if(!connection) goto cleanup;
+    request=WinHttpOpenRequest(connection,L"GET",
+        parts.lpszUrlPath&&parts.dwUrlPathLength?parts.lpszUrlPath:L"/",
+        NULL,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,
+        WINHTTP_FLAG_SECURE);
+    if(!request) goto cleanup;
+    /* No automatic redirects: every redirect would need a fresh DNS and
+       destination-policy check. Reject them rather than risk a private hop. */
+    { DWORD policy=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
+      WinHttpSetOption(request,WINHTTP_OPTION_REDIRECT_POLICY,&policy,sizeof(policy)); }
+    if(!WinHttpSendRequest(request,WINHTTP_NO_ADDITIONAL_HEADERS,0,
+                           WINHTTP_NO_REQUEST_DATA,0,0,0) ||
+       !WinHttpReceiveResponse(request,NULL)) goto cleanup;
+    if(!WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,
+                            WINHTTP_HEADER_NAME_BY_INDEX,&status,&statusSize,
+                            WINHTTP_NO_HEADER_INDEX) || status!=HTTP_STATUS_OK) goto cleanup;
+    file=CreateFileW(tempPath,GENERIC_WRITE,0,NULL,CREATE_ALWAYS,
+                     FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_SEQUENTIAL_SCAN,NULL);
+    if(file==INVALID_HANDLE_VALUE) goto cleanup;
+    ULONGLONG total=0;
+    for(;;) {
+        if(!WinHttpReadData(request,buffer,sizeof(buffer),&read)) goto cleanup;
+        if(read==0) break;
+        total+=read;
+        if(total>ARTWORK_MAX_BYTES ||
+           !WriteFile(file,buffer,read,&written,NULL) || written!=read) goto cleanup;
+    }
+    if(total<16 || !FlushFileBuffers(file)) goto cleanup;
+    CloseHandle(file);file=INVALID_HANDLE_VALUE;
+    if(!ValidateArtworkImage(tempPath)) goto cleanup;
+    if(!MoveFileExW(tempPath,finalPath,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))
+        goto cleanup;
+    ok=TRUE;
+cleanup:
+    if(file!=INVALID_HANDLE_VALUE)CloseHandle(file);
+    if(!ok)DeleteFileW(tempPath);
+    if(request)WinHttpCloseHandle(request);
+    if(connection)WinHttpCloseHandle(connection);
+    if(session)WinHttpCloseHandle(session);
+    return ok;
+}
+
 static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
     ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)parameter;
     HRESULT com=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);
-    HRESULT result=URLDownloadToFileW(NULL,request->url,request->path,0,NULL);
+    BOOL downloaded=DownloadArtworkSecurely(request->url,request->path,request->generation);
     if(SUCCEEDED(com))CoUninitialize();
     if(IsWindow(request->target))
         PostMessageW(request->target,WM_ARTWORK_DOWNLOAD_READY,
-                     (WPARAM)request->generation,(LPARAM)SUCCEEDED(result));
+                     (WPARAM)request->generation,(LPARAM)downloaded);
     free(request);
     return 0;
 }
