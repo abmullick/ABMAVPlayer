@@ -1713,23 +1713,18 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
     libvlc_media_player_stop(g_streamCastPlayer);
     if(libvlc_media_player_set_renderer(g_streamCastPlayer,g_streamSelectedRenderer)!=0){
         libvlc_media_release(media);
-        g_rendererApplied=FALSE;
         SetStatus(L"The selected receiver rejected the browser video stream.");
         return FALSE;
     }
-    g_rendererApplied=TRUE;
-    ResetArtwork();
+    /* Streaming output deliberately does not modify local renderer or artwork state. */
     libvlc_media_player_set_media(g_streamCastPlayer,media);
     int result=libvlc_media_player_play(g_streamCastPlayer);
     libvlc_media_release(media);
     if(result!=0){
-        g_hasMedia=FALSE;g_current=-1;g_pendingResume=FALSE;
-        SetStatus(L"The receiver could not start this direct video URL. The player did not fall back to local playback.");
+        SetStatus(L"The receiver could not start this direct video URL. Local playback was left unchanged.");
         return FALSE;
     }
-    g_hasMedia=FALSE;g_current=-1;g_pendingResume=FALSE;g_pendingResumeTicks=0;
-    SetStatus(L"Sending the direct browser video URL to the selected receiver…");
-    InvalidateRect(g_main,NULL,FALSE);
+    SetStatus(L"Streaming cast handoff started. Receiver playback confirmation is not available from this direct-URL path.");
     return TRUE;
 }
 static BOOL EnsureDataDirectory(void) {
