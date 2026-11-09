@@ -174,7 +174,7 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
 }
 
 void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool primary){
-    if(!item||!item->hWnd)return;
+    if(!item||!item->hwndItem)return;
     HDC dc=item->hDC;RECT r=item->rcItem;
     bool pressed=(item->itemState&ODS_SELECTED)!=0;
     bool focused=(item->itemState&ODS_FOCUS)!=0;
@@ -263,10 +263,11 @@ void CreateDevicePanel(HWND parent){
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
-    HFONT font=GetCachedTextFont(11,500);
+    SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
+    SendMessageW(g_deviceHint,WM_SETFONT,(WPARAM)GetCachedTextFont(10,500),TRUE);
+    SendMessageW(g_deviceList,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
     SendMessageW(g_deviceList,LB_SETITEMHEIGHT,0,27);
     HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
-    for(HWND control:controls)if(control)SendMessageW(control,WM_SETFONT,(WPARAM)font,TRUE);
     ShowWindow(g_devicePanel,SW_HIDE);
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
 }
