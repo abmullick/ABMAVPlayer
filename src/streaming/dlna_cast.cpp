@@ -13,14 +13,15 @@ namespace {
 struct DlnaReceiver {
     std::wstring name;
     IStream *serviceStream = nullptr; /* marshalled from the discovery worker to the UI apartment */
+    IUPnPService *uiService = nullptr; /* apartment proxy, created on the UI thread */
     DlnaReceiver() = default;
     DlnaReceiver(const DlnaReceiver&) = delete;
     DlnaReceiver& operator=(const DlnaReceiver&) = delete;
-    DlnaReceiver(DlnaReceiver&& other) noexcept : name(std::move(other.name)), serviceStream(other.serviceStream) { other.serviceStream=nullptr; }
+    DlnaReceiver(DlnaReceiver&& other) noexcept : name(std::move(other.name)), serviceStream(other.serviceStream), uiService(other.uiService) { other.serviceStream=nullptr;other.uiService=nullptr; }
     DlnaReceiver& operator=(DlnaReceiver&& other) noexcept {
-        if(this!=&other){if(serviceStream)serviceStream->Release();name=std::move(other.name);serviceStream=other.serviceStream;other.serviceStream=nullptr;}return *this;
+        if(this!=&other){if(serviceStream)serviceStream->Release();if(uiService)uiService->Release();name=std::move(other.name);serviceStream=other.serviceStream;uiService=other.uiService;other.serviceStream=nullptr;other.uiService=nullptr;}return *this;
     }
-    ~DlnaReceiver(){if(serviceStream)serviceStream->Release();}
+    ~DlnaReceiver(){if(serviceStream)serviceStream->Release();if(uiService)uiService->Release();}
 };
 std::mutex g_lock;
 std::vector<DlnaReceiver> g_devices;
@@ -172,13 +173,16 @@ extern "C" BOOL ABM_Dlna_DeviceName(unsigned int index,wchar_t *buffer,unsigned 
 }
 extern "C" BOOL ABM_Dlna_SelectDevice(unsigned int index) {
     std::lock_guard<std::mutex> guard(g_lock);
-    if(index>=g_devices.size()||!g_devices[index].serviceStream)return FALSE;
-    if(g_selected){g_selected->Release();g_selected=nullptr;}
-    HRESULT hr=CoGetInterfaceAndReleaseStream(g_devices[index].serviceStream,IID_IUPnPService,(void**)&g_selected);
-    g_devices[index].serviceStream=nullptr;
-    if(FAILED(hr)||!g_selected)return FALSE;
-    /* Keep the receiver reusable for a later selection from this UI apartment. */
-    CoMarshalInterThreadInterfaceInStream(IID_IUPnPService,g_selected,&g_devices[index].serviceStream);
+    if(index>=g_devices.size())return FALSE;
+    DlnaReceiver &receiver=g_devices[index];
+    if(!receiver.uiService&&receiver.serviceStream){
+        HRESULT hr=CoGetInterfaceAndReleaseStream(receiver.serviceStream,IID_IUPnPService,(void**)&receiver.uiService);
+        receiver.serviceStream=nullptr;
+        if(FAILED(hr))return FALSE;
+    }
+    if(!receiver.uiService)return FALSE;
+    if(g_selected)g_selected->Release();
+    g_selected=receiver.uiService;g_selected->AddRef();
     return TRUE;
 }
 extern "C" BOOL ABM_Dlna_PlayUrl(const wchar_t *url) {
