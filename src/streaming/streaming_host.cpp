@@ -35,6 +35,8 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 const wchar_t *kClassName=L"ABMAVPlayer.Streaming";
+constexpr UINT WM_APP_WEBVIEW_RECOVER=WM_APP+20;
+constexpr int kMaxWebViewRecoveries=3;
 const wchar_t *kServices[5]={
     L"YouTube",L"Netflix",L"Prime Video",L"JioHotstar",L"Sony LIV"
 };
@@ -64,6 +66,9 @@ EventRegistrationToken g_navigationToken{};
 EventRegistrationToken g_navigationStartingToken{};
 EventRegistrationToken g_popupToken{};
 EventRegistrationToken g_fullscreenToken{};
+EventRegistrationToken g_processFailedToken{};
+int g_webViewRecoveryAttempts=0;
+bool g_webViewRecoveryPending=false;
 bool g_webFullscreen=false;
 LONG_PTR g_savedWindowStyle=0;
 LONG_PTR g_savedWindowExStyle=0;
@@ -498,6 +503,16 @@ void PaintChrome(HWND hwnd){
     }
     EndPaint(hwnd,&ps);
 }
+void CreateWebViewController(){
+    if(!g_environment||!g_window||!IsWindow(g_window))return;
+    HRESULT hr=g_environment->CreateCoreWebView2Controller(g_window,
+        Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+            [](HRESULT controllerResult,ICoreWebView2Controller *controller)->HRESULT{
+                OnWebViewReady(controllerResult,controller);
+                return S_OK;
+            }).Get());
+    if(FAILED(hr))SetStatus(L"Could not recreate the embedded browser. Close and reopen the Streaming Centre.");
+}
 void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
     if(!g_window||!IsWindow(g_window)){if(controller)controller->Close();return;}
     if(FAILED(result)||!controller){
@@ -546,6 +561,15 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
     /* Some providers open authentication or account pages in a new window.
        Keep navigation inside the same trusted WebView rather than spawning
        an unmanaged browser surface. */
+    g_webView->add_ProcessFailed(
+        Callback<ICoreWebView2ProcessFailedEventHandler>(
+            [](ICoreWebView2*,ICoreWebView2ProcessFailedEventArgs*)->HRESULT{
+                if(g_window&&IsWindow(g_window)&&!g_webViewRecoveryPending){
+                    g_webViewRecoveryPending=true;
+                    PostMessageW(g_window,WM_APP_WEBVIEW_RECOVER,0,0);
+                }
+                return S_OK;
+            }).Get(),&g_processFailedToken);
     g_webView->add_NewWindowRequested(
         Callback<ICoreWebView2NewWindowRequestedEventHandler>(
             [](ICoreWebView2 *sender,ICoreWebView2NewWindowRequestedEventArgs *args)->HRESULT{
@@ -569,6 +593,15 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         HRESULT comResult=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
         if(SUCCEEDED(comResult))g_comInitialized=true;
         else {SetStatus(L"Could not initialise the Windows browser COM apartment.");return 0;}
+        LPWSTR runtimeVersion=nullptr;
+        HRESULT runtimeHr=GetAvailableCoreWebView2BrowserVersionString(nullptr,&runtimeVersion);
+        if(FAILED(runtimeHr)||!runtimeVersion||!runtimeVersion[0]){
+            if(runtimeVersion)CoTaskMemFree(runtimeVersion);
+            SetStatus(L"Microsoft Edge WebView2 Evergreen Runtime is not installed or cannot be found. Install the official WebView2 Runtime, then reopen the Streaming Centre.");
+            return 0;
+        }
+        CoTaskMemFree(runtimeVersion);
+        g_webViewRecoveryAttempts=0;g_webViewRecoveryPending=false;
         SetStatus(L"Starting Microsoft Edge WebView2…");
         wchar_t local[MAX_PATH]{},profile[MAX_PATH]{};
         if(FAILED(SHGetFolderPathW(nullptr,CSIDL_LOCAL_APPDATA,nullptr,SHGFP_TYPE_CURRENT,local))||
@@ -587,15 +620,41 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                         return S_OK;
                     }
                     g_environment=environment;
-                    environment->CreateCoreWebView2Controller(hwnd,
-                        Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                            [](HRESULT controllerResult,ICoreWebView2Controller *controller)->HRESULT{
-                                OnWebViewReady(controllerResult,controller);
-                                return S_OK;
-                            }).Get());
+                    CreateWebViewController();
                     return S_OK;
                 }).Get());
         if(FAILED(hr))SetStatus(L"WebView2 initialisation failed. Check the Evergreen Runtime installation.");
+        return 0;
+    }
+    case WM_APP_WEBVIEW_RECOVER:{
+        g_webViewRecoveryPending=false;
+        if(!g_window||!IsWindow(g_window))return 0;
+        if(g_webViewRecoveryAttempts>=kMaxWebViewRecoveries){
+            SetStatus(L"The streaming browser stopped repeatedly. Close and reopen the Streaming Centre.");
+            return 0;
+        }
+        ++g_webViewRecoveryAttempts;
+        LPWSTR current=nullptr;
+        std::wstring restoreUrl;
+        if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
+            if(wcsncmp(current,L"https://",8)==0||wcsncmp(current,L"http://",7)==0)restoreUrl=current;
+            CoTaskMemFree(current);
+        }
+        SetStatus(L"Recovering the streaming browser after an unexpected process failure…");
+        if(g_controller)g_controller->Close();
+        g_webView.Reset();g_controller.Reset();
+        if(!g_environment){SetStatus(L"Browser recovery is unavailable. Reopen the Streaming Centre.");return 0;}
+        HRESULT hr=g_environment->CreateCoreWebView2Controller(hwnd,
+            Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                [restoreUrl](HRESULT controllerResult,ICoreWebView2Controller *controller)->HRESULT{
+                    OnWebViewReady(controllerResult,controller);
+                    if(SUCCEEDED(controllerResult)&&controller&&!restoreUrl.empty()){
+                        controller->get_CoreWebView2(&g_webView);
+                        if(g_webView)g_webView->Navigate(restoreUrl.c_str());
+                    }
+                    return S_OK;
+                }).Get());
+        if(FAILED(hr))SetStatus(L"Browser recovery could not be started. Reopen the Streaming Centre.");
         return 0;
     }
     case WM_SIZE:LayoutBrowser();InvalidateRect(hwnd,nullptr,FALSE);return 0;
@@ -665,7 +724,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         g_window=nullptr;
         if(g_infoWindow&&IsWindow(g_infoWindow))DestroyWindow(g_infoWindow);
         if(g_controller)g_controller->Close();
+        if(g_webView)g_webView->remove_ProcessFailed(g_processFailedToken);
+        if(g_webView)g_webView->remove_NavigationCompleted(g_navigationToken);
+        if(g_webView)g_webView->remove_NavigationStarting(g_navigationStartingToken);
+        if(g_webView)g_webView->remove_NewWindowRequested(g_popupToken);
+        if(g_webView)g_webView->remove_ContainsFullScreenElementChanged(g_fullscreenToken);
         g_webView.Reset();g_controller.Reset();g_environment.Reset();
+        g_webViewRecoveryPending=false;g_webViewRecoveryAttempts=0;
         ReleaseServiceLogos();
         if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
