@@ -11,6 +11,8 @@
 #include <string>
 #include <algorithm>
 #include <cwctype>
+#include <cstring>
+#include <cctype>
 
 namespace {
 struct DialDevice { std::wstring name, appUrl; };
@@ -53,9 +55,15 @@ bool HttpRequest(const std::wstring &url,const wchar_t *verb,const std::wstring 
     HINTERNET request=connect?WinHttpOpenRequest(connect,verb,path.c_str(),nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,0):nullptr;
     bool ok=false;
     if(request) {
-        const wchar_t *headers=verb==std::wstring(L"POST")?L"Content-Type: text/plain; charset=\"utf-8\"\r\n":WINHTTP_NO_ADDITIONAL_HEADERS;
-        BOOL sent=WinHttpSendRequest(request,headers,headers==WINHTTP_NO_ADDITIONAL_HEADERS?0:(DWORD)-1,
-            body.empty()?WINHTTP_NO_REQUEST_DATA:(LPVOID)body.data(),(DWORD)(body.size()*sizeof(wchar_t)),(DWORD)(body.size()*sizeof(wchar_t)),0);
+        const bool isPost=_wcsicmp(verb,L"POST")==0;
+        const wchar_t *headers=isPost?L"Content-Type: text/plain; charset=\"utf-8\"\\r\\n":WINHTTP_NO_ADDITIONAL_HEADERS;
+        std::string bodyUtf8;
+        if(isPost&&!body.empty()){
+            int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,body.data(),(int)body.size(),nullptr,0,nullptr,nullptr);
+            if(bytes>0){bodyUtf8.resize(bytes);WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,body.data(),(int)body.size(),bodyUtf8.data(),bytes,nullptr,nullptr);}
+        }
+        BOOL sent=WinHttpSendRequest(request,headers,isPost?(DWORD)-1:0,
+            bodyUtf8.empty()?WINHTTP_NO_REQUEST_DATA:(LPVOID)bodyUtf8.data(),(DWORD)bodyUtf8.size(),(DWORD)bodyUtf8.size(),0);
         if(sent&&WinHttpReceiveResponse(request,nullptr)) {
             DWORD status=0,size=sizeof(status);WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&size,WINHTTP_NO_HEADER_INDEX);
             if(statusOut)*statusOut=status;
