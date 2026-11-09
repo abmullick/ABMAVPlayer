@@ -2235,9 +2235,14 @@ static void PaintFullscreenOverlay(HWND hwnd) {
 
     /* High-contrast fullscreen timeline: thick track, distinct played/unplayed
        segments and a large playhead marker so position is visible at a glance. */
-    int64_t len=g_overlayLength;
-    int64_t now=g_lastUiTime>0?g_lastUiTime:0;
-    int pos=len>0?(int)(now*1000/len):0;
+    /* Read the live LibVLC clock. The old overlay used cached globals that
+       were reset on every track change but never refreshed, leaving the
+       fullscreen playhead stuck at the start while compact mode was correct. */
+    int64_t len=(g_player&&g_hasMedia)?libvlc_media_player_get_length(g_player):0;
+    int64_t now=(g_player&&g_hasMedia)?libvlc_media_player_get_time(g_player):0;
+    if(len<=0)len=g_overlayLength;
+    if(now<0)now=0;
+    int pos=len>0?(int)(((double)now/(double)len)*1000.0):0;
     if(pos<0)pos=0;if(pos>1000)pos=1000;
     int timelineLeft=R_SEEK.left;
     int timelineRight=R_SEEK.right;
@@ -2251,11 +2256,16 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     HBRUSH played=CreateSolidBrush(RGB(40,211,185));FillRect(mem,&progress,played);DeleteObject(played);
     /* A dark halo keeps the bright playhead legible over any video frame. */
     HBRUSH halo=CreateSolidBrush(RGB(12,19,28));
-    RECT haloRect={playheadX-9,h-124,playheadX+9,h-98};
+    RECT haloRect={playheadX-10,h-126,playheadX+10,h-96};
     FillRect(mem,&haloRect,halo);DeleteObject(halo);
     HBRUSH head=CreateSolidBrush(RGB(255,255,255));
-    RECT headRect={playheadX-5,h-121,playheadX+5,h-101};
+    RECT headRect={playheadX-5,h-123,playheadX+5,h-99};
     FillRect(mem,&headRect,head);DeleteObject(head);
+    /* Add a fine vertical locator through the track so the position remains
+       easy to distinguish even against the bright played segment. */
+    RECT locator={playheadX-1,h-130,playheadX+1,h-94};
+    HBRUSH locatorBrush=CreateSolidBrush(RGB(255,255,255));
+    FillRect(mem,&locator,locatorBrush);DeleteObject(locatorBrush);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
     RECT et={timelineLeft,h-145,timelineLeft+90,h-124};
     RECT tt={timelineRight-90,h-145,timelineRight,h-124};
@@ -2356,10 +2366,11 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
 }
 
 static void ToggleFullscreen(HWND hwnd) {
-    /* Hide the VLC child while the top-level window changes styles and bounds.
-       This prevents a stale fullscreen child rectangle from covering the
-       restored title/header area during the transition. */
-    if (g_video) ShowWindow(g_video, SW_HIDE);
+    /* Hide the VLC child only when entering fullscreen. On exit, leave the
+       renderer alive and let PositionVideoWindow move it once to the restored
+       client rectangle; hiding and showing the child during restore can stall
+       the UI thread on some video outputs. */
+    if (!g_fullscreen && g_video) ShowWindow(g_video, SW_HIDE);
 
     if(!g_fullscreen) {
         g_savedStyle=(DWORD_PTR)GetWindowLongPtrW(hwnd,GWL_STYLE);
@@ -2389,22 +2400,23 @@ static void ToggleFullscreen(HWND hwnd) {
         if(GetCapture()==hwnd)ReleaseCapture();
         if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
         SetCursor(LoadCursorW(NULL,IDC_ARROW));
-        /* Restore a known normal overlapped-window style instead of trusting
-           a potentially stale style snapshot from the fullscreen transition. */
+        /* Restore the saved normal-window placement in one operation. Avoid a
+           second no-op SetWindowPos/frame recalculation after SetWindowPlacement. */
         SetWindowLongPtrW(hwnd,GWL_STYLE,
             (LONG_PTR)(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN));
         SetWindowPlacement(hwnd,&g_savedPlacement);
-        SetWindowPos(hwnd,NULL,0,0,0,0,
-            SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
         ShowWindow(hwnd,SW_RESTORE);
         ShowWindow(g_renderers,SW_SHOW);
     }
 
-    /* Force a fresh child-window placement even if its cached rectangle
-       happens to match a previous layout. */
+    /* Recompute layout once. PositionVideoWindow owns the single required
+       LibVLC child move/show operation; the previous duplicate SetWindowPos,
+       second UpdateLayout and synchronous RedrawWindow(UPDATENOW) made Escape
+       block the message loop during the return to compact mode. */
     g_videoBoundsValid = FALSE;
     UpdateLayout(hwnd);
     SyncRendererComboVisibility();
+
     if(g_fullscreen && g_fullscreenOverlay) {
         RECT wr;GetWindowRect(hwnd,&wr);
         SetWindowPos(g_fullscreenOverlay,HWND_TOP,wr.left,
@@ -2412,43 +2424,18 @@ static void ToggleFullscreen(HWND hwnd) {
             FULLSCREEN_OVERLAY_HEIGHT,SWP_NOACTIVATE);
         ShowWindow(g_fullscreenOverlay,g_fullscreenControlsVisible?SW_SHOWNOACTIVATE:SW_HIDE);
         InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
-    } else if(g_fullscreenOverlay) ShowWindow(g_fullscreenOverlay,SW_HIDE);
+    } else if(g_fullscreenOverlay) {
+        ShowWindow(g_fullscreenOverlay,SW_HIDE);
+    }
 
-    if (g_video && IsWindow(g_video)) {
-        RECT vr = g_videoBounds;
-        int vw = vr.right - vr.left;
-        int vh = vr.bottom - vr.top;
-        if (vw > 0 && vh > 0) {
-            /* Keep LibVLC's native child surface at the top of the child
-               z-order. HWND_BOTTOM can place it behind the fullscreen parent
-               after the WS_OVERLAPPEDWINDOW -> WS_POPUP transition. */
-            SetWindowPos(g_video, HWND_TOP, vr.left, vr.top, vw, vh,
-                SWP_NOACTIVATE | SWP_SHOWWINDOW);
-            ShowWindow(g_video, SW_SHOWNOACTIVATE);
-        }
-    }
-    /* Re-sync the Direct2D HWND target with the restored client size.
-       WM_SIZE can arrive while the non-client style transition is still in
-       progress, so do one final resize and synchronous full-window repaint. */
-    RECT clientRect = {0};
-    GetClientRect(hwnd, &clientRect);
-    if (clientRect.right > 0 && clientRect.bottom > 0) {
-        ABM_D2D_Resize(&g_ui, (UINT)clientRect.right, (UINT)clientRect.bottom);
-    }
-    /* Re-apply video placement after frame/style and D2D transitions settle. */
-    g_videoBoundsValid = FALSE;
-    UpdateLayout(hwnd);
-    if (g_video && IsWindow(g_video) && g_hasMedia) {
-        RECT vr = g_videoBounds;
-        int vw = vr.right - vr.left, vh = vr.bottom - vr.top;
-        if (vw > 0 && vh > 0) {
-            SetWindowPos(g_video, HWND_TOP, vr.left, vr.top, vw, vh,
-                SWP_NOACTIVATE | SWP_SHOWWINDOW);
-            ShowWindow(g_video, SW_SHOWNOACTIVATE);
-        }
-    }
-    RedrawWindow(hwnd, NULL, NULL,
-        RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    RECT clientRect={0};
+    GetClientRect(hwnd,&clientRect);
+    if(clientRect.right>0&&clientRect.bottom>0)
+        ABM_D2D_Resize(&g_ui,(UINT)clientRect.right,(UINT)clientRect.bottom);
+
+    /* Queue a repaint instead of forcing all child windows to paint
+       synchronously while handling Escape. */
+    InvalidateRect(hwnd,NULL,FALSE);
     SetFocus(hwnd);
 }
 
@@ -2992,7 +2979,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
                 SetCursor(NULL);
             }
-            /* No periodic layered-window repaint while video decoding is active. */
+            /* Refresh only the small bottom overlay strip at the existing UI
+               tick so the playhead follows playback continuously. */
+            if(g_fullscreenControlsVisible && g_fullscreenOverlay)
+                InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
@@ -3278,6 +3268,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ReleaseCapture();return 0;
     }
     case WM_KEYDOWN: {
+        /* Fullscreen Escape has priority over drawer/search/menu shortcuts.
+           Otherwise a stale focus state can consume Escape without restoring
+           the compact player. */
+        if(wp==VK_ESCAPE && g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
@@ -3315,7 +3309,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VK_HOME&&g_hasMedia){libvlc_media_player_set_time(g_player,0);return 0;}
         if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
         if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
-        if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
     }
