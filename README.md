@@ -68,6 +68,13 @@ Downloads: [VLC](https://www.videolan.org/vlc/) · [LibVLC SDK](https://www.vide
 
 All components must use the same architecture (x64).
 
+## Updates and releases
+
+- Use **Check for updates** in the application menu to check the latest published GitHub Release, review its release notes, and optionally download and run the official Windows installer.
+- Updates are installed over the existing ABM AV Player installation; the installer uses the same product identity and preserves user data stored under AppData.
+- Releases and publishing instructions are documented in [RELEASES.md](RELEASES.md). Each published release must attach `ABM-AV-Player-Setup.exe`.
+- Users can also download installers directly from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases).
+
 ## Build
 
 1. Install 64-bit VLC.
