@@ -6,9 +6,12 @@
 
 ## How receiver discovery works
 
-ABM AV Player uses LibVLC's renderer-discovery API. It enumerates the renderer-discovery services exposed by the installed VLC runtime, listens for receiver-added/removed events and presents discovered receivers in the Playback Output selector.
+Streaming Centre now has two independent receiver paths:
 
-The application does not implement a separate Google Cast protocol stack. Google Cast discovery and playback depend on the VLC build's mDNS renderer-discovery service, Chromecast renderer plugin, their dependencies and the receiver's capabilities.
+- **Google Cast:** Uses LibVLC's Chromecast renderer-discovery and renderer playback integration. It requires a VLC runtime with the mDNS/Chromecast renderer plugin and dependencies.
+- **DLNA / UPnP AVTransport:** Uses the Windows UPnP control-point API to discover MediaRenderer devices, locate their AVTransport service, and issue SetAVTransportURI followed by Play.
+
+The local player's existing renderer discovery and output selection remain separate from Streaming Centre. Google Cast and DLNA receivers are labelled separately in the Streaming Centre device list.
 
 ## Requirements
 
@@ -65,7 +68,13 @@ The installed LibVLC runtime may not expose its mDNS renderer-discovery service 
 - Check VLC's Chromecast and encoder plugins and their dependencies.
 - Try Local playback and retry with a different media file.
 
-## Current limitations
+## Streaming Centre protocol details and limitations
+
+- Google Cast uses LibVLC's Chromecast renderer path; this is not a custom Cast-v2 sender implementation and does not launch provider-specific receiver applications.
+- DLNA uses Windows UPnP MediaRenderer discovery and AVTransport SetAVTransportURI/Play. It sends a directly reachable HTTP(S) media URL to the TV; it does not proxy browser cookies, authorization headers, or DRM sessions.
+- The Windows UPnP service and network discovery must be available. Some Android TV devices expose neither UPnP MediaRenderer nor Google Cast.
+- A successful DLNA SOAP action means the TV accepted the command, not that video decoding/playback has been confirmed.
+- WebView2 pages that expose only blob/MSE URLs, DRM-protected playback, or media requiring browser session headers cannot be transferred by the current direct-URL handoff.
 
 - Discovery and playback depend on the installed VLC runtime and network environment.
 - Android TV devices without a compatible Cast receiver service may not appear as Google Cast devices.

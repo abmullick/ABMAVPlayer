@@ -38,27 +38,31 @@ if errorlevel 1 (
 
 if not exist build mkdir build
 
-echo [1/7] Compiling C playback engine...
+echo [1/8] Compiling C playback engine...
 cl /nologo /W4 /O2 /utf-8 /std:c11 /TC /DUNICODE /D_UNICODE /I"%VLC_SDK%\include" /c src\player.c /Fo:build\player.obj
 if errorlevel 1 goto build_failed
 
-echo [2/7] Compiling C++ Direct2D bridge...
+echo [2/8] Compiling C++ Direct2D bridge...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\ui_d2d.cpp /Fo:build\ui_d2d.obj
 if errorlevel 1 goto build_failed
 
-echo [3/7] Compiling WASAPI audio visualizer...
+echo [3/8] Compiling WASAPI audio visualizer...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\audio_visualizer.cpp /Fo:build\audio_visualizer.obj
 if errorlevel 1 goto build_failed
 
-echo [4/7] Compiling WebView2 streaming host...
+echo [4/8] Compiling WebView2 streaming host...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /I"%WEBVIEW2_SDK%\build\native\include" /c src\streaming\streaming_host.cpp /Fo:build\streaming_host.obj
 if errorlevel 1 goto build_failed
 
-echo [5/7] Compiling GitHub Releases updater...
+echo [5/8] Compiling DLNA/UPnP casting backend...
+cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\streaming\dlna_cast.cpp /Fo:build\dlna_cast.obj
+if errorlevel 1 goto build_failed
+
+echo [6/8] Compiling GitHub Releases updater...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\updater.cpp /Fo:build\updater.obj
 if errorlevel 1 goto build_failed
 
-echo [6/7] Compiling application icon resource...
+echo [7/8] Compiling application icon resource...
 where rc >nul 2>nul
 if errorlevel 1 (
   echo Windows Resource Compiler rc.exe not found. Run from the x64 Native Tools Command Prompt.
@@ -67,9 +71,9 @@ if errorlevel 1 (
 rc /nologo /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
-echo [7/7] Linking ABM AV Player...
-cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\updater.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
-  wininet.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib windowscodecs.lib version.lib ^
+echo [8/8] Linking ABM AV Player...
+cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\updater.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
+  wininet.lib oleaut32.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib windowscodecs.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
 
