@@ -228,6 +228,18 @@ void LayoutDevicePanel(){
     SetWindowPos(g_deviceSelect,nullptr,x+342,y+111,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceClose,nullptr,x+342,y+154,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
+bool SameReceiverName(const std::wstring &left,const std::wstring &right){
+    auto canonical=[](std::wstring value){
+        size_t suffix=value.find_last_of(L'(');
+        if(suffix!=std::wstring::npos && !value.empty() && value.back()==L')' && suffix>0)
+            value.erase(suffix);
+        while(!value.empty() && iswspace(value.back()))value.pop_back();
+        while(!value.empty() && iswspace(value.front()))value.erase(value.begin());
+        return value;
+    };
+    const std::wstring a=canonical(left),b=canonical(right);
+    return !a.empty() && !b.empty() && _wcsicmp(a.c_str(),b.c_str())==0;
+}
 void RefreshDevicePanel(bool force){
     if(!g_deviceList)return;
     int oldSelection=(int)SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
@@ -248,7 +260,7 @@ void RefreshDevicePanel(bool force){
         if(!ABM_Dlna_DeviceName(i,name,_countof(name)))continue;
         dlnaNames[i]=name;
         auto match=std::find_if(rows.begin(),rows.end(),[&](const StreamReceiverRow &row){
-            return row.castIndex>=0 && _wcsicmp(castNames[(size_t)row.castIndex].c_str(),name)==0;
+            return row.castIndex>=0 && SameReceiverName(castNames[(size_t)row.castIndex],name);
         });
         if(match!=rows.end())match->dlnaIndex=(int)i;
         else rows.push_back({-1,(int)i});
