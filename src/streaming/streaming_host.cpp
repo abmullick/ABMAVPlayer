@@ -47,6 +47,9 @@ const wchar_t *kUrls[5]={
 };
 HWND g_window=nullptr;
 HWND g_mainWindow=nullptr;
+HWND g_infoWindow=nullptr;
+Gdiplus::Bitmap *g_infoPortrait=nullptr;
+bool g_infoAbout=false;
 ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
@@ -181,26 +184,127 @@ void MoveVideoInPlaylist(BOOL next){
     if(FAILED(hr))SetStatus(L"Could not send the playlist command to YouTube.");
 }
 
-void ShowStreamingHelp(){
-    MessageBoxW(g_window,
-        L"STREAMING CENTRE\n\n"
-        L"1. Choose YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the service cards.\n"
-        L"2. Sign in directly with your own provider account. Your session is stored in this Windows user profile.\n"
-        L"3. Use Back, Forward, Reload and Home for browser navigation. Previous/Next are intended for YouTube playlists and mixes.\n"
-        L"4. Select the Fullscreen button beside Home, or use the streaming site's own fullscreen control. The video should enter monitor-level fullscreen when the provider supports it. Press Esc to exit.\n"
-        L"5. Use Open in browser to continue on the provider's normal desktop browser.\n\n"
-        L"Playback, protected content and fullscreen behaviour are controlled by each streaming provider and may vary by service.",
-        L"ABM AV Player - Streaming Help",MB_OK|MB_ICONINFORMATION);
+const wchar_t *kInfoClassName=L"ABMAVPlayer.StreamingInfo";
+void LoadInfoPortrait(){
+    delete g_infoPortrait;g_infoPortrait=nullptr;
+    wchar_t exePath[MAX_PATH]{};
+    DWORD n=GetModuleFileNameW(nullptr,exePath,_countof(exePath));
+    if(!n||n>=_countof(exePath))return;
+    wchar_t *slash=wcsrchr(exePath,L'\\');if(!slash)return;
+    *(slash+1)=L'\0';
+    wchar_t path[MAX_PATH]{};
+    if(SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%sassets\\owner_portrait.jpg",exePath)))
+        g_infoPortrait=Gdiplus::Bitmap::FromFile(path,FALSE);
+    if(g_infoPortrait&&g_infoPortrait->GetLastStatus()!=Gdiplus::Ok){delete g_infoPortrait;g_infoPortrait=nullptr;}
+    if(!g_infoPortrait&&SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%s..\\assets\\owner_portrait.jpg",exePath))){
+        g_infoPortrait=Gdiplus::Bitmap::FromFile(path,FALSE);
+        if(g_infoPortrait&&g_infoPortrait->GetLastStatus()!=Gdiplus::Ok){delete g_infoPortrait;g_infoPortrait=nullptr;}
+    }
 }
-void ShowStreamingAbout(){
-    MessageBoxW(g_window,
-        L"ABM AV PLAYER\nSTREAMING CENTRE\n\n"
-        L"A dedicated WebView2 experience for accessing your streaming services from ABM AV Player.\n\n"
-        L"Sign in directly with each provider. ABM AV Player does not provide streaming subscriptions or host provider content.\n\n"
-        L"Created by Abhisek Basu Mullick\n"
-        L"abmullick@gmail.com",
-        L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
+LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
+    switch(msg){
+    case WM_CREATE:
+        LoadInfoPortrait();
+        return 0;
+    case WM_ERASEBKGND:return 1;
+    case WM_PAINT:{
+        PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
+        FillRectColor(dc,rc,RGBc(8,17,30));
+        RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,RGBc(43,178,181));
+        RECT brand={28,20,rc.right-28,54};
+        Text(dc,L"ABM AV PLAYER",brand,RGBc(244,249,255),21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT subtitle={29,49,rc.right-28,72};
+        Text(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        if(g_infoAbout){
+            RECT photoFrame={28,91,286,349};
+            Rounded(dc,photoFrame,RGBc(18,38,55),10);
+            if(g_infoPortrait){
+                Gdiplus::Graphics graphics(dc);
+                graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+                graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,99,242,242));
+            }else{
+                RECT fallback={36,99,278,341};
+                Rounded(dc,fallback,RGBc(27,143,145),8);
+                Text(dc,L"ABM",fallback,RGBc(245,255,255),42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            }
+            RECT product={322,96,rc.right-28,134};
+            Text(dc,L"ABM AV Player",product,RGBc(246,249,255),22,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creatorLabel={322,151,rc.right-28,173};
+            Text(dc,L"THE CREATOR",creatorLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creator={322,180,rc.right-28,212};
+            Text(dc,L"Abhisek Basu Mullick",creator,RGBc(246,249,255),16,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT role={322,219,rc.right-28,245};
+            Text(dc,L"Founder & Developer",role,RGBc(207,220,235),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT contactLabel={322,263,rc.right-28,284};
+            Text(dc,L"CONTACT",contactLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT email={322,287,rc.right-28,310};
+            Text(dc,L"abmullick@gmail.com",email,RGBc(228,238,249),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT description={322,316,rc.right-28,361};
+            Text(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",description,RGBc(207,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT version={322,382,rc.right-28,404};
+            Text(dc,L"Version 0.6.0   |   © 2026 Abhisek Basu Mullick",version,RGBc(125,157,185),11,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        }else{
+            const int left=32,right=rc.right-32;
+            RECT intro={left,91,right,125};
+            Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,RGBc(221,234,247),14,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            const wchar_t *heads[5]={L"1. CHOOSE A SERVICE",L"2. SIGN IN SECURELY",L"3. NAVIGATION & PLAYBACK",L"4. FULLSCREEN",L"5. OPEN IN BROWSER"};
+            const wchar_t *body[5]={
+                L"Select YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the large service cards.",
+                L"Sign in on the provider's official website using your own account. Browser sessions are stored locally in your Windows profile.",
+                L"Back and Forward navigate browser history. Previous and Next are intended for YouTube playlists and mixes. Reload refreshes the page; Home returns to the Streaming Centre.",
+                L"Use the fullscreen button beside Home, or the provider's own fullscreen control. Fullscreen behaviour depends on the service and WebView2 support. Press Esc to exit.",
+                L"Open in browser launches the current service in your default desktop browser."
+            };
+            int y=143;
+            for(int i=0;i<5;i++){
+                RECT h={left,y,right,y+22};
+                Text(dc,heads[i],h,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                RECT b={left,y+23,right,y+59};
+                Text(dc,body[i],b,RGBc(205,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+                y+=83;
+            }
+            RECT note={left,rc.bottom-57,right,rc.bottom-26};
+            Text(dc,L"ABM AV Player does not host streaming content or provide subscriptions. Playback, protected content and available features are controlled by each provider.",note,RGBc(125,157,185),10,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+        }
+        EndPaint(hwnd,&ps);return 0;
+    }
+    case WM_NCDESTROY:
+        delete g_infoPortrait;g_infoPortrait=nullptr;g_infoWindow=nullptr;
+        break;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
 }
+void ShowStreamingInfo(bool about){
+    if(g_infoWindow&&IsWindow(g_infoWindow)){
+        if(g_infoAbout==about){ShowWindow(g_infoWindow,SW_RESTORE);SetForegroundWindow(g_infoWindow);return;}
+        DestroyWindow(g_infoWindow);
+    }
+    g_infoAbout=about;
+    HINSTANCE instance=GetModuleHandleW(nullptr);
+    static bool registered=false;
+    if(!registered){
+        WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.lpfnWndProc=StreamingInfoProc;wc.hInstance=instance;
+        wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=(HICON)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,0,0,LR_DEFAULTSIZE);
+        wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=kInfoClassName;
+        if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
+        registered=true;
+    }
+    int width=about?720:760,height=about?450:590;
+    RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
+    int x=owner.left+(owner.right-owner.left-width)/2;
+    int y=owner.top+(owner.bottom-owner.top-height)/2;
+    const wchar_t *caption=about?L"About ABM AV Player":L"ABM AV Player - Streaming Help";
+    g_infoWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,kInfoClassName,caption,
+        WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,x,y,width,height,g_window,nullptr,instance,nullptr);
+    if(!g_infoWindow)return;
+    BOOL dark=TRUE;DwmSetWindowAttribute(g_infoWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+    COLORREF captionColor=RGB(10,15,25),borderColor=RGB(46,70,104);
+    DwmSetWindowAttribute(g_infoWindow,DWMWA_CAPTION_COLOR,&captionColor,sizeof(captionColor));
+    DwmSetWindowAttribute(g_infoWindow,DWMWA_BORDER_COLOR,&borderColor,sizeof(borderColor));
+    ShowWindow(g_infoWindow,SW_SHOW);UpdateWindow(g_infoWindow);SetForegroundWindow(g_infoWindow);
+}
+void ShowStreamingHelp(){ShowStreamingInfo(false);}
+void ShowStreamingAbout(){ShowStreamingInfo(true);}
 void RequestProviderFullscreen(){
     if(!g_webView||!g_controller){SetStatus(L"Streaming browser is still starting.");return;}
     if(g_webFullscreen){
