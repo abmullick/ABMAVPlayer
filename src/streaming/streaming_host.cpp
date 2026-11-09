@@ -93,6 +93,9 @@ const wchar_t *kLogoFiles[kServiceCount]={L"youtube.png",L"netflix.png",L"primev
 struct CachedTextFont{int height;int weight;HFONT font;};
 CachedTextFont g_textFonts[24]{};
 
+/* Used by the native device panel before its implementation below. */
+void SetStatus(const wchar_t *message);
+
 void LoadServiceLogos(){
     if(!g_gdiplusToken){
         Gdiplus::GdiplusStartupInput input;
