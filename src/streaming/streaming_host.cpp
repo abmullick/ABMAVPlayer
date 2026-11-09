@@ -57,7 +57,7 @@ ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
-RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{};
+RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
 int g_activeService=-1;
 int g_hoverService=-1;
 int g_hoverControl=-1;
@@ -364,6 +364,41 @@ void RequestProviderFullscreen(){
     if(FAILED(hr))SetStatus(L"Could not request fullscreen from the current page.");
 }
 
+void CastCurrentBrowserVideo(){
+    if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
+    SetStatus(L"Checking whether this page exposes a direct video URL…");
+    HRESULT hr=g_webView->ExecuteScript(
+        L"(()=>{const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2);if(!vs.length)return '';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));const u=vs[0].currentSrc;return encodeURIComponent(u);})()",
+        Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+            [](HRESULT result,LPCWSTR value)->HRESULT{
+                if(FAILED(result)||!value||value[0]!=L'"'){
+                    SetStatus(L"Could not inspect the current page for a video element.");
+                    return S_OK;
+                }
+                char encoded[32768]{};size_t out=0;
+                const wchar_t *p=value+1;
+                while(*p&&*p!=L'"'&&out+1<sizeof(encoded)){
+                    if(*p==L'%'&&p[1]&&p[2]){
+                        auto hex=[](wchar_t c)->int{if(c>=L'0'&&c<=L'9')return c-L'0';if(c>=L'a'&&c<=L'f')return c-L'a'+10;if(c>=L'A'&&c<=L'F')return c-L'A'+10;return -1;};
+                        int hi=hex(p[1]),lo=hex(p[2]);
+                        if(hi<0||lo<0){SetStatus(L"The browser returned an invalid video URL.");return S_OK;}
+                        encoded[out++]=(char)((hi<<4)|lo);p+=3;
+                    }else{
+                        if(*p>0x7f){SetStatus(L"The browser returned an invalid encoded video URL.");return S_OK;}
+                        encoded[out++]=(char)*p++;
+                    }
+                }
+                encoded[out]=0;
+                if(!out){SetStatus(L"No directly addressable HTML5 video was found. DRM and segmented browser streams may not be castable.");return S_OK;}
+                wchar_t url[8192]{};
+                int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,encoded,-1,url,(int)_countof(url));
+                if(chars<=0){SetStatus(L"Could not decode the browser video URL.");return S_OK;}
+                if(ABM_Cast_StreamUrl(url))SetStatus(L"Cast request sent to the selected TV.");
+                else if(g_window)InvalidateRect(g_window,nullptr,FALSE);
+                return S_OK;
+            }).Get());
+    if(FAILED(hr))SetStatus(L"Could not inspect the current page for a video element.");
+}
 void Navigate(int service){
     if(service<0||service>=5)return;
     g_activeService=service;
@@ -435,7 +470,16 @@ void PaintChrome(HWND hwnd){
     HGDIOBJ oldCastBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castRect.left,g_castRect.top,g_castRect.right,g_castRect.bottom,10,10);
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
-    Text(dc,L"Cast to TV",g_castRect,RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Find TVs",g_castRect,RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    g_castVideoRect=RECT{620,15,750,55};
+    Rounded(dc,g_castVideoRect,g_hoverControl==9?RGBc(35,126,111):RGBc(25,91,80),10);
+    HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,g_hoverControl==9?RGBc(113,237,198):RGBc(57,164,132));
+    HGDIOBJ oldVideoPen=SelectObject(dc,videoPen);
+    HGDIOBJ oldVideoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,g_castVideoRect.left,g_castVideoRect.top,g_castVideoRect.right,g_castVideoRect.bottom,10,10);
+    SelectObject(dc,oldVideoBrush);SelectObject(dc,oldVideoPen);DeleteObject(videoPen);
+    Text(dc,L"Cast video",g_castVideoRect,RGBc(226,255,241),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
     Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
@@ -528,6 +572,7 @@ void PaintChrome(HWND hwnd){
         g_hoverControl==6?L"About ABM AV Player":
         g_hoverControl==7?L"Open the current streaming service in your default browser":
         g_hoverControl==8?L"Discover TVs using the main player's Google Cast / network receiver engine":
+        g_hoverControl==9?L"Send a directly addressable HTML5 video URL to the selected TV; DRM and blob streams are not supported":
         g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
     Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?RGBc(173,211,220):RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -709,6 +754,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         else if(PtInRect(&g_aboutRect,pt))control=6;
         else if(PtInRect(&g_externalRect,pt))control=7;
         else if(PtInRect(&g_castRect,pt))control=8;
+        else if(PtInRect(&g_castVideoRect,pt))control=9;
         if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;InvalidateRect(hwnd,nullptr,FALSE);}
         SetCursor((service>=0||control>=0)?LoadCursorW(nullptr,IDC_HAND):LoadCursorW(nullptr,IDC_ARROW));
         return 0;
@@ -733,6 +779,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             else SetStatus(L"The main player window is not available for receiver discovery.");
             return 0;
         }
+        if(PtInRect(&g_castVideoRect,POINT{x,y})){CastCurrentBrowserVideo();return 0;}
         if(PtInRect(&g_externalRect,POINT{x,y})){
             LPWSTR current=nullptr;
             if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
