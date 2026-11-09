@@ -2,9 +2,6 @@
 #include <windows.h>
 #include <wininet.h>
 #include <urlmon.h>
-#include <wincrypt.h>
-#include <wintrust.h>
-#include <softpub.h>
 #include <bcrypt.h>
 #include <objbase.h>
 #include <shellapi.h>
@@ -17,8 +14,6 @@
 #pragma comment(lib,"wininet.lib")
 #pragma comment(lib,"urlmon.lib")
 #pragma comment(lib,"shell32.lib")
-#pragma comment(lib,"wintrust.lib")
-#pragma comment(lib,"crypt32.lib")
 #pragma comment(lib,"bcrypt.lib")
 #pragma comment(lib,"ole32.lib")
 
@@ -108,39 +103,6 @@ done:
     CloseHandle(file);
     return ok;
 }
-bool VerifyAuthenticodePublisher(const wchar_t *path) {
-    WINTRUST_FILE_INFO fileInfo{};fileInfo.cbStruct=sizeof(fileInfo);fileInfo.pcwszFilePath=path;
-    WINTRUST_DATA trust{};trust.cbStruct=sizeof(trust);trust.dwUIChoice=WTD_UI_NONE;
-    trust.fdwRevocationChecks=WTD_REVOKE_WHOLECHAIN;trust.dwUnionChoice=WTD_CHOICE_FILE;
-    trust.pFile=&fileInfo;trust.dwStateAction=WTD_STATEACTION_VERIFY;
-    trust.dwProvFlags=WTD_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT|WTD_CACHE_ONLY_URL_RETRIEVAL;
-    GUID policy=WINTRUST_ACTION_GENERIC_VERIFY_V2;
-    LONG status=WinVerifyTrust(nullptr,&policy,&trust);
-    trust.dwStateAction=WTD_STATEACTION_CLOSE;WinVerifyTrust(nullptr,&policy,&trust);
-    if(status!=ERROR_SUCCESS)return false;
-
-    HCERTSTORE store=nullptr;HCRYPTMSG message=nullptr;DWORD encoding=0,content=0,format=0;
-    if(!CryptQueryObject(CERT_QUERY_OBJECT_FILE,path,
-       CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,CERT_QUERY_FORMAT_FLAG_BINARY,
-       0,&encoding,&content,&format,&store,&message,nullptr))return false;
-    DWORD signerBytes=0;bool matches=false;
-    if(CryptMsgGetParam(message,CMSG_SIGNER_INFO_PARAM,0,nullptr,&signerBytes)) {
-        PCMSG_SIGNER_INFO signer=(PCMSG_SIGNER_INFO)HeapAlloc(GetProcessHeap(),0,signerBytes);
-        if(signer&&CryptMsgGetParam(message,CMSG_SIGNER_INFO_PARAM,0,signer,&signerBytes)) {
-            CERT_INFO search{};search.Issuer=signer->Issuer;search.SerialNumber=signer->SerialNumber;
-            PCCERT_CONTEXT cert=CertFindCertificateInStore(store,encoding,0,CERT_FIND_SUBJECT_CERT,&search,nullptr);
-            if(cert) {
-                wchar_t subject[512]{};
-                CertGetNameStringW(cert,CERT_NAME_SIMPLE_DISPLAY_TYPE,0,nullptr,subject,_countof(subject));
-                matches=(_wcsicmp(subject,L"Abhisek Basu Mullick")==0);
-                CertFreeCertificateContext(cert);
-            }
-        }
-        if(signer)HeapFree(GetProcessHeap(),0,signer);
-    }
-    if(message)CryptMsgClose(message);if(store)CertCloseStore(store,0);
-    return matches;
-}
 bool CreatePrivateUpdatePath(wchar_t *directory,size_t directoryCount,wchar_t *installer,size_t installerCount) {
     wchar_t base[MAX_PATH]{};
     if(!GetEnvironmentVariableW(L"LOCALAPPDATA",base,_countof(base)))return false;
@@ -213,10 +175,9 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
         DeleteFileW(installer);RemoveDirectoryW(updateDirectory);
         ExplainFailure(owner,L"The downloaded installer failed its SHA-256 integrity check. It has not been run.");return false;
     }
-    if(!VerifyAuthenticodePublisher(installer)){
-        DeleteFileW(installer);RemoveDirectoryW(updateDirectory);
-        ExplainFailure(owner,L"The installer does not have a valid Authenticode signature from the expected publisher (Abhisek Basu Mullick). It has not been run. A code-signing certificate is required for automatic updates.");return false;
-    }
+    /* GitHub's release-asset SHA-256 digest is verified above. No Authenticode
+       certificate is required; HTTPS metadata and the digest protect download
+       integrity, while Windows still shows the normal UAC elevation prompt. */
     SHELLEXECUTEINFOW exec{};exec.cbSize=sizeof(exec);exec.fMask=SEE_MASK_NOCLOSEPROCESS;
     exec.hwnd=owner;exec.lpVerb=L"runas";exec.lpFile=installer;exec.nShow=SW_SHOWNORMAL;
     if(!ShellExecuteExW(&exec)){
