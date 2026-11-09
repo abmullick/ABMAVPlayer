@@ -78,6 +78,8 @@ wchar_t g_status[256]=L"Preparing secure browser profile…";
 ULONG_PTR g_gdiplusToken=0;
 Gdiplus::Bitmap *g_serviceLogos[5]{};
 const wchar_t *kLogoFiles[5]={L"youtube.png",L"netflix.png",L"primevideo.png",L"jiohotstar.png",L"sonyliv.png"};
+struct CachedTextFont{int height;int weight;HFONT font;};
+CachedTextFont g_textFonts[24]{};
 
 void LoadServiceLogos(){
     if(!g_gdiplusToken){
@@ -136,12 +138,24 @@ void Rounded(HDC dc,const RECT &r,COLORREF color,int radius){
     RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(b);DeleteObject(p);
 }
+HFONT GetCachedTextFont(int height,int weight){
+    for(auto &entry:g_textFonts)if(entry.font&&entry.height==height&&entry.weight==weight)return entry.font;
+    for(auto &entry:g_textFonts)if(!entry.font){
+        entry.height=height;entry.weight=weight;
+        entry.font=CreateFontW(height,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
+            DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        return entry.font;
+    }
+    return (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+}
+void ReleaseCachedTextFonts(){
+    for(auto &entry:g_textFonts){if(entry.font)DeleteObject(entry.font);entry={};}
+}
 void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weight,UINT flags){
-    HFONT f=CreateFontW(height,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-        DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+    HFONT f=GetCachedTextFont(height,weight);
     HGDIOBJ old=SelectObject(dc,f);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
-    DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);DeleteObject(f);
+    DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
 }
 void SetStatus(const wchar_t *message){
     StringCchCopyW(g_status,_countof(g_status),message?message:L"");
@@ -734,6 +748,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         g_webView.Reset();g_controller.Reset();g_environment.Reset();
         g_webViewRecoveryPending=false;g_webViewRecoveryAttempts=0;
         ReleaseServiceLogos();
+        ReleaseCachedTextFonts();
         if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
         g_mainWindow=nullptr;
