@@ -54,7 +54,11 @@ echo [4/6] Compiling WebView2 streaming host...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /I"%WEBVIEW2_SDK%\build\native\include" /c src\streaming\streaming_host.cpp /Fo:build\streaming_host.obj
 if errorlevel 1 goto build_failed
 
-echo [5/6] Compiling application icon resource...
+echo [5/7] Compiling GitHub Releases updater...
+cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\updater.cpp /Fo:build\updater.obj
+if errorlevel 1 goto build_failed
+
+echo [6/7] Compiling application icon resource...
 where rc >nul 2>nul
 if errorlevel 1 (
   echo Windows Resource Compiler rc.exe not found. Run from the x64 Native Tools Command Prompt.
@@ -63,9 +67,9 @@ if errorlevel 1 (
 rc /nologo /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
-echo [6/6] Linking ABM AV Player...
-cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
-  comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib version.lib ^
+echo [7/7] Linking ABM AV Player...
+cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\updater.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
+  wininet.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
 
