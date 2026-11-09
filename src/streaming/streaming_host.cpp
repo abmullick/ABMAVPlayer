@@ -193,10 +193,10 @@ void LoadInfoPortrait(){
     wchar_t *slash=wcsrchr(exePath,L'\\');if(!slash)return;
     *(slash+1)=L'\0';
     wchar_t path[MAX_PATH]{};
-    if(SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%sassets\\owner_portrait.jpg",exePath)))
+    if(SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%sassets\\owner_portrait.bmp",exePath)))
         g_infoPortrait=Gdiplus::Bitmap::FromFile(path,FALSE);
     if(g_infoPortrait&&g_infoPortrait->GetLastStatus()!=Gdiplus::Ok){delete g_infoPortrait;g_infoPortrait=nullptr;}
-    if(!g_infoPortrait&&SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%s..\\assets\\owner_portrait.jpg",exePath))){
+    if(!g_infoPortrait&&SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%s..\\assets\\owner_portrait.bmp",exePath))){
         g_infoPortrait=Gdiplus::Bitmap::FromFile(path,FALSE);
         if(g_infoPortrait&&g_infoPortrait->GetLastStatus()!=Gdiplus::Ok){delete g_infoPortrait;g_infoPortrait=nullptr;}
     }
