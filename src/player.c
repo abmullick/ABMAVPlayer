@@ -2235,9 +2235,14 @@ static void PaintFullscreenOverlay(HWND hwnd) {
 
     /* High-contrast fullscreen timeline: thick track, distinct played/unplayed
        segments and a large playhead marker so position is visible at a glance. */
-    int64_t len=g_overlayLength;
-    int64_t now=g_lastUiTime>0?g_lastUiTime:0;
-    int pos=len>0?(int)(now*1000/len):0;
+    /* Read the live LibVLC clock. The old overlay used cached globals that
+       were reset on every track change but never refreshed, leaving the
+       fullscreen playhead stuck at the start while compact mode was correct. */
+    int64_t len=(g_player&&g_hasMedia)?libvlc_media_player_get_length(g_player):0;
+    int64_t now=(g_player&&g_hasMedia)?libvlc_media_player_get_time(g_player):0;
+    if(len<=0)len=g_overlayLength;
+    if(now<0)now=0;
+    int pos=len>0?(int)(((double)now/(double)len)*1000.0):0;
     if(pos<0)pos=0;if(pos>1000)pos=1000;
     int timelineLeft=R_SEEK.left;
     int timelineRight=R_SEEK.right;
@@ -2251,11 +2256,16 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     HBRUSH played=CreateSolidBrush(RGB(40,211,185));FillRect(mem,&progress,played);DeleteObject(played);
     /* A dark halo keeps the bright playhead legible over any video frame. */
     HBRUSH halo=CreateSolidBrush(RGB(12,19,28));
-    RECT haloRect={playheadX-9,h-124,playheadX+9,h-98};
+    RECT haloRect={playheadX-10,h-126,playheadX+10,h-96};
     FillRect(mem,&haloRect,halo);DeleteObject(halo);
     HBRUSH head=CreateSolidBrush(RGB(255,255,255));
-    RECT headRect={playheadX-5,h-121,playheadX+5,h-101};
+    RECT headRect={playheadX-5,h-123,playheadX+5,h-99};
     FillRect(mem,&headRect,head);DeleteObject(head);
+    /* Add a fine vertical locator through the track so the position remains
+       easy to distinguish even against the bright played segment. */
+    RECT locator={playheadX-1,h-130,playheadX+1,h-94};
+    HBRUSH locatorBrush=CreateSolidBrush(RGB(255,255,255));
+    FillRect(mem,&locator,locatorBrush);DeleteObject(locatorBrush);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
     RECT et={timelineLeft,h-145,timelineLeft+90,h-124};
     RECT tt={timelineRight-90,h-145,timelineRight,h-124};
@@ -2969,7 +2979,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
                 SetCursor(NULL);
             }
-            /* No periodic layered-window repaint while video decoding is active. */
+            /* Refresh only the small bottom overlay strip at the existing UI
+               tick so the playhead follows playback continuously. */
+            if(g_fullscreenControlsVisible && g_fullscreenOverlay)
+                InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
         } else {
             g_fullscreenMousePosValid = FALSE;
         }
@@ -3255,6 +3268,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ReleaseCapture();return 0;
     }
     case WM_KEYDOWN: {
+        /* Fullscreen Escape has priority over drawer/search/menu shortcuts.
+           Otherwise a stale focus state can consume Escape without restoring
+           the compact player. */
+        if(wp==VK_ESCAPE && g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
@@ -3292,7 +3309,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VK_HOME&&g_hasMedia){libvlc_media_player_set_time(g_player,0);return 0;}
         if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
         if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
-        if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
         if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
     }
