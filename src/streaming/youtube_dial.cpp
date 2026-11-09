@@ -68,7 +68,7 @@ bool HttpRequest(const std::wstring &url,const wchar_t *verb,const std::wstring 
             DWORD status=0,size=sizeof(status);WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&size,WINHTTP_NO_HEADER_INDEX);
             if(statusOut)*statusOut=status;
             if(applicationUrl){wchar_t value[2048]{};DWORD bytes=sizeof(value);if(WinHttpQueryHeaders(request,WINHTTP_QUERY_CUSTOM,L"Application-URL",value,&bytes,WINHTTP_NO_HEADER_INDEX))*applicationUrl=value;}
-            if(response){std::string data;DWORD available=0;while(WinHttpQueryDataAvailable(request,&available)&&available){std::string chunk(available,'\\0');DWORD read=0;if(!WinHttpReadData(request,chunk.data(),available,&read)||!read)break;chunk.resize(read);data+=chunk;if(data.size()>65536)break;}int count=MultiByteToWideChar(CP_UTF8,0,data.data(),(int)data.size(),nullptr,0);if(count>0){response->resize(count);MultiByteToWideChar(CP_UTF8,0,data.data(),(int)data.size(),response->data(),count);}}
+            if(response){std::string data;DWORD available=0;while(WinHttpQueryDataAvailable(request,&available)&&available){std::string chunk(available,'\0');DWORD read=0;if(!WinHttpReadData(request,chunk.data(),available,&read)||!read)break;chunk.resize(read);data+=chunk;if(data.size()>65536)break;}int count=MultiByteToWideChar(CP_UTF8,0,data.data(),(int)data.size(),nullptr,0);if(count>0){response->resize(count);MultiByteToWideChar(CP_UTF8,0,data.data(),(int)data.size(),response->data(),count);}}
             ok=true;
         }
         WinHttpCloseHandle(request);
@@ -90,7 +90,7 @@ void Discover() {
         size_t p=lower.find("\r\nlocation:");if(p==std::string::npos)continue;p+=11;while(p<raw.size()&&(raw[p]==' '||raw[p]=='\t'))++p;
         size_t e=raw.find("\r\n",p);if(e==std::string::npos)continue;
         int chars=MultiByteToWideChar(CP_UTF8,0,raw.data()+p,(int)(e-p),nullptr,0);if(chars<=0)continue;
-        std::wstring location(chars,L'\\0');MultiByteToWideChar(CP_UTF8,0,raw.data()+p,(int)(e-p),location.data(),chars);
+        std::wstring location(chars,L'\0');MultiByteToWideChar(CP_UTF8,0,raw.data()+p,(int)(e-p),location.data(),chars);
         std::wstring xml,app;DWORD status=0;
         if(!HttpRequest(location,L"GET",L"",&xml,&app,&status)||status!=200||app.empty())continue;
         std::wstring name=XmlValue(xml,L"friendlyName");if(name.empty())name=L"YouTube TV";
