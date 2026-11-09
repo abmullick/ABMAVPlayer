@@ -2956,6 +2956,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_hoverButton=hit;
             InvalidateButton(previous);
             InvalidateButton(g_hoverButton);
+            RECT hintStrip={0,0,0,0};GetClientRect(hwnd,&hintStrip);
+            hintStrip.top=hintStrip.bottom-30;
+            InvalidateRect(hwnd,&hintStrip,FALSE);
         }
         if(g_dragPlaylistScroll){
             int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/80:0;
