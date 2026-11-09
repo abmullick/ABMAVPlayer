@@ -16,6 +16,18 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 ## Features
 
+### Streaming Centre — online video services
+
+ABM AV Player includes a built-in, separate browser window for popular streaming services. Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**.
+
+- Launch the official websites for **YouTube, Netflix, Prime Video, JioHotstar and Sony LIV** inside Microsoft Edge WebView2.
+- Sign in directly with your own provider account. The player does not collect, proxy or store your provider passwords.
+- A persistent, per-Windows-user browser profile can retain supported website sign-in sessions between launches.
+- Use the Streaming Centre's browser controls to navigate provider websites; use **Open in browser** if a service does not work in the embedded window.
+- Streaming compatibility is controlled by each provider. DRM, browser restrictions, device certification, region and runtime support can prevent protected playback; a subscription does not guarantee embedded playback.
+
+This is web-based streaming through the providers' official sites, separate from local LibVLC playback and Google Cast output. See [STREAMING.md](STREAMING.md) for setup, privacy and troubleshooting.
+
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
 - Playlist operations: add, play, remove, reorder, clear, load and save M3U playlists.
