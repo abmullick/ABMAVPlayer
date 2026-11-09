@@ -90,6 +90,7 @@ static wchar_t g_trackArtist[256]=L"";
 static wchar_t g_trackAlbum[256]=L"";
 static wchar_t g_trackGenre[256]=L"";
 static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
+static int g_hoverChromeControl=0;
 static BOOL g_dragPlaylistScroll = FALSE;
 static int g_playlistScrollGrabY = 0, g_playlistScrollStart = 0;
 static RECT R_PLAYLIST_SCROLL, R_PLAYLIST_THUMB;
@@ -396,8 +397,8 @@ static void UpdateLayout(HWND hwnd) {
     R_PLAYLIST_SCROLL=(RECT){R_LIST.right-8,R_LIST.top+8,R_LIST.right-3,R_LIST.bottom-8};
     R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
     R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
-    R_MENU_BUTTON=(RECT){w-202,18,w-150,66};
-    R_DRAWER_BUTTON=(RECT){w-138,18,w-20,66};
+    R_MENU_BUTTON=(RECT){w-224,16,w-156,72};
+    R_DRAWER_BUTTON=(RECT){w-144,16,w-20,72};
     R_MENU_PANEL=(RECT){w-376,74,w-20,74+690};
     /* Keep the complete command menu inside the client area, including at the
        minimum supported window height. Rows share the remaining space evenly. */
@@ -422,13 +423,13 @@ static void UpdateLayout(HWND hwnd) {
     }
     PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
-    R_SEEK=(RECT){left+38,h-151,R_VIDEO.right-10,h-147};
+    R_SEEK=(RECT){left+38,h-175,R_VIDEO.right-10,h-171};
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
-    R_PREV=(RECT){dockLeft+368,h-88,dockLeft+416,h-40};
-    R_PLAY=(RECT){dockLeft+440,h-101,dockLeft+504,h-37};
-    R_NEXT=(RECT){dockLeft+528,h-88,dockLeft+576,h-40};
-    R_STOP=(RECT){dockLeft+598,h-84,dockLeft+644,h-38};
-    R_OPEN=(RECT){left+8,h-94,left+142,h-48};
+    R_PREV=(RECT){dockLeft+366,h-112,dockLeft+422,h-56};
+    R_PLAY=(RECT){dockLeft+438,h-126,dockLeft+510,h-54};
+    R_NEXT=(RECT){dockLeft+526,h-112,dockLeft+582,h-56};
+    R_STOP=(RECT){dockLeft+596,h-108,dockLeft+652,h-52};
+    R_OPEN=(RECT){left+8,h-118,left+158,h-62};
     /* All drawer hit targets are assigned in the collection-first layout above. */
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
 }
@@ -604,7 +605,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,RGB(220,235,252),2);
     RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
     Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT status={client.right-520,27,client.right-282,63};
+    RECT status={client.right-540,26,client.right-300,64};
     Panel(dc,status,RGB(12,24,39),RGB(53,116,143),18);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
@@ -747,11 +748,11 @@ static void DrawUI(HDC dc,RECT client) {
     RECT halo={thumb-10,R_SEEK.top-10,thumb+10,R_SEEK.bottom+10};RoundBox(dc,halo,RGB(36,66,104),12);
     RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};RoundBox(dc,dot,RGB(235,244,255),10);
     wchar_t t1[24],t2[24],times[64];FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);swprintf_s(times,64,L"%s  /  %s",t1,t2);
-    RECT timeR={24,client.bottom-44,180,client.bottom-20};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT timeR={24,client.bottom-68,180,client.bottom-44};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
-    RECT dock={dockLeft,client.bottom-120,dockLeft+720,client.bottom-18};
+    RECT dock={dockLeft,client.bottom-144,dockLeft+720,client.bottom-42};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
     RoundBox(dc,dockShadow,RGB(4,8,12),34);
     GradientRound(dc,dock,RGB(17,31,40),RGB(20,29,39),30);
@@ -771,12 +772,12 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
         DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
     }
-    RECT nowLabel={miniArt.right+14,dock.top+13,dock.left+346,dock.top+34};
+    RECT nowLabel={miniArt.right+14,dock.top+10,dock.left+346,dock.top+32};
     Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(111,194,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowTitle={miniArt.right+14,dock.top+34,dock.left+346,dock.top+61};
+    RECT nowTitle={miniArt.right+14,dock.top+32,dock.left+346,dock.top+58};
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
     Txt(dc,dockTitle,nowTitle,RGB(245,248,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-8};
+    RECT nowMeta={miniArt.right+14,dock.top+58,dock.left+346,dock.bottom-8};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,RGB(151,174,199),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
     Fill(dc,transportDivider,RGB(45,68,71));
@@ -1027,6 +1028,23 @@ static void DrawUI(HDC dc,RECT client) {
 
     }
     } /* End permanent playback surface block. */
+
+    /* Persistent contextual toolbar strip. Its hit target descriptions are
+       concise and change only when the pointer enters a real command. */
+    RECT commandStrip={0,client.bottom-30,client.right,client.bottom};
+    GradientRect(dc,commandStrip,RGB(9,19,31),RGB(7,13,23));
+    Fill(dc,(RECT){0,client.bottom-30,client.right,client.bottom-29},RGB(42,75,91));
+    const wchar_t *commandHint=g_hoverChromeControl==1?L"COMMAND CENTRE  •  Browse playback, audio, library, streaming and application commands":
+        g_hoverChromeControl==2?L"MEDIA LIBRARY  •  Open your queue, browse files, search media and choose a playback device":
+        g_hoverButton==HIT_OPEN?L"ADD MEDIA  •  Choose audio or video files to play":
+        g_hoverButton==HIT_PLAY?L"PLAY / PAUSE  •  Start or pause the current selection":
+        g_hoverButton==HIT_PREV?L"PREVIOUS  •  Play the previous item in the queue":
+        g_hoverButton==HIT_NEXT?L"NEXT  •  Play the next item in the queue":
+        g_hoverButton==HIT_STOP?L"STOP  •  Stop current playback":
+        g_hoverButton==HIT_SCAN?L"DISCOVER DEVICES  •  Search your network for compatible receivers":
+        g_statusText[0]?g_statusText:L"ABM AV PLAYER  •  Capture the feeling. Relive every moment.";
+    RECT hint={22,client.bottom-28,client.right-18,client.bottom-3};
+    Txt(dc,commandHint,hint,RGB(159,190,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Bottom-edge branding removed: playback and volume surfaces own this area. */
 
@@ -2926,6 +2944,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_UPDATENOW);
             }
         }
+        int chrome=Inside(R_MENU_BUTTON,mx,my)?1:(Inside(R_DRAWER_BUTTON,mx,my)?2:0);
+        if(chrome!=g_hoverChromeControl){g_hoverChromeControl=chrome;InvalidateRect(hwnd,NULL,FALSE);}
         if(Inside(R_OPEN,mx,my))hit=HIT_OPEN;else if(Inside(R_SCAN,mx,my))hit=HIT_SCAN;
         else if(Inside(R_PLAY,mx,my))hit=HIT_PLAY;else if(Inside(R_STOP,mx,my))hit=HIT_STOP;
         else if(Inside(R_PREV,mx,my))hit=HIT_PREV;else if(Inside(R_NEXT,mx,my))hit=HIT_NEXT;
@@ -2959,6 +2979,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     InvalidateRect(hwnd,&R_VOLUME,FALSE);
             }
         }
+        SetCursor((hit!=HIT_NONE||chrome!=0)?LoadCursorW(NULL,IDC_HAND):LoadCursorW(NULL,IDC_ARROW));
         return 0;
     }
     case WM_SETCURSOR:
@@ -2969,6 +2990,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (g_fullscreen && g_fullscreenControlsVisible) {
             SetCursor(LoadCursorW(NULL,IDC_ARROW));
             return TRUE;
+        }
+        if(!g_fullscreen){POINT pt;GetCursorPos(&pt);ScreenToClient(hwnd,&pt);
+            if(Inside(R_MENU_BUTTON,pt.x,pt.y)||Inside(R_DRAWER_BUTTON,pt.x,pt.y)||
+               Inside(R_OPEN,pt.x,pt.y)||Inside(R_PLAY,pt.x,pt.y)||Inside(R_STOP,pt.x,pt.y)||
+               Inside(R_PREV,pt.x,pt.y)||Inside(R_NEXT,pt.x,pt.y)||Inside(R_SCAN,pt.x,pt.y)){
+                SetCursor(LoadCursorW(NULL,IDC_HAND));return TRUE;
+            }
         }
         break;
     case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;g_dragPlaylistScroll=FALSE;ReleaseCapture();return 0;
