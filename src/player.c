@@ -134,6 +134,9 @@ static int g_hoverPlaylistIndex = -1;
 static BOOL g_drawerSettingsOpen = FALSE;
 static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
+/* Suppress intermediate WM_SIZE layout while Win32 restores fullscreen placement.
+   LibVLC's child HWND must be resized only once after the transition completes. */
+static BOOL g_fullscreenTransition = FALSE;
 static BOOL g_fullscreenControlsVisible = TRUE;
 static DWORD g_fullscreenLastInputTick = 0;
 static POINT g_fullscreenLastMousePos = {0,0};
@@ -2366,6 +2369,8 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
 }
 
 static void ToggleFullscreen(HWND hwnd) {
+    g_fullscreenTransition = TRUE;
+
     /* Hide the VLC child only when entering fullscreen. On exit, leave the
        renderer alive and let PositionVideoWindow move it once to the restored
        client rectangle; hiding and showing the child during restore can stall
@@ -2408,6 +2413,11 @@ static void ToggleFullscreen(HWND hwnd) {
         ShowWindow(hwnd,SW_RESTORE);
         ShowWindow(g_renderers,SW_SHOW);
     }
+
+    /* Recompute layout once. WM_SIZE is suppressed during SetWindowPlacement /
+       SetWindowPos above; otherwise Windows invokes UpdateLayout synchronously
+       during restoration and resizes the LibVLC child before this final pass. */
+    g_fullscreenTransition = FALSE;
 
     /* Recompute layout once. PositionVideoWindow owns the single required
        LibVLC child move/show operation; the previous duplicate SetWindowPos,
@@ -2889,8 +2899,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_SIZE: {
-        UpdateLayout(hwnd);
-        if(wp!=SIZE_MINIMIZED)ABM_D2D_Resize(&g_ui,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
+        /* SetWindowPlacement/SetWindowPos generate intermediate size messages
+           during fullscreen transitions. Do not let those messages resize
+           LibVLC's video child multiple times while playback is active. */
+        if(!g_fullscreenTransition) {
+            UpdateLayout(hwnd);
+            if(wp!=SIZE_MINIMIZED)ABM_D2D_Resize(&g_ui,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
+        }
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=1000; mi->ptMinTrackSize.y=650; return 0; }
