@@ -1366,6 +1366,55 @@ void ABM_Cast_ShowPicker(HWND owner) {
     ShowWindow(g_main,SW_RESTORE);
     SetForegroundWindow(g_main);
 }
+/* Cast a directly-addressable browser video URL through LibVLC.
+   This deliberately rejects blob:, data:, file: and non-HTTP(S) sources.
+   DRM/MSE pages generally do not expose a reusable direct URL. */
+BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
+    if(!g_main || !IsWindow(g_main) || !url)return FALSE;
+    size_t length=wcslen(url);
+    if(length<9 || length>=8192 ||
+       (_wcsnicmp(url,L"https://",8)!=0 && _wcsnicmp(url,L"http://",7)!=0)){
+        SetStatus(L"This page does not expose a directly castable HTTP(S) video URL. DRM, blob and segmented browser streams are not supported.");
+        return FALSE;
+    }
+    for(size_t i=0;i<length;i++)if(url[i]<0x20 || url[i]==L'\\' || url[i]==L'"' || url[i]==L'<' || url[i]==L'>'){
+        SetStatus(L"The browser returned an invalid media URL.");
+        return FALSE;
+    }
+    if(!g_selectedRenderer){
+        SetStatus(L"Select a TV in Playback Output first, then choose Cast video again in Streaming Centre.");
+        ABM_Cast_ShowPicker(g_main);
+        return FALSE;
+    }
+    char *utf8=(char*)malloc(length*4+1);
+    if(!utf8)return FALSE;
+    int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,url,-1,utf8,(int)(length*4+1),NULL,NULL);
+    if(bytes<=0){free(utf8);SetStatus(L"Could not encode the browser video URL.");return FALSE;}
+    libvlc_media_t *media=libvlc_media_new_location(g_vlc,utf8);
+    free(utf8);
+    if(!media){SetStatus(L"LibVLC could not open the browser video URL.");return FALSE;}
+    libvlc_media_player_stop(g_player);
+    if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
+        libvlc_media_release(media);
+        g_rendererApplied=FALSE;
+        SetStatus(L"The selected receiver rejected the browser video stream.");
+        return FALSE;
+    }
+    g_rendererApplied=TRUE;
+    ResetArtwork();
+    libvlc_media_player_set_media(g_player,media);
+    int result=libvlc_media_player_play(g_player);
+    libvlc_media_release(media);
+    if(result!=0){
+        g_hasMedia=FALSE;g_current=-1;g_pendingResume=FALSE;
+        SetStatus(L"The receiver could not start this direct video URL. The player did not fall back to local playback.");
+        return FALSE;
+    }
+    g_hasMedia=FALSE;g_current=-1;g_pendingResume=FALSE;g_pendingResumeTicks=0;
+    SetStatus(L"Sending the direct browser video URL to the selected receiver…");
+    InvalidateRect(g_main,NULL,FALSE);
+    return TRUE;
+}
 static BOOL EnsureDataDirectory(void) {
     if(g_dataDir[0])return TRUE;
     wchar_t base[PATH_CAP];
