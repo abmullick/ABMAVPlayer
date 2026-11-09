@@ -174,12 +174,13 @@ void LayoutDevicePanel(){
     int x=rc.right-500;if(x<12)x=12;
     int y=64;
     SetWindowPos(g_devicePanel,HWND_TOP,x,y,486,184,SWP_NOACTIVATE|SWP_SHOWWINDOW);
-    SetWindowPos(g_deviceTitle,nullptr,x+14,y+9,450,22,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceHint,nullptr,x+14,y+31,450,18,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceList,nullptr,x+14,y+54,290,116,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceRefresh,nullptr,x+314,y+54,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceSelect,nullptr,x+314,y+94,156,32,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+314,y+138,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
+    /* Controls are children of the panel, positioned in panel-local coordinates. */
+    SetWindowPos(g_deviceTitle,nullptr,14,9,450,22,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,14,31,450,18,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,14,54,290,116,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,314,54,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,314,94,156,32,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,314,138,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 void RefreshDevicePanel(bool force){
     if(!g_deviceList)return;
@@ -205,23 +206,23 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_BLACKRECT,0,0,486,184,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_BLACKRECT,0,0,486,184,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",
-        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
     g_deviceRefresh=CreateWindowExW(0,L"BUTTON",L"Refresh devices",
-        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_REFRESH,GetModuleHandleW(nullptr),nullptr);
     g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
-        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_SELECT,GetModuleHandleW(nullptr),nullptr);
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
-        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
     HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
     HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
@@ -499,6 +500,11 @@ void RequestProviderFullscreen(){
 
 void CastCurrentBrowserVideo(){
     if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
+    if(g_streamSelectedIndex<0){
+        ShowDevicePanel();
+        SetStatus(L"Select a receiver in this Streaming Centre panel first. The main player will not be opened.");
+        return;
+    }
     SetStatus(L"Checking whether this page exposes a direct video URL…");
     HRESULT hr=g_webView->ExecuteScript(
         L"(()=>{const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2);if(!vs.length)return '';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));const u=vs[0].currentSrc;return encodeURIComponent(u);})()",
