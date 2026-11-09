@@ -57,7 +57,7 @@ ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
-RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{};
+RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{};
 int g_activeService=-1;
 int g_hoverService=-1;
 int g_hoverControl=-1;
@@ -428,6 +428,15 @@ void PaintChrome(HWND hwnd){
     Rounded(dc,g_aboutRect,g_hoverControl==6?RGBc(36,75,94):RGBc(20,42,60),9);
     Text(dc,L"About",g_aboutRect,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
+    g_castRect=RECT{482,15,612,55};
+    Rounded(dc,g_castRect,g_hoverControl==8?RGBc(34,112,112):RGBc(24,75,83),10);
+    HPEN castPen=CreatePen(PS_SOLID,g_hoverControl==8?2:1,g_hoverControl==8?RGBc(93,225,207):RGBc(48,137,137));
+    HGDIOBJ oldCastPen=SelectObject(dc,castPen);
+    HGDIOBJ oldCastBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,g_castRect.left,g_castRect.top,g_castRect.right,g_castRect.bottom,10,10);
+    SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
+    Text(dc,L"Cast to TV",g_castRect,RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
     g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
     Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
     Text(dc,L"Open in browser",g_externalRect,RGBc(183,235,229),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -518,6 +527,7 @@ void PaintChrome(HWND hwnd){
         g_hoverControl==5?L"Open Streaming Centre help":
         g_hoverControl==6?L"About ABM AV Player":
         g_hoverControl==7?L"Open the current streaming service in your default browser":
+        g_hoverControl==8?L"Discover TVs using the main player's Google Cast / network receiver engine":
         g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
     Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?RGBc(173,211,220):RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -698,6 +708,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         else if(PtInRect(&g_helpRect,pt))control=5;
         else if(PtInRect(&g_aboutRect,pt))control=6;
         else if(PtInRect(&g_externalRect,pt))control=7;
+        else if(PtInRect(&g_castRect,pt))control=8;
         if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;InvalidateRect(hwnd,nullptr,FALSE);}
         SetCursor((service>=0||control>=0)?LoadCursorW(nullptr,IDC_HAND):LoadCursorW(nullptr,IDC_ARROW));
         return 0;
@@ -716,6 +727,12 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(PtInRect(&g_fullscreenRect,POINT{x,y})){RequestProviderFullscreen();return 0;}
         if(PtInRect(&g_helpRect,POINT{x,y})){ShowStreamingHelp();return 0;}
         if(PtInRect(&g_aboutRect,POINT{x,y})){ShowStreamingAbout();return 0;}
+        if(PtInRect(&g_castRect,POINT{x,y})){
+            SetStatus(L"Opening the shared Google Cast and network receiver picker in ABM AV Player…");
+            if(g_mainWindow&&IsWindow(g_mainWindow)){ABM_Cast_ShowPicker(g_mainWindow);}
+            else SetStatus(L"The main player window is not available for receiver discovery.");
+            return 0;
+        }
         if(PtInRect(&g_externalRect,POINT{x,y})){
             LPWSTR current=nullptr;
             if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
