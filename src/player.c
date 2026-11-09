@@ -1528,9 +1528,83 @@ void ABM_Cast_ShowPicker(HWND owner) {
     ShowWindow(g_main,SW_RESTORE);
     SetForegroundWindow(g_main);
 }
+/* Resolve and reject local/private destinations before handing a browser URL
+   to LibVLC. This intentionally does not disable redirects: providers commonly
+   use CDN redirects, and LibVLC must retain that behavior for compatibility. */
+static BOOL CastAddressIsPublic(const struct addrinfoW *entry) {
+    if(entry->ai_family==AF_INET && entry->ai_addrlen>=sizeof(struct sockaddr_in)) {
+        const unsigned char *a=(const unsigned char *)&((const struct sockaddr_in *)entry->ai_addr)->sin_addr;
+        if(a[0]==0 || a[0]==10 || a[0]==127 || a[0]>=224 ||
+           (a[0]==100&&a[1]>=64&&a[1]<=127) ||
+           (a[0]==169&&a[1]==254) ||
+           (a[0]==172&&a[1]>=16&&a[1]<=31) ||
+           (a[0]==192&&(a[1]==0||a[1]==168)) ||
+           (a[0]==198&&(a[1]==18||a[1]==19||a[1]==51)) ||
+           (a[0]==203&&a[1]==0&&a[2]==113)) return FALSE;
+        return TRUE;
+    }
+    if(entry->ai_family==AF_INET6 && entry->ai_addrlen>=sizeof(struct sockaddr_in6)) {
+        const unsigned char *a=(const unsigned char *)&((const struct sockaddr_in6 *)entry->ai_addr)->sin6_addr;
+        static const unsigned char zero[16]={0};
+        static const unsigned char loopback[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+        if(memcmp(a,zero,16)==0 || memcmp(a,loopback,16)==0 ||
+           (a[0]&0xfe)==0xfc || (a[0]==0xfe&&(a[1]&0xc0)==0x80) || a[0]==0xff)
+            return FALSE;
+        /* IPv4-mapped IPv6 addresses must pass the IPv4 policy too. */
+        if(a[0]==0&&a[1]==0&&a[2]==0&&a[3]==0&&a[4]==0&&a[5]==0&&
+           a[6]==0&&a[7]==0&&a[8]==0&&a[9]==0&&a[10]==0xff&&a[11]==0xff) {
+            unsigned char v4[4]={a[12],a[13],a[14],a[15]};
+            if(v4[0]==0||v4[0]==10||v4[0]==127||v4[0]>=224||
+               (v4[0]==100&&v4[1]>=64&&v4[1]<=127)||
+               (v4[0]==169&&v4[1]==254)||
+               (v4[0]==172&&v4[1]>=16&&v4[1]<=31)||
+               (v4[0]==192&&(v4[1]==0||v4[1]==168))||
+               (v4[0]==198&&(v4[1]==18||v4[1]==19||v4[1]==51))||
+               (v4[0]==203&&v4[1]==0&&v4[2]==113)) return FALSE;
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+static BOOL CastUrlDestinationIsPublic(const wchar_t *url) {
+    URL_COMPONENTSW parts={0};
+    wchar_t host[256]={0};
+    struct addrinfoW hints={0},*addresses=NULL,*it;
+    BOOL valid=FALSE,haveAddress=FALSE;
+    parts.dwStructSize=sizeof(parts);
+    parts.dwSchemeLength=(DWORD)-1;
+    parts.dwHostNameLength=(DWORD)-1;
+    parts.dwUserNameLength=(DWORD)-1;
+    parts.dwPasswordLength=(DWORD)-1;
+    if(!WinHttpCrackUrl(url,0,0,&parts) ||
+       (parts.nScheme!=INTERNET_SCHEME_HTTP&&parts.nScheme!=INTERNET_SCHEME_HTTPS) ||
+       parts.dwHostNameLength==0 || parts.dwHostNameLength>=_countof(host) ||
+       parts.dwUserNameLength!=0 || parts.dwPasswordLength!=0) return FALSE;
+    wcsncpy_s(host,_countof(host),parts.lpszHostName,parts.dwHostNameLength);
+    /* A trailing DNS root dot does not make a local name public. */
+    size_t n=wcslen(host);
+    while(n&&host[n-1]==L'.')host[--n]=0;
+    if(!n || wcschr(host,L'%') || wcschr(host,L'/') || wcschr(host,L'\\') ||
+       wcschr(host,L'@') || !_wcsicmp(host,L"localhost") ||
+       !_wcsicmp(host,L"localhost.localdomain") ||
+       (n>=10&&_wcsicmp(host+n-10,L".localhost")==0) ||
+       (n>=5&&_wcsicmp(host+n-5,L".local")==0) ||
+       !wcschr(host,L'.')) return FALSE;
+    hints.ai_family=AF_UNSPEC;
+    hints.ai_socktype=SOCK_STREAM;
+    if(GetAddrInfoW(host,NULL,&hints,&addresses)!=0 || !addresses)return FALSE;
+    valid=TRUE;
+    for(it=addresses;it;it=it->ai_next) {
+        if(it->ai_family!=AF_INET&&it->ai_family!=AF_INET6)continue;
+        haveAddress=TRUE;
+        if(!CastAddressIsPublic(it)){valid=FALSE;break;}
+    }
+    FreeAddrInfoW(addresses);
+    return valid&&haveAddress;
+}
 /* Cast a directly-addressable browser video URL through LibVLC.
-   This deliberately rejects blob:, data:, file: and non-HTTP(S) sources.
-   DRM/MSE pages generally do not expose a reusable direct URL. */
+   Direct HTTP(S) URLs remain supported; DRM/MSE pages generally do not
+   expose a reusable direct URL. */
 BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
     if(!g_main || !IsWindow(g_main) || !url)return FALSE;
     size_t length=wcslen(url);
@@ -1541,6 +1615,10 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
     }
     for(size_t i=0;i<length;i++)if(url[i]<0x20 || url[i]==L'\\' || url[i]==L'"' || url[i]==L'<' || url[i]==L'>'){
         SetStatus(L"The browser returned an invalid media URL.");
+        return FALSE;
+    }
+    if(!CastUrlDestinationIsPublic(url)){
+        SetStatus(L"Cast blocked this URL because its destination is local, private, malformed or could not be safely resolved.");
         return FALSE;
     }
     if(!g_selectedRenderer){
