@@ -397,7 +397,7 @@ static void UpdateLayout(HWND hwnd) {
     R_PLAYLIST_SCROLL=(RECT){R_LIST.right-8,R_LIST.top+8,R_LIST.right-3,R_LIST.bottom-8};
     R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
     R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
-    R_MENU_BUTTON=(RECT){w-224,16,w-156,72};
+    R_MENU_BUTTON=(RECT){w-244,16,w-156,72};
     R_DRAWER_BUTTON=(RECT){w-144,16,w-20,72};
     R_MENU_PANEL=(RECT){w-376,74,w-20,74+690};
     /* Keep the complete command menu inside the client area, including at the
@@ -598,6 +598,8 @@ static void DrawUI(HDC dc,RECT client) {
     RoundBox(dc,menuBtn,g_menuOpen?RGB(28,75,91):Blend(RGB(15,27,43),RGB(29,53,70),menuHot?100:0),13);
     ABM_D2D_StrokeRound(&g_ui,(float)menuBtn.left,(float)menuBtn.top,(float)menuBtn.right,(float)menuBtn.bottom,13.0f,menuHot?RGB(84,147,218):RGB(46,69,99),1.0f);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
+    RECT menuLabel={menuBtn.left+39,menuBtn.top+3,menuBtn.right-7,menuBtn.bottom-3};
+    Txt(dc,L"MENU",menuLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT drawerBtn=R_DRAWER_BUTTON;
     Panel(dc,drawerBtn,g_drawerOpen?RGB(32,78,132):Blend(RGB(17,29,47),RGB(36,57,84),drawerHot?100:0),g_drawerOpen?RGB(92,165,242):(drawerHot?RGB(80,132,191):RGB(47,69,98)),15);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+15,drawerBtn.left+29,drawerBtn.top+15,RGB(220,235,252),2);
