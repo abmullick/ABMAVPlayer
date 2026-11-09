@@ -1355,7 +1355,7 @@ static void StopDiscovery(void) {
 /* Called by the Streaming Centre so it can reuse the main player's
    existing LibVLC renderer-discovery and receiver-selection workflow. */
 void ABM_Cast_ShowPicker(HWND owner) {
-    if(!g_main || !IsWindow(g_main))return;
+    if(!g_main || !IsWindow(g_main) || (owner && owner!=g_main))return;
     g_drawerOpen=TRUE;
     g_drawerProgress=100;
     g_drawerSettingsOpen=TRUE;
