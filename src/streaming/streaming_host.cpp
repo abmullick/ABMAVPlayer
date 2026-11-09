@@ -968,6 +968,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_COMMAND:{
         switch(LOWORD(wp)){
         case ID_STREAM_DEVICE_REFRESH:
+            ABM_Cast_StreamDiscoveryStop();g_streamSelectedIndex=-1;
             ABM_Cast_StreamDiscoveryStart();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
         case ID_STREAM_DEVICE_SELECT:{
