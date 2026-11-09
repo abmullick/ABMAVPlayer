@@ -73,6 +73,37 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     HGDIOBJ old=SelectObject(dc,f);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);DeleteObject(f);
 }
+void DrawServiceIcon(HDC dc,int service,const RECT &button,bool active){
+    const int x=button.left+10, y=button.top+8;
+    const int w=20, h=18;
+    if(service==0){ // YouTube play mark
+        RECT r={x,y+1,x+w,y+h-1};
+        Rounded(dc,r,RGBc(255,0,0),5);
+        POINT tri[3]={{x+7,y+4},{x+7,y+14},{x+15,y+9}};
+        HBRUSH b=CreateSolidBrush(RGB(255,255,255));HPEN p=CreatePen(PS_SOLID,1,RGB(255,255,255));
+        HGDIOBJ ob=SelectObject(dc,b),op=SelectObject(dc,p);Polygon(dc,tri,3);
+        SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(b);DeleteObject(p);
+    }else if(service==1){ // Netflix red N
+        HFONT f=CreateFontW(-23,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Arial");
+        HGDIOBJ old=SelectObject(dc,f);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(229,9,20));
+        RECT r={x,y-3,x+w+2,y+h+4};DrawTextW(dc,L"N",-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,old);DeleteObject(f);
+    }else if(service==2){ // Prime Video wordmark and smile
+        RECT r={x-2,y-2,x+30,y+12};
+        Text(dc,L"prime",r,RGBc(0,168,225),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        HPEN p=CreatePen(PS_SOLID,2,RGB(0,168,225));HGDIOBJ old=SelectObject(dc,p);
+        Arc(dc,x+1,y+6,x+21,y+19, x+2,y+9,x+20,y+9);
+        SelectObject(dc,old);DeleteObject(p);
+    }else if(service==3){ // JioHotstar H mark
+        RECT r={x,y,x+w,y+h};Rounded(dc,r,RGBc(91,65,185),5);
+        Text(dc,L"H",r,RGBc(255,255,255),15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }else if(service==4){ // Sony LIV mark
+        RECT r={x,y,x+w,y+h};Rounded(dc,r,RGBc(105,47,174),5);
+        Text(dc,L"S",r,RGBc(255,255,255),14,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
+    (void)active;
+}
 void SetStatus(const wchar_t *message){
     StringCchCopyW(g_status,_countof(g_status),message?message:L"");
     if(g_window)InvalidateRect(g_window,nullptr,FALSE);
@@ -137,9 +168,10 @@ void PaintChrome(HWND hwnd){
             serviceLeft+i*(serviceW+gap)+serviceW,serviceY+serviceH};
         bool active=(i==g_activeService);
         Rounded(dc,g_serviceRects[i],active?RGBc(27,104,103):RGBc(20,38,56),9);
-        RECT label=g_serviceRects[i];label.left+=5;label.right-=5;
+        DrawServiceIcon(dc,i,g_serviceRects[i],active);
+        RECT label=g_serviceRects[i];label.left+=35;label.right-=5;
         Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(185,205,222),
-            12,active?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            11,active?700:600,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
     int right=rc.right-22;
     g_homeRect=(RECT){right-42,73,right-4,105};right-=50;
