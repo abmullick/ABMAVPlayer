@@ -88,9 +88,11 @@ bool VerifySha256(const wchar_t *path,const wchar_t *expected) {
     object=(PUCHAR)HeapAlloc(GetProcessHeap(),0,objectSize);if(!object)goto done;
     if(BCryptCreateHash(algorithm,&hash,object,objectSize,nullptr,0,0)<0)goto done;
     { BYTE buffer[65536];DWORD got=0;
-      while(ReadFile(file,buffer,sizeof(buffer),&got,nullptr)&&got)
-        if(BCryptHashData(hash,buffer,got,0)<0)goto done;
-      if(GetLastError()!=ERROR_HANDLE_EOF) { /* ReadFile may end with success and zero bytes. */ }
+      for(;;) {
+          if(!ReadFile(file,buffer,sizeof(buffer),&got,nullptr))goto done;
+          if(got==0)break;
+          if(BCryptHashData(hash,buffer,got,0)<0)goto done;
+      }
     }
     if(BCryptFinishHash(hash,digest,sizeof(digest),0)<0)goto done;
     for(size_t i=0;i<32;i++) {
@@ -144,12 +146,9 @@ bool CreatePrivateUpdatePath(wchar_t *directory,size_t directoryCount,wchar_t *i
     if(!GetEnvironmentVariableW(L"LOCALAPPDATA",base,_countof(base)))return false;
     GUID id{};if(CoCreateGuid(&id)!=S_OK)return false;
     wchar_t suffix[64]{};
-    if(FAILED(StringCchPrintfW(suffix,_countof(suffix),L"\\ABMAVPlayer\\Updates\\{%08lX-%04X-%04X-%04X-%012llX}",
-       id.Data1,id.Data2,id.Data3,
-       (id.Data4[0]<<8)|id.Data4[1],
-       ((unsigned long long)id.Data4[2]<<40)|((unsigned long long)id.Data4[3]<<32)|
-       ((unsigned long long)id.Data4[4]<<24)|((unsigned long long)id.Data4[5]<<16)|
-       ((unsigned long long)id.Data4[6]<<8)|id.Data4[7])))return false;
+    if(FAILED(StringCchPrintfW(suffix,_countof(suffix),L"\\ABMAVPlayer-Update-{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+       id.Data1,id.Data2,id.Data3,id.Data4[0],id.Data4[1],id.Data4[2],id.Data4[3],
+       id.Data4[4],id.Data4[5],id.Data4[6],id.Data4[7])))return false;
     if(FAILED(StringCchPrintfW(directory,directoryCount,L"%s%s",base,suffix)))return false;
     if(!CreateDirectoryW(directory,nullptr))return false;
     return SUCCEEDED(StringCchPrintfW(installer,installerCount,L"%s\\%s",directory,kInstallerName));
