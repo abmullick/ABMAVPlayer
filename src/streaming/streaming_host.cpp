@@ -4,6 +4,7 @@
 #include <objbase.h>
 #include <shellapi.h>
 #include <wchar.h>
+#include <string>
 #include <dwmapi.h>
 #include <shlobj.h>
 #include <strsafe.h>
@@ -503,6 +504,7 @@ void PaintChrome(HWND hwnd){
     }
     EndPaint(hwnd,&ps);
 }
+void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller);
 void CreateWebViewController(){
     if(!g_environment||!g_window||!IsWindow(g_window))return;
     HRESULT hr=g_environment->CreateCoreWebView2Controller(g_window,
