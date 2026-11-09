@@ -3,6 +3,10 @@
 #include <windowsx.h>
 #include <objbase.h>
 #include <shellapi.h>
+#include <wininet.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <cwctype>
 #include <wchar.h>
 #include <string>
 #include <dwmapi.h>
@@ -192,6 +196,45 @@ void SetPlatformFullscreen(BOOL enabled){
         LayoutBrowser();InvalidateRect(g_window,nullptr,FALSE);
     }
 }
+/* Web content is untrusted. Permit HTTPS navigation only and reject
+   loopback/private destinations; streaming providers can still use their
+   HTTPS login, CDN and playback subdomains. */
+bool IsSafeStreamingUrl(const wchar_t *url) {
+    if(!url || !url[0] || wcslen(url)>8192)return false;
+    URL_COMPONENTSW parts{};parts.dwStructSize=sizeof(parts);
+    parts.dwSchemeLength=(DWORD)-1;parts.dwHostNameLength=(DWORD)-1;
+    parts.dwUserNameLength=(DWORD)-1;parts.dwPasswordLength=(DWORD)-1;
+    if(!InternetCrackUrlW(url,0,0,&parts) || parts.nScheme!=INTERNET_SCHEME_HTTPS ||
+       !parts.dwHostNameLength || parts.dwUserNameLength || parts.dwPasswordLength)
+        return false;
+    std::wstring host(parts.lpszHostName,parts.dwHostNameLength);
+    for(auto &ch:host)ch=(wchar_t)towlower(ch);
+    if(host==L"localhost" || host==L"localhost.localdomain" ||
+       host.size()>=10 && host.compare(host.size()-10,10,L".localhost")==0)
+        return false;
+    IN_ADDR ipv4{};
+    if(InetPtonW(AF_INET,host.c_str(),&ipv4)==1) {
+        const BYTE *a=(const BYTE*)&ipv4.S_un.S_addr;
+        if(a[0]==0 || a[0]==10 || a[0]==127 || (a[0]==169&&a[1]==254) ||
+           (a[0]==172&&a[1]>=16&&a[1]<=31) || (a[0]==192&&a[1]==168) || a[0]>=224)
+            return false;
+    }
+    IN6_ADDR ipv6{};
+    if(InetPtonW(AF_INET6,host.c_str(),&ipv6)==1) {
+        const BYTE *a=(const BYTE*)&ipv6;
+        static const BYTE loopback[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+        if((a[0]&0xfe)==0xfc || (a[0]==0xfe&&(a[1]&0xc0)==0x80) ||
+           memcmp(a,loopback,16)==0 ||
+           (a[0]==0&&a[1]==0&&a[2]==0&&a[3]==0&&a[4]==0&&a[5]==0&&a[6]==0&&a[7]==0&&a[8]==0&&a[9]==0&&a[10]==0xff&&a[11]==0xff))
+            return false;
+    }
+    return true;
+}
+void OpenExternalUrl(const wchar_t *url) {
+    if(IsSafeStreamingUrl(url))ShellExecuteW(nullptr,L"open",url,nullptr,nullptr,SW_SHOWNORMAL);
+    else SetStatus(L"Blocked an unsafe or non-HTTPS destination.");
+}
+
 void NavigateHistory(BOOL forward){
     if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
     BOOL available=FALSE;
@@ -625,8 +668,16 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
             [](ICoreWebView2*,ICoreWebView2NavigationStartingEventArgs *args)->HRESULT{
                 LPWSTR uri=nullptr;
                 if(args&&SUCCEEDED(args->get_Uri(&uri))&&uri){
-                    SetStatus(L"Loading streaming page…");
+                    if(!IsSafeStreamingUrl(uri)){
+                        args->put_Cancel(TRUE);
+                        SetStatus(L"Blocked a non-HTTPS, local-network or otherwise unsafe page destination.");
+                    }else{
+                        SetStatus(L"Loading secure streaming page…");
+                    }
                     CoTaskMemFree(uri);
+                }else if(args){
+                    args->put_Cancel(TRUE);
+                    SetStatus(L"Blocked navigation because its destination could not be validated.");
                 }
                 return S_OK;
             }).Get(),&g_navigationStartingToken);
@@ -656,10 +707,15 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
         Callback<ICoreWebView2NewWindowRequestedEventHandler>(
             [](ICoreWebView2 *sender,ICoreWebView2NewWindowRequestedEventArgs *args)->HRESULT{
                 LPWSTR target=nullptr;
+                if(args)args->put_Handled(TRUE);
                 if(args&&SUCCEEDED(args->get_Uri(&target))&&target){
-                    sender->Navigate(target);
+                    if(IsSafeStreamingUrl(target)){
+                        sender->Navigate(target);
+                        SetStatus(L"Opening a secure sign-in or service page in the Streaming Centre…");
+                    }else{
+                        SetStatus(L"Blocked a pop-up with a non-HTTPS or local-network destination.");
+                    }
                     CoTaskMemFree(target);
-                    args->put_Handled(TRUE);
                 }
                 return S_OK;
             }).Get(),&g_popupToken);
@@ -719,7 +775,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         LPWSTR current=nullptr;
         std::wstring restoreUrl;
         if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
-            if(wcsncmp(current,L"https://",8)==0||wcsncmp(current,L"http://",7)==0)restoreUrl=current;
+            if(IsSafeStreamingUrl(current))restoreUrl=current;
             CoTaskMemFree(current);
         }
         SetStatus(L"Recovering the streaming browser after an unexpected process failure…");
@@ -783,8 +839,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(PtInRect(&g_externalRect,POINT{x,y})){
             LPWSTR current=nullptr;
             if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
-                if(wcsncmp(current,L"https://",8)==0||wcsncmp(current,L"http://",7)==0)
-                    ShellExecuteW(nullptr,L"open",current,nullptr,nullptr,SW_SHOWNORMAL);
+                OpenExternalUrl(current);
                 CoTaskMemFree(current);
             }else if(g_activeService>=0)ShellExecuteW(nullptr,L"open",kUrls[g_activeService],nullptr,nullptr,SW_SHOWNORMAL);
             return 0;
@@ -801,7 +856,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             else ShowWindow(hwnd,SW_MINIMIZE);
             return 0;
         }
-        if(ctrl&&wp=='L'){if(g_activeService>=0)ShellExecuteW(nullptr,L"open",kUrls[g_activeService],nullptr,nullptr,SW_SHOWNORMAL);return 0;}
+        if(ctrl&&wp=='L'){if(g_activeService>=0)OpenExternalUrl(kUrls[g_activeService]);return 0;}
         if(ctrl&&wp=='R'){if(g_webView)g_webView->Reload();return 0;}
         if(ctrl&&wp=='W'){ShowWindow(hwnd,SW_MINIMIZE);return 0;}
         if(wp==VK_F5){if(g_webView)g_webView->Reload();return 0;}
