@@ -11,7 +11,7 @@ Streaming Centre now has two independent receiver paths:
 - **Google Cast:** Uses LibVLC's Chromecast renderer-discovery and renderer playback integration. It requires a VLC runtime with the mDNS/Chromecast renderer plugin and dependencies.
 - **DLNA / UPnP AVTransport:** Uses the Windows UPnP control-point API to discover MediaRenderer devices, locate their AVTransport service, and issue SetAVTransportURI followed by Play.
 
-The local player's existing renderer discovery and output selection remain separate from Streaming Centre. Google Cast and DLNA receivers are labelled separately in the Streaming Centre device list.
+The local player continues to use LibVLC renderer discovery for Google Cast-compatible receivers. Streaming Centre combines Google Cast and DLNA records that resolve to the same friendly TV name (including a trailing model suffix such as `(SmartTV 4K FFM)`) into one row, for example `[Google Cast + DLNA] Living Room TV`. When both protocols are present, Streaming Centre currently selects Google Cast; DLNA is selected when it is the only discovered route. This is display-level de-duplication, not a new DLNA playback backend in the main player's local-file output path.
 
 ## Requirements
 
