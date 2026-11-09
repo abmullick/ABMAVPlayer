@@ -55,6 +55,13 @@ If a provider blocks embedded playback or protected video fails, use the **Open 
 Fullscreen is intended for the actual provider video player, not merely enlarging the normal application window. Some providers may restrict fullscreen or require using their own on-player fullscreen control.
 
 
+
+## Cast to TV integration
+
+The Streaming Centre header includes a **Cast to TV** action. It reuses the main player's existing LibVLC renderer-discovery engine, including its mDNS / Google Cast discovery service and receiver list, rather than running a second independent discovery stack. Selecting the action opens the main player's Playback Output panel and starts or refreshes receiver discovery. Select a receiver there; the main player's existing LibVLC renderer-selection flow then applies to local media playback.
+
+**Important limitation:** this integration discovers receivers and reuses the existing local-media casting workflow. It does not mirror the WebView2 page or extract a provider's video stream from YouTube, Netflix, Prime Video, JioHotstar or Sony LIV. WebView2 website playback and LibVLC renderer playback are separate pipelines. DRM-protected services may prohibit third-party casting; use the provider's own Cast control or official TV app where available. Do not interpret selecting a TV in Playback Output as proof that the current browser video has been sent to it.
+
 ## Runtime checks and recovery
 
 Before starting the embedded browser, ABM AV Player checks whether a WebView2 runtime is available. If it is missing or cannot be found, the main player remains usable and the Streaming Centre displays an instruction to install the official Microsoft Edge WebView2 Evergreen Runtime. If the WebView2 browser process fails unexpectedly, the Streaming Centre makes a bounded number of automatic recovery attempts and restores the current HTTP(S) page when possible. If repeated recovery fails, close and reopen the Streaming Centre. Provider playback and DRM remain subject to the provider's policies.
