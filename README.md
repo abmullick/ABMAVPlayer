@@ -13,6 +13,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
+- [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
 ## Features
 
@@ -71,7 +72,7 @@ LibVLC handles media decoding and device output. ABM AV Player owns the desktop 
 
 - Windows 11 x64.
 - Visual Studio / Build Tools with Desktop development with C++ and Windows 10/11 SDK.
-- Microsoft Edge WebView2 Evergreen Runtime (normally present on current Windows 11 installations).
+- Microsoft Edge WebView2 Evergreen Runtime (required for the Streaming Centre; the app checks for it before browser startup and reports an installation instruction if missing).
 - Microsoft.Web.WebView2 NuGet SDK package for compiling the streaming module.
 - 64-bit VLC installation and matching 64-bit LibVLC SDK (LibVLC 3.0 or later for renderer discovery).
 - For Google Cast, use a full VLC runtime containing its renderer-discovery and Chromecast plugins. The SDK alone is not a complete runtime.
