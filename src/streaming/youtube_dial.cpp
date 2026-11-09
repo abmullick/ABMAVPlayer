@@ -99,6 +99,7 @@ void Discover() {
         auto it=std::find_if(g_devices.begin(),g_devices.end(),[&](const DialDevice &d){return _wcsicmp(d.name.c_str(),name.c_str())==0;});
         if(it==g_devices.end())g_devices.push_back({name,app});
     }
+    g_stop=true;
     closesocket(s);WSACleanup();
 }
 }
