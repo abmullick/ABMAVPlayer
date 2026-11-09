@@ -165,7 +165,7 @@ void LayoutBrowser(){
     if(!g_controller||!g_window)return;
     RECT rc{};GetClientRect(g_window,&rc);
     /* Normal mode reserves the native chrome; true provider fullscreen uses the whole monitor. */
-    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,208,rc.right,rc.bottom-34};
+    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,260,rc.right,rc.bottom-34};
     if(bounds.bottom<bounds.top)bounds.bottom=bounds.top;
     g_controller->put_Bounds(bounds);
 }
@@ -410,9 +410,9 @@ void PaintChrome(HWND hwnd){
     FillRectColor(dc,rc,RGBc(7,12,21));
 
     /* A taller, clearly separated native chrome keeps the service selector prominent. */
-    RECT header={0,0,rc.right,208};FillRectColor(dc,header,RGBc(11,24,39));
+    RECT header={0,0,rc.right,260};FillRectColor(dc,header,RGBc(11,24,39));
     RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,RGBc(31,91,105));
-    RECT accent={0,205,rc.right,208};FillRectColor(dc,accent,RGBc(48,166,161));
+    RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,RGBc(48,166,161));
 
     RECT logo={22,13,62,53};Rounded(dc,logo,RGBc(31,143,145),12);
     Text(dc,L"A",logo,RGBc(255,255,255),25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -421,35 +421,40 @@ void PaintChrome(HWND hwnd){
     RECT sub={77,34,306,54};
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-    g_helpRect=RECT{312,15,372,55};
+    g_helpRect=RECT{318,15,390,55};
     Rounded(dc,g_helpRect,g_hoverControl==5?RGBc(36,75,94):RGBc(20,42,60),9);
     Text(dc,L"Help",g_helpRect,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    g_aboutRect=RECT{378,15,438,55};
+    g_aboutRect=RECT{398,15,470,55};
     Rounded(dc,g_aboutRect,g_hoverControl==6?RGBc(36,75,94):RGBc(20,42,60),9);
     Text(dc,L"About",g_aboutRect,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    g_externalRect=RECT{rc.right-190,16,rc.right-22,56};
+    g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
     Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
     Text(dc,L"Open in browser",g_externalRect,RGBc(183,235,229),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    /* Large, evenly spaced navigation controls with distinct hover feedback. */
-    int navRight=rc.right-212;
-    g_fullscreenRect=RECT{navRight-48,12,navRight,60};navRight-=58;
-    g_homeRect=RECT{navRight-48,12,navRight,60};navRight-=58;
-    g_reloadRect=RECT{navRight-48,12,navRight,60};navRight-=58;
-    g_forwardRect=RECT{navRight-58,12,navRight,60};navRight-=68;
-    g_backRect=RECT{navRight-58,12,navRight,60};
+    /* Dedicated second-row toolbar: larger targets with both icon and readable label. */
+    const int navY=68,navH=52,navW=104,navGap=10;
+    const int navStart=(rc.right-(5*navW+4*navGap))/2;
+    g_backRect=RECT{navStart,navY,navStart+navW,navY+navH};
+    g_forwardRect=RECT{navStart+(navW+navGap),navY,navStart+2*navW+navGap,navY+navH};
+    g_reloadRect=RECT{navStart+2*(navW+navGap),navY,navStart+3*navW+2*navGap,navY+navH};
+    g_homeRect=RECT{navStart+3*(navW+navGap),navY,navStart+4*navW+3*navGap,navY+navH};
+    g_fullscreenRect=RECT{navStart+4*(navW+navGap),navY,navStart+5*navW+4*navGap,navY+navH};
     const RECT navButtons[5]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect,g_fullscreenRect};
     const wchar_t *glyphs[5]={L"‹",L"›",L"↻",L"⌂",L"⛶"};
+    const wchar_t *labels[5]={L"Back",L"Forward",L"Reload",L"Home",L"Fullscreen"};
     for(int i=0;i<5;i++){
-        COLORREF fill=(g_hoverControl==i)?RGBc(43,82,105):(i==4?RGBc(31,103,111):RGBc(28,57,78));
-        Rounded(dc,navButtons[i],fill,11);
-        Text(dc,glyphs[i],navButtons[i],RGBc(239,248,255),i==4?25:28,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        RECT underline={navButtons[i].left+12,navButtons[i].bottom-4,navButtons[i].right-12,navButtons[i].bottom-2};
+        COLORREF fill=(g_hoverControl==i)?RGBc(43,91,113):(i==4?RGBc(31,103,111):RGBc(24,52,73));
+        Rounded(dc,navButtons[i],fill,12);
+        RECT glyph=navButtons[i];glyph.top+=1;glyph.bottom-=19;
+        Text(dc,glyphs[i],glyph,RGBc(239,248,255),i==4?23:25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT label=navButtons[i];label.top=navButtons[i].bottom-21;label.bottom-=3;
+        Text(dc,labels[i],label,RGBc(204,226,238),10,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT underline={navButtons[i].left+18,navButtons[i].bottom-2,navButtons[i].right-18,navButtons[i].bottom};
         if(g_hoverControl==i)FillRectColor(dc,underline,RGBc(72,210,199));
     }
 
-    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=76,serviceH=116,gap=12;
+    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=132,serviceH=116,gap=12;
     const int serviceW=(serviceRight-serviceLeft-4*gap)/5;
     for(int i=0;i<5;i++){
         int left=serviceLeft+i*(serviceW+gap);
