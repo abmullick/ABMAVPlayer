@@ -56,6 +56,9 @@ ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{};
 int g_activeService=-1;
+int g_hoverService=-1;
+int g_hoverControl=-1;
+bool g_trackingMouseLeave=false;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
 EventRegistrationToken g_popupToken{};
@@ -141,7 +144,7 @@ void LayoutBrowser(){
     if(!g_controller||!g_window)return;
     RECT rc{};GetClientRect(g_window,&rc);
     /* Normal mode reserves the native chrome; true provider fullscreen uses the whole monitor. */
-    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,174,rc.right,rc.bottom-34};
+    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,208,rc.right,rc.bottom-34};
     if(bounds.bottom<bounds.top)bounds.bottom=bounds.top;
     g_controller->put_Bounds(bounds);
 }
@@ -376,8 +379,11 @@ void PaintChrome(HWND hwnd){
     PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
     FillRectColor(dc,rc,RGBc(7,12,21));
     if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
-    RECT header={0,0,rc.right,174};FillRectColor(dc,header,RGBc(13,27,43));
-    RECT accent={0,171,rc.right,174};FillRectColor(dc,accent,RGBc(48,166,161));
+
+    /* A taller, clearly separated native chrome keeps the service selector prominent. */
+    RECT header={0,0,rc.right,208};FillRectColor(dc,header,RGBc(11,24,39));
+    RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,RGBc(31,91,105));
+    RECT accent={0,205,rc.right,208};FillRectColor(dc,accent,RGBc(48,166,161));
 
     RECT logo={22,13,62,53};Rounded(dc,logo,RGBc(31,143,145),12);
     Text(dc,L"A",logo,RGBc(255,255,255),25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -387,60 +393,90 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     g_helpRect=RECT{312,15,372,55};
-    Rounded(dc,g_helpRect,RGBc(20,42,60),8);
-    Text(dc,L"Help",g_helpRect,RGBc(190,218,235),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Rounded(dc,g_helpRect,g_hoverControl==5?RGBc(36,75,94):RGBc(20,42,60),9);
+    Text(dc,L"Help",g_helpRect,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     g_aboutRect=RECT{378,15,438,55};
-    Rounded(dc,g_aboutRect,RGBc(20,42,60),8);
-    Text(dc,L"About",g_aboutRect,RGBc(190,218,235),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Rounded(dc,g_aboutRect,g_hoverControl==6?RGBc(36,75,94):RGBc(20,42,60),9);
+    Text(dc,L"About",g_aboutRect,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    g_externalRect=RECT{rc.right-190,16,rc.right-22,50};
-    Rounded(dc,g_externalRect,RGBc(22,49,64),9);
-    Text(dc,L"Open in browser",g_externalRect,RGBc(160,220,216),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    /* Large navigation controls occupy their own lane, clear of the browser button. */
+    g_externalRect=RECT{rc.right-190,16,rc.right-22,56};
+    Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
+    Text(dc,L"Open in browser",g_externalRect,RGBc(183,235,229),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    /* Large, evenly spaced navigation controls with distinct hover feedback. */
     int navRight=rc.right-212;
-    g_fullscreenRect=RECT{navRight-48,12,navRight,58};navRight-=58;
-    g_homeRect=RECT{navRight-48,12,navRight,58};navRight-=58;
-    g_reloadRect=RECT{navRight-48,12,navRight,58};navRight-=58;
-    g_forwardRect=RECT{navRight-58,12,navRight,58};navRight-=68;
-    g_backRect=RECT{navRight-58,12,navRight,58};
+    g_fullscreenRect=RECT{navRight-48,12,navRight,60};navRight-=58;
+    g_homeRect=RECT{navRight-48,12,navRight,60};navRight-=58;
+    g_reloadRect=RECT{navRight-48,12,navRight,60};navRight-=58;
+    g_forwardRect=RECT{navRight-58,12,navRight,60};navRight-=68;
+    g_backRect=RECT{navRight-58,12,navRight,60};
     const RECT navButtons[5]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect,g_fullscreenRect};
     const wchar_t *glyphs[5]={L"‹",L"›",L"↻",L"⌂",L"⛶"};
     for(int i=0;i<5;i++){
-        Rounded(dc,navButtons[i],i==4?RGBc(31,103,111):RGBc(28,57,78),10);
-        Text(dc,glyphs[i],navButtons[i],RGBc(232,245,255),i==4?24:27,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        COLORREF fill=(g_hoverControl==i)?RGBc(43,82,105):(i==4?RGBc(31,103,111):RGBc(28,57,78));
+        Rounded(dc,navButtons[i],fill,11);
+        Text(dc,glyphs[i],navButtons[i],RGBc(239,248,255),i==4?25:28,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT underline={navButtons[i].left+12,navButtons[i].bottom-4,navButtons[i].right-12,navButtons[i].bottom-2};
+        if(g_hoverControl==i)FillRectColor(dc,underline,RGBc(72,210,199));
     }
 
-    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=76,serviceH=82,gap=12;
+    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=76,serviceH=116,gap=12;
     const int serviceW=(serviceRight-serviceLeft-4*gap)/5;
     for(int i=0;i<5;i++){
         int left=serviceLeft+i*(serviceW+gap);
         g_serviceRects[i]=RECT{left,serviceY,left+serviceW,serviceY+serviceH};
-        bool active=(i==g_activeService);
-        Rounded(dc,g_serviceRects[i],active?RGBc(27,104,103):RGBc(20,38,56),12);
-        RECT label=g_serviceRects[i];
+        bool active=(i==g_activeService),hover=(i==g_hoverService);
+        COLORREF fill=active?RGBc(25,91,91):(hover?RGBc(28,54,76):RGBc(17,35,53));
+        Rounded(dc,g_serviceRects[i],fill,14);
+        RECT border=g_serviceRects[i];
+        HPEN pen=CreatePen(PS_SOLID,active?2:1,active?RGBc(63,201,190):(hover?RGBc(61,119,145):RGBc(30,53,73)));
+        HGDIOBJ oldPen=SelectObject(dc,pen);
+        HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+        RoundRect(dc,border.left,border.top,border.right,border.bottom,14,14);
+        SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
+
         if(g_serviceLogos[i]){
             UINT iw=g_serviceLogos[i]->GetWidth(),ih=g_serviceLogos[i]->GetHeight();
             if(iw&&ih){
-                const int maxIcon=48;
-                float scale=(float)maxIcon/(float)(iw>ih?iw:ih);
+                const int maxLogoW=(serviceW>145?112:serviceW-30),maxLogoH=76;
+                float scale=(float)maxLogoW/(float)iw;
+                float scaleH=(float)maxLogoH/(float)ih;
+                if(scaleH<scale)scale=scaleH;
                 int drawW=(int)(iw*scale),drawH=(int)(ih*scale);
                 int iconX=left+(serviceW-drawW)/2;
-                int iconY=serviceY+7+(maxIcon-drawH)/2;
+                int iconY=serviceY+8+(maxLogoH-drawH)/2;
                 Gdiplus::Graphics graphics(dc);
                 graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+                graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
                 graphics.DrawImage(g_serviceLogos[i],Gdiplus::Rect(iconX,iconY,drawW,drawH));
             }
+        }else{
+            RECT missing={left+8,serviceY+18,left+serviceW-8,serviceY+82};
+            Text(dc,kServices[i],missing,RGBc(154,184,205),15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
-        label.top=serviceY+57;
-        label.bottom=serviceY+78;
+        RECT label=g_serviceRects[i];
+        label.top=serviceY+88;label.bottom=serviceY+109;
         label.left+=5;label.right-=5;
-        Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(205,220,234),
-            12,active?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(214,228,240),
+            13,active||hover?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(active){
+            RECT activeMark={left+serviceW/2-18,serviceY+112,left+serviceW/2+18,serviceY+114};
+            FillRectColor(dc,activeMark,RGBc(89,224,205));
+        }
     }
     RECT footer={0,rc.bottom-34,rc.right,rc.bottom};FillRectColor(dc,footer,RGBc(10,20,33));
     RECT line={0,rc.bottom-35,rc.right,rc.bottom-34};FillRectColor(dc,line,RGBc(39,61,79));
+    const wchar_t *footerText=g_hoverControl==0?L"Previous video in the current YouTube playlist or mix":
+        g_hoverControl==1?L"Next video in the current YouTube playlist or mix":
+        g_hoverControl==2?L"Reload the current streaming page":
+        g_hoverControl==3?L"Return to the Streaming Centre home page":
+        g_hoverControl==4?L"Request fullscreen from the streaming player":
+        g_hoverControl==5?L"Open Streaming Centre help":
+        g_hoverControl==6?L"About ABM AV Player":
+        g_hoverControl==7?L"Open the current streaming service in your default browser":
+        g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
-    Text(dc,g_status,status,RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?RGBc(173,211,220):RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     EndPaint(hwnd,&ps);
 }
 void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
@@ -532,7 +568,26 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         return 0;
     }
     case WM_SIZE:LayoutBrowser();InvalidateRect(hwnd,nullptr,FALSE);return 0;
-    case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=960;info->ptMinTrackSize.y=700;return 0;}
+    case WM_MOUSEMOVE:{
+        if(!g_trackingMouseLeave){TRACKMOUSEEVENT track{sizeof(track),TME_LEAVE,hwnd,0};if(TrackMouseEvent(&track))g_trackingMouseLeave=true;}
+        POINT pt{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
+        int service=-1,control=-1;
+        for(int i=0;i<5;i++)if(PtInRect(&g_serviceRects[i],pt)){service=i;break;}
+        if(PtInRect(&g_backRect,pt))control=0;
+        else if(PtInRect(&g_forwardRect,pt))control=1;
+        else if(PtInRect(&g_reloadRect,pt))control=2;
+        else if(PtInRect(&g_homeRect,pt))control=3;
+        else if(PtInRect(&g_fullscreenRect,pt))control=4;
+        else if(PtInRect(&g_helpRect,pt))control=5;
+        else if(PtInRect(&g_aboutRect,pt))control=6;
+        else if(PtInRect(&g_externalRect,pt))control=7;
+        if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;InvalidateRect(hwnd,nullptr,FALSE);}
+        SetCursor((service>=0||control>=0)?LoadCursorW(nullptr,IDC_HAND):LoadCursorW(nullptr,IDC_ARROW));
+        return 0;
+    }
+    case WM_MOUSELEAVE:
+        g_trackingMouseLeave=false;g_hoverService=-1;g_hoverControl=-1;SetCursor(LoadCursorW(nullptr,IDC_ARROW));InvalidateRect(hwnd,nullptr,FALSE);return 0;
+    case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=960;info->ptMinTrackSize.y=720;return 0;}
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
