@@ -81,3 +81,12 @@ The installed LibVLC runtime may not expose its mDNS renderer-discovery service 
 - Transcoding is not guaranteed for all codecs, containers, subtitles or receivers.
 - No independent transcoding quality/bitrate settings are exposed in the current UI.
 - Output-switch recovery is best-effort; test against the actual receiver and VLC build before relying on it.
+
+
+## YouTube app casting (DIAL)
+
+Streaming Centre has a separate YouTube app-launch path for receivers advertising the DIAL service. It discovers DIAL endpoints using SSDP, reads the device description and `Application-URL`, then sends a YouTube app launch request with the video ID. This launches the TV's installed YouTube app; it does not attempt to extract or transfer browser media segments, cookies, or DRM streams.
+
+A receiver must expose DIAL and permit YouTube app launch for this to work. Having the YouTube app installed does not by itself guarantee DIAL is enabled. DLNA-only devices cannot launch YouTube. The generic Google Cast and DLNA URL-casting paths remain separate and unchanged.
+
+The DIAL discovery implementation accepts only HTTP endpoints on private IPv4 addresses learned from SSDP and uses bounded WinHTTP timeouts. A successful DIAL launch response confirms the app-launch request was accepted, not that the TV has completed playback.
