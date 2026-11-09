@@ -70,7 +70,7 @@ static libvlc_renderer_item_t *g_streamSelectedRenderer;
 static BOOL g_rendererApplied = FALSE;
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
-static int g_volume = 70, g_dragSeek = 0, g_dragVolume = 0, g_hover = 0;
+static int g_volume = 70, g_dragSeek = 0, g_dragSeekX = 0, g_dragVolume = 0, g_hover = 0;
 static BOOL g_shuffle = FALSE, g_repeat = FALSE;
 static float g_playbackRate = 1.0f;
 static BOOL g_endHandled = FALSE;
@@ -3157,7 +3157,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
             if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
             if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-            if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);SetCapture(hwnd);return 0;}
+            if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;g_dragSeekX=x;SetCapture(hwnd);return 0;}
             if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12&&x>=R_VOLUME.left-8&&x<=R_VOLUME.right+8){
                 g_dragVolume=1;
                 int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);
@@ -3381,7 +3381,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(g_playlistScroll<0)g_playlistScroll=0;if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
             InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
         }
-        if(g_dragSeek)SeekAt(mx);
+        if(g_dragSeek)g_dragSeekX=mx;
         if(g_dragVolume){
             int v=(mx-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);
             if(v<0)v=0;if(v>100)v=100;
@@ -3414,7 +3414,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         break;
-    case WM_LBUTTONUP:g_dragSeek=0;g_dragVolume=0;g_dragPlaylistScroll=FALSE;ReleaseCapture();return 0;
+    case WM_LBUTTONUP:
+        if(g_dragSeek){
+            int seekX=g_dragSeekX;
+            g_dragSeek=0;
+            /* Submit one seek after the drag ends. Repeated set_time calls while
+               the mouse moves can queue decoder seeks faster than they complete. */
+            if(g_hasMedia)SeekAt(seekX);
+        }
+        g_dragVolume=0;g_dragPlaylistScroll=FALSE;ReleaseCapture();return 0;
     case WM_PAINT: {
         PAINTSTRUCT ps;
         BeginPaint(hwnd, &ps);
