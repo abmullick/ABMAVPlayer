@@ -1,4 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
 #include <windows.h>
 #include <windowsx.h>
 #include <shellapi.h>
@@ -368,8 +369,14 @@ static BOOL DownloadArtworkSecurely(const wchar_t *url,const wchar_t *finalPath,
     WinHttpSetTimeouts(session,5000,5000,7000,7000);
     connection=WinHttpConnect(session,host,parts.nPort,0);
     if(!connection) goto cleanup;
-    request=WinHttpOpenRequest(connection,L"GET",
-        parts.lpszUrlPath&&parts.dwUrlPathLength?parts.lpszUrlPath:L"/",
+    wchar_t requestPath[PATH_CAP*4]={0};
+    if(parts.dwUrlPathLength>=_countof(requestPath)) goto cleanup;
+    if(parts.dwUrlPathLength) wcsncpy_s(requestPath,_countof(requestPath),parts.lpszUrlPath,parts.dwUrlPathLength);
+    else wcscpy_s(requestPath,_countof(requestPath),L"/");
+    if(parts.dwExtraInfoLength &&
+       (wcslen(requestPath)+parts.dwExtraInfoLength)<_countof(requestPath))
+        wcsncat_s(requestPath,_countof(requestPath),parts.lpszExtraInfo,parts.dwExtraInfoLength);
+    request=WinHttpOpenRequest(connection,L"GET",requestPath,
         NULL,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,
         WINHTTP_FLAG_SECURE);
     if(!request) goto cleanup;
