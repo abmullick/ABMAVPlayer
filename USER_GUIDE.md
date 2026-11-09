@@ -161,3 +161,14 @@ Audio preferences are stored in audio.ini. The application does not currently ma
 ## 11. Product boundaries
 
 ABM AV Player uses LibVLC for decoding and device output. It is a desktop media player, not an audio/video driver. It currently has no exclusive/bit-perfect audio path, no dedicated audio-device selector, no parametric EQ, and no process-specific audio loopback visualizer.
+
+
+## Streaming Centre
+
+Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. Choose YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the service strip. Each service opens its official website inside the ABM Streaming Centre. Sign in with your own account on the provider's site.
+
+The embedded browser profile is stored locally at %LOCALAPPDATA%\ABMAVPlayer\WebView2. This allows supported provider sessions to persist between launches. ABM AV Player does not receive or store your provider passwords.
+
+**Protected playback note:** WebView2 uses the Microsoft Edge browser engine, but a valid subscription does not guarantee that a provider permits playback in an embedded browser. DRM, browser allow-lists, device certification and provider policy can prevent playback. If a service blocks embedded playback, open it in its official supported browser or app. Do not attempt to extract protected streams or bypass DRM.
+
+The Microsoft Edge WebView2 Evergreen Runtime is required. It is normally installed on current Windows 11 systems. The WebView2 SDK is required only to build the application.
