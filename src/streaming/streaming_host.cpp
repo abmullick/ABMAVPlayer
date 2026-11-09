@@ -69,6 +69,9 @@ HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
 bool g_devicePanelVisible=false;
 int g_streamSelectedIndex=-1;
 bool g_streamSelectedIsDlna=false;
+struct StreamReceiverRow { int castIndex; int dlnaIndex; };
+std::vector<StreamReceiverRow> g_streamReceiverRows;
+
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
 constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14;
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
@@ -225,32 +228,50 @@ void LayoutDevicePanel(){
 }
 void RefreshDevicePanel(bool force){
     if(!g_deviceList)return;
-    int oldCount=(int)SendMessageW(g_deviceList,LB_GETCOUNT,0,0);
+    int oldSelection=(int)SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
     unsigned int castCount=ABM_Cast_StreamDeviceCount();
     unsigned int dlnaCount=ABM_Dlna_DeviceCount();
-    unsigned int count=castCount+dlnaCount;
-    if(!force&&oldCount==(int)count)return;
-    int oldSelection=(int)SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
-    SendMessageW(g_deviceList,LB_RESETCONTENT,0,0);
+    std::vector<std::wstring> castNames(castCount),dlnaNames(dlnaCount);
+    std::vector<StreamReceiverRow> rows;
+    rows.reserve(castCount+dlnaCount);
     for(unsigned int i=0;i<castCount;i++){
         wchar_t name[256]=L"Google Cast receiver";
         if(ABM_Cast_StreamDeviceName(i,name,_countof(name))){
-            std::wstring label=L"[Google Cast] ";label+=name;
-            SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
+            castNames[i]=name;
+            rows.push_back({(int)i,-1});
         }
     }
     for(unsigned int i=0;i<dlnaCount;i++){
         wchar_t name[256]=L"DLNA receiver";
-        if(ABM_Dlna_DeviceName(i,name,_countof(name))){
-            std::wstring label=L"[DLNA] ";label+=name;
-            SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
-        }
+        if(!ABM_Dlna_DeviceName(i,name,_countof(name)))continue;
+        dlnaNames[i]=name;
+        auto match=std::find_if(rows.begin(),rows.end(),[&](const StreamReceiverRow &row){
+            return row.castIndex>=0 && _wcsicmp(castNames[(size_t)row.castIndex].c_str(),name)==0;
+        });
+        if(match!=rows.end())match->dlnaIndex=(int)i;
+        else rows.push_back({-1,(int)i});
     }
-    if(count){
-        int pick=g_streamSelectedIndex>=0&&g_streamSelectedIndex<(int)count?g_streamSelectedIndex:
-                 (oldSelection>=0&&oldSelection<(int)count?oldSelection:0);
+    if(!force && rows.size()==g_streamReceiverRows.size() &&
+       std::equal(rows.begin(),rows.end(),g_streamReceiverRows.begin(),
+           [](const StreamReceiverRow &a,const StreamReceiverRow &b){
+               return a.castIndex==b.castIndex && a.dlnaIndex==b.dlnaIndex;
+           })) return;
+    g_streamReceiverRows=rows;
+    SendMessageW(g_deviceList,LB_RESETCONTENT,0,0);
+    for(const auto &row:rows){
+        std::wstring name;
+        if(row.castIndex>=0)name=castNames[(size_t)row.castIndex];
+        else if(row.dlnaIndex>=0)name=dlnaNames[(size_t)row.dlnaIndex];
+        std::wstring label=row.castIndex>=0&&row.dlnaIndex>=0?L"[Google Cast + DLNA] ":
+            row.castIndex>=0?L"[Google Cast] ":L"[DLNA] ";
+        label+=name;
+        SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
+    }
+    if(!rows.empty()){
+        int pick=g_streamSelectedIndex>=0&&g_streamSelectedIndex<(int)rows.size()?g_streamSelectedIndex:
+                 (oldSelection>=0&&oldSelection<(int)rows.size()?oldSelection:0);
         SendMessageW(g_deviceList,LB_SETCURSEL,pick,0);
-        SetWindowTextW(g_deviceHint,L"Choose a TV, then select it before casting.");
+        SetWindowTextW(g_deviceHint,L"Each TV appears once; available casting protocols are shown beside its name.");
     }else{
         SetWindowTextW(g_deviceHint,L"Searching for TVs… keep this panel open for discovery.");
     }
@@ -1063,13 +1084,18 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         case ID_STREAM_DEVICE_SELECT:{
             LRESULT selected=SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
             if(selected==LB_ERR){SetStatus(L"Select a TV from the device list first.");return 0;}
-            unsigned int castCount=ABM_Cast_StreamDeviceCount();
+            if((size_t)selected>=g_streamReceiverRows.size()){
+                SetStatus(L"That receiver is no longer available. Refresh the list.");return 0;
+            }
+            const StreamReceiverRow row=g_streamReceiverRows[(size_t)selected];
             bool selectedOk=false;
-            if((unsigned int)selected<castCount){
-                selectedOk=ABM_Cast_StreamSelectDevice((unsigned int)selected)!=FALSE;
+            /* Prefer Google Cast when the same TV advertises both protocols.
+               DLNA remains selectable automatically when it is the only route. */
+            if(row.castIndex>=0){
+                selectedOk=ABM_Cast_StreamSelectDevice((unsigned int)row.castIndex)!=FALSE;
                 g_streamSelectedIsDlna=false;
-            }else{
-                selectedOk=ABM_Dlna_SelectDevice((unsigned int)selected-castCount)!=FALSE;
+            }else if(row.dlnaIndex>=0){
+                selectedOk=ABM_Dlna_SelectDevice((unsigned int)row.dlnaIndex)!=FALSE;
                 g_streamSelectedIsDlna=true;
             }
             if(selectedOk){
