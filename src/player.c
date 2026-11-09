@@ -372,7 +372,7 @@ static void UpdateLayout(HWND hwnd) {
        bottom edge let its volume footer paint over the player controls. */
     /* Full-height floating library: it opens from the top edge and owns its
        complete vertical space, including the volume footer. */
-    int drawerBottom=h-18;
+    int drawerBottom=h-42;
     if(drawerBottom<520)drawerBottom=520;
     R_SIDEBAR=(RECT){drawerLeft,18,drawerLeft+side,drawerBottom};
     /* Collection-first drawer. Settings occupy a separate expandable region;
@@ -595,11 +595,11 @@ static void DrawUI(HDC dc,RECT client) {
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
-    RoundBox(dc,menuBtn,g_menuOpen?RGB(28,75,91):Blend(RGB(15,27,43),RGB(29,53,70),menuHot?g_hoverLevel:0),13);
+    RoundBox(dc,menuBtn,g_menuOpen?RGB(28,75,91):Blend(RGB(15,27,43),RGB(29,53,70),menuHot?100:0),13);
     ABM_D2D_StrokeRound(&g_ui,(float)menuBtn.left,(float)menuBtn.top,(float)menuBtn.right,(float)menuBtn.bottom,13.0f,menuHot?RGB(84,147,218):RGB(46,69,99),1.0f);
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT drawerBtn=R_DRAWER_BUTTON;
-    Panel(dc,drawerBtn,g_drawerOpen?RGB(32,78,132):Blend(RGB(17,29,47),RGB(36,57,84),drawerHot?g_hoverLevel:0),g_drawerOpen?RGB(92,165,242):(drawerHot?RGB(80,132,191):RGB(47,69,98)),15);
+    Panel(dc,drawerBtn,g_drawerOpen?RGB(32,78,132):Blend(RGB(17,29,47),RGB(36,57,84),drawerHot?100:0),g_drawerOpen?RGB(92,165,242):(drawerHot?RGB(80,132,191):RGB(47,69,98)),15);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+15,drawerBtn.left+29,drawerBtn.top+15,RGB(220,235,252),2);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+22,drawerBtn.left+29,drawerBtn.top+22,RGB(220,235,252),2);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,RGB(220,235,252),2);
