@@ -183,21 +183,21 @@ void MoveVideoInPlaylist(BOOL next){
 
 void ShowStreamingHelp(){
     MessageBoxW(g_window,
-        L"STREAMING CENTRE\\n\\n"
-        L"1. Choose YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the service cards.\\n"
-        L"2. Sign in directly with your own provider account. Your session is stored in this Windows user profile.\\n"
-        L"3. Use Back, Forward, Reload and Home for browser navigation. Previous/Next are intended for YouTube playlists and mixes.\\n"
-        L"4. Select the Fullscreen button beside Home, or use the streaming site's own fullscreen control. The video should enter monitor-level fullscreen when the provider supports it. Press Esc to exit.\\n"
-        L"5. Use Open in browser to continue on the provider's normal desktop browser.\\n\\n"
+        L"STREAMING CENTRE\n\n"
+        L"1. Choose YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the service cards.\n"
+        L"2. Sign in directly with your own provider account. Your session is stored in this Windows user profile.\n"
+        L"3. Use Back, Forward, Reload and Home for browser navigation. Previous/Next are intended for YouTube playlists and mixes.\n"
+        L"4. Select the Fullscreen button beside Home, or use the streaming site's own fullscreen control. The video should enter monitor-level fullscreen when the provider supports it. Press Esc to exit.\n"
+        L"5. Use Open in browser to continue on the provider's normal desktop browser.\n\n"
         L"Playback, protected content and fullscreen behaviour are controlled by each streaming provider and may vary by service.",
         L"ABM AV Player - Streaming Help",MB_OK|MB_ICONINFORMATION);
 }
 void ShowStreamingAbout(){
     MessageBoxW(g_window,
-        L"ABM AV PLAYER\\nSTREAMING CENTRE\\n\\n"
-        L"A dedicated WebView2 experience for accessing your streaming services from ABM AV Player.\\n\\n"
-        L"Sign in directly with each provider. ABM AV Player does not provide streaming subscriptions or host provider content.\\n\\n"
-        L"Created by Abhisek Basu Mullick\\n"
+        L"ABM AV PLAYER\nSTREAMING CENTRE\n\n"
+        L"A dedicated WebView2 experience for accessing your streaming services from ABM AV Player.\n\n"
+        L"Sign in directly with each provider. ABM AV Player does not provide streaming subscriptions or host provider content.\n\n"
+        L"Created by Abhisek Basu Mullick\n"
         L"abmullick@gmail.com",
         L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
 }
