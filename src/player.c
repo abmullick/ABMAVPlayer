@@ -311,7 +311,7 @@ static void PositionVideoWindow(void) {
     /* LibVLC renders in a native child HWND, which always sits above the
        main window's Direct2D surface. Reserve the command-menu footprint
        instead of trying to paint the menu over that video HWND. */
-    if (g_menuProgress > 0 && !g_fullscreen) {
+    if ((g_menuOpen || g_menuProgress > 0) && !g_fullscreen) {
         int menuSafeRight = R_MENU_PANEL.left - 12;
         int availableW = menuSafeRight - R_VIDEO.left;
         if (availableW < areaW) areaW = availableW;
@@ -2579,9 +2579,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int oldMenuProgress=g_menuProgress;
         g_menuProgress=EaseToward(g_menuProgress,g_menuOpen?100:0,28);
         if(oldMenuProgress!=g_menuProgress){
-            /* Menu animation is paint-only. Do not move LibVLC's native
-               video HWND on every 33 ms timer tick; reposition it only when
-               the menu's open/closed state changes. */
+            /* Menu animation is paint-only. Move the LibVLC child window
+               once at open, and once after the closing animation completes. */
+            if(oldMenuProgress>0 && g_menuProgress==0)
+                PositionVideoWindow();
             InvalidateRect(hwnd,NULL,FALSE);
         }
         int oldLevel=g_hoverLevel;
