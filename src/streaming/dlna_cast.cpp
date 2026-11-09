@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <utility>
 
 namespace {
 struct DlnaReceiver {
@@ -87,7 +88,10 @@ void DiscoverWorker() {
                 VARIANT item;VariantInit(&item);ULONG fetched=0;
                 while(!g_stop.load()&&items->Next(1,&item,&fetched)==S_OK){
                     IUPnPDevice *device=nullptr;
-                    if(item.vt==VT_DISPATCH&&item.pdispVal)item.pdispVal->QueryInterface(IID_PPV_ARGS(&device));
+                    IUnknown *deviceUnknown=nullptr;
+                    if(item.vt==VT_DISPATCH&&item.pdispVal)deviceUnknown=item.pdispVal;
+                    else if(item.vt==VT_UNKNOWN)deviceUnknown=item.punkVal;
+                    if(deviceUnknown)deviceUnknown->QueryInterface(IID_PPV_ARGS(&device));
                     if(device){
                         BSTR friendly=nullptr;device->get_FriendlyName(&friendly);
                         DlnaReceiver receiver;receiver.name=BstrValue(friendly);
@@ -100,7 +104,10 @@ void DiscoverWorker() {
                                     VARIANT sv;VariantInit(&sv);ULONG got=0;
                                     while(serviceItems->Next(1,&sv,&got)==S_OK){
                                         IUPnPService *service=nullptr;
-                                        if(sv.vt==VT_DISPATCH&&sv.pdispVal)sv.pdispVal->QueryInterface(IID_PPV_ARGS(&service));
+                                        IUnknown *serviceUnknown=nullptr;
+                                        if(sv.vt==VT_DISPATCH&&sv.pdispVal)serviceUnknown=sv.pdispVal;
+                                        else if(sv.vt==VT_UNKNOWN)serviceUnknown=sv.punkVal;
+                                        if(serviceUnknown)serviceUnknown->QueryInterface(IID_PPV_ARGS(&service));
                                         if(service){
                                             BSTR type=nullptr;service->get_ServiceTypeIdentifier(&type);
                                             std::wstring serviceType=BstrValue(type);
