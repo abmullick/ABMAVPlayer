@@ -174,6 +174,7 @@ void LayoutDevicePanel(){
     int x=rc.right-500;if(x<12)x=12;
     int y=64;
     SetWindowPos(g_devicePanel,HWND_TOP,x,y,486,184,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
     SetWindowPos(g_deviceTitle,nullptr,x+14,y+9,450,22,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceHint,nullptr,x+14,y+31,450,18,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceList,nullptr,x+14,y+54,290,116,SWP_NOZORDER|SWP_NOACTIVATE);
@@ -499,6 +500,11 @@ void RequestProviderFullscreen(){
 
 void CastCurrentBrowserVideo(){
     if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
+    if(g_streamSelectedIndex<0){
+        ShowDevicePanel();
+        SetStatus(L"Select a receiver in this Streaming Centre panel first. The main player will not be opened.");
+        return;
+    }
     SetStatus(L"Checking whether this page exposes a direct video URL…");
     HRESULT hr=g_webView->ExecuteScript(
         L"(()=>{const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2);if(!vs.length)return '';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));const u=vs[0].currentSrc;return encodeURIComponent(u);})()",
@@ -526,8 +532,8 @@ void CastCurrentBrowserVideo(){
                 wchar_t url[8192]{};
                 int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,encoded,-1,url,(int)_countof(url));
                 if(chars<=0){SetStatus(L"Could not decode the browser video URL.");return S_OK;}
-                if(ABM_Cast_StreamUrl(url))SetStatus(L"Cast request sent to the selected TV.");
-                else if(g_window)InvalidateRect(g_window,nullptr,FALSE);
+                if(ABM_Cast_StreamUrl(url))SetStatus(L"Streaming cast handoff started. Check the TV for playback.");
+                else SetStatus(L"The TV could not start this video. It may require DRM, browser cookies or segmented streaming that cannot be handed off as a direct URL.");
                 return S_OK;
             }).Get());
     if(FAILED(hr))SetStatus(L"Could not inspect the current page for a video element.");
