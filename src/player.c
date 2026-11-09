@@ -1539,80 +1539,27 @@ void ABM_Cast_ShowPicker(HWND owner) {
     SetForegroundWindow(g_main);
 }
 
-/* Streaming Centre discovery is deliberately independent from the local player's
-   renderer discovery. No calls to StartDiscovery(), RefreshRendererList(), or
-   ABM_Cast_ShowPicker() are made from this API. */
-static void StreamRendererEvent(const libvlc_event_t *ev,void *opaque) {
-    (void)opaque;
-    libvlc_renderer_item_t *it=ev->type==libvlc_RendererDiscovererItemAdded?
-        ev->u.renderer_discoverer_item_added.item:ev->u.renderer_discoverer_item_deleted.item;
-    if(!it)return;
-    EnterCriticalSection(&g_rendererLock);
-    if(ev->type==libvlc_RendererDiscovererItemAdded) {
-        BOOL found=FALSE;
-        for(size_t i=0;i<g_streamRendererCount;i++)if(g_streamRendererItems[i]==it){found=TRUE;break;}
-        if(!found&&g_streamRendererCount<MAX_RENDERERS)
-            g_streamRendererItems[g_streamRendererCount++]=libvlc_renderer_item_hold(it);
-    } else {
-        for(size_t i=0;i<g_streamRendererCount;i++)if(g_streamRendererItems[i]==it) {
-            libvlc_renderer_item_release(g_streamRendererItems[i]);
-            for(size_t j=i+1;j<g_streamRendererCount;j++)g_streamRendererItems[j-1]=g_streamRendererItems[j];
-            --g_streamRendererCount;break;
-        }
-    }
-    LeaveCriticalSection(&g_rendererLock);
-}
+/* Streaming Centre and the local player share one LibVLC renderer-discovery
+   session. Starting duplicate discoverers for the same services on one LibVLC
+   instance is unnecessary and can cause inconsistent discovery results.
+   The two UIs keep independent selections and playback engines. */
 void ABM_Cast_StreamDiscoveryStart(void) {
-    if(g_streamDiscovererCount) return;
-    EnterCriticalSection(&g_rendererLock);
-    for(size_t i=0;i<g_streamRendererCount;i++)libvlc_renderer_item_release(g_streamRendererItems[i]);
-    g_streamRendererCount=0;
-    LeaveCriticalSection(&g_rendererLock);
-    libvlc_rd_description_t **services=NULL;
-    size_t n=libvlc_renderer_discoverer_list_get(g_vlc,&services);
-    if(!n||!services) {
-        if(services)libvlc_renderer_discoverer_list_release(services,n);
-        return;
-    }
-    for(size_t i=0;i<n&&g_streamDiscovererCount<MAX_DISCOVERERS;i++) {
-        const char *name=services[i]->psz_name;
-        libvlc_renderer_discoverer_t *d=name?libvlc_renderer_discoverer_new(g_vlc,name):NULL;
-        if(!d)continue;
-        libvlc_event_manager_t *em=libvlc_renderer_discoverer_event_manager(d);
-        BOOL addAttached=libvlc_event_attach(em,libvlc_RendererDiscovererItemAdded,StreamRendererEvent,NULL)==0;
-        BOOL delAttached=libvlc_event_attach(em,libvlc_RendererDiscovererItemDeleted,StreamRendererEvent,NULL)==0;
-        if(addAttached&&delAttached&&libvlc_renderer_discoverer_start(d)==0) {
-            g_streamDiscoverers[g_streamDiscovererCount++]=d;
-        } else {
-            if(addAttached)libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,StreamRendererEvent,NULL);
-            if(delAttached)libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,StreamRendererEvent,NULL);
-            libvlc_renderer_discoverer_release(d);
-        }
-    }
-    libvlc_renderer_discoverer_list_release(services,n);
+    if(!g_vlc)return;
+    StartDiscovery();
 }
 void ABM_Cast_StreamDiscoveryStop(void) {
-    for(size_t i=0;i<g_streamDiscovererCount;i++) {
-        libvlc_event_manager_t *em=libvlc_renderer_discoverer_event_manager(g_streamDiscoverers[i]);
-        libvlc_event_detach(em,libvlc_RendererDiscovererItemAdded,StreamRendererEvent,NULL);
-        libvlc_event_detach(em,libvlc_RendererDiscovererItemDeleted,StreamRendererEvent,NULL);
-        libvlc_renderer_discoverer_stop(g_streamDiscoverers[i]);
-        libvlc_renderer_discoverer_release(g_streamDiscoverers[i]);
-        g_streamDiscoverers[i]=NULL;
+    /* The Streaming Centre must not stop the local player's discovery session. */
+    if(g_streamSelectedRenderer) {
+        libvlc_renderer_item_release(g_streamSelectedRenderer);
+        g_streamSelectedRenderer=NULL;
     }
-    g_streamDiscovererCount=0;
-    EnterCriticalSection(&g_rendererLock);
-    for(size_t i=0;i<g_streamRendererCount;i++)libvlc_renderer_item_release(g_streamRendererItems[i]);
-    g_streamRendererCount=0;
-    LeaveCriticalSection(&g_rendererLock);
-    if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}
 }
 unsigned int ABM_Cast_StreamDeviceCount(void) {
     unsigned int count=0;
     char names[MAX_RENDERERS][256]={{0}};
     EnterCriticalSection(&g_rendererLock);
-    for(size_t i=0;i<g_streamRendererCount&&count<MAX_RENDERERS;i++) {
-        const char *name=libvlc_renderer_item_name(g_streamRendererItems[i]);
+    for(size_t i=0;i<g_rendererCount&&count<MAX_RENDERERS;i++) {
+        const char *name=libvlc_renderer_item_name(g_rendererItems[i]);
         if(!name||!name[0])continue;
         BOOL duplicate=FALSE;
         for(unsigned int j=0;j<count;j++)if(_stricmp(names[j],name)==0){duplicate=TRUE;break;}
@@ -1627,12 +1574,12 @@ BOOL ABM_Cast_StreamDeviceName(unsigned int index,wchar_t *buffer,unsigned int c
     unsigned int count=0;
     BOOL found=FALSE;
     EnterCriticalSection(&g_rendererLock);
-    for(size_t i=0;i<g_streamRendererCount;i++) {
-        const char *name=libvlc_renderer_item_name(g_streamRendererItems[i]);
+    for(size_t i=0;i<g_rendererCount;i++) {
+        const char *name=libvlc_renderer_item_name(g_rendererItems[i]);
         if(!name||!name[0])continue;
         BOOL duplicate=FALSE;
         for(size_t j=0;j<i;j++) {
-            const char *prior=libvlc_renderer_item_name(g_streamRendererItems[j]);
+            const char *prior=libvlc_renderer_item_name(g_rendererItems[j]);
             if(prior&&_stricmp(prior,name)==0){duplicate=TRUE;break;}
         }
         if(duplicate)continue;
@@ -1645,16 +1592,16 @@ BOOL ABM_Cast_StreamSelectDevice(unsigned int index) {
     libvlc_renderer_item_t *selected=NULL;
     unsigned int count=0;
     EnterCriticalSection(&g_rendererLock);
-    for(size_t i=0;i<g_streamRendererCount;i++) {
-        const char *name=libvlc_renderer_item_name(g_streamRendererItems[i]);
+    for(size_t i=0;i<g_rendererCount;i++) {
+        const char *name=libvlc_renderer_item_name(g_rendererItems[i]);
         if(!name||!name[0])continue;
         BOOL duplicate=FALSE;
         for(size_t j=0;j<i;j++) {
-            const char *prior=libvlc_renderer_item_name(g_streamRendererItems[j]);
+            const char *prior=libvlc_renderer_item_name(g_rendererItems[j]);
             if(prior&&_stricmp(prior,name)==0){duplicate=TRUE;break;}
         }
         if(duplicate)continue;
-        if(count++==index){selected=libvlc_renderer_item_hold(g_streamRendererItems[i]);break;}
+        if(count++==index){selected=libvlc_renderer_item_hold(g_rendererItems[i]);break;}
     }
     LeaveCriticalSection(&g_rendererLock);
     if(!selected)return FALSE;
