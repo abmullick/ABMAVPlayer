@@ -21,7 +21,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 ABM AV Player includes a built-in, separate browser window for popular streaming services. Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**.
 
-- Launch the official websites for **YouTube, Netflix, Prime Video, JioHotstar and Sony LIV** inside Microsoft Edge WebView2.
+- Launch the official websites for **YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5** inside Microsoft Edge WebView2.
 - Sign in directly with your own provider account. The player does not collect, proxy or store your provider passwords.
 - A persistent, per-Windows-user browser profile can retain supported website sign-in sessions between launches.
 - Use the Streaming Centre's browser controls to navigate provider websites; use **Open in browser** if a service does not work in the embedded window.
@@ -46,7 +46,7 @@ This is web-based streaming through the providers' official sites, separate from
 - Hardware decoding uses LibVLC automatic selection by default. ABM_VLC_HW=none forces software decoding; ABM_VLC_HW=d3d11va requests D3D11VA when supported.
 
 ### Streaming services
-- Separate WebView2-powered Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar and Sony LIV.
+- Separate WebView2-powered Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5.
 - Users navigate to each provider's official website and sign in with their own accounts; ABM AV Player does not collect or proxy credentials.
 - WebView2 browser profile is persisted under %LOCALAPPDATA%\\ABMAVPlayer\\WebView2 so provider sign-in sessions can survive application restarts.
 - Protected playback is subject to each provider's embedded-browser and DRM policies. If a provider blocks WebView2 or its DRM requirements are not met, use the provider's official browser/app instead. A subscription alone does not guarantee embedded playback.
