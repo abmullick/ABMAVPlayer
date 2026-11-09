@@ -470,6 +470,23 @@ static void FormatTime(int ms,wchar_t *out,size_t n) {
     if(ms<0) ms=0; int sec=ms/1000;
     swprintf_s(out,n,L"%02d:%02d",sec/60,sec%60);
 }
+/* Writes timing diagnostics to %TEMP%\\ABMAVPlayer-fullscreen-diagnostics.log.
+   This is intentionally lightweight and only records potentially blocking
+   fullscreen/seek/stop operations. */
+static void FullscreenDiag(const char *stage, ULONGLONG elapsedMs) {
+    wchar_t path[MAX_PATH];
+    DWORD n=GetTempPathW(_countof(path),path);
+    if(n==0 || n>=_countof(path)) return;
+    if(wcslen(path)+48>=_countof(path)) return;
+    wcscat_s(path,_countof(path),L"ABMAVPlayer-fullscreen-diagnostics.log");
+    FILE *f=NULL;
+    if(_wfopen_s(&f,path,L"a, ccs=UTF-8")!=0 || !f) return;
+    SYSTEMTIME now; GetLocalTime(&now);
+    fwprintf(f,L"%04u-%02u-%02u %02u:%02u:%02u.%03u | %S | %llu ms\n",
+        now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,
+        now.wMilliseconds,stage,(unsigned long long)elapsedMs);
+    fclose(f);
+}
 static void PositionVideoWindow(void) {
     if (!g_video || !IsWindow(g_video)) return;
 
@@ -513,8 +530,11 @@ static void PositionVideoWindow(void) {
     if (!g_videoBoundsValid ||
         next.left != g_videoBounds.left || next.top != g_videoBounds.top ||
         next.right != g_videoBounds.right || next.bottom != g_videoBounds.bottom) {
+        ULONGLONG positionStart=GetTickCount64();
+        FullscreenDiag(g_fullscreenTransition?"video-child-resize-during-transition-begin":"video-child-resize-begin",0);
         SetWindowPos(g_video, HWND_TOP, x, y, videoW, videoH,
             SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        FullscreenDiag(g_fullscreenTransition?"video-child-resize-during-transition":"video-child-resize",GetTickCount64()-positionStart);
         g_videoBounds = next;
         g_videoBoundsValid = TRUE;
         InvalidateRect(g_main, &R_VIDEO, FALSE);
@@ -2369,6 +2389,8 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
 }
 
 static void ToggleFullscreen(HWND hwnd) {
+    ULONGLONG transitionStart=GetTickCount64();
+    FullscreenDiag(g_fullscreen?"fullscreen-exit-begin":"fullscreen-enter-begin",0);
     g_fullscreenTransition = TRUE;
 
     /* Hide the VLC child only when entering fullscreen. On exit, leave the
@@ -2396,9 +2418,11 @@ static void ToggleFullscreen(HWND hwnd) {
         if(g_eqWindow)ShowWindow(g_eqWindow,SW_HIDE);
         ShowWindow(g_renderers,SW_HIDE);
         SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
+        ULONGLONG placementStart=GetTickCount64();
         SetWindowPos(hwnd,HWND_TOP,mi.rcMonitor.left,mi.rcMonitor.top,
             mi.rcMonitor.right-mi.rcMonitor.left,mi.rcMonitor.bottom-mi.rcMonitor.top,
             SWP_FRAMECHANGED|SWP_SHOWWINDOW);
+        FullscreenDiag("fullscreen-enter-window-setpos",GetTickCount64()-placementStart);
     } else {
         g_fullscreen=FALSE;
         g_fullscreenControlsVisible=TRUE;
@@ -2409,7 +2433,10 @@ static void ToggleFullscreen(HWND hwnd) {
            second no-op SetWindowPos/frame recalculation after SetWindowPlacement. */
         SetWindowLongPtrW(hwnd,GWL_STYLE,
             (LONG_PTR)(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN));
+        ULONGLONG placementStart=GetTickCount64();
+        FullscreenDiag("fullscreen-exit-setwindowplacement-begin",0);
         SetWindowPlacement(hwnd,&g_savedPlacement);
+        FullscreenDiag("fullscreen-exit-setwindowplacement",GetTickCount64()-placementStart);
         ShowWindow(hwnd,SW_RESTORE);
         ShowWindow(g_renderers,SW_SHOW);
     }
@@ -2424,7 +2451,10 @@ static void ToggleFullscreen(HWND hwnd) {
        second UpdateLayout and synchronous RedrawWindow(UPDATENOW) made Escape
        block the message loop during the return to compact mode. */
     g_videoBoundsValid = FALSE;
+    ULONGLONG layoutStart=GetTickCount64();
+    FullscreenDiag(g_fullscreen?"fullscreen-enter-layout-begin":"fullscreen-exit-layout-begin",0);
     UpdateLayout(hwnd);
+    FullscreenDiag(g_fullscreen?"fullscreen-enter-layout":"fullscreen-exit-layout",GetTickCount64()-layoutStart);
     SyncRendererComboVisibility();
 
     if(g_fullscreen && g_fullscreenOverlay) {
@@ -2440,8 +2470,13 @@ static void ToggleFullscreen(HWND hwnd) {
 
     RECT clientRect={0};
     GetClientRect(hwnd,&clientRect);
-    if(clientRect.right>0&&clientRect.bottom>0)
+    if(clientRect.right>0&&clientRect.bottom>0) {
+        ULONGLONG d2dStart=GetTickCount64();
+        FullscreenDiag("fullscreen-d2d-resize-begin",0);
         ABM_D2D_Resize(&g_ui,(UINT)clientRect.right,(UINT)clientRect.bottom);
+        FullscreenDiag("fullscreen-d2d-resize",GetTickCount64()-d2dStart);
+    }
+    FullscreenDiag(g_fullscreen?"fullscreen-enter-total":"fullscreen-exit-total",GetTickCount64()-transitionStart);
 
     /* Queue a repaint instead of forcing all child windows to paint
        synchronously while handling Escape. */
@@ -3156,7 +3191,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
             if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
-            if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+            if(Inside(R_STOP,x,y)){
+                ULONGLONG stopStart=GetTickCount64();
+                FullscreenDiag("fullscreen-stop-begin",0);
+                libvlc_media_player_stop(g_player);
+                FullscreenDiag("fullscreen-stop-call",GetTickCount64()-stopStart);
+                g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
+            }
             if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;g_dragSeekX=x;SetCapture(hwnd);return 0;}
             if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12&&x>=R_VOLUME.left-8&&x<=R_VOLUME.right+8){
                 g_dragVolume=1;
@@ -3242,7 +3283,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetCapture(hwnd);
         if(Inside(R_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
         if(Inside(R_PLAY,x,y)){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}else if(g_playlistCount)PlayIndex(g_selected<0?0:g_selected);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        if(Inside(R_STOP,x,y)){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(Inside(R_STOP,x,y)){
+            ULONGLONG stopStart=GetTickCount64();
+            FullscreenDiag("windowed-stop-begin",0);
+            libvlc_media_player_stop(g_player);
+            FullscreenDiag("windowed-stop-call",GetTickCount64()-stopStart);
+            g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
+        }
         if(Inside(R_NEXT,x,y)){if(g_playlistCount)PlayIndex(GetNextPlaylistIndex());ReleaseCapture();return 0;}
         if(Inside(R_PREV,x,y)){if(g_playlistCount)PlayIndex(g_current>0?g_current-1:0);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_SCAN,x,y)){StartDiscovery();ReleaseCapture();return 0;}
@@ -3420,7 +3467,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_dragSeek=0;
             /* Submit one seek after the drag ends. Repeated set_time calls while
                the mouse moves can queue decoder seeks faster than they complete. */
-            if(g_hasMedia)SeekAt(seekX);
+            if(g_hasMedia) {
+                ULONGLONG seekStart=GetTickCount64();
+                FullscreenDiag(g_fullscreen?"fullscreen-seek-submit-begin":"windowed-seek-submit-begin",0);
+                SeekAt(seekX);
+                FullscreenDiag(g_fullscreen?"fullscreen-seek-submit":"windowed-seek-submit",GetTickCount64()-seekStart);
+            }
         }
         g_dragVolume=0;g_dragPlaylistScroll=FALSE;ReleaseCapture();return 0;
     case WM_PAINT: {
