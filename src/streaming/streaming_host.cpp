@@ -240,7 +240,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT email={322,287,rc.right-28,310};
             Text(dc,L"abmullick@gmail.com",email,RGBc(228,238,249),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT description={322,316,rc.right-28,361};
-            Text(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",description,RGBc(207,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            Text(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",description,RGBc(207,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,382,rc.right-28,404};
             Text(dc,L"Version 0.6.0   |   © 2026 Abhisek Basu Mullick",version,RGBc(125,157,185),11,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }else{
