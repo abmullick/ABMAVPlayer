@@ -72,6 +72,12 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
     bool fetched=ReadUrl(kReleaseApi,&json,&bytes);
     SetCursor(LoadCursorW(nullptr,IDC_ARROW));
     if(!fetched){ExplainFailure(owner,L"Could not contact GitHub Releases. Check your internet connection and try again.");return false;}
+    wchar_t apiMessage[256]{};
+    if(JsonString(json,"message",apiMessage,_countof(apiMessage)) && !_wcsicmp(apiMessage,L"Not Found")) {
+        free(json);
+        ExplainFailure(owner,L"No public release has been published yet. The update checker will work after the first Windows installer is published on GitHub Releases.");
+        return false;
+    }
     wchar_t tag[64]{},assetUrl[2048]{},notes[1024]{};
     bool gotTag=JsonString(json,"tag_name",tag,_countof(tag));
     JsonString(json,"body",notes,_countof(notes));
