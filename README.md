@@ -25,17 +25,20 @@ Download the installer, run it, and follow the setup instructions. The installer
 
 ## Features
 
-### Streaming Centre — online video services
+### Streaming Centre — browser services and independent TV casting
 
-ABM AV Player includes a built-in, separate browser window for popular streaming services. Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**.
+Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 window with its own navigation, receiver-selection and casting workflow.
 
-- Launch the official websites for **YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5** inside Microsoft Edge WebView2.
-- Sign in directly with your own provider account. The player does not collect, proxy or store your provider passwords.
-- A persistent, per-Windows-user browser profile can retain supported website sign-in sessions between launches.
-- Use the Streaming Centre's browser controls to navigate provider websites; use **Open in browser** if a service does not work in the embedded window.
-- Streaming compatibility is controlled by each provider. DRM, browser restrictions, device certification, region and runtime support can prevent protected playback; a subscription does not guarantee embedded playback.
+- Six provider launch cards: **YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5**. Each opens the provider's official website.
+- Sign in directly with your provider. ABM AV Player does not collect, proxy or store provider passwords.
+- Persistent WebView2 profile at `%LOCALAPPDATA%\\ABMAVPlayer\\WebView2` can retain supported cookies and sign-in sessions for the current Windows user.
+- Browser toolbar: Back, Forward, Reload, Home, Fullscreen, Help, About and Open in browser.
+- WebView2 process-failure recovery makes a bounded number of attempts and can restore the current safe HTTP(S) page.
+- Dedicated **Find TVs** panel, separate from the main player's Playback Output selector. Discovery combines Google Cast, DLNA/UPnP and DIAL receivers; matching receiver names are consolidated.
+- Select a receiver in the panel, then choose **Cast video**. YouTube handoff uses a discovered DIAL YouTube app endpoint when available. Directly addressable video URLs may be sent to compatible Cast/DLNA renderers.
+- This is not browser-tab mirroring. DRM-protected, encrypted, segmented or non-direct browser streams generally cannot be handed off. DLNA alone cannot launch the YouTube app. Provider-native Cast or the provider's official TV app may be needed.
 
-This is web-based streaming through the providers' official sites, separate from local LibVLC playback and Google Cast output. See [STREAMING.md](STREAMING.md) for setup, privacy and troubleshooting.
+Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
@@ -53,17 +56,12 @@ This is web-based streaming through the providers' official sites, separate from
 - Optional ReplayGain track normalisation and dynamic-range compressor for newly opened media.
 - Hardware decoding uses LibVLC automatic selection by default. ABM_VLC_HW=none forces software decoding; ABM_VLC_HW=d3d11va requests D3D11VA when supported.
 
-### Streaming services
-- Separate WebView2-powered Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5.
-- Users navigate to each provider's official website and sign in with their own accounts; ABM AV Player does not collect or proxy credentials.
-- WebView2 browser profile is persisted under %LOCALAPPDATA%\\ABMAVPlayer\\WebView2 so provider sign-in sessions can survive application restarts.
-- Protected playback is subject to each provider's embedded-browser and DRM policies. If a provider blocks WebView2 or its DRM requirements are not met, use the provider's official browser/app instead. A subscription alone does not guarantee embedded playback.
-
 ### Network playback
-- Receiver discovery and renderer selection through LibVLC, including compatible Google Cast / Chromecast devices and other renderer services exposed by the installed VLC build.
-- Choose a receiver before playback or switch output while an item is playing.
-- Output switching attempts to restore the prior playback position and paused/playing state after the selected renderer starts.
-- Casting depends on VLC's renderer-discovery, Chromecast, codec and encoder plugins, receiver compatibility and the local network. See CASTING.md.
+- Main-player local output selection and discovery through LibVLC. Compatible Google Cast / Chromecast receivers and other renderer services exposed by the installed VLC build may appear.
+- Choose a local-player receiver before playback or switch output while an item is playing; returning to Local playback routes audio/video to the PC.
+- Output switching attempts to restore the prior playback position and paused/playing state after the new renderer starts. This is best-effort and automatic local fallback is not guaranteed.
+- Streaming Centre has a separate Find TVs panel combining Google Cast, DLNA/UPnP and DIAL discovery, plus a Cast video action for supported YouTube app handoff or directly addressable video URLs. Its selection does not change local-player casting.
+- Receiver discovery, transcoding, codec support and playback depend on VLC plugins, receiver capabilities, multicast/network configuration and firewall rules. See [CASTING.md](CASTING.md) and [STREAMING.md](STREAMING.md).
 
 ## Interface and architecture
 
@@ -97,7 +95,8 @@ ABM AV Player includes an in-app update checker connected to the public GitHub R
 
 - Select **Check for updates** from the application menu.
 - The player checks the latest published release, compares its version with the installed version, and displays the release notes when an update is available.
-- If you accept, the player downloads the official Windows installer, verifies its SHA-256 digest against the value returned by GitHub Releases, and starts the normal Windows installation process. You will be asked to approve installation through the Windows elevation prompt. No code-signing certificate is required for this integrity check.
+- If you accept, the player downloads the official Windows installer and verifies its SHA-256 digest against the digest returned by GitHub Releases before launching it. A missing or mismatched digest blocks installation.
+- The installer is started with the normal Windows elevation prompt. No code-signing certificate is required for SHA-256 verification; Windows SmartScreen may still warn about an unsigned installer.
 - **No GitHub account, GitHub login, access token, or command-line tools are required.** Update checks and downloads are anonymous because this repository is public.
 - You can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases).
 
