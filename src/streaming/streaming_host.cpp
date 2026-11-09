@@ -514,7 +514,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT description={322,347,rc.right-28,397};
             Text(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",description,RGBc(226,238,249),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,410,rc.right-28,436};
-            Text(dc,L"Version 0.6.0   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Version 1.0.1   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,RGBc(35,62,82));
             RECT tributeTitle={32,470,rc.right-32,495};
             Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -528,24 +528,28 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             const int left=32,right=rc.right-32;
             RECT intro={left,91,right,125};
             Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,RGBc(238,245,252),16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            const wchar_t *heads[5]={L"1. CHOOSE A SERVICE",L"2. SIGN IN SECURELY",L"3. NAVIGATION & PLAYBACK",L"4. FULLSCREEN",L"5. OPEN IN BROWSER"};
-            const wchar_t *body[5]={
-                L"Select YouTube, Netflix, Prime Video, JioHotstar, Sony LIV or ZEE5 from the large service cards.",
-                L"Sign in on the provider's official website using your own account. Browser sessions are stored locally in your Windows profile.",
-                L"Back and Forward navigate browser history. Previous and Next are intended for YouTube playlists and mixes. Reload refreshes the page; Home returns to the Streaming Centre.",
-                L"Use the fullscreen button beside Home, or the provider's own fullscreen control. Fullscreen behaviour depends on the service and WebView2 support. Press Esc to exit.",
-                L"Open in browser launches the current service in your default desktop browser."
+            const wchar_t *heads[6]={
+                L"1. CHOOSE A SERVICE",L"2. SIGN IN & BROWSER PROFILE",L"3. NAVIGATION CONTROLS",
+                L"4. FULLSCREEN & EXTERNAL BROWSER",L"5. FIND TVs & SELECT A RECEIVER",L"6. CAST VIDEO & TROUBLESHOOT"
             };
-            int y=145;
-            for(int i=0;i<5;i++){
-                RECT h={left,y,right,y+22};
-                Text(dc,heads[i],h,RGBc(91,231,220),14,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-                RECT b={left,y+24,right,y+72};
-                Text(dc,body[i],b,RGBc(235,242,250),15,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-                y+=91;
+            const wchar_t *body[6]={
+                L"Choose YouTube, Netflix, Prime Video, JioHotstar, Sony LIV or ZEE5 from the service cards. Each opens the provider's official website in the embedded browser.",
+                L"Sign in directly on the provider's website with your own account. Supported cookies and sessions persist in the current Windows profile at %LOCALAPPDATA%\\ABMAVPlayer\\WebView2. The player does not collect or proxy passwords.",
+                L"Back and Forward navigate browser history. Reload refreshes the current page; Home returns to the service start page. Previous/Next are intended for supported YouTube playlist navigation.",
+                L"Use the Fullscreen toolbar control, F11 or the provider's own video control. Press Esc to leave fullscreen. Open in browser launches the current page in your default desktop browser.",
+                L"Choose Find TVs to open the dedicated device panel. Discovery checks Google Cast, DLNA/UPnP and DIAL receivers. Select a TV, use Refresh devices if needed, then click Use selected TV. Duplicate receiver entries are consolidated where names match.",
+                L"Choose Cast video after selecting a receiver. YouTube handoff requires a compatible DIAL YouTube app endpoint (or supported Cast app control); DLNA alone cannot launch YouTube. Other content requires a directly addressable video URL. Protected, encrypted or segmented streams generally cannot be handed off. If playback fails, try the provider's official browser/app."
+            };
+            int y=140;
+            for(int i=0;i<6;i++){
+                RECT h={left,y,right,y+21};
+                Text(dc,heads[i],h,RGBc(91,231,220),13,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                RECT b={left,y+22,right,y+70};
+                Text(dc,body[i],b,RGBc(235,242,250),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+                y+=88;
             }
-            RECT note={left,rc.bottom-66,right,rc.bottom-22};
-            Text(dc,L"ABM AV Player does not host streaming content or provide subscriptions. Playback, protected content and available features are controlled by each provider.",note,RGBc(190,210,228),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT note={left,rc.bottom-62,right,rc.bottom-18};
+            Text(dc,L"Streaming compatibility, DRM, subscriptions and protected playback are controlled by each provider. ABM AV Player does not host content or bypass provider protections.",note,RGBc(190,210,228),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
         }
         EndPaint(hwnd,&ps);return 0;
     }
