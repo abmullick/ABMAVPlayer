@@ -595,9 +595,10 @@ static void DrawUI(HDC dc,RECT client) {
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
-    RoundBox(dc,menuBtn,g_menuOpen?RGB(28,75,91):Blend(RGB(15,27,43),RGB(29,53,70),menuHot?100:0),13);
-    ABM_D2D_StrokeRound(&g_ui,(float)menuBtn.left,(float)menuBtn.top,(float)menuBtn.right,(float)menuBtn.bottom,13.0f,menuHot?RGB(84,147,218):RGB(46,69,99),1.0f);
-    for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.right-12,menuBtn.top+13+i*7,RGB(226,236,249),2);
+    Panel(dc,menuBtn,g_menuOpen?RGB(32,78,91):Blend(RGB(17,29,47),RGB(36,57,84),menuHot?100:0),
+        g_menuOpen?RGB(92,165,182):(menuHot?RGB(80,132,191):RGB(47,69,98)),15);
+    /* Keep the hamburger icon in its own compact column, clear of the label. */
+    for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.left+29,menuBtn.top+13+i*7,RGB(226,236,249),2);
     RECT menuLabel={menuBtn.left+39,menuBtn.top+3,menuBtn.right-7,menuBtn.bottom-3};
     Txt(dc,L"MENU",menuLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT drawerBtn=R_DRAWER_BUTTON;
