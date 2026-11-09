@@ -96,6 +96,7 @@ void DiscoverWorker() {
                     if(device){
                         BSTR friendly=nullptr;device->get_FriendlyName(&friendly);
                         DlnaReceiver receiver;receiver.name=BstrValue(friendly);
+                        IUPnPService *avTransport=nullptr;
                         IUPnPServices *services=nullptr;
                         if(SUCCEEDED(device->get_Services(&services))&&services){
                             IUnknown *serviceEnum=nullptr;
@@ -112,8 +113,8 @@ void DiscoverWorker() {
                                         if(service){
                                             BSTR type=nullptr;service->get_ServiceTypeIdentifier(&type);
                                             std::wstring serviceType=BstrValue(type);
-                                            if(serviceType.find(L":service:AVTransport:")!=std::wstring::npos&&!receiver.avTransport){
-                                                receiver.avTransport=service;service=nullptr;
+                                            if(serviceType.find(L":service:AVTransport:")!=std::wstring::npos&&!avTransport){
+                                                avTransport=service;service=nullptr;
                                             }
                                             if(service)service->Release();
                                         }
@@ -125,16 +126,17 @@ void DiscoverWorker() {
                             }
                             services->Release();
                         }
-                        if(receiver.avTransport&&!receiver.name.empty()){
+                        if(avTransport&&!receiver.name.empty()){
                             IStream *stream=nullptr;
-                            if(SUCCEEDED(CoMarshalInterThreadInterfaceInStream(IID_IUPnPService,receiver.avTransport,&stream))){
-                                receiver.avTransport->Release();receiver.avTransport=nullptr;
+                            if(SUCCEEDED(CoMarshalInterThreadInterfaceInStream(IID_IUPnPService,avTransport,&stream))){
+                                avTransport->Release();avTransport=nullptr;
                                 receiver.serviceStream=stream;
                                 std::lock_guard<std::mutex> guard(g_lock);
                                 auto it=std::find_if(g_devices.begin(),g_devices.end(),[&](const DlnaReceiver &d){return _wcsicmp(d.name.c_str(),receiver.name.c_str())==0;});
                                 if(it==g_devices.end())g_devices.push_back(std::move(receiver));
                             }
                         }
+                        if(avTransport)avTransport->Release();
                         device->Release();
                     }
                     VariantClear(&item);
