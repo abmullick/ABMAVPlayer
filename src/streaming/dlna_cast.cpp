@@ -44,6 +44,8 @@ bool Invoke(IUPnPService *service,const wchar_t *action,VARIANT *values,ULONG co
     }
     VARIANT input,output,result;VariantInit(&input);VariantInit(&output);VariantInit(&result);
     input.vt=VT_ARRAY|VT_VARIANT;input.parray=array;
+    output.vt=VT_ARRAY|VT_VARIANT;output.parray=SafeArrayCreateVector(VT_VARIANT,0,0);
+    if(!output.parray){VariantClear(&input);return false;}
     BSTR actionName=SysAllocString(action);
     HRESULT hr=actionName?service->InvokeAction(actionName,input,&output,&result):E_OUTOFMEMORY;
     if(actionName)SysFreeString(actionName);
