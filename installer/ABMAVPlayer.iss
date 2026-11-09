@@ -1,5 +1,5 @@
 #define MyAppName "ABM AV Player"
-#define MyAppVersion "0.6.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Abhisek Basu Mullick"
 #define MyAppExeName "ABMAVPlayer.exe"
 
