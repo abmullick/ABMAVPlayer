@@ -2579,7 +2579,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int oldMenuProgress=g_menuProgress;
         g_menuProgress=EaseToward(g_menuProgress,g_menuOpen?100:0,28);
         if(oldMenuProgress!=g_menuProgress){
-            PositionVideoWindow();
+            /* Menu animation is paint-only. Do not move LibVLC's native
+               video HWND on every 33 ms timer tick; reposition it only when
+               the menu's open/closed state changes. */
             InvalidateRect(hwnd,NULL,FALSE);
         }
         int oldLevel=g_hoverLevel;
@@ -2761,6 +2763,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
             if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
+            PositionVideoWindow();
             SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
             InvalidateRect(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
@@ -2773,6 +2776,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_menuOpen && !Inside(R_MENU_PANEL,x,y)) {
             g_menuOpen=FALSE;
+            PositionVideoWindow();
             SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;
             InvalidateRect(hwnd,&dirty,FALSE);
@@ -2781,6 +2785,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<16;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
+                PositionVideoWindow();
                 SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
@@ -2848,14 +2853,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
-            if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_UP){g_menuSelection=(g_menuSelection+15)%16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_END){g_menuSelection=15;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
-        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
         if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
@@ -2883,7 +2888,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
         if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
         if(wp==VK_ESCAPE&&g_fullscreen){ToggleFullscreen(hwnd);return 0;}
-        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
     }
     case WM_CHAR:
