@@ -289,7 +289,7 @@ void ShowStreamingInfo(bool about){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
-    int width=about?720:760,height=about?450:590;
+    int width=about?720:760,height=about?450:640;
     RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
     int x=owner.left+(owner.right-owner.left-width)/2;
     int y=owner.top+(owner.bottom-owner.top-height)/2;
@@ -549,6 +549,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         g_window=nullptr;
+        if(g_infoWindow&&IsWindow(g_infoWindow))DestroyWindow(g_infoWindow);
         if(g_controller)g_controller->Close();
         g_webView.Reset();g_controller.Reset();g_environment.Reset();
         ReleaseServiceLogos();
