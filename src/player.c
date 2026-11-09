@@ -2256,7 +2256,12 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         r.top=228;r.bottom=249;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=250;r.bottom=274;SetTextColor(dc,RGB(225,235,244));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=278;r.bottom=316;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-        r.top=326;r.bottom=350;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT divider={28,365,rc.right-28,366};HBRUSH line=CreateSolidBrush(RGB(35,62,82));FillRect(dc,&divider,line);DeleteObject(line);
+        r.left=34;r.right=rc.right-34;r.top=377;r.bottom=399;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=403;r.bottom=449;SetTextColor(dc,RGB(210,222,234));DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
+        r.top=455;r.bottom=477;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=480;r.bottom=508;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"C • C++ • Win32 API • LibVLC • Direct2D • DirectWrite • Microsoft WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=514;r.bottom=533;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
         DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
@@ -2436,7 +2441,7 @@ static void ShowAboutDialog(HWND owner) {
         if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    RECT wr={0,0,700,390}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
+    RECT wr={0,0,700,570}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
     int w=wr.right-wr.left,h=wr.bottom-wr.top;
     int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerAbout",
