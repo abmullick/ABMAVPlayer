@@ -142,9 +142,9 @@ HFONT GetCachedTextFont(int height,int weight){
     for(auto &entry:g_textFonts)if(entry.font&&entry.height==height&&entry.weight==weight)return entry.font;
     for(auto &entry:g_textFonts)if(!entry.font){
         entry.height=height;entry.weight=weight;
-        entry.font=CreateFontW(height,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        entry.font=CreateFontW(-height,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-            DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+            DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         return entry.font;
     }
     return (HFONT)GetStockObject(DEFAULT_GUI_FONT);
@@ -284,7 +284,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }else{
             const int left=32,right=rc.right-32;
             RECT intro={left,91,right,125};
-            Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,RGBc(221,234,247),14,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,RGBc(238,245,252),16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *heads[5]={L"1. CHOOSE A SERVICE",L"2. SIGN IN SECURELY",L"3. NAVIGATION & PLAYBACK",L"4. FULLSCREEN",L"5. OPEN IN BROWSER"};
             const wchar_t *body[5]={
                 L"Select YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the large service cards.",
@@ -293,13 +293,13 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 L"Use the fullscreen button beside Home, or the provider's own fullscreen control. Fullscreen behaviour depends on the service and WebView2 support. Press Esc to exit.",
                 L"Open in browser launches the current service in your default desktop browser."
             };
-            int y=143;
+            int y=145;
             for(int i=0;i<5;i++){
                 RECT h={left,y,right,y+22};
-                Text(dc,heads[i],h,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                Text(dc,heads[i],h,RGBc(91,231,220),14,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
                 RECT b={left,y+23,right,y+59};
                 Text(dc,body[i],b,RGBc(205,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-                y+=83;
+                y+=91;
             }
             RECT note={left,rc.bottom-57,right,rc.bottom-26};
             Text(dc,L"ABM AV Player does not host streaming content or provide subscriptions. Playback, protected content and available features are controlled by each provider.",note,RGBc(125,157,185),10,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
@@ -327,7 +327,7 @@ void ShowStreamingInfo(bool about){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
-    int width=about?820:800,height=about?700:680;
+    int width=about?900:900,height=about?760:760;
     RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
     int x=owner.left+(owner.right-owner.left-width)/2;
     int y=owner.top+(owner.bottom-owner.top-height)/2;
