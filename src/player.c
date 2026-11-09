@@ -668,8 +668,8 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},RGB(120,190,206),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT headline1={leftX,topY+42,leftX+textW,topY+91};
         RECT headline2={leftX,topY+88,leftX+textW,topY+137};
-        Txt(dc,L"Your media.",headline1,RGB(247,249,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        Txt(dc,L"Your moment.",headline2,RGB(126,199,181),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Capture the feeling.",headline1,RGB(247,249,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Relive every moment.",headline2,RGB(126,199,181),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail={leftX,topY+151,leftX+textW,topY+194};
         Txt(dc,L"A refined home for music, movies and",detail,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail2={leftX,topY+177,leftX+textW,topY+218};
