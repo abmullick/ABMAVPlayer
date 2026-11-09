@@ -38,7 +38,7 @@ copy /y "assets\owner_portrait.bmp" "%DEST%\assets\owner_portrait.bmp" >nul || e
 
 rem Streaming Centre service logos are loaded from the installed assets folder.
 mkdir "%DEST%\assets" 2>nul
-for %%L in (youtube.png netflix.png primevideo.png jiohotstar.png sonyliv.png) do (
+for %%L in (youtube.png netflix.png primevideo.png jiohotstar.png sonyliv.png zee5.png) do (
   if not exist "assets\%%L" (
     echo ERROR: Required Streaming Centre logo assets\%%L is missing.
     exit /b 1
