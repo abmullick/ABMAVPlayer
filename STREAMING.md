@@ -62,6 +62,20 @@ The Streaming Centre header includes a **Cast to TV** action. It reuses the main
 
 **Important limitation:** this integration discovers receivers and reuses the existing local-media casting workflow. It does not mirror the WebView2 page or extract a provider's video stream from YouTube, Netflix, Prime Video, JioHotstar or Sony LIV. WebView2 website playback and LibVLC renderer playback are separate pipelines. DRM-protected services may prohibit third-party casting; use the provider's own Cast control or official TV app where available. Do not interpret selecting a TV in Playback Output as proof that the current browser video has been sent to it.
 
+
+## Casting a browser video to a TV (experimental)
+
+The Streaming Centre now offers **Find TVs** and **Cast video**:
+
+1. Choose **Find TVs** and select a receiver in the main player's Playback Output panel.
+2. Return to Streaming Centre and start the video in the page.
+3. Choose **Cast video**. The browser checks the active HTML5 video element and passes its current source URL to the main player's LibVLC engine.
+4. LibVLC asks the selected renderer to play that URL. A failed request is not silently redirected to local playback.
+
+This is a best-effort direct-URL handoff, not browser-tab mirroring or a full WebRTC/Google Cast sender implementation. It works only when the page exposes a directly addressable HTTP(S) media URL and the TV/renderer can fetch and decode it. Many modern sites use Media Source Extensions (MSE), short-lived signed URLs, cookies/authorization headers, adaptive HLS/DASH manifests, or DRM. Those sources may be unavailable to LibVLC or the receiver. blob: URLs, data: URLs, protected streams and DRM are intentionally not extracted or bypassed. The feature does not copy browser cookies or credentials to the TV.
+
+If **Cast video** reports that no direct video URL is available, use the streaming provider's own Cast button or its official TV app. A successful handoff request does not guarantee that the receiver can fetch or play the media.
+
 ## Runtime checks and recovery
 
 Before starting the embedded browser, ABM AV Player checks whether a WebView2 runtime is available. If it is missing or cannot be found, the main player remains usable and the Streaming Centre displays an instruction to install the official Microsoft Edge WebView2 Evergreen Runtime. If the WebView2 browser process fails unexpectedly, the Streaming Centre makes a bounded number of automatic recovery attempts and restores the current HTTP(S) page when possible. If repeated recovery fails, close and reopen the Streaming Centre. Provider playback and DRM remain subject to the provider's policies.
