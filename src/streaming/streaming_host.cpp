@@ -58,7 +58,6 @@ RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{}
 int g_activeService=-1;
 int g_hoverService=-1;
 int g_hoverControl=-1;
-int g_serviceHoverAmount[5]{};
 bool g_trackingMouseLeave=false;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
@@ -121,13 +120,6 @@ void ReleaseServiceLogos(){
 }
 
 COLORREF RGBc(int r,int g,int b){return RGB(r,g,b);}
-COLORREF BlendColor(COLORREF from,COLORREF to,int amount){
-    if(amount<0)amount=0;if(amount>100)amount=100;
-    int inverse=100-amount;
-    return RGB((GetRValue(from)*inverse+GetRValue(to)*amount)/100,
-               (GetGValue(from)*inverse+GetGValue(to)*amount)/100,
-               (GetBValue(from)*inverse+GetBValue(to)*amount)/100);
-}
 void FillRectColor(HDC dc,const RECT &r,COLORREF color){
     HBRUSH b=CreateSolidBrush(color);FillRect(dc,&r,b);DeleteObject(b);
 }
@@ -384,9 +376,18 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:#a9bfd2;line-heig
     if(g_window)InvalidateRect(g_window,nullptr,FALSE);
 }
 void PaintChrome(HWND hwnd){
-    PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
-    FillRectColor(dc,rc,RGBc(7,12,21));
+    PAINTSTRUCT ps{};HDC paintDc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
     if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
+    int width=rc.right-rc.left,height=rc.bottom-rc.top;
+    HDC dc=CreateCompatibleDC(paintDc);
+    HBITMAP buffer=(width>0&&height>0)?CreateCompatibleBitmap(paintDc,width,height):nullptr;
+    HGDIOBJ previousBitmap=buffer?SelectObject(dc,buffer):nullptr;
+    if(!dc||!buffer||!previousBitmap){
+        if(buffer)DeleteObject(buffer);
+        if(dc)DeleteDC(dc);
+        dc=paintDc;buffer=nullptr;previousBitmap=nullptr;
+    }
+    FillRectColor(dc,rc,RGBc(7,12,21));
 
     /* A taller, clearly separated native chrome keeps the service selector prominent. */
     RECT header={0,0,rc.right,208};FillRectColor(dc,header,RGBc(11,24,39));
@@ -436,12 +437,12 @@ void PaintChrome(HWND hwnd){
         bool active=(i==g_activeService),hover=(i==g_hoverService);
         COLORREF baseFill=active?RGBc(25,91,91):RGBc(17,35,53);
         COLORREF hoverFill=active?RGBc(34,119,113):RGBc(28,54,76);
-        COLORREF fill=BlendColor(baseFill,hoverFill,g_serviceHoverAmount[i]);
+        COLORREF fill=hover?hoverFill:baseFill;
         Rounded(dc,g_serviceRects[i],fill,14);
         RECT border=g_serviceRects[i];
         COLORREF baseBorder=active?RGBc(63,201,190):RGBc(30,53,73);
         COLORREF hoverBorder=active?RGBc(104,232,213):RGBc(61,119,145);
-        HPEN pen=CreatePen(PS_SOLID,active?2:1,BlendColor(baseBorder,hoverBorder,g_serviceHoverAmount[i]));
+        HPEN pen=CreatePen(PS_SOLID,active?2:1,hover?hoverBorder:baseBorder);
         HGDIOBJ oldPen=SelectObject(dc,pen);
         HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
         RoundRect(dc,border.left,border.top,border.right,border.bottom,14,14);
@@ -489,6 +490,12 @@ void PaintChrome(HWND hwnd){
         g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
     Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?RGBc(173,211,220):RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(buffer){
+        BitBlt(paintDc,0,0,width,height,dc,0,0,SRCCOPY);
+        SelectObject(dc,previousBitmap);
+        DeleteObject(buffer);
+        DeleteDC(dc);
+    }
     EndPaint(hwnd,&ps);
 }
 void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
@@ -593,26 +600,12 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         else if(PtInRect(&g_helpRect,pt))control=5;
         else if(PtInRect(&g_aboutRect,pt))control=6;
         else if(PtInRect(&g_externalRect,pt))control=7;
-        if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;SetTimer(hwnd,1,16,nullptr);InvalidateRect(hwnd,nullptr,FALSE);}
+        if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;InvalidateRect(hwnd,nullptr,FALSE);}
         SetCursor((service>=0||control>=0)?LoadCursorW(nullptr,IDC_HAND):LoadCursorW(nullptr,IDC_ARROW));
         return 0;
     }
     case WM_MOUSELEAVE:
-        g_trackingMouseLeave=false;g_hoverService=-1;g_hoverControl=-1;SetTimer(hwnd,1,16,nullptr);SetCursor(LoadCursorW(nullptr,IDC_ARROW));InvalidateRect(hwnd,nullptr,FALSE);return 0;
-    case WM_TIMER:
-        if(wp==1){
-            bool moving=false;
-            for(int i=0;i<5;i++){
-                int target=(i==g_hoverService)?100:0;
-                if(g_serviceHoverAmount[i]<target){g_serviceHoverAmount[i]+=20;if(g_serviceHoverAmount[i]>target)g_serviceHoverAmount[i]=target;}
-                else if(g_serviceHoverAmount[i]>target){g_serviceHoverAmount[i]-=20;if(g_serviceHoverAmount[i]<target)g_serviceHoverAmount[i]=target;}
-                if(g_serviceHoverAmount[i]!=target)moving=true;
-            }
-            InvalidateRect(hwnd,nullptr,FALSE);
-            if(!moving)KillTimer(hwnd,1);
-            return 0;
-        }
-        break;
+        g_trackingMouseLeave=false;g_hoverService=-1;g_hoverControl=-1;SetCursor(LoadCursorW(nullptr,IDC_ARROW));InvalidateRect(hwnd,nullptr,FALSE);return 0;
     case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=960;info->ptMinTrackSize.y=720;return 0;}
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
