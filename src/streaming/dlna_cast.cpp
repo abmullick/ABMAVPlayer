@@ -153,6 +153,7 @@ void DiscoverWorker() {
 }
 
 extern "C" void ABM_Dlna_StartDiscovery(void) {
+    if(g_worker.joinable()&&!g_stop.load())return;
     ABM_Dlna_StopDiscovery();
     {std::lock_guard<std::mutex> guard(g_lock);g_devices.clear();}
     g_stop=false;
