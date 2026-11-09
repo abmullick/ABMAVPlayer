@@ -243,44 +243,44 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         RECT brand={28,20,rc.right-28,54};
         Text(dc,L"ABM AV PLAYER",brand,RGBc(244,249,255),21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT subtitle={29,49,rc.right-28,72};
-        Text(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Text(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,RGBc(91,224,218),12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_infoAbout){
-            RECT photoFrame={28,91,286,349};
+            RECT photoFrame={28,94,286,362};
             Rounded(dc,photoFrame,RGBc(18,38,55),10);
             if(g_infoPortrait){
                 Gdiplus::Graphics graphics(dc);
                 graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-                graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,99,242,242));
+                graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));
             }else{
-                RECT fallback={36,99,278,341};
+                RECT fallback={36,102,278,344};
                 Rounded(dc,fallback,RGBc(27,143,145),8);
                 Text(dc,L"ABM",fallback,RGBc(245,255,255),42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
-            RECT product={322,96,rc.right-28,134};
-            Text(dc,L"ABM AV Player",product,RGBc(246,249,255),22,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creatorLabel={322,151,rc.right-28,173};
+            RECT product={322,98,rc.right-28,138};
+            Text(dc,L"ABM AV Player",product,RGBc(255,255,255),25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creatorLabel={322,157,rc.right-28,180};
             Text(dc,L"THE CREATOR",creatorLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creator={322,180,rc.right-28,212};
-            Text(dc,L"Abhisek Basu Mullick",creator,RGBc(246,249,255),16,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT role={322,219,rc.right-28,245};
-            Text(dc,L"Founder & Developer",role,RGBc(207,220,235),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-            RECT contactLabel={322,263,rc.right-28,284};
+            RECT creator={322,187,rc.right-28,220};
+            Text(dc,L"Abhisek Basu Mullick",creator,RGBc(255,255,255),19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT role={322,227,rc.right-28,254};
+            Text(dc,L"Founder & Developer",role,RGBc(232,241,250),15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            RECT contactLabel={322,275,rc.right-28,298};
             Text(dc,L"CONTACT",contactLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT email={322,287,rc.right-28,310};
-            Text(dc,L"abmullick@gmail.com",email,RGBc(228,238,249),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT description={322,316,rc.right-28,361};
-            Text(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",description,RGBc(207,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT version={322,382,rc.right-28,404};
-            Text(dc,L"Version 0.6.0   |   © 2026 Abhisek Basu Mullick",version,RGBc(125,157,185),11,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT divider={28,423,rc.right-28,424};FillRectColor(dc,divider,RGBc(35,62,82));
-            RECT tributeTitle={32,436,rc.right-32,457};
+            RECT email={322,306,rc.right-28,333};
+            Text(dc,L"abmullick@gmail.com",email,RGBc(246,250,255),15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT description={322,347,rc.right-28,397};
+            Text(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",description,RGBc(226,238,249),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT version={322,410,rc.right-28,436};
+            Text(dc,L"Version 0.6.0   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,RGBc(35,62,82));
+            RECT tributeTitle={32,470,rc.right-32,495};
             Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT tribute={32,460,rc.right-32,510};
-            Text(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,RGBc(210,222,234),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT stackTitle={32,516,rc.right-32,537};
+            RECT tribute={32,501,rc.right-32,555};
+            Text(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,RGBc(235,243,250),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT stackTitle={32,575,rc.right-32,600};
             Text(dc,L"BUILT WITH",stackTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT stack={32,539,rc.right-32,562};
-            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,RGBc(192,207,220),11,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT stack={32,606,rc.right-32,640};
+            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,RGBc(221,233,245),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }else{
             const int left=32,right=rc.right-32;
             RECT intro={left,91,right,125};
@@ -327,7 +327,7 @@ void ShowStreamingInfo(bool about){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
-    int width=about?720:760,height=about?630:640;
+    int width=about?820:800,height=about?700:680;
     RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
     int x=owner.left+(owner.right-owner.left-width)/2;
     int y=owner.top+(owner.bottom-owner.top-height)/2;
