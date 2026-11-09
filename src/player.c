@@ -2254,9 +2254,9 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RECT band={0,0,rc.right,7};
         HBRUSH accent=CreateSolidBrush(RGB(47,185,205)); FillRect(dc,&band,accent); DeleteObject(accent);
         SetBkMode(dc,TRANSPARENT);
-        HFONT title=CreateFontW(27,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
-        HFONT heading=CreateFontW(19,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
-        HFONT body=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        HFONT title=CreateFontW(-31,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        HFONT heading=CreateFontW(-22,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        HFONT body=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
         if(g_aboutPortrait) {
             HDC mem=CreateCompatibleDC(dc); HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
             BITMAP bm; GetObjectW(g_aboutPortrait,sizeof(bm),&bm);
@@ -2270,19 +2270,19 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             SetTextColor(dc,RGB(155,180,198)); HFONT hint=body; SelectObject(dc,hint);
             DrawTextW(dc,L"Add your portrait to\nassets\\owner_portrait.bmp",-1,&photo,DT_CENTER|DT_VCENTER|DT_WORDBREAK);
         }
-        RECT r={320,58,rc.right-28,105}; SelectObject(dc,title); SetTextColor(dc,RGB(239,246,252)); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=112;r.bottom=150;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=151;r.bottom=190;SelectObject(dc,heading);SetTextColor(dc,RGB(242,246,250));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=228;r.bottom=249;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=250;r.bottom=274;SetTextColor(dc,RGB(225,235,244));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=278;r.bottom=316;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-        RECT divider={28,365,rc.right-28,366};HBRUSH line=CreateSolidBrush(RGB(35,62,82));FillRect(dc,&divider,line);DeleteObject(line);
-        r.left=34;r.right=rc.right-34;r.top=377;r.bottom=399;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=403;r.bottom=449;SetTextColor(dc,RGB(210,222,234));DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-        r.top=455;r.bottom=477;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=480;r.bottom=508;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"C • C++ • Win32 API • LibVLC • Direct2D • DirectWrite • Microsoft WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=514;r.bottom=533;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT r={320,58,rc.right-34,108}; SelectObject(dc,title); SetTextColor(dc,RGB(250,253,255)); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=116;r.bottom=145;SelectObject(dc,body);SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=151;r.bottom=192;SelectObject(dc,heading);SetTextColor(dc,RGB(255,255,255));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=198;r.bottom=232;SelectObject(dc,body);SetTextColor(dc,RGB(232,241,250));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=245;r.bottom=274;SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=278;r.bottom=310;SetTextColor(dc,RGB(250,252,255));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=322;r.bottom=372;SetTextColor(dc,RGB(235,243,250));DrawTextW(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        RECT divider={28,405,rc.right-28,407};HBRUSH line=CreateSolidBrush(RGB(48,76,98));FillRect(dc,&divider,line);DeleteObject(line);
+        r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,body);SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=461;r.bottom=535;SetTextColor(dc,RGB(241,247,253));DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        r.top=550;r.bottom=580;SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=585;r.bottom=616;SetTextColor(dc,RGB(235,243,250));DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=628;r.bottom=656;SetTextColor(dc,RGB(190,211,230));DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
         DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
@@ -2462,7 +2462,7 @@ static void ShowAboutDialog(HWND owner) {
         if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    RECT wr={0,0,700,570}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
+    RECT wr={0,0,900,760}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
     int w=wr.right-wr.left,h=wr.bottom-wr.top;
     int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerAbout",
