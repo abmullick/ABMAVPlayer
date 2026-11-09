@@ -44,7 +44,9 @@ bool Invoke(IUPnPService *service,const wchar_t *action,VARIANT *values,ULONG co
     }
     VARIANT input,output,result;VariantInit(&input);VariantInit(&output);VariantInit(&result);
     input.vt=VT_ARRAY|VT_VARIANT;input.parray=array;
-    HRESULT hr=service->InvokeAction(SysAllocString(action),input,&output,&result);
+    BSTR actionName=SysAllocString(action);
+    HRESULT hr=actionName?service->InvokeAction(actionName,input,&output,&result):E_OUTOFMEMORY;
+    if(actionName)SysFreeString(actionName);
     VariantClear(&input);VariantClear(&output);VariantClear(&result);
     return SUCCEEDED(hr);
 }
@@ -70,8 +72,11 @@ void DiscoverWorker() {
     IUPnPDeviceFinder *finder=nullptr;
     IUPnPDevices *devices=nullptr;
     HRESULT hr=CoCreateInstance(CLSID_UPnPDeviceFinder,nullptr,CLSCTX_INPROC_SERVER,IID_PPV_ARGS(&finder));
-    if(SUCCEEDED(hr)&&finder)
-        hr=finder->FindByType(SysAllocString(L"urn:schemas-upnp-org:device:MediaRenderer:1"),0,&devices);
+    if(SUCCEEDED(hr)&&finder){
+        BSTR type=SysAllocString(L"urn:schemas-upnp-org:device:MediaRenderer:1");
+        hr=type?finder->FindByType(type,0,&devices):E_OUTOFMEMORY;
+        if(type)SysFreeString(type);
+    }
     if(SUCCEEDED(hr)&&devices&&!g_stop.load()){
         IUnknown *enumerator=nullptr;
         if(SUCCEEDED(devices->get__NewEnum(&enumerator))&&enumerator){
