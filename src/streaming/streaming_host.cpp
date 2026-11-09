@@ -64,7 +64,10 @@ const wchar_t *kLogoFiles[5]={L"youtube.png",L"netflix.png",L"primevideo.png",L"
 void LoadServiceLogos(){
     if(!g_gdiplusToken){
         Gdiplus::GdiplusStartupInput input;
-        if(Gdiplus::GdiplusStartup(&g_gdiplusToken,&input,nullptr)!=Gdiplus::Ok)return;
+        if(Gdiplus::GdiplusStartup(&g_gdiplusToken,&input,nullptr)!=Gdiplus::Ok){
+            StringCchCopyW(g_status,_countof(g_status),L"Could not initialise PNG image support.");
+            return;
+        }
     }
     wchar_t exePath[MAX_PATH]{};
     DWORD length=GetModuleFileNameW(nullptr,exePath,_countof(exePath));
@@ -72,12 +75,32 @@ void LoadServiceLogos(){
     wchar_t *slash=wcsrchr(exePath,L'\\');
     if(!slash)return;
     *(slash+1)=L'\0';
+
     wchar_t assetPath[MAX_PATH]{};
+    wchar_t fallbackPath[MAX_PATH]{};
+    int loaded=0;
     for(int i=0;i<5;i++){
         if(FAILED(StringCchPrintfW(assetPath,_countof(assetPath),L"%sassets\\%s",exePath,kLogoFiles[i])))continue;
         Gdiplus::Bitmap *bitmap=Gdiplus::Bitmap::FromFile(assetPath,FALSE);
-        if(bitmap&&bitmap->GetLastStatus()==Gdiplus::Ok)g_serviceLogos[i]=bitmap;
-        else delete bitmap;
+        if(!bitmap||bitmap->GetLastStatus()!=Gdiplus::Ok){
+            delete bitmap;
+            /* Development builds run from build\\; also check the repository assets folder. */
+            if(SUCCEEDED(StringCchPrintfW(fallbackPath,_countof(fallbackPath),L"%s..\\assets\\%s",exePath,kLogoFiles[i]))){
+                bitmap=Gdiplus::Bitmap::FromFile(fallbackPath,FALSE);
+            }
+        }
+        if(bitmap&&bitmap->GetLastStatus()==Gdiplus::Ok){
+            g_serviceLogos[i]=bitmap;
+            ++loaded;
+        }else{
+            delete bitmap;
+        }
+    }
+    if(loaded==5)StringCchCopyW(g_status,_countof(g_status),L"All five streaming service logos loaded.");
+    else{
+        wchar_t message[128];
+        StringCchPrintfW(message,_countof(message),L"Loaded %d of 5 service logos. Check the assets folder beside the application.",loaded);
+        StringCchCopyW(g_status,_countof(g_status),message);
     }
 }
 void ReleaseServiceLogos(){
@@ -333,6 +356,8 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
     if(!registered){
         WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.lpfnWndProc=StreamingProc;
         wc.hInstance=instance;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);
+        wc.hIcon=(HICON)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,0,0,LR_DEFAULTSIZE);
+        wc.hIconSm=(HICON)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,16,16,0);
         wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=kClassName;
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
