@@ -56,6 +56,11 @@ int g_activeService=-1;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
 EventRegistrationToken g_popupToken{};
+EventRegistrationToken g_fullscreenToken{};
+bool g_webFullscreen=false;
+LONG_PTR g_savedWindowStyle=0;
+LONG_PTR g_savedWindowExStyle=0;
+RECT g_savedWindowRect{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
 ULONG_PTR g_gdiplusToken=0;
 Gdiplus::Bitmap *g_serviceLogos[5]{};
@@ -132,10 +137,49 @@ void SetStatus(const wchar_t *message){
 void LayoutBrowser(){
     if(!g_controller||!g_window)return;
     RECT rc{};GetClientRect(g_window,&rc);
-    RECT bounds={0,174,rc.right,rc.bottom-34};
+    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,174,rc.right,rc.bottom-34};
     if(bounds.bottom<bounds.top)bounds.bottom=bounds.top;
     g_controller->put_Bounds(bounds);
 }
+void SetPlatformFullscreen(BOOL enabled){
+    if(!g_window||!IsWindow(g_window)||g_webFullscreen==(enabled!=FALSE))return;
+    if(enabled){
+        GetWindowRect(g_window,&g_savedWindowRect);
+        g_savedWindowStyle=GetWindowLongPtrW(g_window,GWL_STYLE);
+        g_savedWindowExStyle=GetWindowLongPtrW(g_window,GWL_EXSTYLE);
+        HMONITOR monitor=MonitorFromWindow(g_window,MONITOR_DEFAULTTONEAREST);
+        MONITORINFO info{};info.cbSize=sizeof(info);
+        if(GetMonitorInfoW(monitor,&info)){
+            g_webFullscreen=true;
+            SetWindowLongPtrW(g_window,GWL_STYLE,(g_savedWindowStyle&~WS_OVERLAPPEDWINDOW)|WS_POPUP);
+            SetWindowLongPtrW(g_window,GWL_EXSTYLE,g_savedWindowExStyle&~(WS_EX_WINDOWEDGE|WS_EX_CLIENTEDGE|WS_EX_STATICEDGE|WS_EX_DLGMODALFRAME));
+            SetWindowPos(g_window,HWND_TOP,info.rcMonitor.left,info.rcMonitor.top,info.rcMonitor.right-info.rcMonitor.left,info.rcMonitor.bottom-info.rcMonitor.top,SWP_FRAMECHANGED|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
+            LayoutBrowser();InvalidateRect(g_window,nullptr,FALSE);
+        }
+    }else{
+        g_webFullscreen=false;
+        SetWindowLongPtrW(g_window,GWL_STYLE,g_savedWindowStyle);
+        SetWindowLongPtrW(g_window,GWL_EXSTYLE,g_savedWindowExStyle);
+        SetWindowPos(g_window,nullptr,g_savedWindowRect.left,g_savedWindowRect.top,g_savedWindowRect.right-g_savedWindowRect.left,g_savedWindowRect.bottom-g_savedWindowRect.top,SWP_FRAMECHANGED|SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
+        LayoutBrowser();InvalidateRect(g_window,nullptr,FALSE);
+    }
+}
+void MoveVideoInPlaylist(BOOL next){
+    if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
+    if(g_activeService!=0){SetStatus(L"Previous/Next video controls are currently supported on YouTube playlists and mixes.");return;}
+    LPCWSTR script=next
+        ? L"(()=>{const b=document.querySelector('.ytp-next-button');if(b&&!b.disabled){b.click();return 'clicked';}return 'unavailable';})()"
+        : L"(()=>{const b=document.querySelector('.ytp-prev-button');if(b&&!b.disabled){b.click();return 'clicked';}return 'unavailable';})()";
+    HRESULT hr=g_webView->ExecuteScript(script,Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+        [next](HRESULT result,LPCWSTR value)->HRESULT{
+            if(FAILED(result)||!value){SetStatus(L"Could not control the current YouTube playlist.");return S_OK;}
+            if(wcsstr(value,L"clicked"))SetStatus(next?L"Skipped to the next video.":L"Moved to the previous video.");
+            else SetStatus(L"No previous/next video is available in this YouTube playlist.");
+            return S_OK;
+        }).Get());
+    if(FAILED(hr))SetStatus(L"Could not send the playlist command to YouTube.");
+}
+
 void Navigate(int service){
     if(service<0||service>=5)return;
     g_activeService=service;
@@ -169,6 +213,7 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:#a9bfd2;line-heig
 }
 void PaintChrome(HWND hwnd){
     PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
+    if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
     FillRectColor(dc,rc,RGBc(7,12,21));
     RECT header={0,0,rc.right,174};FillRectColor(dc,header,RGBc(13,27,43));
     RECT accent={0,171,rc.right,174};FillRectColor(dc,accent,RGBc(48,166,161));
@@ -247,6 +292,13 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
         settings->put_IsZoomControlEnabled(TRUE);
         settings->put_AreDevToolsEnabled(FALSE);
     }
+    g_webView->add_ContainsFullScreenElementChanged(
+        Callback<ICoreWebView2ContainsFullScreenElementChangedEventHandler>(
+            [](ICoreWebView2 *sender,IUnknown*)->HRESULT{
+                BOOL contains=FALSE;
+                if(sender&&SUCCEEDED(sender->get_ContainsFullScreenElement(&contains)))SetPlatformFullscreen(contains);
+                return S_OK;
+            }).Get(),&g_fullscreenToken);
     g_webView->add_NavigationCompleted(
         Callback<ICoreWebView2NavigationCompletedEventHandler>(
             [](ICoreWebView2*,ICoreWebView2NavigationCompletedEventArgs *args)->HRESULT{
@@ -316,16 +368,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         for(int i=0;i<5;i++)if(PtInRect(&g_serviceRects[i],POINT{x,y})){Navigate(i);return 0;}
-        if(PtInRect(&g_backRect,POINT{x,y})){
-            if(g_webView){BOOL canGoBack=FALSE;g_webView->get_CanGoBack(&canGoBack);if(canGoBack)g_webView->GoBack();else SetStatus(L"No previous page in this browser session.");}
-            else SetStatus(L"Browser is still starting.");
-            return 0;
-        }
-        if(PtInRect(&g_forwardRect,POINT{x,y})){
-            if(g_webView){BOOL canGoForward=FALSE;g_webView->get_CanGoForward(&canGoForward);if(canGoForward)g_webView->GoForward();else SetStatus(L"No next page in this browser session.");}
-            else SetStatus(L"Browser is still starting.");
-            return 0;
-        }
+        if(PtInRect(&g_backRect,POINT{x,y})){MoveVideoInPlaylist(FALSE);return 0;}
+        if(PtInRect(&g_forwardRect,POINT{x,y})){MoveVideoInPlaylist(TRUE);return 0;}
         if(PtInRect(&g_reloadRect,POINT{x,y})){if(g_webView)g_webView->Reload();else SetStatus(L"Browser is still starting.");return 0;}
         if(PtInRect(&g_homeRect,POINT{x,y})){NavigateHome();return 0;}
         if(PtInRect(&g_externalRect,POINT{x,y})){
@@ -340,7 +384,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         return 0;
     }
     case WM_KEYDOWN:
-        if(wp==VK_ESCAPE){ShowWindow(hwnd,SW_MINIMIZE);return 0;}
+        if(wp==VK_ESCAPE){
+            if(g_webFullscreen){
+                if(g_webView)g_webView->ExecuteScript(L"document.exitFullscreen && document.exitFullscreen();",nullptr);
+                SetPlatformFullscreen(FALSE);
+            }else ShowWindow(hwnd,SW_MINIMIZE);
+            return 0;
+        }
         break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
