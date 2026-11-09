@@ -97,7 +97,7 @@ ABM AV Player includes an in-app update checker connected to the public GitHub R
 
 - Select **Check for updates** from the application menu.
 - The player checks the latest published release, compares its version with the installed version, and displays the release notes when an update is available.
-- If you accept, the player downloads the official Windows installer and starts the normal Windows installation process. You will be asked to approve installation through the Windows elevation prompt.
+- If you accept, the player downloads the official Windows installer, verifies its SHA-256 digest against the value returned by GitHub Releases, and starts the normal Windows installation process. You will be asked to approve installation through the Windows elevation prompt. No code-signing certificate is required for this integrity check.
 - **No GitHub account, GitHub login, access token, or command-line tools are required.** Update checks and downloads are anonymous because this repository is public.
 - You can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases).
 
