@@ -11,15 +11,15 @@
 namespace {
 struct DlnaReceiver {
     std::wstring name;
-    IUPnPService *avTransport = nullptr;
+    IStream *serviceStream = nullptr; /* marshalled from the discovery worker to the UI apartment */
     DlnaReceiver() = default;
     DlnaReceiver(const DlnaReceiver&) = delete;
     DlnaReceiver& operator=(const DlnaReceiver&) = delete;
-    DlnaReceiver(DlnaReceiver&& other) noexcept : name(std::move(other.name)), avTransport(other.avTransport) { other.avTransport=nullptr; }
+    DlnaReceiver(DlnaReceiver&& other) noexcept : name(std::move(other.name)), serviceStream(other.serviceStream) { other.serviceStream=nullptr; }
     DlnaReceiver& operator=(DlnaReceiver&& other) noexcept {
-        if(this!=&other){if(avTransport)avTransport->Release();name=std::move(other.name);avTransport=other.avTransport;other.avTransport=nullptr;}return *this;
+        if(this!=&other){if(serviceStream)serviceStream->Release();name=std::move(other.name);serviceStream=other.serviceStream;other.serviceStream=nullptr;}return *this;
     }
-    ~DlnaReceiver(){if(avTransport)avTransport->Release();}
+    ~DlnaReceiver(){if(serviceStream)serviceStream->Release();}
 };
 std::mutex g_lock;
 std::vector<DlnaReceiver> g_devices;
@@ -118,9 +118,14 @@ void DiscoverWorker() {
                             services->Release();
                         }
                         if(receiver.avTransport&&!receiver.name.empty()){
-                            std::lock_guard<std::mutex> guard(g_lock);
-                            auto it=std::find_if(g_devices.begin(),g_devices.end(),[&](const DlnaReceiver &d){return _wcsicmp(d.name.c_str(),receiver.name.c_str())==0;});
-                            if(it==g_devices.end())g_devices.push_back(std::move(receiver));
+                            IStream *stream=nullptr;
+                            if(SUCCEEDED(CoMarshalInterThreadInterfaceInStream(IID_IUPnPService,receiver.avTransport,&stream))){
+                                receiver.avTransport->Release();receiver.avTransport=nullptr;
+                                receiver.serviceStream=stream;
+                                std::lock_guard<std::mutex> guard(g_lock);
+                                auto it=std::find_if(g_devices.begin(),g_devices.end(),[&](const DlnaReceiver &d){return _wcsicmp(d.name.c_str(),receiver.name.c_str())==0;});
+                                if(it==g_devices.end())g_devices.push_back(std::move(receiver));
+                            }
                         }
                         device->Release();
                     }
@@ -160,9 +165,14 @@ extern "C" BOOL ABM_Dlna_DeviceName(unsigned int index,wchar_t *buffer,unsigned 
 }
 extern "C" BOOL ABM_Dlna_SelectDevice(unsigned int index) {
     std::lock_guard<std::mutex> guard(g_lock);
-    if(index>=g_devices.size()||!g_devices[index].avTransport)return FALSE;
-    if(g_selected)g_selected->Release();
-    g_selected=g_devices[index].avTransport;g_selected->AddRef();return TRUE;
+    if(index>=g_devices.size()||!g_devices[index].serviceStream)return FALSE;
+    if(g_selected){g_selected->Release();g_selected=nullptr;}
+    HRESULT hr=CoGetInterfaceAndReleaseStream(g_devices[index].serviceStream,IID_IUPnPService,(void**)&g_selected);
+    g_devices[index].serviceStream=nullptr;
+    if(FAILED(hr)||!g_selected)return FALSE;
+    /* Keep the receiver reusable for a later selection from this UI apartment. */
+    CoMarshalInterThreadInterfaceInStream(IID_IUPnPService,g_selected,&g_devices[index].serviceStream);
+    return TRUE;
 }
 extern "C" BOOL ABM_Dlna_PlayUrl(const wchar_t *url) {
     if(!url||(!_wcsnicmp(url,L"http://",7)&&wcslen(url)<8)||(!_wcsnicmp(url,L"https://",8)&&wcslen(url)<9)||
