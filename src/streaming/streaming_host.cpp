@@ -573,8 +573,12 @@ void CastCurrentBrowserVideo(){
                 wchar_t url[8192]{};
                 int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,encoded,-1,url,(int)_countof(url));
                 if(chars<=0){SetStatus(L"Could not decode the browser video URL.");return S_OK;}
-                if(ABM_Cast_StreamUrl(url))SetStatus(L"Streaming cast handoff started. Check the TV for playback.");
-                else SetStatus(L"The TV could not start this video. It may require DRM, browser cookies or segmented streaming that cannot be handed off as a direct URL.");
+                /* ABM_Cast_StreamUrl owns failure reporting. Do not replace its
+                   specific diagnosis (URL policy, renderer rejection, VLC setup)
+                   with a generic message here. A successful LibVLC start is only
+                   a handoff attempt; the receiver's later playback result is async. */
+                if(ABM_Cast_StreamUrl(url))
+                    SetStatus(L"Cast request handed to the selected receiver. Waiting for receiver playback…");
                 return S_OK;
             }).Get());
     if(FAILED(hr))SetStatus(L"Could not inspect the current page for a video element.");
