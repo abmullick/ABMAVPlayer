@@ -7,6 +7,8 @@
 #include <shellapi.h>
 #include <wininet.h>
 #include <cwctype>
+#include <algorithm>
+#include <vector>
 #include <wchar.h>
 #include <string>
 #include <dwmapi.h>
