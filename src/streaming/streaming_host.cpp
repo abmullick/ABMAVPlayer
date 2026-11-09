@@ -109,7 +109,7 @@ void SetStatus(const wchar_t *message){
 void LayoutBrowser(){
     if(!g_controller||!g_window)return;
     RECT rc{};GetClientRect(g_window,&rc);
-    RECT bounds={0,124,rc.right,rc.bottom-34};
+    RECT bounds={0,174,rc.right,rc.bottom-34};
     if(bounds.bottom<bounds.top)bounds.bottom=bounds.top;
     g_controller->put_Bounds(bounds);
 }
@@ -147,55 +147,57 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:#a9bfd2;line-heig
 void PaintChrome(HWND hwnd){
     PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
     FillRectColor(dc,rc,RGBc(7,12,21));
-    RECT header={0,0,rc.right,124};FillRectColor(dc,header,RGBc(13,27,43));
-    RECT accent={0,121,rc.right,124};FillRectColor(dc,accent,RGBc(48,166,161));
-    RECT logo={22,15,62,55};Rounded(dc,logo,RGBc(31,143,145),12);
+    RECT header={0,0,rc.right,174};FillRectColor(dc,header,RGBc(13,27,43));
+    RECT accent={0,171,rc.right,174};FillRectColor(dc,accent,RGBc(48,166,161));
+
+    RECT logo={22,13,62,53};Rounded(dc,logo,RGBc(31,143,145),12);
     Text(dc,L"A",logo,RGBc(255,255,255),25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    RECT title={76,12,rc.right-220,39};
+    RECT title={76,10,rc.right-420,36};
     Text(dc,L"ABM AV PLAYER",title,RGBc(244,249,255),18,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT sub={77,38,rc.right-220,58};
+    RECT sub={77,36,rc.right-420,56};
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    g_externalRect=RECT{rc.right-190,17,rc.right-22,51};
+
+    g_externalRect=RECT{rc.right-190,16,rc.right-22,50};
     Rounded(dc,g_externalRect,RGBc(22,49,64),9);
     Text(dc,L"Open in browser",g_externalRect,RGBc(160,220,216),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    const int serviceLeft=22,serviceY=72,serviceH=34;
-    const int serviceW=rc.right<1100?118:148;
-    const int gap=rc.right<1100?6:9;
+    int right=rc.right-22;
+    g_homeRect=RECT{right-40,17,right-4,51};right-=46;
+    g_reloadRect=RECT{right-40,17,right-4,51};right-=46;
+    g_forwardRect=RECT{right-40,17,right-4,51};right-=46;
+    g_backRect=RECT{right-40,17,right-4,51};
+    const RECT navButtons[4]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect};
+    const wchar_t *glyphs[4]={L"‹",L"›",L"↻",L"⌂"};
+    for(int i=0;i<4;i++){
+        Rounded(dc,navButtons[i],RGBc(23,43,62),8);
+        Text(dc,glyphs[i],navButtons[i],RGBc(205,224,239),19,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
+
+    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=76,serviceH=82,gap=12;
+    const int serviceW=(serviceRight-serviceLeft-4*gap)/5;
     for(int i=0;i<5;i++){
-        g_serviceRects[i]=RECT{serviceLeft+i*(serviceW+gap),serviceY,
-            serviceLeft+i*(serviceW+gap)+serviceW,serviceY+serviceH};
+        int left=serviceLeft+i*(serviceW+gap);
+        g_serviceRects[i]=RECT{left,serviceY,left+serviceW,serviceY+serviceH};
         bool active=(i==g_activeService);
-        Rounded(dc,g_serviceRects[i],active?RGBc(27,104,103):RGBc(20,38,56),9);
+        Rounded(dc,g_serviceRects[i],active?RGBc(27,104,103):RGBc(20,38,56),12);
         RECT label=g_serviceRects[i];
         if(g_serviceLogos[i]){
-            const int maxIcon=22;
             UINT iw=g_serviceLogos[i]->GetWidth(),ih=g_serviceLogos[i]->GetHeight();
             if(iw&&ih){
+                const int maxIcon=48;
                 float scale=(float)maxIcon/(float)(iw>ih?iw:ih);
                 int drawW=(int)(iw*scale),drawH=(int)(ih*scale);
-                int iconX=label.left+10,iconY=label.top+(serviceH-drawH)/2;
+                int iconX=left+(serviceW-drawW)/2;
+                int iconY=serviceY+7+(maxIcon-drawH)/2;
                 Gdiplus::Graphics graphics(dc);
                 graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
                 graphics.DrawImage(g_serviceLogos[i],Gdiplus::Rect(iconX,iconY,drawW,drawH));
-                label.left=iconX+maxIcon+5;
-                label.right-=6;
             }
-        }else{
-            label.left+=5;label.right-=5;
         }
-        Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(185,205,222),
+        label.top=serviceY+57;
+        label.bottom=serviceY+78;
+        label.left+=5;label.right-=5;
+        Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(205,220,234),
             12,active?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    }
-    int right=rc.right-22;
-    g_homeRect=RECT{right-42,73,right-4,105};right-=50;
-    g_reloadRect=RECT{right-42,73,right-4,105};right-=50;
-    g_forwardRect=RECT{right-42,73,right-4,105};right-=50;
-    g_backRect=RECT{right-42,73,right-4,105};
-    const RECT buttons[4]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect};
-    const wchar_t *glyphs[4]={L"‹",L"›",L"↻",L"⌂"};
-    for(int i=0;i<4;i++){
-        Rounded(dc,buttons[i],RGBc(23,43,62),8);
-        Text(dc,glyphs[i],buttons[i],RGBc(205,224,239),19,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     RECT footer={0,rc.bottom-34,rc.right,rc.bottom};FillRectColor(dc,footer,RGBc(10,20,33));
     RECT line={0,rc.bottom-35,rc.right,rc.bottom-34};FillRectColor(dc,line,RGBc(39,61,79));
