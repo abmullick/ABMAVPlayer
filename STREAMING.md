@@ -1,8 +1,10 @@
-# Streaming Centre
+# Streaming Centre — User Guide and Technical Notes
 
-ABM AV Player includes a separate Microsoft Edge WebView2-based Streaming Centre. It is launched from the Command Centre using **Streaming services** or **Ctrl+Shift+S**.
+The ABM AV Player Streaming Centre is a separate Microsoft Edge WebView2-based browser window. It has its own navigation controls, service selector, TV discovery panel and streaming-cast playback path. Open it from the main Command Centre using **Streaming services** or **Ctrl+Shift+S**.
 
-## Supported launch targets
+## 1. Supported streaming services
+
+The service cards open these providers' official websites:
 
 - YouTube — https://www.youtube.com/
 - Netflix — https://www.netflix.com/
@@ -11,73 +13,130 @@ ABM AV Player includes a separate Microsoft Edge WebView2-based Streaming Centre
 - Sony LIV — https://www.sonyliv.com/
 - ZEE5 — https://www.zee5.com/
 
-The application opens the providers' official websites. Users authenticate directly with each provider using their own account and subscription. ABM AV Player does not proxy sign-in, store provider passwords, extract media URLs or bypass access controls.
+Users authenticate directly with each provider using their own account and subscription. ABM AV Player does not proxy sign-in, collect provider passwords, host provider content, or provide subscriptions.
 
-## Session storage and privacy
+## 2. Browser controls
+
+- **Back / Forward:** Navigate WebView2 browsing history.
+- **Reload:** Refresh the current page.
+- **Home:** Return to the Streaming Centre landing page.
+- **Fullscreen:** Requests fullscreen from the active HTML video element or a provider fullscreen control. The window responds to WebView2 fullscreen events and switches to a monitor-sized surface. Press **Esc** to exit. Provider support varies.
+- **Open in browser:** Opens the current HTTPS page in the user's default desktop browser.
+- **Help / About:** Open the Streaming Centre's own help guide or product information.
+- **Previous / Next:** Intended for supported YouTube playlist navigation; behaviour depends on the active page.
+
+Keyboard controls include **F5** (reload), **F11** (request fullscreen), **Esc** (exit fullscreen), **Ctrl+R** (reload), **Ctrl+L** (open the active provider home page in the default browser), **Ctrl+W** (minimise), and browser Back/Forward keys (history navigation).
+
+## 3. Session storage and privacy
 
 WebView2 uses a persistent user-data directory at:
 
-`%LOCALAPPDATA%\ABMAVPlayer\WebView2`
+`%LOCALAPPDATA%\\ABMAVPlayer\\WebView2`
 
-This allows provider cookies and supported login sessions to remain available between application launches. The profile is local to the current Windows user. Users can sign out through each provider's own website or remove the local WebView2 profile after closing ABM AV Player (this signs them out of sites stored in that profile).
+This allows provider cookies and supported login sessions to remain available between application launches for the current Windows user. Users can sign out through each provider's own website. To clear the local browser data, close ABM AV Player and remove this WebView2 profile folder; this signs out of sites using that profile.
 
-## Playback compatibility
+The Streaming Centre validates navigation destinations and blocks non-HTTPS, local-network or otherwise unsafe destinations. Pop-up navigation is handled inside the trusted WebView when the target passes the same safety check. The app does not copy browser cookies or credentials to a TV.
 
-A valid subscription does not guarantee embedded playback. Providers may restrict playback in embedded browsers, require browser/device certification, or depend on DRM capabilities not available in a particular WebView2 Runtime configuration. Compatibility can vary by service, content, account, region and runtime version.
+## 4. Playback compatibility and DRM
 
-If a provider blocks embedded playback or protected video fails, use the **Open in browser** control in the Streaming Centre or that provider's official application. ABM AV Player must not attempt to extract protected streams or circumvent DRM.
+A valid subscription does not guarantee embedded playback. Providers may restrict playback in embedded browsers, require browser/device certification, or depend on DRM capabilities unavailable in a particular WebView2 Runtime configuration. Compatibility can vary by service, content, account, region and runtime version.
 
-## Runtime and build requirements
+If a provider blocks embedded playback or protected video fails, use **Open in browser** or the provider's official application. ABM AV Player does not extract protected streams, bypass DRM, or circumvent provider access controls.
 
-- Microsoft Edge WebView2 Evergreen Runtime is required to run the Streaming Centre. Current Windows 11 installations commonly include it, but deployment environments should verify it.
+## 5. Find TVs — integrated device-selection panel
+
+The Streaming Centre has its own **Find TVs** button in the top toolbar. It opens a dedicated receiver-selection panel inside the Streaming Centre; it does not switch to the main player's window or reuse the main player's visible selection UI.
+
+The panel provides:
+1. A list of discovered receivers.
+2. **Refresh devices** to restart discovery.
+3. **Use selected TV** to apply the highlighted receiver.
+4. **Close** to dismiss the panel.
+
+Discovery checks three receiver families:
+
+- **Google Cast / Chromecast:** Uses the LibVLC renderer-discovery session.
+- **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
+- **DIAL:** Discovers app-launch endpoints, including compatible YouTube app targets.
+
+The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube app launch.
+
+The receiver list refreshes while the panel is open. If a device has disappeared or a selection is stale, use **Refresh devices**, select it again and press **Use selected TV**.
+
+## 6. Cast video — what it does
+
+After selecting a receiver, start a video in the browser and choose **Cast video**. The Streaming Centre examines the current page for either a recognised YouTube video or a directly addressable active HTML video source.
+
+### YouTube handoff
+
+For a recognised YouTube video URL, the app asks the selected receiver's discovered DIAL YouTube app endpoint to launch that video. The TV must expose and accept the YouTube app launch request. If the selected receiver is DLNA-only, DLNA cannot launch the YouTube app. If no compatible app-control endpoint was discovered, the app reports that YouTube handoff is unavailable for that receiver.
+
+### Direct media URL handoff
+
+For other pages, the Streaming Centre looks for a currently active HTML video element with a direct media URL and sends that URL to the selected Google Cast or DLNA renderer using the dedicated Streaming Centre playback path. The receiver must be able to reach and decode that URL.
+
+This is **not browser-tab mirroring**, screen mirroring, a full WebRTC sender, or a universal Cast implementation. A direct URL handoff request being accepted does not guarantee that the TV can fetch or play the content.
+
+### Content that generally cannot be handed off
+
+Modern streaming sites may use Media Source Extensions (MSE), adaptive HLS/DASH manifests, short-lived signed URLs, cookies, authorisation headers, encrypted segments or DRM. Those sources may not be directly accessible to LibVLC or the receiver. Protected/segmented/encrypted streams, `blob:` URLs and `data:` URLs are not extracted or bypassed. Browser cookies and provider credentials are not copied to the TV.
+
+If no direct video URL is available or playback fails:
+- Try the provider's own Cast button.
+- Use the provider's official TV app.
+- Try **Open in browser** for embedded-browser playback issues.
+
+## 7. Separation from local playback and casting
+
+The Streaming Centre uses separate receiver-selection state and a dedicated LibVLC media-player instance for its direct-URL casting path. It does not stop, replace, seek or reconfigure the main player's local media player, current file, or local casting selection.
+
+The main player's **Playback Output** selector is a different feature. It uses LibVLC renderer discovery for local media output, and its receiver selection remains independent of the Streaming Centre's Find TVs panel.
+
+## 8. Runtime checks and recovery
+
+Microsoft Edge WebView2 Evergreen Runtime is required to run the Streaming Centre. The app checks for the runtime before starting the embedded browser. If it is missing or cannot be found, the main player remains usable and the Streaming Centre displays an instruction to install the official runtime.
+
+The Streaming Centre monitors WebView2 process failure. It makes a bounded number of automatic recovery attempts and restores the current safe HTTP(S) page when possible. If repeated recovery fails, close and reopen the Streaming Centre.
+
+## 9. Build requirements
+
+- Microsoft Edge WebView2 Evergreen Runtime is required at runtime.
 - The Microsoft.Web.WebView2 NuGet package is required to compile the native WebView2 host.
 - Install the SDK package from the repository root:
 
   `nuget install Microsoft.Web.WebView2 -OutputDirectory packages -ExcludeVersion`
 
-- The build expects `WEBVIEW2_SDK` to point to the package root. The default is `%CD%\packages\Microsoft.Web.WebView2`.
-- If the runtime is missing, the Streaming Centre displays an explanatory status message; local LibVLC playback remains independent.
+- The build expects `WEBVIEW2_SDK` to point to the package root. The default is `%CD%\\packages\\Microsoft.Web.WebView2`.
+- If the runtime is missing, the Streaming Centre reports the issue; local LibVLC playback remains independent.
+
+## 10. Troubleshooting
+
+### Streaming Centre does not open or remains blank
+- Install or repair the Microsoft Edge WebView2 Evergreen Runtime.
+- Check network connectivity and whether the provider website is available.
+- If the embedded browser process fails, wait for the bounded recovery attempt. If it cannot recover, close and reopen the Streaming Centre.
+- Use **Open in browser** to distinguish a provider/WebView2 restriction from a general network problem.
+
+### No TV appears in Find TVs
+- Confirm the PC and TV are on the same non-guest LAN.
+- Click **Refresh devices**.
+- Check multicast/mDNS and SSDP/UPnP discovery are not blocked by the router, firewall, VPN or client isolation.
+- The TV may expose only one of Google Cast, DLNA or DIAL. Support for one protocol does not imply support for the others.
+
+### A TV appears but YouTube does not launch
+- YouTube app handoff requires a discovered and enabled DIAL YouTube app endpoint (or supported Cast app-control route).
+- A DLNA-only receiver can receive compatible media URLs but cannot launch the YouTube app.
+- Confirm YouTube is installed/enabled on the TV and that app launch from the local network is permitted.
+
+### A TV appears but another service does not cast
+- The current page must expose a directly addressable active video URL.
+- Protected, encrypted, adaptive or segmented streams are not generally available for direct URL handoff.
+- Try the provider's own Cast control or official TV app.
 
 ## Implementation boundaries
 
-- LibVLC continues to own local file playback and network renderer/casting.
-- WebView2 owns streaming website rendering and provider sign-in.
-- The streaming browser runs in a separate top-level window so its native browser surface does not interfere with the Direct2D video child window.
-- Browser profile data is isolated from the existing playlist/preferences directory.
-
-## Streaming window controls
-
-- **Back / Forward:** Navigate WebView2 browsing history for the current provider.
-- **Reload / Home:** Refresh the current page or return to the Streaming Centre landing page.
-- **Fullscreen:** Focuses the embedded provider player and sends its standard fullscreen shortcut. When the provider enters fullscreen, WebView2 reports its fullscreen element and ABM AV Player switches the Streaming Centre window to a borderless monitor-sized surface. Press **Esc** to exit. Provider support and keyboard shortcuts can vary.
-- **Open in browser:** Opens the current provider URL in the user's default desktop browser.
-- **Help / About:** Available in the Streaming Centre header.
-
-Fullscreen is intended for the actual provider video player, not merely enlarging the normal application window. Some providers may restrict fullscreen or require using their own on-player fullscreen control.
-
-
-
-## Cast to TV integration
-
-The Streaming Centre has its own **Find TVs** device-selection panel. It opens inside the Streaming Centre and does not bring the main player forward. The panel starts or refreshes the application's LibVLC mDNS / Google Cast renderer discovery, lists compatible receivers, and stores a streaming-specific receiver selection. The existing local-player receiver selection is not changed.
-
-The Streaming Centre uses a dedicated LibVLC media-player instance for direct-URL casting. It does not stop, replace, or reconfigure the local media player, its current file, or its local casting selection.
-
-## Casting a browser video to a TV (experimental)
-
-1. Choose **Find TVs** in the Streaming Centre and select a receiver in that panel.
-2. Start the video in the provider page.
-3. Choose **Cast video**. The browser checks the active HTML5 video element and passes its current source URL to the dedicated streaming LibVLC player.
-4. LibVLC asks the selected renderer to play that URL. A failed request is not silently redirected to local playback, and the local player's playback state is left unchanged.
-
-This is a best-effort direct-URL handoff, not browser-tab mirroring or a full WebRTC/Google Cast sender implementation. It works only when the page exposes a directly addressable HTTP(S) media URL and the TV/renderer can fetch and decode it. Many modern sites use Media Source Extensions (MSE), short-lived signed URLs, cookies/authorization headers, adaptive HLS/DASH manifests, or DRM. Those sources may be unavailable to LibVLC or the receiver. blob: URLs, data: URLs, protected streams and DRM are intentionally not extracted or bypassed. The feature does not copy browser cookies or credentials to the TV.
-
-If **Cast video** reports that no direct video URL is available, use the streaming provider's own Cast button or its official TV app. A successful handoff request does not guarantee that the receiver can fetch or play the media.
-
-This is a best-effort direct-URL handoff, not browser-tab mirroring or a full WebRTC/Google Cast sender implementation. It works only when the page exposes a directly addressable HTTP(S) media URL and the TV/renderer can fetch and decode it. Many modern sites use Media Source Extensions (MSE), short-lived signed URLs, cookies/authorization headers, adaptive HLS/DASH manifests, or DRM. Those sources may be unavailable to LibVLC or the receiver. blob: URLs, data: URLs, protected streams and DRM are intentionally not extracted or bypassed. The feature does not copy browser cookies or credentials to the TV.
-
-If **Cast video** reports that no direct video URL is available, use the streaming provider's own Cast button or its official TV app. A successful handoff request does not guarantee that the receiver can fetch or play the media.
-
-## Runtime checks and recovery
-
-Before starting the embedded browser, ABM AV Player checks whether a WebView2 runtime is available. If it is missing or cannot be found, the main player remains usable and the Streaming Centre displays an instruction to install the official Microsoft Edge WebView2 Evergreen Runtime. If the WebView2 browser process fails unexpectedly, the Streaming Centre makes a bounded number of automatic recovery attempts and restores the current HTTP(S) page when possible. If repeated recovery fails, close and reopen the Streaming Centre. Provider playback and DRM remain subject to the provider's policies.
+- WebView2 owns provider website rendering and sign-in.
+- The Streaming Centre has independent Google Cast, DLNA/UPnP and DIAL discovery state for its receiver panel.
+- A dedicated LibVLC media-player instance is used for supported direct-URL casting from the Streaming Centre.
+- Local media playback and the main player's local receiver selection remain independent.
+- Provider access, protected playback, subscriptions and content availability are controlled by each provider.
