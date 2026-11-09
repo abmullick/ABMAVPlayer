@@ -531,6 +531,7 @@ static void PositionVideoWindow(void) {
         next.left != g_videoBounds.left || next.top != g_videoBounds.top ||
         next.right != g_videoBounds.right || next.bottom != g_videoBounds.bottom) {
         ULONGLONG positionStart=GetTickCount64();
+        FullscreenDiag(g_fullscreenTransition?"video-child-resize-during-transition-begin":"video-child-resize-begin",0);
         SetWindowPos(g_video, HWND_TOP, x, y, videoW, videoH,
             SWP_NOACTIVATE | SWP_SHOWWINDOW);
         FullscreenDiag(g_fullscreenTransition?"video-child-resize-during-transition":"video-child-resize",GetTickCount64()-positionStart);
@@ -2433,6 +2434,7 @@ static void ToggleFullscreen(HWND hwnd) {
         SetWindowLongPtrW(hwnd,GWL_STYLE,
             (LONG_PTR)(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN));
         ULONGLONG placementStart=GetTickCount64();
+        FullscreenDiag("fullscreen-exit-setwindowplacement-begin",0);
         SetWindowPlacement(hwnd,&g_savedPlacement);
         FullscreenDiag("fullscreen-exit-setwindowplacement",GetTickCount64()-placementStart);
         ShowWindow(hwnd,SW_RESTORE);
@@ -2450,6 +2452,7 @@ static void ToggleFullscreen(HWND hwnd) {
        block the message loop during the return to compact mode. */
     g_videoBoundsValid = FALSE;
     ULONGLONG layoutStart=GetTickCount64();
+    FullscreenDiag(g_fullscreen?"fullscreen-enter-layout-begin":"fullscreen-exit-layout-begin",0);
     UpdateLayout(hwnd);
     FullscreenDiag(g_fullscreen?"fullscreen-enter-layout":"fullscreen-exit-layout",GetTickCount64()-layoutStart);
     SyncRendererComboVisibility();
@@ -2469,6 +2472,7 @@ static void ToggleFullscreen(HWND hwnd) {
     GetClientRect(hwnd,&clientRect);
     if(clientRect.right>0&&clientRect.bottom>0) {
         ULONGLONG d2dStart=GetTickCount64();
+        FullscreenDiag("fullscreen-d2d-resize-begin",0);
         ABM_D2D_Resize(&g_ui,(UINT)clientRect.right,(UINT)clientRect.bottom);
         FullscreenDiag("fullscreen-d2d-resize",GetTickCount64()-d2dStart);
     }
@@ -3465,6 +3469,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                the mouse moves can queue decoder seeks faster than they complete. */
             if(g_hasMedia) {
                 ULONGLONG seekStart=GetTickCount64();
+                FullscreenDiag(g_fullscreen?"fullscreen-seek-submit-begin":"windowed-seek-submit-begin",0);
                 SeekAt(seekX);
                 FullscreenDiag(g_fullscreen?"fullscreen-seek-submit":"windowed-seek-submit",GetTickCount64()-seekStart);
             }
