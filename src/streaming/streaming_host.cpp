@@ -16,6 +16,7 @@
 #include <WebView2.h>
 #include <gdiplus.h>
 #include "streaming_host.h"
+#include "dlna_cast.h"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -67,6 +68,7 @@ HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHi
 HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
 bool g_devicePanelVisible=false;
 int g_streamSelectedIndex=-1;
+bool g_streamSelectedIsDlna=false;
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
 constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14;
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
@@ -224,14 +226,25 @@ void LayoutDevicePanel(){
 void RefreshDevicePanel(bool force){
     if(!g_deviceList)return;
     int oldCount=(int)SendMessageW(g_deviceList,LB_GETCOUNT,0,0);
-    unsigned int count=ABM_Cast_StreamDeviceCount();
+    unsigned int castCount=ABM_Cast_StreamDeviceCount();
+    unsigned int dlnaCount=ABM_Dlna_DeviceCount();
+    unsigned int count=castCount+dlnaCount;
     if(!force&&oldCount==(int)count)return;
     int oldSelection=(int)SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
     SendMessageW(g_deviceList,LB_RESETCONTENT,0,0);
-    for(unsigned int i=0;i<count;i++){
-        wchar_t name[256]=L"Network receiver";
-        if(ABM_Cast_StreamDeviceName(i,name,_countof(name)))
-            SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)name);
+    for(unsigned int i=0;i<castCount;i++){
+        wchar_t name[256]=L"Google Cast receiver";
+        if(ABM_Cast_StreamDeviceName(i,name,_countof(name))){
+            std::wstring label=L"[Google Cast] ";label+=name;
+            SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
+        }
+    }
+    for(unsigned int i=0;i<dlnaCount;i++){
+        wchar_t name[256]=L"DLNA receiver";
+        if(ABM_Dlna_DeviceName(i,name,_countof(name))){
+            std::wstring label=L"[DLNA] ";label+=name;
+            SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
+        }
     }
     if(count){
         int pick=g_streamSelectedIndex>=0&&g_streamSelectedIndex<(int)count?g_streamSelectedIndex:
@@ -281,6 +294,7 @@ void ShowDevicePanel(){
     for(HWND control:controls)if(control)ShowWindow(control,SW_SHOW);
     LayoutDevicePanel();
     ABM_Cast_StreamDiscoveryStart();
+    ABM_Dlna_StartDiscovery();
     RefreshDevicePanel(true);
     SetTimer(g_window,ID_STREAM_DEVICE_TIMER,800,nullptr);
     SetStatus(L"Searching for TVs. Select a receiver in this panel; local-media casting remains separate.");
@@ -577,8 +591,11 @@ void CastCurrentBrowserVideo(){
                    specific diagnosis (URL policy, renderer rejection, VLC setup)
                    with a generic message here. A successful LibVLC start is only
                    a handoff attempt; the receiver's later playback result is async. */
-                if(ABM_Cast_StreamUrl(url))
-                    SetStatus(L"Cast request handed to the selected receiver. Waiting for receiver playback…");
+                if(g_streamSelectedIsDlna){
+                    if(ABM_Dlna_PlayUrl(url))SetStatus(L"DLNA receiver accepted the media URL and Play command.");
+                    else SetStatus(L"DLNA receiver rejected the media URL or did not accept SetAVTransportURI/Play.");
+                }else if(ABM_Cast_StreamUrl(url))
+                    SetStatus(L"Google Cast request handed to the selected receiver. Waiting for receiver playback…");
                 return S_OK;
             }).Get());
     if(FAILED(hr))SetStatus(L"Could not inspect the current page for a video element.");
@@ -1040,13 +1057,22 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_COMMAND:{
         switch(LOWORD(wp)){
         case ID_STREAM_DEVICE_REFRESH:
-            ABM_Cast_StreamDiscoveryStop();g_streamSelectedIndex=-1;
-            ABM_Cast_StreamDiscoveryStart();RefreshDevicePanel(true);
+            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedIsDlna=false;
+            ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
         case ID_STREAM_DEVICE_SELECT:{
             LRESULT selected=SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
             if(selected==LB_ERR){SetStatus(L"Select a TV from the device list first.");return 0;}
-            if(ABM_Cast_StreamSelectDevice((unsigned int)selected)){
+            unsigned int castCount=ABM_Cast_StreamDeviceCount();
+            bool selectedOk=false;
+            if((unsigned int)selected<castCount){
+                selectedOk=ABM_Cast_StreamSelectDevice((unsigned int)selected)!=FALSE;
+                g_streamSelectedIsDlna=false;
+            }else{
+                selectedOk=ABM_Dlna_SelectDevice((unsigned int)selected-castCount)!=FALSE;
+                g_streamSelectedIsDlna=true;
+            }
+            if(selectedOk){
                 g_streamSelectedIndex=(int)selected;
                 wchar_t name[256]=L"TV";
                 SendMessageW(g_deviceList,LB_GETTEXT,selected,(LPARAM)name);
@@ -1064,7 +1090,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
-        ABM_Cast_StreamDiscoveryStop();
+        ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();
         KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
         HideDevicePanel();
         g_window=nullptr;
