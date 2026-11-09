@@ -58,19 +58,20 @@ Fullscreen is intended for the actual provider video player, not merely enlargin
 
 ## Cast to TV integration
 
-The Streaming Centre header includes a **Cast to TV** action. It reuses the main player's existing LibVLC renderer-discovery engine, including its mDNS / Google Cast discovery service and receiver list, rather than running a second independent discovery stack. Selecting the action opens the main player's Playback Output panel and starts or refreshes receiver discovery. Select a receiver there; the main player's existing LibVLC renderer-selection flow then applies to local media playback.
+The Streaming Centre has its own **Find TVs** device-selection panel. It opens inside the Streaming Centre and does not bring the main player forward. The panel starts or refreshes the application's LibVLC mDNS / Google Cast renderer discovery, lists compatible receivers, and stores a streaming-specific receiver selection. The existing local-player receiver selection is not changed.
 
-**Important limitation:** this integration discovers receivers and reuses the existing local-media casting workflow. It does not mirror the WebView2 page or extract a provider's video stream from YouTube, Netflix, Prime Video, JioHotstar or Sony LIV. WebView2 website playback and LibVLC renderer playback are separate pipelines. DRM-protected services may prohibit third-party casting; use the provider's own Cast control or official TV app where available. Do not interpret selecting a TV in Playback Output as proof that the current browser video has been sent to it.
-
+The Streaming Centre uses a dedicated LibVLC media-player instance for direct-URL casting. It does not stop, replace, or reconfigure the local media player, its current file, or its local casting selection.
 
 ## Casting a browser video to a TV (experimental)
 
-The Streaming Centre now offers **Find TVs** and **Cast video**:
+1. Choose **Find TVs** in the Streaming Centre and select a receiver in that panel.
+2. Start the video in the provider page.
+3. Choose **Cast video**. The browser checks the active HTML5 video element and passes its current source URL to the dedicated streaming LibVLC player.
+4. LibVLC asks the selected renderer to play that URL. A failed request is not silently redirected to local playback, and the local player's playback state is left unchanged.
 
-1. Choose **Find TVs** and select a receiver in the main player's Playback Output panel.
-2. Return to Streaming Centre and start the video in the page.
-3. Choose **Cast video**. The browser checks the active HTML5 video element and passes its current source URL to the main player's LibVLC engine.
-4. LibVLC asks the selected renderer to play that URL. A failed request is not silently redirected to local playback.
+This is a best-effort direct-URL handoff, not browser-tab mirroring or a full WebRTC/Google Cast sender implementation. It works only when the page exposes a directly addressable HTTP(S) media URL and the TV/renderer can fetch and decode it. Many modern sites use Media Source Extensions (MSE), short-lived signed URLs, cookies/authorization headers, adaptive HLS/DASH manifests, or DRM. Those sources may be unavailable to LibVLC or the receiver. blob: URLs, data: URLs, protected streams and DRM are intentionally not extracted or bypassed. The feature does not copy browser cookies or credentials to the TV.
+
+If **Cast video** reports that no direct video URL is available, use the streaming provider's own Cast button or its official TV app. A successful handoff request does not guarantee that the receiver can fetch or play the media.
 
 This is a best-effort direct-URL handoff, not browser-tab mirroring or a full WebRTC/Google Cast sender implementation. It works only when the page exposes a directly addressable HTTP(S) media URL and the TV/renderer can fetch and decode it. Many modern sites use Media Source Extensions (MSE), short-lived signed URLs, cookies/authorization headers, adaptive HLS/DASH manifests, or DRM. Those sources may be unavailable to LibVLC or the receiver. blob: URLs, data: URLs, protected streams and DRM are intentionally not extracted or bypassed. The feature does not copy browser cookies or credentials to the TV.
 
