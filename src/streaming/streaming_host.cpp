@@ -51,7 +51,7 @@ ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
-RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_externalRect{};
+RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{};
 int g_activeService=-1;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
@@ -137,8 +137,8 @@ void SetStatus(const wchar_t *message){
 void LayoutBrowser(){
     if(!g_controller||!g_window)return;
     RECT rc{};GetClientRect(g_window,&rc);
-    /* Keep the native service/navigation chrome above WebView even in fullscreen. */
-    RECT bounds={0,174,rc.right,rc.bottom-34};
+    /* Normal mode reserves the native chrome; true provider fullscreen uses the whole monitor. */
+    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,174,rc.right,rc.bottom-34};
     if(bounds.bottom<bounds.top)bounds.bottom=bounds.top;
     g_controller->put_Bounds(bounds);
 }
@@ -181,6 +181,44 @@ void MoveVideoInPlaylist(BOOL next){
     if(FAILED(hr))SetStatus(L"Could not send the playlist command to YouTube.");
 }
 
+void ShowStreamingHelp(){
+    MessageBoxW(g_window,
+        L"STREAMING CENTRE\\n\\n"
+        L"1. Choose YouTube, Netflix, Prime Video, JioHotstar or Sony LIV from the service cards.\\n"
+        L"2. Sign in directly with your own provider account. Your session is stored in this Windows user profile.\\n"
+        L"3. Use Back, Forward, Reload and Home for browser navigation. Previous/Next are intended for YouTube playlists and mixes.\\n"
+        L"4. Select the Fullscreen button beside Home, or use the streaming site's own fullscreen control. The video should enter monitor-level fullscreen when the provider supports it. Press Esc to exit.\\n"
+        L"5. Use Open in browser to continue on the provider's normal desktop browser.\\n\\n"
+        L"Playback, protected content and fullscreen behaviour are controlled by each streaming provider and may vary by service.",
+        L"ABM AV Player - Streaming Help",MB_OK|MB_ICONINFORMATION);
+}
+void ShowStreamingAbout(){
+    MessageBoxW(g_window,
+        L"ABM AV PLAYER\\nSTREAMING CENTRE\\n\\n"
+        L"A dedicated WebView2 experience for accessing your streaming services from ABM AV Player.\\n\\n"
+        L"Sign in directly with each provider. ABM AV Player does not provide streaming subscriptions or host provider content.\\n\\n"
+        L"Created by Abhisek Basu Mullick\\n"
+        L"abmullick@gmail.com",
+        L"About ABM AV Player",MB_OK|MB_ICONINFORMATION);
+}
+void RequestProviderFullscreen(){
+    if(!g_webView||!g_controller){SetStatus(L"Streaming browser is still starting.");return;}
+    if(g_webFullscreen){
+        if(g_webView)g_webView->ExecuteScript(L"document.exitFullscreen&&document.exitFullscreen();",nullptr);
+        SetPlatformFullscreen(FALSE);
+        return;
+    }
+    /* Send the provider's standard fullscreen shortcut as real keyboard input.
+       This works with the native player controls on services that bind F to fullscreen. */
+    g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+    INPUT keys[2]{};
+    keys[0].type=INPUT_KEYBOARD;keys[0].ki.wVk='F';
+    keys[1].type=INPUT_KEYBOARD;keys[1].ki.wVk='F';keys[1].ki.dwFlags=KEYEVENTF_KEYUP;
+    UINT sent=SendInput(2,keys,sizeof(INPUT));
+    if(sent==2)SetStatus(L"Requesting fullscreen from the streaming player. Press Esc to exit.");
+    else SetStatus(L"Could not send the fullscreen command. Use the provider's fullscreen control.");
+}
+
 void Navigate(int service){
     if(service<0||service>=5)return;
     g_activeService=service;
@@ -215,30 +253,39 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:#a9bfd2;line-heig
 void PaintChrome(HWND hwnd){
     PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
     FillRectColor(dc,rc,RGBc(7,12,21));
+    if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
     RECT header={0,0,rc.right,174};FillRectColor(dc,header,RGBc(13,27,43));
     RECT accent={0,171,rc.right,174};FillRectColor(dc,accent,RGBc(48,166,161));
 
     RECT logo={22,13,62,53};Rounded(dc,logo,RGBc(31,143,145),12);
     Text(dc,L"A",logo,RGBc(255,255,255),25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    RECT title={76,10,rc.right-420,36};
+    RECT title={76,8,306,34};
     Text(dc,L"ABM AV PLAYER",title,RGBc(244,249,255),18,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT sub={77,36,rc.right-420,56};
+    RECT sub={77,34,306,54};
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+    g_helpRect=RECT{320,15,390,55};
+    Rounded(dc,g_helpRect,RGBc(20,42,60),8);
+    Text(dc,L"Help",g_helpRect,RGBc(190,218,235),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    g_aboutRect=RECT{398,15,468,55};
+    Rounded(dc,g_aboutRect,RGBc(20,42,60),8);
+    Text(dc,L"About",g_aboutRect,RGBc(190,218,235),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_externalRect=RECT{rc.right-190,16,rc.right-22,50};
     Rounded(dc,g_externalRect,RGBc(22,49,64),9);
     Text(dc,L"Open in browser",g_externalRect,RGBc(160,220,216),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     /* Large navigation controls occupy their own lane, clear of the browser button. */
     int navRight=rc.right-212;
+    g_fullscreenRect=RECT{navRight-48,12,navRight,58};navRight-=58;
     g_homeRect=RECT{navRight-48,12,navRight,58};navRight-=58;
     g_reloadRect=RECT{navRight-48,12,navRight,58};navRight-=58;
     g_forwardRect=RECT{navRight-58,12,navRight,58};navRight-=68;
     g_backRect=RECT{navRight-58,12,navRight,58};
-    const RECT navButtons[4]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect};
-    const wchar_t *glyphs[4]={L"‹",L"›",L"↻",L"⌂"};
-    for(int i=0;i<4;i++){
-        Rounded(dc,navButtons[i],RGBc(28,57,78),10);
-        Text(dc,glyphs[i],navButtons[i],RGBc(232,245,255),27,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    const RECT navButtons[5]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect,g_fullscreenRect};
+    const wchar_t *glyphs[5]={L"‹",L"›",L"↻",L"⌂",L"⛶"};
+    for(int i=0;i<5;i++){
+        Rounded(dc,navButtons[i],i==4?RGBc(31,103,111):RGBc(28,57,78),10);
+        Text(dc,glyphs[i],navButtons[i],RGBc(232,245,255),i==4?24:27,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
 
     const int serviceLeft=22,serviceRight=rc.right-22,serviceY=76,serviceH=82,gap=12;
@@ -372,6 +419,9 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(PtInRect(&g_forwardRect,POINT{x,y})){MoveVideoInPlaylist(TRUE);return 0;}
         if(PtInRect(&g_reloadRect,POINT{x,y})){if(g_webView)g_webView->Reload();else SetStatus(L"Browser is still starting.");return 0;}
         if(PtInRect(&g_homeRect,POINT{x,y})){NavigateHome();return 0;}
+        if(PtInRect(&g_fullscreenRect,POINT{x,y})){RequestProviderFullscreen();return 0;}
+        if(PtInRect(&g_helpRect,POINT{x,y})){ShowStreamingHelp();return 0;}
+        if(PtInRect(&g_aboutRect,POINT{x,y})){ShowStreamingAbout();return 0;}
         if(PtInRect(&g_externalRect,POINT{x,y})){
             LPWSTR current=nullptr;
             if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
