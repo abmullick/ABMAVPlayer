@@ -2356,10 +2356,11 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
 }
 
 static void ToggleFullscreen(HWND hwnd) {
-    /* Hide the VLC child while the top-level window changes styles and bounds.
-       This prevents a stale fullscreen child rectangle from covering the
-       restored title/header area during the transition. */
-    if (g_video) ShowWindow(g_video, SW_HIDE);
+    /* Hide the VLC child only when entering fullscreen. On exit, leave the
+       renderer alive and let PositionVideoWindow move it once to the restored
+       client rectangle; hiding and showing the child during restore can stall
+       the UI thread on some video outputs. */
+    if (!g_fullscreen && g_video) ShowWindow(g_video, SW_HIDE);
 
     if(!g_fullscreen) {
         g_savedStyle=(DWORD_PTR)GetWindowLongPtrW(hwnd,GWL_STYLE);
@@ -2389,22 +2390,23 @@ static void ToggleFullscreen(HWND hwnd) {
         if(GetCapture()==hwnd)ReleaseCapture();
         if(g_fullscreenOverlay)ShowWindow(g_fullscreenOverlay,SW_HIDE);
         SetCursor(LoadCursorW(NULL,IDC_ARROW));
-        /* Restore a known normal overlapped-window style instead of trusting
-           a potentially stale style snapshot from the fullscreen transition. */
+        /* Restore the saved normal-window placement in one operation. Avoid a
+           second no-op SetWindowPos/frame recalculation after SetWindowPlacement. */
         SetWindowLongPtrW(hwnd,GWL_STYLE,
             (LONG_PTR)(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN));
         SetWindowPlacement(hwnd,&g_savedPlacement);
-        SetWindowPos(hwnd,NULL,0,0,0,0,
-            SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
         ShowWindow(hwnd,SW_RESTORE);
         ShowWindow(g_renderers,SW_SHOW);
     }
 
-    /* Force a fresh child-window placement even if its cached rectangle
-       happens to match a previous layout. */
+    /* Recompute layout once. PositionVideoWindow owns the single required
+       LibVLC child move/show operation; the previous duplicate SetWindowPos,
+       second UpdateLayout and synchronous RedrawWindow(UPDATENOW) made Escape
+       block the message loop during the return to compact mode. */
     g_videoBoundsValid = FALSE;
     UpdateLayout(hwnd);
     SyncRendererComboVisibility();
+
     if(g_fullscreen && g_fullscreenOverlay) {
         RECT wr;GetWindowRect(hwnd,&wr);
         SetWindowPos(g_fullscreenOverlay,HWND_TOP,wr.left,
@@ -2412,43 +2414,18 @@ static void ToggleFullscreen(HWND hwnd) {
             FULLSCREEN_OVERLAY_HEIGHT,SWP_NOACTIVATE);
         ShowWindow(g_fullscreenOverlay,g_fullscreenControlsVisible?SW_SHOWNOACTIVATE:SW_HIDE);
         InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
-    } else if(g_fullscreenOverlay) ShowWindow(g_fullscreenOverlay,SW_HIDE);
+    } else if(g_fullscreenOverlay) {
+        ShowWindow(g_fullscreenOverlay,SW_HIDE);
+    }
 
-    if (g_video && IsWindow(g_video)) {
-        RECT vr = g_videoBounds;
-        int vw = vr.right - vr.left;
-        int vh = vr.bottom - vr.top;
-        if (vw > 0 && vh > 0) {
-            /* Keep LibVLC's native child surface at the top of the child
-               z-order. HWND_BOTTOM can place it behind the fullscreen parent
-               after the WS_OVERLAPPEDWINDOW -> WS_POPUP transition. */
-            SetWindowPos(g_video, HWND_TOP, vr.left, vr.top, vw, vh,
-                SWP_NOACTIVATE | SWP_SHOWWINDOW);
-            ShowWindow(g_video, SW_SHOWNOACTIVATE);
-        }
-    }
-    /* Re-sync the Direct2D HWND target with the restored client size.
-       WM_SIZE can arrive while the non-client style transition is still in
-       progress, so do one final resize and synchronous full-window repaint. */
-    RECT clientRect = {0};
-    GetClientRect(hwnd, &clientRect);
-    if (clientRect.right > 0 && clientRect.bottom > 0) {
-        ABM_D2D_Resize(&g_ui, (UINT)clientRect.right, (UINT)clientRect.bottom);
-    }
-    /* Re-apply video placement after frame/style and D2D transitions settle. */
-    g_videoBoundsValid = FALSE;
-    UpdateLayout(hwnd);
-    if (g_video && IsWindow(g_video) && g_hasMedia) {
-        RECT vr = g_videoBounds;
-        int vw = vr.right - vr.left, vh = vr.bottom - vr.top;
-        if (vw > 0 && vh > 0) {
-            SetWindowPos(g_video, HWND_TOP, vr.left, vr.top, vw, vh,
-                SWP_NOACTIVATE | SWP_SHOWWINDOW);
-            ShowWindow(g_video, SW_SHOWNOACTIVATE);
-        }
-    }
-    RedrawWindow(hwnd, NULL, NULL,
-        RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+    RECT clientRect={0};
+    GetClientRect(hwnd,&clientRect);
+    if(clientRect.right>0&&clientRect.bottom>0)
+        ABM_D2D_Resize(&g_ui,(UINT)clientRect.right,(UINT)clientRect.bottom);
+
+    /* Queue a repaint instead of forcing all child windows to paint
+       synchronously while handling Escape. */
+    InvalidateRect(hwnd,NULL,FALSE);
     SetFocus(hwnd);
 }
 
