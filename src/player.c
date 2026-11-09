@@ -10,6 +10,7 @@
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
 #include "streaming/streaming_host.h"
+#include "updater.h"
 #include "resource.h"
 #include <stdint.h>
 #include <math.h>
@@ -28,6 +29,7 @@
 #endif
 
 #define APP_NAME L"ABM AV Player"
+#define APP_VERSION L"0.6.0"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
 #define ID_RENDERERS 1010
 #define WM_RENDERERS_CHANGED (WM_APP + 10)
@@ -128,7 +130,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[15], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[16], R_FULLSCREEN;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
 static float g_eqPreamp=0.0f;
@@ -394,9 +396,9 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/15;
+    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/16;
     if(menuRowHeight<1)menuRowHeight=1;
-    for(int i=0;i<15;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
+    for(int i=0;i<16;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1033,20 +1035,20 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
         Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
-        const wchar_t *labels[15]={
+        const wchar_t *labels[16]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
-            L"Streaming services",L"Help & User Guide",L"Exit player",L"About ABM AV Player"
+            L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player"
         };
-        const wchar_t *shortcuts[15]={
+        const wchar_t *shortcuts[16]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"Alt+F4",L"Ctrl+I"
+            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I"
         };
-        const wchar_t *icons[15]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"×",L"i"};
-        for(int i=0;i<15;i++) {
+        const wchar_t *icons[16]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i"};
+        for(int i=0;i<16;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==9)labels[9]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
@@ -2246,7 +2248,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         r.top=228;r.bottom=249;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=250;r.bottom=274;SetTextColor(dc,RGB(225,235,244));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=278;r.bottom=316;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-        r.top=326;r.bottom=350;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version 0.4  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=326;r.bottom=350;SetTextColor(dc,RGB(116,143,164));DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
         DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
@@ -2764,7 +2766,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<15;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<16;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
@@ -2780,8 +2782,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==10)ShowEqualizer();
                 else if(mi==11)ABM_Streaming_Show(hwnd);
                 else if(mi==12)ShowHelpDialog(hwnd);
-                else if(mi==13)PostMessageW(hwnd,WM_CLOSE,0,0);
-                else if(mi==14)ShowAboutDialog(hwnd);
+                else if(mi==13)ABM_CheckForUpdates(hwnd,APP_VERSION);
+                else if(mi==14)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==15)ShowAboutDialog(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -2833,10 +2836,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%15;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+14)%15;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+15)%16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=14;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=15;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
         if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
@@ -2887,7 +2890,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
-        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<15;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<16;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
