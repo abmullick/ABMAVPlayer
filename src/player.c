@@ -2252,7 +2252,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RECT r={320,58,rc.right-28,105}; SelectObject(dc,title); SetTextColor(dc,RGB(239,246,252)); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=112;r.bottom=150;SelectObject(dc,body);SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=151;r.bottom=190;SelectObject(dc,heading);SetTextColor(dc,RGB(242,246,250));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        r.top=193;r.bottom=224;SelectObject(dc,body);SetTextColor(dc,RGB(174,194,210));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=228;r.bottom=249;SetTextColor(dc,RGB(102,195,211));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=250;r.bottom=274;SetTextColor(dc,RGB(225,235,244));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         r.top=278;r.bottom=316;SetTextColor(dc,RGB(192,207,220));DrawTextW(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
