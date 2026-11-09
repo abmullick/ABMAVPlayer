@@ -57,6 +57,8 @@ static size_t g_discovererCount;
 static libvlc_renderer_item_t *g_rendererItems[MAX_RENDERERS], *g_comboItems[MAX_RENDERERS];
 static size_t g_rendererCount, g_comboCount;
 static libvlc_renderer_item_t *g_selectedRenderer;
+/* Streaming Centre owns an independent selection; local-player routing is untouched. */
+static libvlc_renderer_item_t *g_streamSelectedRenderer;
 static BOOL g_rendererApplied = FALSE;
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
@@ -1528,6 +1530,75 @@ void ABM_Cast_ShowPicker(HWND owner) {
     ShowWindow(g_main,SW_RESTORE);
     SetForegroundWindow(g_main);
 }
+
+/* Independent Streaming Centre receiver API. These functions never modify
+   the main player's selected renderer or its local-media playback state. */
+void ABM_Cast_StreamDiscoveryStart(void) {
+    if(g_main&&IsWindow(g_main))StartDiscovery();
+}
+unsigned int ABM_Cast_StreamDeviceCount(void) {
+    unsigned int count=0;
+    char names[MAX_RENDERERS][256]={{0}};
+    EnterCriticalSection(&g_rendererLock);
+    for(size_t i=0;i<g_rendererCount&&count<MAX_RENDERERS;i++) {
+        const char *name=libvlc_renderer_item_name(g_rendererItems[i]);
+        if(!name||!name[0])continue;
+        BOOL duplicate=FALSE;
+        for(unsigned int j=0;j<count;j++)if(_stricmp(names[j],name)==0){duplicate=TRUE;break;}
+        if(!duplicate){strncpy_s(names[count],_countof(names[count]),name,_TRUNCATE);count++;}
+    }
+    LeaveCriticalSection(&g_rendererLock);
+    return count;
+}
+BOOL ABM_Cast_StreamDeviceName(unsigned int index,wchar_t *buffer,unsigned int capacity) {
+    if(!buffer||capacity==0)return FALSE;
+    buffer[0]=0;
+    unsigned int count=0;
+    BOOL found=FALSE;
+    EnterCriticalSection(&g_rendererLock);
+    for(size_t i=0;i<g_rendererCount;i++) {
+        const char *name=libvlc_renderer_item_name(g_rendererItems[i]);
+        if(!name||!name[0])continue;
+        BOOL duplicate=FALSE;
+        for(size_t j=0;j<i;j++){
+            const char *prior=libvlc_renderer_item_name(g_rendererItems[j]);
+            if(prior&&_stricmp(prior,name)==0){duplicate=TRUE;break;}
+        }
+        if(duplicate)continue;
+        if(count++==index){
+            int n=MultiByteToWideChar(CP_UTF8,0,name,-1,buffer,(int)capacity);
+            found=n>0;
+            break;
+        }
+    }
+    LeaveCriticalSection(&g_rendererLock);
+    return found;
+}
+BOOL ABM_Cast_StreamSelectDevice(unsigned int index) {
+    libvlc_renderer_item_t *selected=NULL;
+    unsigned int count=0;
+    EnterCriticalSection(&g_rendererLock);
+    for(size_t i=0;i<g_rendererCount;i++) {
+        const char *name=libvlc_renderer_item_name(g_rendererItems[i]);
+        if(!name||!name[0])continue;
+        BOOL duplicate=FALSE;
+        for(size_t j=0;j<i;j++){
+            const char *prior=libvlc_renderer_item_name(g_rendererItems[j]);
+            if(prior&&_stricmp(prior,name)==0){duplicate=TRUE;break;}
+        }
+        if(duplicate)continue;
+        if(count++==index){selected=libvlc_renderer_item_hold(g_rendererItems[i]);break;}
+    }
+    LeaveCriticalSection(&g_rendererLock);
+    if(!selected)return FALSE;
+    if(g_streamSelectedRenderer)libvlc_renderer_item_release(g_streamSelectedRenderer);
+    g_streamSelectedRenderer=selected;
+    return TRUE;
+}
+void ABM_Cast_StreamClearSelection(void) {
+    if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}
+}
+
 /* Resolve and reject local/private destinations before handing a browser URL
    to LibVLC. This intentionally does not disable redirects: providers commonly
    use CDN redirects, and LibVLC must retain that behavior for compatibility. */
@@ -1621,7 +1692,7 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
         SetStatus(L"Cast blocked this URL because its destination is local, private, malformed or could not be safely resolved.");
         return FALSE;
     }
-    if(!g_selectedRenderer){
+    if(!g_streamSelectedRenderer){
         SetStatus(L"Select a TV in Playback Output first, then choose Cast video again in Streaming Centre.");
         ABM_Cast_ShowPicker(g_main);
         return FALSE;
@@ -1634,7 +1705,7 @@ BOOL ABM_Cast_StreamUrl(const wchar_t *url) {
     free(utf8);
     if(!media){SetStatus(L"LibVLC could not open the browser video URL.");return FALSE;}
     libvlc_media_player_stop(g_player);
-    if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
+    if(libvlc_media_player_set_renderer(g_player,g_streamSelectedRenderer)!=0){
         libvlc_media_release(media);
         g_rendererApplied=FALSE;
         SetStatus(L"The selected receiver rejected the browser video stream.");
