@@ -9,6 +9,7 @@
 #include <strsafe.h>
 #include <wrl.h>
 #include <WebView2.h>
+#include <gdiplus.h>
 #include "streaming_host.h"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -27,6 +28,7 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "gdiplus.lib")
 
 using Microsoft::WRL::Callback;
 using Microsoft::WRL::ComPtr;
@@ -55,6 +57,33 @@ bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
 EventRegistrationToken g_popupToken{};
 wchar_t g_status[256]=L"Preparing secure browser profile…";
+ULONG_PTR g_gdiplusToken=0;
+Gdiplus::Bitmap *g_serviceLogos[5]{};
+const wchar_t *kLogoFiles[5]={L"youtube.png",L"netflix.png",L"primevideo.png",L"jiohotstar.png",L"sonyliv.png"};
+
+void LoadServiceLogos(){
+    if(!g_gdiplusToken){
+        Gdiplus::GdiplusStartupInput input;
+        if(Gdiplus::GdiplusStartup(&g_gdiplusToken,&input,nullptr)!=Gdiplus::Ok)return;
+    }
+    wchar_t exePath[MAX_PATH]{};
+    DWORD length=GetModuleFileNameW(nullptr,exePath,_countof(exePath));
+    if(!length||length>=_countof(exePath))return;
+    wchar_t *slash=wcsrchr(exePath,L'\\');
+    if(!slash)return;
+    *(slash+1)=L'\0';
+    wchar_t assetPath[MAX_PATH]{};
+    for(int i=0;i<5;i++){
+        if(FAILED(StringCchPrintfW(assetPath,_countof(assetPath),L"%sassets\\%s",exePath,kLogoFiles[i])))continue;
+        Gdiplus::Bitmap *bitmap=Gdiplus::Bitmap::FromFile(assetPath,FALSE);
+        if(bitmap&&bitmap->GetLastStatus()==Gdiplus::Ok)g_serviceLogos[i]=bitmap;
+        else delete bitmap;
+    }
+}
+void ReleaseServiceLogos(){
+    for(auto &logo:g_serviceLogos){delete logo;logo=nullptr;}
+    if(g_gdiplusToken){Gdiplus::GdiplusShutdown(g_gdiplusToken);g_gdiplusToken=0;}
+}
 
 COLORREF RGBc(int r,int g,int b){return RGB(r,g,b);}
 void FillRectColor(HDC dc,const RECT &r,COLORREF color){
@@ -137,7 +166,23 @@ void PaintChrome(HWND hwnd){
             serviceLeft+i*(serviceW+gap)+serviceW,serviceY+serviceH};
         bool active=(i==g_activeService);
         Rounded(dc,g_serviceRects[i],active?RGBc(27,104,103):RGBc(20,38,56),9);
-        RECT label=g_serviceRects[i];label.left+=5;label.right-=5;
+        RECT label=g_serviceRects[i];
+        if(g_serviceLogos[i]){
+            const int maxIcon=22;
+            UINT iw=g_serviceLogos[i]->GetWidth(),ih=g_serviceLogos[i]->GetHeight();
+            if(iw&&ih){
+                float scale=(float)maxIcon/(float)(iw>ih?iw:ih);
+                int drawW=(int)(iw*scale),drawH=(int)(ih*scale);
+                int iconX=label.left+10,iconY=label.top+(serviceH-drawH)/2;
+                Gdiplus::Graphics graphics(dc);
+                graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+                graphics.DrawImage(g_serviceLogos[i],Gdiplus::Rect(iconX,iconY,drawW,drawH));
+                label.left=iconX+maxIcon+5;
+                label.right-=6;
+            }
+        }else{
+            label.left+=5;label.right-=5;
+        }
         Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(185,205,222),
             12,active?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
@@ -206,6 +251,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_CREATE:{
         g_window=hwnd;
+        LoadServiceLogos();
         HRESULT comResult=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
         if(SUCCEEDED(comResult))g_comInitialized=true;
         else {SetStatus(L"Could not initialise the Windows browser COM apartment.");return 0;}
@@ -267,6 +313,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         g_window=nullptr;
         if(g_controller)g_controller->Close();
         g_webView.Reset();g_controller.Reset();g_environment.Reset();
+        ReleaseServiceLogos();
         if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
         g_mainWindow=nullptr;
