@@ -61,6 +61,7 @@ int g_hoverControl=-1;
 bool g_trackingMouseLeave=false;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
+EventRegistrationToken g_navigationStartingToken{};
 EventRegistrationToken g_popupToken{};
 EventRegistrationToken g_fullscreenToken{};
 bool g_webFullscreen=false;
@@ -171,20 +172,16 @@ void SetPlatformFullscreen(BOOL enabled){
         LayoutBrowser();InvalidateRect(g_window,nullptr,FALSE);
     }
 }
-void MoveVideoInPlaylist(BOOL next){
+void NavigateHistory(BOOL forward){
     if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
-    if(g_activeService!=0){SetStatus(L"Previous/Next video controls are currently supported on YouTube playlists and mixes.");return;}
-    LPCWSTR script=next
-        ? L"(()=>{const b=document.querySelector('.ytp-next-button');if(b&&!b.disabled){b.click();return 'clicked';}return 'unavailable';})()"
-        : L"(()=>{const b=document.querySelector('.ytp-prev-button');if(b&&!b.disabled){b.click();return 'clicked';}return 'unavailable';})()";
-    HRESULT hr=g_webView->ExecuteScript(script,Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
-        [next](HRESULT result,LPCWSTR value)->HRESULT{
-            if(FAILED(result)||!value){SetStatus(L"Could not control the current YouTube playlist.");return S_OK;}
-            if(wcsstr(value,L"clicked"))SetStatus(next?L"Skipped to the next video.":L"Moved to the previous video.");
-            else SetStatus(L"No previous/next video is available in this YouTube playlist.");
-            return S_OK;
-        }).Get());
-    if(FAILED(hr))SetStatus(L"Could not send the playlist command to YouTube.");
+    BOOL available=FALSE;
+    HRESULT hr=forward?g_webView->get_CanGoForward(&available):g_webView->get_CanGoBack(&available);
+    if(FAILED(hr)||!available){
+        SetStatus(forward?L"No forward page in browser history.":L"No previous page in browser history.");
+        return;
+    }
+    if(forward)g_webView->GoForward();else g_webView->GoBack();
+    SetStatus(forward?L"Going forward…":L"Going back…");
 }
 
 const wchar_t *kInfoClassName=L"ABMAVPlayer.StreamingInfo";
@@ -329,19 +326,22 @@ void ShowStreamingAbout(){ShowStreamingInfo(true);}
 void RequestProviderFullscreen(){
     if(!g_webView||!g_controller){SetStatus(L"Streaming browser is still starting.");return;}
     if(g_webFullscreen){
-        if(g_webView)g_webView->ExecuteScript(L"document.exitFullscreen&&document.exitFullscreen();",nullptr);
+        g_webView->ExecuteScript(L"if(document.fullscreenElement){document.exitFullscreen();}",nullptr);
         SetPlatformFullscreen(FALSE);
         return;
     }
-    /* Send the provider's standard fullscreen shortcut as real keyboard input.
-       This works with the native player controls on services that bind F to fullscreen. */
-    g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
-    INPUT keys[2]{};
-    keys[0].type=INPUT_KEYBOARD;keys[0].ki.wVk='F';
-    keys[1].type=INPUT_KEYBOARD;keys[1].ki.wVk='F';keys[1].ki.dwFlags=KEYEVENTF_KEYUP;
-    UINT sent=SendInput(2,keys,sizeof(INPUT));
-    if(sent==2)SetStatus(L"Requesting fullscreen from the streaming player. Press Esc to exit.");
-    else SetStatus(L"Could not send the fullscreen command. Use the provider's fullscreen control.");
+    /* Prefer the active HTML video element. WebView2's fullscreen event
+       changes the top-level window to the monitor-sized popup. */
+    HRESULT hr=g_webView->ExecuteScript(
+        L"(()=>{const v=document.querySelector('video');if(v){if(v.requestFullscreen){v.requestFullscreen();return 'requested';}if(v.webkitEnterFullscreen){v.webkitEnterFullscreen();return 'requested';}}const e=document.querySelector('[data-fullscreen],.ytp-fullscreen-button');if(e){e.click();return 'clicked';}return 'unavailable';})()",
+        Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+            [](HRESULT result,LPCWSTR value)->HRESULT{
+                if(SUCCEEDED(result)&&value&&wcsstr(value,L"requested"))SetStatus(L"Entering fullscreen… Press Esc to exit.");
+                else if(SUCCEEDED(result)&&value&&wcsstr(value,L"clicked"))SetStatus(L"Requesting provider fullscreen… Press Esc to exit.");
+                else SetStatus(L"Use the streaming service's own fullscreen control if this page does not expose one.");
+                return S_OK;
+            }).Get());
+    if(FAILED(hr))SetStatus(L"Could not request fullscreen from the current page.");
 }
 
 void Navigate(int service){
@@ -479,8 +479,8 @@ void PaintChrome(HWND hwnd){
     }
     RECT footer={0,rc.bottom-34,rc.right,rc.bottom};FillRectColor(dc,footer,RGBc(10,20,33));
     RECT line={0,rc.bottom-35,rc.right,rc.bottom-34};FillRectColor(dc,line,RGBc(39,61,79));
-    const wchar_t *footerText=g_hoverControl==0?L"Previous video in the current YouTube playlist or mix":
-        g_hoverControl==1?L"Next video in the current YouTube playlist or mix":
+    const wchar_t *footerText=g_hoverControl==0?L"Go back to the previous page":
+        g_hoverControl==1?L"Go forward to the next page":
         g_hoverControl==2?L"Reload the current streaming page":
         g_hoverControl==3?L"Return to the Streaming Centre home page":
         g_hoverControl==4?L"Request fullscreen from the streaming player":
@@ -523,12 +523,24 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
                 if(sender&&SUCCEEDED(sender->get_ContainsFullScreenElement(&contains)))SetPlatformFullscreen(contains);
                 return S_OK;
             }).Get(),&g_fullscreenToken);
+    g_webView->add_NavigationStarting(
+        Callback<ICoreWebView2NavigationStartingEventHandler>(
+            [](ICoreWebView2*,ICoreWebView2NavigationStartingEventArgs *args)->HRESULT{
+                LPWSTR uri=nullptr;
+                if(args&&SUCCEEDED(args->get_Uri(&uri))&&uri){
+                    SetStatus(L"Loading streaming page…");
+                    CoTaskMemFree(uri);
+                }
+                return S_OK;
+            }).Get(),&g_navigationStartingToken);
     g_webView->add_NavigationCompleted(
         Callback<ICoreWebView2NavigationCompletedEventHandler>(
             [](ICoreWebView2*,ICoreWebView2NavigationCompletedEventArgs *args)->HRESULT{
                 BOOL success=FALSE;
-                if(args)args->get_IsSuccess(&success);
-                SetStatus(success?L"Streaming page loaded. Sign in using the service's official login.":L"Page navigation failed. The service may restrict embedded playback.");
+                COREWEBVIEW2_WEB_ERROR_STATUS error=COREWEBVIEW2_WEB_ERROR_STATUS_UNKNOWN;
+                if(args){args->get_IsSuccess(&success);args->get_WebErrorStatus(&error);}
+                SetStatus(success?L"Streaming page loaded. Sign in using the service's official login.":L"Page navigation failed. Check your connection or open the service in your browser.");
+                if(g_window)InvalidateRect(g_window,nullptr,FALSE);
                 return S_OK;
             }).Get(),&g_navigationToken);
     /* Some providers open authentication or account pages in a new window.
@@ -611,8 +623,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         for(int i=0;i<5;i++)if(PtInRect(&g_serviceRects[i],POINT{x,y})){Navigate(i);return 0;}
-        if(PtInRect(&g_backRect,POINT{x,y})){MoveVideoInPlaylist(FALSE);return 0;}
-        if(PtInRect(&g_forwardRect,POINT{x,y})){MoveVideoInPlaylist(TRUE);return 0;}
+        if(PtInRect(&g_backRect,POINT{x,y})){NavigateHistory(FALSE);return 0;}
+        if(PtInRect(&g_forwardRect,POINT{x,y})){NavigateHistory(TRUE);return 0;}
         if(PtInRect(&g_reloadRect,POINT{x,y})){if(g_webView)g_webView->Reload();else SetStatus(L"Browser is still starting.");return 0;}
         if(PtInRect(&g_homeRect,POINT{x,y})){NavigateHome();return 0;}
         if(PtInRect(&g_fullscreenRect,POINT{x,y})){RequestProviderFullscreen();return 0;}
@@ -629,15 +641,25 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }
         return 0;
     }
-    case WM_KEYDOWN:
+    case WM_KEYDOWN:{
+        const bool ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         if(wp==VK_ESCAPE){
             if(g_webFullscreen){
-                if(g_webView)g_webView->ExecuteScript(L"document.exitFullscreen && document.exitFullscreen();",nullptr);
+                if(g_webView)g_webView->ExecuteScript(L"if(document.fullscreenElement)document.exitFullscreen();",nullptr);
                 SetPlatformFullscreen(FALSE);
-            }else ShowWindow(hwnd,SW_MINIMIZE);
+            }else if(g_controller)g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+            else ShowWindow(hwnd,SW_MINIMIZE);
             return 0;
         }
+        if(ctrl&&wp=='L'){if(g_activeService>=0)ShellExecuteW(nullptr,L"open",kUrls[g_activeService],nullptr,nullptr,SW_SHOWNORMAL);return 0;}
+        if(ctrl&&wp=='R'){if(g_webView)g_webView->Reload();return 0;}
+        if(ctrl&&wp=='W'){ShowWindow(hwnd,SW_MINIMIZE);return 0;}
+        if(wp==VK_F5){if(g_webView)g_webView->Reload();return 0;}
+        if(wp==VK_BROWSER_BACK){NavigateHistory(FALSE);return 0;}
+        if(wp==VK_BROWSER_FORWARD){NavigateHistory(TRUE);return 0;}
+        if(wp==VK_F11){RequestProviderFullscreen();return 0;}
         break;
+    }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         g_window=nullptr;
