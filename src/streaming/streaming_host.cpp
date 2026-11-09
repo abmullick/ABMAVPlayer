@@ -137,7 +137,8 @@ void SetStatus(const wchar_t *message){
 void LayoutBrowser(){
     if(!g_controller||!g_window)return;
     RECT rc{};GetClientRect(g_window,&rc);
-    RECT bounds=g_webFullscreen?RECT{0,0,rc.right,rc.bottom}:RECT{0,174,rc.right,rc.bottom-34};
+    /* Keep the native service/navigation chrome above WebView even in fullscreen. */
+    RECT bounds={0,174,rc.right,rc.bottom-34};
     if(bounds.bottom<bounds.top)bounds.bottom=bounds.top;
     g_controller->put_Bounds(bounds);
 }
@@ -213,7 +214,6 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:#a9bfd2;line-heig
 }
 void PaintChrome(HWND hwnd){
     PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
-    if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
     FillRectColor(dc,rc,RGBc(7,12,21));
     RECT header={0,0,rc.right,174};FillRectColor(dc,header,RGBc(13,27,43));
     RECT accent={0,171,rc.right,174};FillRectColor(dc,accent,RGBc(48,166,161));
