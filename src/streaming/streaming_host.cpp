@@ -61,6 +61,12 @@ ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[5]{};
+HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
+HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
+bool g_devicePanelVisible=false;
+int g_streamSelectedIndex=-1;
+constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
+constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14;
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
 int g_activeService=-1;
 int g_hoverService=-1;
@@ -161,6 +167,90 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     HGDIOBJ old=SelectObject(dc,f);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
 }
+
+void LayoutDevicePanel(){
+    if(!g_window||!g_devicePanel)return;
+    RECT rc{};GetClientRect(g_window,&rc);
+    int x=rc.right-500;if(x<12)x=12;
+    int y=64;
+    SetWindowPos(g_devicePanel,HWND_TOP,x,y,486,184,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    SetWindowPos(g_deviceTitle,nullptr,x+14,y+9,450,22,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,x+14,y+31,450,18,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,x+14,y+54,290,116,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,x+314,y+54,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,x+314,y+94,156,32,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+314,y+138,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
+}
+void RefreshDevicePanel(bool force){
+    if(!g_deviceList)return;
+    int oldCount=(int)SendMessageW(g_deviceList,LB_GETCOUNT,0,0);
+    unsigned int count=ABM_Cast_StreamDeviceCount();
+    if(!force&&oldCount==(int)count)return;
+    int oldSelection=(int)SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
+    SendMessageW(g_deviceList,LB_RESETCONTENT,0,0);
+    for(unsigned int i=0;i<count;i++){
+        wchar_t name[256]=L"Network receiver";
+        if(ABM_Cast_StreamDeviceName(i,name,_countof(name)))
+            SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)name);
+    }
+    if(count){
+        int pick=g_streamSelectedIndex>=0&&g_streamSelectedIndex<(int)count?g_streamSelectedIndex:
+                 (oldSelection>=0&&oldSelection<(int)count?oldSelection:0);
+        SendMessageW(g_deviceList,LB_SETCURSEL,pick,0);
+        SetWindowTextW(g_deviceHint,L"Choose a TV, then select it before casting.");
+    }else{
+        SetWindowTextW(g_deviceHint,L"Searching for TVs… keep this panel open for discovery.");
+    }
+}
+void CreateDevicePanel(HWND parent){
+    if(g_devicePanel)return;
+    g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
+        WS_CHILD|SS_BLACKRECT,0,0,486,184,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+    if(!g_devicePanel)return;
+    g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+    g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+    g_deviceList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
+    g_deviceRefresh=CreateWindowExW(0,L"BUTTON",L"Refresh devices",
+        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_REFRESH,GetModuleHandleW(nullptr),nullptr);
+    g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
+        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_SELECT,GetModuleHandleW(nullptr),nullptr);
+    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
+        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
+    HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
+    for(HWND control:controls)if(control)SendMessageW(control,WM_SETFONT,(WPARAM)font,TRUE);
+    ShowWindow(g_devicePanel,SW_HIDE);
+    for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
+}
+void ShowDevicePanel(){
+    if(!g_window)return;
+    if(!g_devicePanel)CreateDevicePanel(g_window);
+    if(!g_devicePanel)return;
+    g_devicePanelVisible=true;
+    ShowWindow(g_devicePanel,SW_SHOW);
+    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
+    for(HWND control:controls)if(control)ShowWindow(control,SW_SHOW);
+    LayoutDevicePanel();
+    ABM_Cast_StreamDiscoveryStart();
+    RefreshDevicePanel(true);
+    SetTimer(g_window,ID_STREAM_DEVICE_TIMER,800,nullptr);
+    SetStatus(L"Searching for TVs. Select a receiver in this panel; local-media casting remains separate.");
+    InvalidateRect(g_window,nullptr,FALSE);
+}
+void HideDevicePanel(){
+    g_devicePanelVisible=false;
+    KillTimer(g_window,ID_STREAM_DEVICE_TIMER);
+    HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
+    for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
+}
+
 void SetStatus(const wchar_t *message){
     StringCchCopyW(g_status,_countof(g_status),message?message:L"");
     if(g_window)InvalidateRect(g_window,nullptr,FALSE);
@@ -619,6 +709,7 @@ void PaintChrome(HWND hwnd){
         g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
     Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?RGBc(173,211,220):RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(g_devicePanelVisible)LayoutDevicePanel();
     if(buffer){
         BitBlt(paintDc,0,0,width,height,dc,0,0,SRCCOPY);
         SelectObject(dc,previousBitmap);
@@ -727,6 +818,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_CREATE:{
         g_window=hwnd;
+        CreateDevicePanel(hwnd);
+        SetTimer(hwnd,ID_STREAM_DEVICE_TIMER,800,nullptr);
         LoadServiceLogos();
         HRESULT comResult=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
         if(SUCCEEDED(comResult))g_comInitialized=true;
@@ -795,7 +888,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(FAILED(hr))SetStatus(L"Browser recovery could not be started. Reopen the Streaming Centre.");
         return 0;
     }
-    case WM_SIZE:LayoutBrowser();InvalidateRect(hwnd,nullptr,FALSE);return 0;
+    case WM_TIMER:if(wp==ID_STREAM_DEVICE_TIMER&&g_devicePanelVisible){RefreshDevicePanel(false);return 0;}break;
+    case WM_SIZE:LayoutBrowser();if(g_devicePanelVisible)LayoutDevicePanel();InvalidateRect(hwnd,nullptr,FALSE);return 0;
     case WM_MOUSEMOVE:{
         if(!g_trackingMouseLeave){TRACKMOUSEEVENT track{sizeof(track),TME_LEAVE,hwnd,0};if(TrackMouseEvent(&track))g_trackingMouseLeave=true;}
         POINT pt{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
@@ -830,9 +924,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(PtInRect(&g_helpRect,POINT{x,y})){ShowStreamingHelp();return 0;}
         if(PtInRect(&g_aboutRect,POINT{x,y})){ShowStreamingAbout();return 0;}
         if(PtInRect(&g_castRect,POINT{x,y})){
-            SetStatus(L"Opening the shared Google Cast and network receiver picker in ABM AV Player…");
-            if(g_mainWindow&&IsWindow(g_mainWindow)){ABM_Cast_ShowPicker(g_mainWindow);}
-            else SetStatus(L"The main player window is not available for receiver discovery.");
+            if(g_devicePanelVisible)HideDevicePanel();else ShowDevicePanel();
             return 0;
         }
         if(PtInRect(&g_castVideoRect,POINT{x,y})){CastCurrentBrowserVideo();return 0;}
@@ -865,8 +957,34 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(wp==VK_F11){RequestProviderFullscreen();return 0;}
         break;
     }
+    case WM_COMMAND:{
+        switch(LOWORD(wp)){
+        case ID_STREAM_DEVICE_REFRESH:
+            ABM_Cast_StreamDiscoveryStart();RefreshDevicePanel(true);
+            SetStatus(L"Refreshing network receiver discovery…");return 0;
+        case ID_STREAM_DEVICE_SELECT:{
+            LRESULT selected=SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
+            if(selected==LB_ERR){SetStatus(L"Select a TV from the device list first.");return 0;}
+            if(ABM_Cast_StreamSelectDevice((unsigned int)selected)){
+                g_streamSelectedIndex=(int)selected;
+                wchar_t name[256]=L"TV";
+                SendMessageW(g_deviceList,LB_GETTEXT,selected,(LPARAM)name);
+                SetStatus((std::wstring(L"Streaming Centre selected: ")+name+L". Now choose Cast video.").c_str());
+                SetWindowTextW(g_deviceHint,(std::wstring(L"Selected: ")+name).c_str());
+            }else SetStatus(L"That receiver is no longer available. Refresh the list.");
+            return 0;
+        }
+        case ID_STREAM_DEVICE_CLOSE:HideDevicePanel();return 0;
+        case ID_STREAM_DEVICE_LIST:
+            if(HIWORD(wp)==LBN_DBLCLK)SendMessageW(hwnd,WM_COMMAND,MAKEWPARAM(ID_STREAM_DEVICE_SELECT,0),0);
+            return 0;
+        }
+        break;
+    }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
+        KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
+        HideDevicePanel();
         g_window=nullptr;
         if(g_infoWindow&&IsWindow(g_infoWindow))DestroyWindow(g_infoWindow);
         if(g_controller)g_controller->Close();
