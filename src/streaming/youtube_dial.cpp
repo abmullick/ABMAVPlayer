@@ -1,8 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
-#include "youtube_dial.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include "youtube_dial.h"
 #include <winhttp.h>
 #include <atomic>
 #include <mutex>
