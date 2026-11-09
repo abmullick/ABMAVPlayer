@@ -183,16 +183,17 @@ void PaintChrome(HWND hwnd){
     g_externalRect=RECT{rc.right-190,16,rc.right-22,50};
     Rounded(dc,g_externalRect,RGBc(22,49,64),9);
     Text(dc,L"Open in browser",g_externalRect,RGBc(160,220,216),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    int right=rc.right-22;
-    g_homeRect=RECT{right-40,17,right-4,51};right-=46;
-    g_reloadRect=RECT{right-40,17,right-4,51};right-=46;
-    g_forwardRect=RECT{right-40,17,right-4,51};right-=46;
-    g_backRect=RECT{right-40,17,right-4,51};
+    /* Large navigation controls occupy their own lane, clear of the browser button. */
+    int navRight=rc.right-212;
+    g_homeRect=RECT{navRight-48,12,navRight,58};navRight-=58;
+    g_reloadRect=RECT{navRight-48,12,navRight,58};navRight-=58;
+    g_forwardRect=RECT{navRight-58,12,navRight,58};navRight-=68;
+    g_backRect=RECT{navRight-58,12,navRight,58};
     const RECT navButtons[4]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect};
     const wchar_t *glyphs[4]={L"‹",L"›",L"↻",L"⌂"};
     for(int i=0;i<4;i++){
-        Rounded(dc,navButtons[i],RGBc(23,43,62),8);
-        Text(dc,glyphs[i],navButtons[i],RGBc(205,224,239),19,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Rounded(dc,navButtons[i],RGBc(28,57,78),10);
+        Text(dc,glyphs[i],navButtons[i],RGBc(232,245,255),27,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
 
     const int serviceLeft=22,serviceRight=rc.right-22,serviceY=76,serviceH=82,gap=12;
@@ -315,9 +316,17 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         for(int i=0;i<5;i++)if(PtInRect(&g_serviceRects[i],POINT{x,y})){Navigate(i);return 0;}
-        if(PtInRect(&g_backRect,POINT{x,y})&&g_webView){g_webView->GoBack();return 0;}
-        if(PtInRect(&g_forwardRect,POINT{x,y})&&g_webView){g_webView->GoForward();return 0;}
-        if(PtInRect(&g_reloadRect,POINT{x,y})&&g_webView){g_webView->Reload();return 0;}
+        if(PtInRect(&g_backRect,POINT{x,y})){
+            if(g_webView){BOOL canGoBack=FALSE;g_webView->get_CanGoBack(&canGoBack);if(canGoBack)g_webView->GoBack();else SetStatus(L"No previous page in this browser session.");}
+            else SetStatus(L"Browser is still starting.");
+            return 0;
+        }
+        if(PtInRect(&g_forwardRect,POINT{x,y})){
+            if(g_webView){BOOL canGoForward=FALSE;g_webView->get_CanGoForward(&canGoForward);if(canGoForward)g_webView->GoForward();else SetStatus(L"No next page in this browser session.");}
+            else SetStatus(L"Browser is still starting.");
+            return 0;
+        }
+        if(PtInRect(&g_reloadRect,POINT{x,y})){if(g_webView)g_webView->Reload();else SetStatus(L"Browser is still starting.");return 0;}
         if(PtInRect(&g_homeRect,POINT{x,y})){NavigateHome();return 0;}
         if(PtInRect(&g_externalRect,POINT{x,y})){
             LPWSTR current=nullptr;
