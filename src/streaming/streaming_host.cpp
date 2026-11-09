@@ -187,18 +187,27 @@ void MoveVideoInPlaylist(BOOL next){
 const wchar_t *kInfoClassName=L"ABMAVPlayer.StreamingInfo";
 void LoadInfoPortrait(){
     delete g_infoPortrait;g_infoPortrait=nullptr;
-    wchar_t exePath[MAX_PATH]{};
+    wchar_t exePath[MAX_PATH]{},candidate[MAX_PATH]{};
     DWORD n=GetModuleFileNameW(nullptr,exePath,_countof(exePath));
     if(!n||n>=_countof(exePath))return;
     wchar_t *slash=wcsrchr(exePath,L'\\');if(!slash)return;
-    *(slash+1)=L'\0';
-    wchar_t path[MAX_PATH]{};
-    if(SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%sassets\\owner_portrait.bmp",exePath)))
-        g_infoPortrait=Gdiplus::Bitmap::FromFile(path,FALSE);
-    if(g_infoPortrait&&g_infoPortrait->GetLastStatus()!=Gdiplus::Ok){delete g_infoPortrait;g_infoPortrait=nullptr;}
-    if(!g_infoPortrait&&SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%s..\\assets\\owner_portrait.bmp",exePath))){
-        g_infoPortrait=Gdiplus::Bitmap::FromFile(path,FALSE);
-        if(g_infoPortrait&&g_infoPortrait->GetLastStatus()!=Gdiplus::Ok){delete g_infoPortrait;g_infoPortrait=nullptr;}
+    *slash=L'\0';
+    auto tryPath=[](const wchar_t *file)->bool {
+        Gdiplus::Bitmap *bmp=Gdiplus::Bitmap::FromFile(file,FALSE);
+        if(!bmp)return false;
+        if(bmp->GetLastStatus()!=Gdiplus::Ok){delete bmp;return false;}
+        g_infoPortrait=bmp;return true;
+    };
+    if(SUCCEEDED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\assets\\owner_portrait.bmp",exePath))&&tryPath(candidate))return;
+    slash=wcsrchr(exePath,L'\\');
+    if(slash&&slash>exePath){
+        *slash=L'\0';
+        if(SUCCEEDED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\assets\\owner_portrait.bmp",exePath))&&tryPath(candidate))return;
+    }
+    DWORD cwd=GetCurrentDirectoryW(_countof(candidate),candidate);
+    if(cwd&&cwd<_countof(candidate)){
+        wchar_t path[MAX_PATH]{};
+        if(SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%s\\assets\\owner_portrait.bmp",candidate)))tryPath(path);
     }
 }
 LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
