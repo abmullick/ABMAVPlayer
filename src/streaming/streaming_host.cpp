@@ -297,12 +297,12 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             for(int i=0;i<5;i++){
                 RECT h={left,y,right,y+22};
                 Text(dc,heads[i],h,RGBc(91,231,220),14,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-                RECT b={left,y+23,right,y+59};
-                Text(dc,body[i],b,RGBc(205,220,235),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+                RECT b={left,y+24,right,y+72};
+                Text(dc,body[i],b,RGBc(235,242,250),15,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
                 y+=91;
             }
-            RECT note={left,rc.bottom-57,right,rc.bottom-26};
-            Text(dc,L"ABM AV Player does not host streaming content or provide subscriptions. Playback, protected content and available features are controlled by each provider.",note,RGBc(125,157,185),10,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT note={left,rc.bottom-66,right,rc.bottom-22};
+            Text(dc,L"ABM AV Player does not host streaming content or provide subscriptions. Playback, protected content and available features are controlled by each provider.",note,RGBc(190,210,228),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
         }
         EndPaint(hwnd,&ps);return 0;
     }
