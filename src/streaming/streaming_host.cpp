@@ -173,19 +173,53 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
 }
 
+void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool primary){
+    if(!item||!item->hwndItem)return;
+    HDC dc=item->hDC;RECT r=item->rcItem;
+    bool pressed=(item->itemState&ODS_SELECTED)!=0;
+    bool focused=(item->itemState&ODS_FOCUS)!=0;
+    COLORREF fill=primary?(pressed?RGBc(25,112,101):RGBc(24,91,82)):
+        (pressed?RGBc(35,75,94):RGBc(20,42,60));
+    COLORREF edge=primary?RGBc(65,190,165):RGBc(48,91,113);
+    Rounded(dc,r,fill,9);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGBc(99,225,205):edge);
+    HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
+    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+    InflateRect(&r,-5,-2);
+    Text(dc,caption,r,RGBc(229,244,250),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+}
+void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
+    if(!item||item->itemID==(UINT)-1)return;
+    wchar_t name[256]{};
+    SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)name);
+    bool selected=(item->itemState&ODS_SELECTED)!=0;
+    RECT r=item->rcItem;
+    FillRectColor(item->hDC,r,selected?RGBc(29,91,103):RGBc(15,31,47));
+    RECT textRect=r;InflateRect(&textRect,-9,0);
+    Text(item->hDC,name,textRect,selected?RGBc(245,255,255):RGBc(207,225,237),11,selected?700:500,
+        DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(item->itemState&ODS_FOCUS){
+        HPEN pen=CreatePen(PS_SOLID,1,RGBc(75,190,184));
+        HGDIOBJ old=SelectObject(item->hDC,pen),brush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
+        Rectangle(item->hDC,r.left+1,r.top+1,r.right-1,r.bottom-1);
+        SelectObject(item->hDC,brush);SelectObject(item->hDC,old);DeleteObject(pen);
+    }
+}
+
 void LayoutDevicePanel(){
     if(!g_window||!g_devicePanel)return;
     RECT rc{};GetClientRect(g_window,&rc);
-    int x=rc.right-500;if(x<12)x=12;
+    int x=rc.right-530;if(x<12)x=12;
     int y=64;
-    SetWindowPos(g_devicePanel,HWND_TOP,x,y,486,184,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,204,SWP_NOACTIVATE|SWP_SHOWWINDOW);
     /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
-    SetWindowPos(g_deviceTitle,nullptr,x+14,y+9,450,22,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceHint,nullptr,x+14,y+31,450,18,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceList,nullptr,x+14,y+54,290,116,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceRefresh,nullptr,x+314,y+54,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceSelect,nullptr,x+314,y+94,156,32,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+314,y+138,156,30,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceTitle,nullptr,x+18,y+12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,20,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,x+18,y+68,310,120,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+68,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,x+342,y+111,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+154,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 void RefreshDevicePanel(bool force){
     if(!g_deviceList)return;
@@ -211,27 +245,29 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_BLACKRECT,0,0,486,184,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_OWNERDRAW,0,0,516,204,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
-    g_deviceList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",
-        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,parent,
+    g_deviceList=CreateWindowExW(0,L"LISTBOX",L"",
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
     g_deviceRefresh=CreateWindowExW(0,L"BUTTON",L"Refresh devices",
-        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_REFRESH,GetModuleHandleW(nullptr),nullptr);
     g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
-        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_SELECT,GetModuleHandleW(nullptr),nullptr);
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
-        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
-    HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
+    SendMessageW(g_deviceHint,WM_SETFONT,(WPARAM)GetCachedTextFont(10,500),TRUE);
+    SendMessageW(g_deviceList,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
+    SendMessageW(g_deviceList,LB_SETITEMHEIGHT,0,27);
     HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
-    for(HWND control:controls)if(control)SendMessageW(control,WM_SETFONT,(WPARAM)font,TRUE);
     ShowWindow(g_devicePanel,SW_HIDE);
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
 }
@@ -827,6 +863,35 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
 }
 LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
+    case WM_DRAWITEM:{
+        const DRAWITEMSTRUCT *item=(const DRAWITEMSTRUCT*)lp;
+        if(!item)return TRUE;
+        if(item->hwndItem==g_devicePanel){
+            RECT r=item->rcItem;
+            FillRectColor(item->hDC,r,RGBc(12,29,45));
+            HPEN pen=CreatePen(PS_SOLID,1,RGBc(43,91,112));
+            HGDIOBJ oldPen=SelectObject(item->hDC,pen),oldBrush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
+            RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,14,14);
+            SelectObject(item->hDC,oldBrush);SelectObject(item->hDC,oldPen);DeleteObject(pen);
+            RECT accent={r.left+16,r.top+61,r.right-16,r.top+62};FillRectColor(item->hDC,accent,RGBc(38,112,119));
+            return TRUE;
+        }
+        if(item->hwndItem==g_deviceRefresh){DrawDeviceButton(item,L"Refresh devices",false);return TRUE;}
+        if(item->hwndItem==g_deviceSelect){DrawDeviceButton(item,L"Use selected TV",true);return TRUE;}
+        if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}
+        if(item->hwndItem==g_deviceList){DrawDeviceListItem(item);return TRUE;}
+        break;
+    }
+    case WM_CTLCOLORSTATIC:{
+        HDC dc=(HDC)wp;HWND control=(HWND)lp;
+        if(control==g_deviceTitle||control==g_deviceHint){
+            SetBkMode(dc,TRANSPARENT);
+            SetTextColor(dc,control==g_deviceTitle?RGBc(242,249,255):RGBc(150,190,207));
+            static HBRUSH panelBrush=CreateSolidBrush(RGBc(12,29,45));
+            return (LRESULT)panelBrush;
+        }
+        break;
+    }
     case WM_CREATE:{
         g_window=hwnd;
         CreateDevicePanel(hwnd);
