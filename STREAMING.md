@@ -53,3 +53,8 @@ If a provider blocks embedded playback or protected video fails, use the **Open 
 - **Help / About:** Available in the Streaming Centre header.
 
 Fullscreen is intended for the actual provider video player, not merely enlarging the normal application window. Some providers may restrict fullscreen or require using their own on-player fullscreen control.
+
+
+## Runtime checks and recovery
+
+Before starting the embedded browser, ABM AV Player checks whether a WebView2 runtime is available. If it is missing or cannot be found, the main player remains usable and the Streaming Centre displays an instruction to install the official Microsoft Edge WebView2 Evergreen Runtime. If the WebView2 browser process fails unexpectedly, the Streaming Centre makes a bounded number of automatic recovery attempts and restores the current HTTP(S) page when possible. If repeated recovery fails, close and reopen the Streaming Centre. Provider playback and DRM remain subject to the provider's policies.
