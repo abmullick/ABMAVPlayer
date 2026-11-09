@@ -70,10 +70,25 @@ All components must use the same architecture (x64).
 
 ## Updates and releases
 
-- Use **Check for updates** in the application menu to check the latest published GitHub Release, review its release notes, and optionally download and run the official Windows installer.
-- Updates are installed over the existing ABM AV Player installation; the installer uses the same product identity and preserves user data stored under AppData.
-- Releases and publishing instructions are documented in [RELEASES.md](RELEASES.md). Each published release must attach `ABM-AV-Player-Setup.exe`.
-- Users can also download installers directly from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases).
+ABM AV Player includes an in-app update checker connected to the public GitHub Releases page.
+
+### For users
+
+- Select **Check for updates** from the application menu.
+- The player checks the latest published release, compares its version with the installed version, and displays the release notes when an update is available.
+- If you accept, the player downloads the official Windows installer and starts the normal Windows installation process. You will be asked to approve installation through the Windows elevation prompt.
+- **No GitHub account, GitHub login, access token, or command-line tools are required.** Update checks and downloads are anonymous because this repository is public.
+- You can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases).
+
+### For maintainers
+
+- A release must be published on GitHub and include an installer asset named exactly `ABM-AV-Player-Setup.exe`; the updater cannot find an installer attached under a different name.
+- Before building a release, keep `APP_VERSION` in `src/player.c` and `MyAppVersion` in `installer/ABMAVPlayer.iss` identical to the release version.
+- Build and test the application and installer on Windows before publishing.
+- The `publish_release.bat` script uses GitHub CLI. **Only the maintainer publishing the release** needs GitHub CLI installed and authenticated with `gh auth login`. This authentication is not used by the application or required by end users.
+- See [RELEASES.md](RELEASES.md) for the complete publishing procedure and release requirements.
+
+Updates are installed over the existing ABM AV Player installation. User preferences and other application data are stored separately under AppData.
 
 ## Build
 
