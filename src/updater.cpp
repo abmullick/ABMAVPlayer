@@ -2,6 +2,11 @@
 #include <windows.h>
 #include <wininet.h>
 #include <urlmon.h>
+#include <wincrypt.h>
+#include <wintrust.h>
+#include <softpub.h>
+#include <bcrypt.h>
+#include <objbase.h>
 #include <shellapi.h>
 #include <strsafe.h>
 #include <wchar.h>
@@ -12,6 +17,10 @@
 #pragma comment(lib,"wininet.lib")
 #pragma comment(lib,"urlmon.lib")
 #pragma comment(lib,"shell32.lib")
+#pragma comment(lib,"wintrust.lib")
+#pragma comment(lib,"crypt32.lib")
+#pragma comment(lib,"bcrypt.lib")
+#pragma comment(lib,"ole32.lib")
 
 namespace {
 const wchar_t *kReleaseApi=L"https://api.github.com/repos/abmullick/ABMAVPlayer/releases/latest";
@@ -61,6 +70,90 @@ bool VersionNewer(const wchar_t *remote,const wchar_t *local) {
     }
     return false;
 }
+bool IsHexDigest(const wchar_t *value) {
+    if(!value || wcslen(value)!=71 || wcsncmp(value,L"sha256:",7)!=0)return false;
+    for(size_t i=7;i<71;i++)if(!((value[i]>=L'0'&&value[i]<=L'9')||(value[i]>=L'a'&&value[i]<=L'f')||(value[i]>=L'A'&&value[i]<=L'F')))return false;
+    return true;
+}
+bool VerifySha256(const wchar_t *path,const wchar_t *expected) {
+    if(!IsHexDigest(expected))return false;
+    BCRYPT_ALG_HANDLE algorithm=nullptr;BCRYPT_HASH_HANDLE hash=nullptr;
+    DWORD objectSize=0,hashSize=0,cb=0;PUCHAR object=nullptr;BYTE digest[32]{};
+    HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr);
+    if(file==INVALID_HANDLE_VALUE)return false;
+    bool ok=false;
+    if(BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)<0)goto done;
+    if(BCryptGetProperty(algorithm,BCRYPT_OBJECT_LENGTH,(PUCHAR)&objectSize,sizeof(objectSize),&cb,0)<0)goto done;
+    if(BCryptGetProperty(algorithm,BCRYPT_HASH_LENGTH,(PUCHAR)&hashSize,sizeof(hashSize),&cb,0)<0||hashSize!=32)goto done;
+    object=(PUCHAR)HeapAlloc(GetProcessHeap(),0,objectSize);if(!object)goto done;
+    if(BCryptCreateHash(algorithm,&hash,object,objectSize,nullptr,0,0)<0)goto done;
+    { BYTE buffer[65536];DWORD got=0;
+      while(ReadFile(file,buffer,sizeof(buffer),&got,nullptr)&&got)
+        if(BCryptHashData(hash,buffer,got,0)<0)goto done;
+      if(GetLastError()!=ERROR_HANDLE_EOF) { /* ReadFile may end with success and zero bytes. */ }
+    }
+    if(BCryptFinishHash(hash,digest,sizeof(digest),0)<0)goto done;
+    for(size_t i=0;i<32;i++) {
+        unsigned int byte=0;
+        wchar_t pair[3]={expected[7+i*2],expected[8+i*2],0};
+        if(swscanf_s(pair,L"%2x",&byte)!=1||digest[i]!=(BYTE)byte)goto done;
+    }
+    ok=true;
+done:
+    if(hash)BCryptDestroyHash(hash);
+    if(object)HeapFree(GetProcessHeap(),0,object);
+    if(algorithm)BCryptCloseAlgorithmProvider(algorithm,0);
+    CloseHandle(file);
+    return ok;
+}
+bool VerifyAuthenticodePublisher(const wchar_t *path) {
+    WINTRUST_FILE_INFO fileInfo{};fileInfo.cbStruct=sizeof(fileInfo);fileInfo.pcwszFilePath=path;
+    WINTRUST_DATA trust{};trust.cbStruct=sizeof(trust);trust.dwUIChoice=WTD_UI_NONE;
+    trust.fdwRevocationChecks=WTD_REVOKE_WHOLECHAIN;trust.dwUnionChoice=WTD_CHOICE_FILE;
+    trust.pFile=&fileInfo;trust.dwStateAction=WTD_STATEACTION_VERIFY;
+    trust.dwProvFlags=WTD_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT|WTD_CACHE_ONLY_URL_RETRIEVAL;
+    GUID policy=WINTRUST_ACTION_GENERIC_VERIFY_V2;
+    LONG status=WinVerifyTrust(nullptr,&policy,&trust);
+    trust.dwStateAction=WTD_STATEACTION_CLOSE;WinVerifyTrust(nullptr,&policy,&trust);
+    if(status!=ERROR_SUCCESS)return false;
+
+    HCERTSTORE store=nullptr;HCRYPTMSG message=nullptr;DWORD encoding=0,content=0,format=0;
+    if(!CryptQueryObject(CERT_QUERY_OBJECT_FILE,path,
+       CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,CERT_QUERY_FORMAT_FLAG_BINARY,
+       0,&encoding,&content,&format,&store,&message,nullptr))return false;
+    DWORD signerBytes=0;bool matches=false;
+    if(CryptMsgGetParam(message,CMSG_SIGNER_INFO_PARAM,0,nullptr,&signerBytes)) {
+        PCMSG_SIGNER_INFO signer=(PCMSG_SIGNER_INFO)HeapAlloc(GetProcessHeap(),0,signerBytes);
+        if(signer&&CryptMsgGetParam(message,CMSG_SIGNER_INFO_PARAM,0,signer,&signerBytes)) {
+            CERT_INFO search{};search.Issuer=signer->Issuer;search.SerialNumber=signer->SerialNumber;
+            PCCERT_CONTEXT cert=CertFindCertificateInStore(store,encoding,0,CERT_FIND_SUBJECT_CERT,&search,nullptr);
+            if(cert) {
+                wchar_t subject[512]{};
+                CertGetNameStringW(cert,CERT_NAME_SIMPLE_DISPLAY_TYPE,0,nullptr,subject,_countof(subject));
+                matches=(_wcsicmp(subject,L"Abhisek Basu Mullick")==0);
+                CertFreeCertificateContext(cert);
+            }
+        }
+        if(signer)HeapFree(GetProcessHeap(),0,signer);
+    }
+    if(message)CryptMsgClose(message);if(store)CertCloseStore(store,0);
+    return matches;
+}
+bool CreatePrivateUpdatePath(wchar_t *directory,size_t directoryCount,wchar_t *installer,size_t installerCount) {
+    wchar_t base[MAX_PATH]{};
+    if(!GetEnvironmentVariableW(L"LOCALAPPDATA",base,_countof(base)))return false;
+    GUID id{};if(CoCreateGuid(&id)!=S_OK)return false;
+    wchar_t suffix[64]{};
+    if(FAILED(StringCchPrintfW(suffix,_countof(suffix),L"\\ABMAVPlayer\\Updates\\{%08lX-%04X-%04X-%04X-%012llX}",
+       id.Data1,id.Data2,id.Data3,
+       (id.Data4[0]<<8)|id.Data4[1],
+       ((unsigned long long)id.Data4[2]<<40)|((unsigned long long)id.Data4[3]<<32)|
+       ((unsigned long long)id.Data4[4]<<24)|((unsigned long long)id.Data4[5]<<16)|
+       ((unsigned long long)id.Data4[6]<<8)|id.Data4[7])))return false;
+    if(FAILED(StringCchPrintfW(directory,directoryCount,L"%s%s",base,suffix)))return false;
+    if(!CreateDirectoryW(directory,nullptr))return false;
+    return SUCCEEDED(StringCchPrintfW(installer,installerCount,L"%s\\%s",directory,kInstallerName));
+}
 void ExplainFailure(HWND owner,const wchar_t *message) {
     MessageBoxW(owner,message,L"ABM AV Player — Updates",MB_OK|MB_ICONWARNING);
 }
@@ -78,14 +171,15 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
         ExplainFailure(owner,L"No public release has been published yet. The update checker will work after the first Windows installer is published on GitHub Releases.");
         return false;
     }
-    wchar_t tag[64]{},assetUrl[2048]{},notes[1024]{};
+    wchar_t tag[64]{},assetUrl[2048]{},notes[1024]{},assetDigest[96]{};
     bool gotTag=JsonString(json,"tag_name",tag,_countof(tag));
     JsonString(json,"body",notes,_countof(notes));
     const char *asset=strstr(json,"\"name\":");
     while(asset){
         wchar_t name[256]{};
         if(JsonString(asset,"name",name,_countof(name))&&_wcsicmp(name,kInstallerName)==0){
-            JsonString(asset,"browser_download_url",assetUrl,_countof(assetUrl));break;
+            JsonString(asset,"browser_download_url",assetUrl,_countof(assetUrl));
+            JsonString(asset,"digest",assetDigest,_countof(assetDigest));break;
         }
         asset=strstr(asset+7,"\"name\":");
     }
@@ -103,21 +197,31 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
         currentVersion,tag,notes[0]?notes:L"Release notes were not provided.");
     if(MessageBoxW(owner,prompt,L"ABM AV Player — Update available",MB_YESNO|MB_ICONINFORMATION)!=IDYES)return true;
 
-    wchar_t temp[MAX_PATH],installer[MAX_PATH];
-    if(!GetTempPathW(_countof(temp),temp)||FAILED(StringCchPrintfW(installer,_countof(installer),L"%s%s",temp,L"ABM-AV-Player-Setup-latest.exe"))){
-        ExplainFailure(owner,L"Could not create a temporary download path.");return false;
+    if(!IsHexDigest(assetDigest)){
+        ExplainFailure(owner,L"This release does not publish a SHA-256 asset digest. For your protection, automatic installation has been blocked. Please download the installer manually from the official GitHub Releases page.");return false;
     }
-    DeleteFileW(installer);
+    wchar_t updateDirectory[MAX_PATH]{},installer[MAX_PATH]{};
+    if(!CreatePrivateUpdatePath(updateDirectory,_countof(updateDirectory),installer,_countof(installer))){
+        ExplainFailure(owner,L"Could not create a unique update directory under your Local AppData folder.");return false;
+    }
     SetCursor(LoadCursorW(nullptr,IDC_WAIT));
     HRESULT hr=URLDownloadToFileW(nullptr,assetUrl,installer,0,nullptr);
     SetCursor(LoadCursorW(nullptr,IDC_ARROW));
     if(FAILED(hr)){
-        DeleteFileW(installer);ExplainFailure(owner,L"The installer could not be downloaded. Please try again later.");return false;
+        DeleteFileW(installer);RemoveDirectoryW(updateDirectory);ExplainFailure(owner,L"The installer could not be downloaded. Please try again later.");return false;
+    }
+    if(!VerifySha256(installer,assetDigest)){
+        DeleteFileW(installer);RemoveDirectoryW(updateDirectory);
+        ExplainFailure(owner,L"The downloaded installer failed its SHA-256 integrity check. It has not been run.");return false;
+    }
+    if(!VerifyAuthenticodePublisher(installer)){
+        DeleteFileW(installer);RemoveDirectoryW(updateDirectory);
+        ExplainFailure(owner,L"The installer does not have a valid Authenticode signature from the expected publisher (Abhisek Basu Mullick). It has not been run. A code-signing certificate is required for automatic updates.");return false;
     }
     SHELLEXECUTEINFOW exec{};exec.cbSize=sizeof(exec);exec.fMask=SEE_MASK_NOCLOSEPROCESS;
     exec.hwnd=owner;exec.lpVerb=L"runas";exec.lpFile=installer;exec.nShow=SW_SHOWNORMAL;
     if(!ShellExecuteExW(&exec)){
-        DWORD error=GetLastError();DeleteFileW(installer);
+        DWORD error=GetLastError();DeleteFileW(installer);RemoveDirectoryW(updateDirectory);
         if(error!=ERROR_CANCELLED)ExplainFailure(owner,L"Windows could not start the installer. You can download it manually from GitHub Releases.");
         return false;
     }
