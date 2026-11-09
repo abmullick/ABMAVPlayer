@@ -75,13 +75,13 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
     wchar_t tag[64]{},assetUrl[2048]{},notes[1024]{};
     bool gotTag=JsonString(json,"tag_name",tag,_countof(tag));
     JsonString(json,"body",notes,_countof(notes));
-    const char *asset=strstr(json,"\\"name\":");
+    const char *asset=strstr(json,"\"name\":");
     while(asset){
         wchar_t name[256]{};
         if(JsonString(asset,"name",name,_countof(name))&&_wcsicmp(name,kInstallerName)==0){
             JsonString(asset,"browser_download_url",assetUrl,_countof(assetUrl));break;
         }
-        asset=strstr(asset+7,"\\"name\":");
+        asset=strstr(asset+7,"\"name\":");
     }
     free(json);
     if(!gotTag||!tag[0]){ExplainFailure(owner,L"GitHub returned release information in an unexpected format.");return false;}
