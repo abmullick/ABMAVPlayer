@@ -446,6 +446,12 @@ void PaintChrome(HWND hwnd){
     for(int i=0;i<5;i++){
         COLORREF fill=(g_hoverControl==i)?RGBc(43,91,113):(i==4?RGBc(31,103,111):RGBc(24,52,73));
         Rounded(dc,navButtons[i],fill,12);
+        HPEN navPen=CreatePen(PS_SOLID,g_hoverControl==i?2:1,
+            g_hoverControl==i?RGBc(83,211,199):(i==4?RGBc(62,151,153):RGBc(43,76,99)));
+        HGDIOBJ oldNavPen=SelectObject(dc,navPen);
+        HGDIOBJ oldNavBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+        RoundRect(dc,navButtons[i].left,navButtons[i].top,navButtons[i].right,navButtons[i].bottom,12,12);
+        SelectObject(dc,oldNavBrush);SelectObject(dc,oldNavPen);DeleteObject(navPen);
         RECT glyph=navButtons[i];glyph.top+=1;glyph.bottom-=19;
         Text(dc,glyphs[i],glyph,RGBc(239,248,255),i==4?23:25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT label=navButtons[i];label.top=navButtons[i].bottom-21;label.bottom-=3;
