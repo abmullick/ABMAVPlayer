@@ -264,10 +264,10 @@ void PaintChrome(HWND hwnd){
     RECT sub={77,34,306,54};
     Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-    g_helpRect=RECT{320,15,390,55};
+    g_helpRect=RECT{312,15,372,55};
     Rounded(dc,g_helpRect,RGBc(20,42,60),8);
     Text(dc,L"Help",g_helpRect,RGBc(190,218,235),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    g_aboutRect=RECT{398,15,468,55};
+    g_aboutRect=RECT{378,15,438,55};
     Rounded(dc,g_aboutRect,RGBc(20,42,60),8);
     Text(dc,L"About",g_aboutRect,RGBc(190,218,235),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
