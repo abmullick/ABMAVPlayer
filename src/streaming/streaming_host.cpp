@@ -206,7 +206,7 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_BLACKRECT,0,0,486,184,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_BLACKRECT,0,0,486,184,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
@@ -532,8 +532,8 @@ void CastCurrentBrowserVideo(){
                 wchar_t url[8192]{};
                 int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,encoded,-1,url,(int)_countof(url));
                 if(chars<=0){SetStatus(L"Could not decode the browser video URL.");return S_OK;}
-                if(ABM_Cast_StreamUrl(url))SetStatus(L"Cast request sent to the selected TV.");
-                else if(g_window)InvalidateRect(g_window,nullptr,FALSE);
+                if(ABM_Cast_StreamUrl(url))SetStatus(L"Streaming cast handoff started. Check the TV for playback.");
+                else SetStatus(L"The TV could not start this video. It may require DRM, browser cookies or segmented streaming that cannot be handed off as a direct URL.");
                 return S_OK;
             }).Get());
     if(FAILED(hr))SetStatus(L"Could not inspect the current page for a video element.");
