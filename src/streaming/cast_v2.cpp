@@ -367,6 +367,28 @@ bool WaitFor(const std::string &host,unsigned short port,const char *needle,std:
     for(int i=0;i<6;i++){std::string j;if(!ReceiveCast(tls,j))continue;if(j.find(needle)!=std::string::npos){payload=j;return true;}}
     return false;
 }
+
+int QueryAppAvailability(const Receiver &receiver,const char *appId) {
+    Diag(L"Checking Cast app availability appId=%S receiver=%s host=%S",appId,receiver.name.c_str(),receiver.host.c_str());
+    CastTls tls;
+    if(!tls.Connect(receiver.host,receiver.port))return -1;
+    if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.tp.connection","{\\"type\\":\\"CONNECT\\"}"))return -1;
+    std::string request="{\\"type\\":\\"GET_APP_AVAILABILITY\\",\\"appId\\":[\\"";
+    request+=appId;
+    request+="\\"],\\"requestId\\":2}";
+    if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.receiver",request))return -1;
+    for(int i=0;i<8;i++){
+        std::string response;
+        if(!ReceiveCast(tls,response))return -1;
+        if(response.find("GET_APP_AVAILABILITY")==std::string::npos)continue;
+        const std::string available="\\""+std::string(appId)+"\\":\\"APP_AVAILABLE\\"";
+        const std::string unavailable="\\""+std::string(appId)+"\\":\\"APP_UNAVAILABLE\\"";
+        if(response.find(available)!=std::string::npos){Diag(L"Cast app availability appId=%S result=APP_AVAILABLE",appId);return 1;}
+        if(response.find(unavailable)!=std::string::npos){Diag(L"Cast app availability appId=%S result=APP_UNAVAILABLE",appId);return 0;}
+    }
+    Diag(L"Cast app availability query timed out or returned an unrecognized response appId=%S",appId);
+    return -1;
+}
 bool Launch(const Receiver &r,const wchar_t *video) {
     Diag(L"Launch requested receiver=%s host=%S port=%u",r.name.c_str(),r.host.c_str(),r.port);
     wchar_t module[MAX_PATH]{};
@@ -428,6 +450,16 @@ extern "C" BOOL ABM_CastV2_DeviceName(unsigned int i,wchar_t *b,unsigned int c) 
 }
 extern "C" BOOL ABM_CastV2_SelectDevice(unsigned int i) {
     std::lock_guard<std::mutex> l(g_mutex);if(i>=g_receivers.size()){Diag(L"SelectDevice rejected index=%u count=%u",i,(unsigned)g_receivers.size());return FALSE;}g_selected=(int)i;Diag(L"Selected receiver index=%u name=%s host=%S port=%u",i,g_receivers[i].name.c_str(),g_receivers[i].host.c_str(),g_receivers[i].port);return TRUE;
+}
+
+extern "C" int ABM_CastV2_CheckYouTubeAvailability(unsigned int i) {
+    Receiver receiver;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if(i>=g_receivers.size())return -1;
+        receiver=g_receivers[i];
+    }
+    return QueryAppAvailability(receiver,"233637DE");
 }
 extern "C" BOOL ABM_CastV2_LaunchYouTube(const wchar_t *id) {
     if(!id||wcslen(id)!=11){Diag(L"Launch rejected: invalid YouTube video ID");return FALSE;}
