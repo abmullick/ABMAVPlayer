@@ -1574,6 +1574,48 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             }catch(...){g_appProbeRunning=false;SetStatus(L"Could not start the TV app launch request.");}
             return 0;
         }
+        case ID_STREAM_DEVICE_APP_STATUS:
+        case ID_STREAM_DEVICE_APP_STOP:{
+            if(g_appProbeRunning.exchange(true)){SetStatus(L"Wait for the current TV operation to finish.");return 0;}
+            LRESULT selected=SendMessageW(g_deviceAppCombo,LB_GETCURSEL,0,0);
+            LRESULT choiceIndex=selected==LB_ERR?LB_ERR:SendMessageW(g_deviceAppCombo,LB_GETITEMDATA,(WPARAM)selected,0);
+            if(choiceIndex==LB_ERR||choiceIndex<0||(size_t)choiceIndex>=g_streamAppChoices.size()){
+                g_appProbeRunning=false;SetStatus(L"Select a TV app first.");return 0;
+            }
+            const StreamAppChoice choice=g_streamAppChoices[(size_t)choiceIndex];
+            if(choice.castV2||choice.dialApp.empty()||g_streamSelectedDialIndex<0){
+                g_appProbeRunning=false;
+                SetStatus(L"This app was launched through Google Cast or has no DIAL control endpoint. DIAL app status/stop controls are unavailable; use the TV remote or provider mobile app.");
+                return 0;
+            }
+            const int dialIndex=g_streamSelectedDialIndex;
+            const bool stop=(LOWORD(wp)==ID_STREAM_DEVICE_APP_STOP);
+            const HWND target=hwnd;
+            SetStatus(stop?L"Sending standard DIAL stop request to the TV…":L"Checking TV application state…");
+            try{
+                std::thread([target,dialIndex,choice,stop](){
+                    std::wstring message;
+                    if(stop){
+                        int code=ABM_Dial_StopApplication((unsigned int)dialIndex,choice.dialApp.c_str());
+                        if(code==1)message=L"The TV accepted the DIAL stop request for "+choice.label+L". This stops the TV app; it is not a pause command.";
+                        else if(code==0)message=L"The TV no longer exposes "+choice.label+L" through DIAL.";
+                        else if(code==-1)message=L"Could not reach the TV's DIAL application endpoint.";
+                        else message=L"The TV rejected the DIAL stop request for "+choice.label+L". Use the TV remote to close the app.";
+                    }else{
+                        int code=ABM_Dial_QueryApplication((unsigned int)dialIndex,choice.dialApp.c_str());
+                        if(code==1)message=choice.label+L" is reported RUNNING by the TV's DIAL endpoint. Playback state (playing/paused/buffering) is not exposed by standard DIAL.";
+                        else if(code==2)message=choice.label+L" is reported STOPPED by the TV's DIAL endpoint.";
+                        else if(code==3)message=choice.label+L" is recognised by DIAL, but the TV did not report a known app state.";
+                        else if(code==0)message=choice.label+L" is no longer exposed by the TV's DIAL endpoint.";
+                        else message=L"Could not read the TV app state from its DIAL endpoint.";
+                    }
+                    g_appProbeRunning=false;
+                    auto *payload=new std::wstring(std::move(message));
+                    if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APP_LAUNCH,0,(LPARAM)payload))delete payload;
+                }).detach();
+            }catch(...){g_appProbeRunning=false;SetStatus(L"Could not start the TV app control request.");}
+            return 0;
+        }
         case ID_STREAM_DEVICE_CLOSE:HideDevicePanel();return 0;
         case ID_STREAM_DEVICE_LIST:
             if(HIWORD(wp)==LBN_DBLCLK)SendMessageW(hwnd,WM_COMMAND,MAKEWPARAM(ID_STREAM_DEVICE_SELECT,0),0);
