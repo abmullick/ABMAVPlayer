@@ -58,7 +58,7 @@ bool HttpRequest(const std::wstring &url,const wchar_t *verb,const std::wstring 
     bool ok=false;
     if(request) {
         const bool isPost=_wcsicmp(verb,L"POST")==0;
-        const wchar_t *headers=isPost?L"Content-Type: text/plain; charset=\"utf-8\"\r\n":WINHTTP_NO_ADDITIONAL_HEADERS;
+        const wchar_t *headers=isPost?L"Content-Type: text/plain; charset=\"utf-8\"\r\nOrigin: https://www.youtube.com\r\n":WINHTTP_NO_ADDITIONAL_HEADERS;
         std::string bodyUtf8;
         if(isPost&&!body.empty()){
             int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,body.data(),(int)body.size(),nullptr,0,nullptr,nullptr);
@@ -226,10 +226,29 @@ extern "C" BOOL ABM_Dial_LaunchYouTube(unsigned int i,const wchar_t *videoId) {
     for(const wchar_t *p=videoId;*p;++p)if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
     std::wstring base;{std::lock_guard<std::mutex> l(g_lock);if(i>=g_devices.size())return FALSE;base=g_devices[i].appUrl;}
     DWORD status=0;std::wstring ignored;
-    bool launched=HttpRequest(base+L"YouTube",L"POST",L"",&ignored,nullptr,&status);
-    if(!launched||!(status==200||status==201||status==202)){g_lastLaunchError=L"The TV did not start YouTube through DIAL (HTTP "+std::to_wstring(status)+L").";return FALSE;}
+    std::wstring activeBase=base;
+    bool launched=HttpRequest(activeBase+L"YouTube",L"POST",L"",&ignored,nullptr,&status);
+    if(!launched||!(status==200||status==201||status==202)) {
+        /* VIDAA firmware commonly exposes its DIAL REST service separately
+           from the UPnP description endpoint, on TCP 56789 under /apps/. */
+        std::wstring host,path;INTERNET_PORT port=0;
+        if(ParseHttpUrl(base,host,port,path)) {
+            std::wstring vidaaBase=L"http://"+host+L":56789/apps/";
+            if(_wcsicmp(vidaaBase.c_str(),activeBase.c_str())!=0) {
+                DWORD fallbackStatus=0;
+                if(HttpRequest(vidaaBase+L"YouTube",L"POST",L"",&ignored,nullptr,&fallbackStatus) &&
+                   (fallbackStatus==200||fallbackStatus==201||fallbackStatus==202)) {
+                    activeBase=vidaaBase;status=fallbackStatus;launched=true;
+                } else status=fallbackStatus;
+            }
+        }
+    }
+    if(!launched||!(status==200||status==201||status==202)) {
+        g_lastLaunchError=L"The TV rejected the YouTube DIAL launch (HTTP "+std::to_wstring(status)+L"). Its DIAL service may not expose YouTube.";
+        return FALSE;
+    }
     std::string screen,error;
-    if(!GetScreenId(base,screen)){g_lastLaunchError=L"YouTube started, but the TV did not expose a YouTube screen ID.";return FALSE;}
+    if(!GetScreenId(activeBase,screen)){g_lastLaunchError=L"YouTube started, but the TV did not expose a YouTube screen ID.";return FALSE;}
     if(!PlayLounge(screen,ToUtf8(videoId),error)){g_lastLaunchError=ToWide(error);return FALSE;}
     g_lastLaunchError.clear();return TRUE;
 }
