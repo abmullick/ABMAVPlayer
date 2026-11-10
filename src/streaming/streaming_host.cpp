@@ -684,17 +684,8 @@ void CastCurrentBrowserVideo(){
                     payload==L"PRIMEVIDEO"?L"PRIMEVIDEO":payload.rfind(L"YT:",0)==0?L"YOUTUBE":
                     payload.rfind(L"URL:",0)==0?L"DIRECT_URL":L"NO_VIDEO");
                 if(payload==L"PRIMEVIDEO"){
-                    StreamingDiag(L"Prime Video route entered; DIAL index=%d",g_streamSelectedDialIndex);
-                    if(g_streamSelectedDialIndex>=0){
-                        StreamingDiag(L"Calling ABM_Dial_LaunchPrimeVideo index=%d",g_streamSelectedDialIndex);
-                        if(ABM_Dial_LaunchPrimeVideo((unsigned int)g_streamSelectedDialIndex)){
-                            StreamingDiag(L"Prime Video DIAL launch returned success");
-                            SetStatus(L"Prime Video app launch accepted by the TV. Use the TV remote to choose a title. Protected playback stays inside Amazon's official TV app.");
-                        }else { wchar_t reason[512]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0]){StreamingDiag(L"Prime Video DIAL launch failed: %s",reason);SetStatus(reason);}else {StreamingDiag(L"Prime Video DIAL launch failed without an error string");SetStatus(L"Prime Video could not be launched on this TV through DIAL.");} }
-                    }else{
-                        StreamingDiag(L"Prime Video not launched: selected receiver has no DIAL endpoint");
-                        SetStatus(L"This TV does not expose a Prime Video DIAL app endpoint. Amazon supports Prime Video casting from its official Android/iOS app; use that Cast button or open Prime Video directly on the TV.");
-                    }
+                    StreamingDiag(L"Prime Video desktop handoff unavailable; no DIAL launch attempted");
+                    SetStatus(L"Desktop Prime Video casting is not supported here. Use the Cast button in Amazon's official Android/iOS app, or open Prime Video on your TV. Protected playback is not extracted or relayed.");
                     return S_OK;
                 }
                 if(payload.rfind(L"YT:",0)==0){
