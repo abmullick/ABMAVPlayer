@@ -646,13 +646,23 @@ void CastCurrentBrowserVideo(){
     }
     SetStatus(L"Checking for a YouTube video or a directly addressable media URL…");
     HRESULT hr=g_webView->ExecuteScript(
-        L"(()=>{const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
+        L"(()=>{const host=location.hostname.toLowerCase().replace(/^www\\./,'');if(host==='primevideo.com'||host.endsWith('.primevideo.com'))return 'PRIMEVIDEO';const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
         Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
             [](HRESULT result,LPCWSTR value)->HRESULT{
                 if(FAILED(result)||!value||value[0]!=L'"'){
                     SetStatus(L"Could not inspect the current page for a playable video.");return S_OK;
                 }
                 std::wstring payload=value+1;size_t quote=payload.find(L'"');if(quote!=std::wstring::npos)payload.resize(quote);
+                if(payload==L"PRIMEVIDEO"){
+                    if(g_streamSelectedDialIndex>=0){
+                        if(ABM_Dial_LaunchPrimeVideo((unsigned int)g_streamSelectedDialIndex))
+                            SetStatus(L"Prime Video app launch accepted by the TV. Use the TV remote to choose a title. Protected playback stays inside Amazon's official TV app.");
+                        else { wchar_t reason[512]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"Prime Video could not be launched on this TV through DIAL."); }
+                    }else{
+                        SetStatus(L"This TV does not expose a Prime Video DIAL app endpoint. Amazon supports Prime Video casting from its official Android/iOS app; use that Cast button or open Prime Video directly on the TV.");
+                    }
+                    return S_OK;
+                }
                 if(payload.rfind(L"YT:",0)==0){
                     std::wstring id=payload.substr(3);
                     if(g_streamSelectedCastV2Index>=0){
