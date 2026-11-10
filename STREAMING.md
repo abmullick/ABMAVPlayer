@@ -70,7 +70,7 @@ Discovery checks four receiver paths:
 - **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
 - **DIAL + YouTube Lounge:** Retained as a fallback for TVs that advertise a compatible DIAL app endpoint. The Lounge API is undocumented and may change.
 
-The panel's **Check TV apps** action performs read-only capability checks. Over Google Cast V2 it asks the receiver whether the YouTube Cast app (`233637DE`) is available, using the authenticated GoCast helper. Over DIAL it queries the application resources `YouTube`, `Netflix`, `PrimeVideo`, `JioHotstar`, `SonyLIV` and `ZEE5` with HTTP GET only; it does not launch or stop applications. A DIAL `200` response means the endpoint recognises that application name and reports its state (running/stopped where supplied); `404` means that name is not exposed by that TV's DIAL service, not that the Android TV app is necessarily uninstalled. Provider-specific DIAL names vary, so these checks are evidence about receiver endpoints, not a complete Android TV installed-app inventory.
+The panel's **Check TV apps** action performs read-only capability checks. Over Google Cast V2 it asks the receiver whether the YouTube Cast app (`233637DE`) is available, using the authenticated GoCast helper. Over DIAL it queries the application resources `YouTube`, `Netflix`, `PrimeVideo`, `JioHotstar`, `SonyLIV` and `ZEE5` with HTTP GET only; it does not launch or stop applications. A DIAL `200` response means the endpoint recognises that application name and reports its state (running/stopped where supplied); `404` means that name is not exposed by that TV's DIAL service, not that the Android TV app is necessarily uninstalled. Provider-specific DIAL names vary, so these checks are evidence about receiver endpoints, not a complete Android TV installed-app inventory. The panel then lists only confirmed launch targets. **Launch app** uses the authenticated Cast V2 sender to launch YouTube, or sends a DIAL POST only after the selected app's DIAL resource has returned `200`. A successful DIAL response means the TV accepted the launch request; it does not confirm playback. Use the TV remote to choose content and sign in. No browser session, title, account credentials or protected media are transferred.
 
 The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube handoff. Prime Video is not launched through DIAL: the desktop browser has no supported Amazon title-handoff interface. Cast V2 and DIAL are independent app-control paths.
 
@@ -141,6 +141,11 @@ The Streaming Centre monitors WebView2 process failure. It makes a bounded numbe
 - Click **Refresh devices**.
 - Check multicast/mDNS and SSDP/UPnP discovery are not blocked by the router, firewall, VPN or client isolation.
 - The TV may expose only one of Google Cast, DLNA or DIAL. Support for one protocol does not imply support for the others.
+
+### Check TV apps and Launch app
+- The app list contains only receiver-confirmed Google Cast YouTube availability or DIAL application resources.
+- **Launch app** opens the selected receiver app only; it does not transfer a streaming title, browser session or account credentials. Use the TV remote to navigate and select content.
+- A DIAL 404 means the TV's DIAL service does not recognise that application resource name. It does not prove that the app is absent from the TV launcher.
 
 ### Check TV apps reports an app as not exposed
 - The check probes known DIAL application names and the Google Cast YouTube app ID; it is not a full Android TV installed-app inventory.
