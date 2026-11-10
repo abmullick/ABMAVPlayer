@@ -222,6 +222,7 @@ bool WaitFor(const std::string &host,unsigned short port,const char *needle,std:
     return false;
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
+    Diag(L"Launch requested receiver=%s host=%S port=%u",r.name.c_str(),r.host.c_str(),r.port);
     wchar_t module[MAX_PATH]{};
     if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { Diag(L"GetModuleFileName failed Win32=%lu",GetLastError());g_error=L"Cannot locate ABM AV Player installation."; return false; }
     std::wstring directory(module);
@@ -277,12 +278,12 @@ extern "C" BOOL ABM_CastV2_DeviceName(unsigned int i,wchar_t *b,unsigned int c) 
     return SUCCEEDED(StringCchCopyW(b,c,g_receivers[i].name.c_str()));
 }
 extern "C" BOOL ABM_CastV2_SelectDevice(unsigned int i) {
-    std::lock_guard<std::mutex> l(g_mutex);if(i>=g_receivers.size())return FALSE;g_selected=(int)i;return TRUE;
+    std::lock_guard<std::mutex> l(g_mutex);if(i>=g_receivers.size()){Diag(L"SelectDevice rejected index=%u count=%u",i,(unsigned)g_receivers.size());return FALSE;}g_selected=(int)i;Diag(L"Selected receiver index=%u name=%s host=%S port=%u",i,g_receivers[i].name.c_str(),g_receivers[i].host.c_str(),g_receivers[i].port);return TRUE;
 }
 extern "C" BOOL ABM_CastV2_LaunchYouTube(const wchar_t *id) {
-    if(!id||wcslen(id)!=11)return FALSE;
+    if(!id||wcslen(id)!=11){Diag(L"Launch rejected: invalid YouTube video ID");return FALSE;}
     for(const wchar_t *p=id;*p;++p)if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
-    Receiver r;{std::lock_guard<std::mutex> l(g_mutex);if(g_selected<0||(size_t)g_selected>=g_receivers.size()){g_error=L"No Google Cast V2 receiver is selected.";return FALSE;}r=g_receivers[(size_t)g_selected];}
+    Receiver r;{std::lock_guard<std::mutex> l(g_mutex);if(g_selected<0||(size_t)g_selected>=g_receivers.size()){Diag(L"Launch failed: no selected Google Cast V2 receiver");g_error=L"No Google Cast V2 receiver is selected.";return FALSE;}r=g_receivers[(size_t)g_selected];}
     return Launch(r,id)?TRUE:FALSE;
 }
 extern "C" BOOL ABM_CastV2_LastError(wchar_t *b,unsigned int c) {
