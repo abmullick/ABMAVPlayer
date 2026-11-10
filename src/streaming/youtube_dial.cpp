@@ -153,6 +153,45 @@ extern "C" BOOL ABM_Dial_DeviceName(unsigned int i,wchar_t *b,unsigned int c) {
     if(i>=g_devices.size())return FALSE;return wcsncpy_s(b,c,g_devices[i].name.c_str(),_TRUNCATE)==0;
 }
 
+extern "C" int ABM_Dial_QueryApplication(unsigned int i,const wchar_t *appName) {
+    if(!appName||!*appName)return -2;
+    for(const wchar_t *p=appName;*p;++p)
+        if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||
+             (*p>=L'0'&&*p<=L'9')||*p==L'-'))return -2;
+    std::wstring base;
+    {
+        std::lock_guard<std::mutex> lock(g_lock);
+        if(i>=g_devices.size())return -1;
+        base=g_devices[i].appUrl;
+    }
+    std::wstring xml;
+    DWORD status=0;
+    if(!HttpRequest(base+appName,L"GET",L"",&xml,nullptr,&status)) {
+        DialDiag(L"Application probe transport failed app=%s",appName);
+        return -1;
+    }
+    if(status==404) {
+        DialDiag(L"Application probe app=%s not exposed by DIAL (HTTP 404)",appName);
+        return 0;
+    }
+    if(status!=200) {
+        DialDiag(L"Application probe app=%s unexpected HTTP=%lu",appName,status);
+        return -2;
+    }
+    std::wstring state=XmlValue(xml,L"state");
+    std::transform(state.begin(),state.end(),state.begin(),[](wchar_t ch){return (wchar_t)towlower(ch);});
+    if(state==L"running") {
+        DialDiag(L"Application probe app=%s recognized state=running",appName);
+        return 1;
+    }
+    if(state==L"stopped") {
+        DialDiag(L"Application probe app=%s recognized state=stopped",appName);
+        return 2;
+    }
+    DialDiag(L"Application probe app=%s recognized state=%s",appName,state.empty()?L"(unspecified)":state.c_str());
+    return 3;
+}
+
 namespace {
 std::wstring ToWide(const std::string &v) { if(v.empty())return {};int n=MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,nullptr,0);if(n<=1)return {};std::wstring w((size_t)n,L'\0');MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,w.data(),n);w.resize((size_t)n-1);return w; }
 std::string ToUtf8(const std::wstring &v) {
