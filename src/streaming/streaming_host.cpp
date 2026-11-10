@@ -1165,7 +1165,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             }else if(row.dlnaIndex>=0){
                 selectedOk=ABM_Dlna_SelectDevice((unsigned int)row.dlnaIndex)!=FALSE;
                 g_streamSelectedIsDlna=true;
-            }else if(row.dialIndex>=0){
+            }else if(row.dialIndex>=0 || row.castV2Index>=0){
                 selectedOk=true;
                 g_streamSelectedIsDlna=false;
             }
