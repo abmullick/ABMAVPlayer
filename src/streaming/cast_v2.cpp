@@ -368,25 +368,41 @@ bool WaitFor(const std::string &host,unsigned short port,const char *needle,std:
     return false;
 }
 
-int QueryAppAvailability(const Receiver &receiver,const char *appId) {
-    Diag(L"Checking Cast app availability appId=%S receiver=%s host=%S",appId,receiver.name.c_str(),receiver.host.c_str());
-    CastTls tls;
-    if(!tls.Connect(receiver.host,receiver.port))return -1;
-    if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.tp.connection","{\"type\":\"CONNECT\"}"))return -1;
-    std::string request="{\"type\":\"GET_APP_AVAILABILITY\",\"appId\":[\"";
-    request+=appId;
-    request+="\"],\"requestId\":2}";
-    if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.receiver",request))return -1;
-    for(int i=0;i<8;i++){
-        std::string response;
-        if(!ReceiveCast(tls,response))return -1;
-        if(response.find("GET_APP_AVAILABILITY")==std::string::npos)continue;
-        const std::string available="\""+std::string(appId)+"\":\"APP_AVAILABLE\"";
-        const std::string unavailable="\""+std::string(appId)+"\":\"APP_UNAVAILABLE\"";
-        if(response.find(available)!=std::string::npos){Diag(L"Cast app availability appId=%S result=APP_AVAILABLE",appId);return 1;}
-        if(response.find(unavailable)!=std::string::npos){Diag(L"Cast app availability appId=%S result=APP_UNAVAILABLE",appId);return 0;}
+int CheckYouTubeAvailability(const Receiver &receiver) {
+    Diag(L"Checking YouTube Cast app availability receiver=%s host=%S",receiver.name.c_str(),receiver.host.c_str());
+    wchar_t module[MAX_PATH]{};
+    if(!GetModuleFileNameW(nullptr,module,MAX_PATH))return -1;
+    std::wstring directory(module);
+    size_t slash=directory.find_last_of(L"\\/");
+    if(slash==std::wstring::npos)return -1;
+    directory.resize(slash+1);
+    std::wstring helper=directory+L"abm-gocast.exe";
+    if(GetFileAttributesW(helper.c_str())==INVALID_FILE_ATTRIBUTES){
+        Diag(L"Cannot check Cast app availability: missing GoCast helper path=%s",helper.c_str());
+        return -1;
     }
-    Diag(L"Cast app availability query timed out or returned an unrecognized response appId=%S",appId);
+    std::wstring command=L"\""+helper+L"\" --check-youtube \""+Wide(receiver.host.c_str())+L"\" "+std::to_wstring(receiver.port);
+    SECURITY_ATTRIBUTES sa{sizeof(sa),nullptr,TRUE};
+    HANDLE readPipe=nullptr,writePipe=nullptr;
+    if(!CreatePipe(&readPipe,&writePipe,&sa,0))return -1;
+    SetHandleInformation(readPipe,HANDLE_FLAG_INHERIT,0);
+    STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
+    si.wShowWindow=SW_HIDE;si.hStdOutput=writePipe;si.hStdError=writePipe;si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
+    PROCESS_INFORMATION pi{};
+    BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
+    CloseHandle(writePipe);
+    if(!created){Diag(L"Could not start GoCast availability helper Win32=%lu",GetLastError());CloseHandle(readPipe);return -1;}
+    DWORD wait=WaitForSingleObject(pi.hProcess,15000),exitCode=1;
+    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);
+    else TerminateProcess(pi.hProcess,1);
+    CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
+    std::string output;char buffer[512];DWORD got=0;
+    if(wait==WAIT_OBJECT_0)while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got){if(output.size()<8192)output.append(buffer,got);}
+    CloseHandle(readPipe);
+    if(wait!=WAIT_OBJECT_0){Diag(L"GoCast availability helper timed out");return -1;}
+    Diag(L"GoCast availability helper exited=%lu output=%S",exitCode,output.c_str());
+    if(output.find("\"availability\":\"APP_AVAILABLE\"")!=std::string::npos)return 1;
+    if(output.find("\"availability\":\"APP_UNAVAILABLE\"")!=std::string::npos)return 0;
     return -1;
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
@@ -459,7 +475,7 @@ extern "C" int ABM_CastV2_CheckYouTubeAvailability(unsigned int i) {
         if(i>=g_receivers.size())return -1;
         receiver=g_receivers[i];
     }
-    return QueryAppAvailability(receiver,"233637DE");
+    return CheckYouTubeAvailability(receiver);
 }
 extern "C" BOOL ABM_CastV2_LaunchYouTube(const wchar_t *id) {
     if(!id||wcslen(id)!=11){Diag(L"Launch rejected: invalid YouTube video ID");return FALSE;}
