@@ -10,6 +10,7 @@
 #include <cstdarg>
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <thread>
 #include <vector>
 #include <wchar.h>
@@ -255,15 +256,15 @@ void LayoutDevicePanel(){
     RECT rc{};GetClientRect(g_window,&rc);
     int x=rc.right-530;if(x<12)x=12;
     int y=64;
-    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,260,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,360,SWP_NOACTIVATE|SWP_SHOWWINDOW);
     /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
     SetWindowPos(g_deviceTitle,nullptr,x+18,y+12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,38,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceList,nullptr,x+18,y+82,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+82,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceSelect,nullptr,x+342,y+125,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceApps,nullptr,x+342,y+168,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+211,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,88,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,x+18,y+136,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+136,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,x+342,y+179,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceApps,nullptr,x+342,y+222,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+308,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -364,7 +365,7 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_OWNERDRAW,0,0,516,260,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_OWNERDRAW,0,0,516,360,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
@@ -1246,33 +1247,46 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             return 0;
         }
         case ID_STREAM_DEVICE_APPS:{
-            if(g_streamSelectedDialIndex<0){
-                SetStatus(L"The selected TV has no DIAL endpoint. App inventory is not exposed by Google Cast discovery.");
+            if(g_streamSelectedDialIndex<0&&g_streamSelectedCastV2Index<0){
+                SetStatus(L"The selected TV has no DIAL or Google Cast V2 app-control endpoint.");
                 return 0;
             }
             if(g_appProbeRunning.exchange(true)){
                 SetStatus(L"TV application checks are already running…");
                 return 0;
             }
-            const unsigned int dialIndex=(unsigned int)g_streamSelectedDialIndex;
+            const int dialIndex=g_streamSelectedDialIndex;
+            const int castV2Index=g_streamSelectedCastV2Index;
             HWND target=hwnd;
-            SetWindowTextW(g_deviceHint,L"Checking DIAL application endpoints. This is a read-only check; no TV app will be launched.");
+            SetWindowTextW(g_deviceHint,L"Checking TV application endpoints. This is read-only; no app will be launched.");
             SetStatus(L"Checking which streaming app endpoints this TV exposes…");
             try{
-                std::thread([target,dialIndex](){
-                    const wchar_t *apps[]={L"YouTube",L"Netflix",L"PrimeVideo",L"JioHotstar",L"SonyLIV",L"ZEE5"};
-                    std::wstring report=L"DIAL app endpoint checks (read-only):\r\n";
-                    for(const wchar_t *app:apps){
-                        int result=ABM_Dial_QueryApplication(dialIndex,app);
-                        report+=app;report+=L": ";
-                        if(result==1)report+=L"recognized — running";
-                        else if(result==2)report+=L"recognized — stopped";
-                        else if(result==3)report+=L"recognized — state not reported";
-                        else if(result==0)report+=L"not exposed by DIAL";
-                        else if(result==-1)report+=L"query failed";
-                        else report+=L"unexpected response";
+                std::thread([target,dialIndex,castV2Index](){
+                    std::wstring report=L"TV application capability checks (read-only):\r\n";
+                    if(castV2Index>=0){
+                        int castResult=ABM_CastV2_CheckYouTubeAvailability((unsigned int)castV2Index);
+                        report+=L"Google Cast / YouTube: ";
+                        if(castResult==1)report+=L"APP_AVAILABLE";
+                        else if(castResult==0)report+=L"APP_UNAVAILABLE";
+                        else report+=L"query failed";
                         report+=L"\r\n";
-                    }
+                    }else report+=L"Google Cast app availability: no Cast V2 endpoint\r\n";
+                    if(dialIndex>=0){
+                        const wchar_t *apps[]={L"YouTube",L"Netflix",L"PrimeVideo",L"JioHotstar",L"SonyLIV",L"ZEE5"};
+                        report+=L"DIAL application endpoints:\r\n";
+                        for(const wchar_t *app:apps){
+                            int result=ABM_Dial_QueryApplication((unsigned int)dialIndex,app);
+                            report+=app;report+=L": ";
+                            if(result==1)report+=L"recognized — running";
+                            else if(result==2)report+=L"recognized — stopped";
+                            else if(result==3)report+=L"recognized — state not reported";
+                            else if(result==0)report+=L"not exposed by DIAL";
+                            else if(result==-1)report+=L"query failed";
+                            else report+=L"unexpected response";
+                            report+=L"\r\n";
+                        }
+                    }else report+=L"DIAL app endpoints: not exposed by this receiver\r\n";
+                    report+=L"Note: DIAL 404 means the app name is not exposed by this TV's DIAL service; it does not prove the app is absent from Android TV.";
                     g_appProbeRunning=false;
                     auto *payload=new std::wstring(std::move(report));
                     if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APPS_READY,0,(LPARAM)payload))delete payload;
