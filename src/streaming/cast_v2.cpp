@@ -71,9 +71,6 @@ std::atomic<SOCKET> g_mdnsSocket{INVALID_SOCKET};
 static unsigned ReadU16(const unsigned char *p) {
     return ((unsigned)p[0]<<8)|(unsigned)p[1];
 }
-static unsigned ReadU32(const unsigned char *p) {
-    return ((unsigned)p[0]<<24)|((unsigned)p[1]<<16)|((unsigned)p[2]<<8)|(unsigned)p[3];
-}
 static bool ReadDnsName(const unsigned char *packet,size_t length,size_t &offset,std::string &name) {
     size_t pos=offset, resume=0;
     bool jumped=false;
@@ -141,11 +138,12 @@ static void ParseMdnsPacket(const unsigned char *packet,size_t length,std::vecto
         MdnsRecord r;
         if(!ReadDnsName(packet,length,off,r.owner)||off+10>length)return;
         r.type=ReadU16(packet+off);
-        unsigned klass=ReadU16(packet+off+2);
+        unsigned klass=ReadU16(packet+off+2)&0x7FFF;
         unsigned rdlen=ReadU16(packet+off+8);
         off+=10;
         if(off+rdlen>length)return;
         size_t rdata=off;
+        if(klass!=1){off+=rdlen;continue;}
         if(r.type==12) {
             size_t p=rdata;
             ReadDnsName(packet,length,p,r.target);
@@ -214,8 +212,10 @@ void Discover() {
             if(g_stop.load())break;
             Diag(L"mDNS: recvfrom failed WSA=%d",e);continue;
         }
+        Diag(L"mDNS: received %d-byte packet from %S",got,inet_ntoa(from.sin_addr));
         std::vector<MdnsRecord> records;
         ParseMdnsPacket(packet,(size_t)got,records);
+        if(records.empty())Diag(L"mDNS: packet contained no supported PTR/SRV/TXT/A records");
         for(const auto &r:records) {
             if(r.type==1&&!r.address.empty())knownAddresses[LowerDnsName(r.owner)]=r.address;
             if(r.type==12&&LowerDnsName(r.owner)=="_googlecast._tcp.local"&&!r.target.empty())
