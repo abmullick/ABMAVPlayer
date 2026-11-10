@@ -133,13 +133,16 @@ The Streaming Centre has its own **Find TVs** button and integrated receiver-sel
 2. Wait for discovery, or choose **Refresh devices** to search again.
 3. Select a receiver from the list.
 4. Click **Use selected TV**. The panel displays the selected receiver.
-5. Start a video in the provider page and click **Cast video**.
+5. Optionally click **Check TV apps** to run read-only application capability checks. This does not launch any app.
+6. Start a video in the provider page and click **Cast video**.
 
 The Streaming Centre discovers receivers through:
 - **Google Cast / Chromecast** renderer discovery.
 - **DLNA / UPnP** MediaRenderer discovery.
 - **Google Cast V2** discovery for Cast receiver app control over TLS/TCP 8009.
 - **DIAL** app discovery for YouTube app handoff.
+
+The **Check TV apps** action queries the selected receiver without launching anything. Google Cast V2 checks whether the YouTube Cast app is available. DIAL checks the known application resource names YouTube, Netflix, PrimeVideo, JioHotstar, SonyLIV and ZEE5. A DIAL result of **recognized** means the receiver exposes that app endpoint; **not exposed by DIAL** does not prove the Android TV app is not installed. DIAL is not a complete installed-app inventory.
 
 If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. Google Cast V2 is preferred for YouTube app control when available; DIAL remains a fallback. Prime Video title casting is not supported from the desktop browser.
 
@@ -223,6 +226,11 @@ Audio preferences are stored in `audio.ini`. The WebView2 browser profile is sep
 - Open its own **Find TVs** panel and click **Refresh devices**.
 - Check that the TV is on the same LAN and that multicast/SSDP discovery is not blocked.
 - A TV may expose DLNA or DIAL but not Google Cast; discovery protocols are independent.
+
+### Check TV apps results
+- **Check TV apps** is a read-only endpoint check. It does not open, stop or change an app on the TV.
+- A DIAL 404 means the requested app name is not exposed through DIAL on that receiver; it does not mean the app is absent from Android TV.
+- Google Cast `APP_AVAILABLE` confirms that the receiver advertises the YouTube Cast app, not that a particular video will play.
 
 ### A TV is listed but Cast video does not start
 - Confirm the correct TV is selected in the Streaming Centre panel, then try **Cast video** again.
