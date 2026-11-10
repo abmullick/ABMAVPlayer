@@ -13,7 +13,7 @@ import (
 	"github.com/tristanpenman/go-cast/internal/client"
 )
 
-type result struct { OK bool `json:"ok"`; Error string `json:"error,omitempty"`; ScreenID string `json:"screenId,omitempty"`; Availability string `json:"availability,omitempty"` }
+type result struct { OK bool `json:"ok"`; Error string `json:"error,omitempty"`; ScreenID string `json:"screenId,omitempty"`; Availability string `json:"availability,omitempty"`; Launched bool `json:"launched,omitempty"` }
 
 var diag = func() *log.Logger {
     f, err := os.OpenFile(filepath.Join(os.TempDir(), "ABMAVPlayer-GoCast-diagnostics.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -39,6 +39,30 @@ func main() {
 		if err!=nil { fail(fmt.Errorf("query YouTube app availability: %w",err)); os.Exit(1) }
 		value:=availability["233637DE"]
 		_ = json.NewEncoder(os.Stdout).Encode(result{OK:true,Availability:value})
+		return
+	}
+	if len(os.Args)==4 && os.Args[1]=="--launch-youtube" {
+		port,err:=strconv.Atoi(os.Args[3])
+		if err!=nil || port<1 || port>65535 { fail(fmt.Errorf("invalid receiver port")); os.Exit(2) }
+		diag.Printf("launching YouTube TV app on %s:%d",os.Args[2],port)
+		conn,err:=client.NewClient(os.Args[2],uint(port),true,nil)
+		if err!=nil { fail(fmt.Errorf("GoCast receiver authentication/connection: %w",err)); os.Exit(1) }
+		defer conn.Close()
+		sender:=client.NewSender(conn,nil)
+		sender.Connect()
+		sender.RequestAppAvailability([]string{"233637DE"})
+		availability,err:=sender.WaitForAvailability(8*time.Second)
+		if err!=nil { fail(fmt.Errorf("query YouTube app availability: %w",err)); os.Exit(1) }
+		if availability["233637DE"]!="APP_AVAILABLE" {
+			_ = json.NewEncoder(os.Stdout).Encode(result{OK:false,Availability:availability["233637DE"],Error:"YouTube Cast app is not available on this receiver"})
+			os.Exit(1)
+		}
+		sender.LaunchApp("233637DE")
+		transport,err:=sender.WaitForAppTransport("233637DE",20*time.Second)
+		if err!=nil { fail(fmt.Errorf("wait for YouTube app launch: %w",err)); os.Exit(1) }
+		sender.ConnectTransport(transport)
+		diag.Printf("YouTube TV app launch confirmed; transport=%s",transport)
+		_ = json.NewEncoder(os.Stdout).Encode(result{OK:true,Availability:"APP_AVAILABLE",Launched:true})
 		return
 	}
 	if len(os.Args)!=4 { fail(fmt.Errorf("usage: abm-gocast.exe <receiver-host> <port> <youtube-video-id>")); os.Exit(2) }
