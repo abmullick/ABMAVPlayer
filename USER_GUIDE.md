@@ -141,11 +141,12 @@ The Streaming Centre discovers receivers through:
 - **Google Cast V2** discovery for Cast receiver app control over TLS/TCP 8009.
 - **DIAL** app discovery for YouTube app handoff and conditional PrimeVideo app launch when the TV advertises it.
 
-If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. Google Cast V2 is preferred for YouTube app control when available; DIAL remains a fallback.
+If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. Google Cast V2 is preferred for YouTube app control when available; DIAL remains a fallback. Prime Video title casting is not supported from the desktop browser.
 
 ### What can be cast
 
 - **YouTube:** The player recognises a YouTube video URL and uses Google Cast V2 to launch the YouTube receiver app, obtain its MDX screen ID and send the selected video through YouTube Lounge remote control. A compatible DIAL app endpoint is used as a fallback. These app-control protocols are receiver-dependent and YouTube MDX/Lounge is undocumented; DLNA alone cannot launch the YouTube app.
+- **Prime Video:** Desktop browser-to-TV title casting is not supported. Use the Cast button in Amazon's official Android/iOS app, or open Prime Video directly on the TV. The desktop app does not attempt a DIAL launch or extract protected playback.
 - **Direct video URL:** For other pages, the Streaming Centre looks for a currently active HTML video element with a directly addressable media URL and hands that URL to the selected compatible Google Cast or DLNA renderer.
 - **Not browser mirroring:** This feature does not mirror the browser tab or desktop and is not a general-purpose Google Cast sender.
 
