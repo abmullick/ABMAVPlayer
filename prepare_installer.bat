@@ -27,6 +27,11 @@ echo Preparing clean staging folder...
 if exist "%DEST%" rmdir /s /q "%DEST%"
 mkdir "%DEST%" || exit /b 1
 copy /y "build\ABMAVPlayer.exe" "%DEST%\ABMAVPlayer.exe" >nul || exit /b 1
+if not exist "build\abm-gocast.exe" (
+  echo ERROR: GoCast helper missing. Build with Go 1.25 or later.
+  exit /b 1
+)
+copy /y "build\abm-gocast.exe" "%DEST%\abm-gocast.exe" >nul || exit /b 1
 
 rem Creator portrait used by the Streaming Centre About window.
 if not exist "assets\owner_portrait.bmp" (
