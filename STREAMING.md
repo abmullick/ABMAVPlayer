@@ -70,7 +70,7 @@ Discovery checks four receiver paths:
 - **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
 - **DIAL + YouTube Lounge:** Retained as a fallback for TVs that advertise a compatible DIAL app endpoint. The Lounge API is undocumented and may change.
 
-The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained as a YouTube app-control fallback. Cast V2 and DIAL are independent app-control paths.
+The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube handoff and conditional PrimeVideo app launch when the TV advertises that application. Cast V2 and DIAL are independent app-control paths.
 
 The receiver list refreshes while the panel is open. If a device has disappeared or a selection is stale, use **Refresh devices**, select it again and press **Use selected TV**.
 
