@@ -433,7 +433,13 @@ int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t 
     if(!CreatePipe(&readPipe,&writePipe,&sa,0))return -1;
     SetHandleInformation(readPipe,HANDLE_FLAG_INHERIT,0);
     STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
-    si.wShowWindow=SW_HIDE;si.hStdOutput=writePipe;si.hStdError=writePipe;si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
+    /* Capture only the small JSON result on stdout. GoCast writes verbose
+       diagnostics to stderr. If stderr shares this pipe, the child can fill
+       it while the parent waits for process exit, deadlocking both sides. */
+    si.wShowWindow=SW_HIDE;
+    si.hStdOutput=writePipe;
+    si.hStdError=GetStdHandle(STD_ERROR_HANDLE);
+    si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
     PROCESS_INFORMATION pi{};
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
@@ -539,7 +545,7 @@ extern "C" int ABM_CastV2_CheckApplicationAvailability(unsigned int i,const wcha
         if(i>=g_receivers.size())return -1;
         receiver=g_receivers[i];
     }
-    return CheckCastAppAvailability(receiver,appId)?1:0;
+    return CheckCastAppAvailability(receiver,appId);
 }
 extern "C" BOOL ABM_CastV2_LaunchApplication(unsigned int i,const wchar_t *appId) {
     Receiver receiver;
