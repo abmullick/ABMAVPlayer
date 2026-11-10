@@ -221,6 +221,37 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     return true;
 }
 }
+extern "C" BOOL ABM_Dial_LaunchPrimeVideo(unsigned int i) {
+    std::wstring base;
+    {
+        std::lock_guard<std::mutex> lock(g_lock);
+        if(i>=g_devices.size()) {
+            g_lastLaunchError=L"No DIAL receiver is selected for Prime Video.";
+            return FALSE;
+        }
+        base=g_devices[i].appUrl;
+    }
+
+    // DIAL only launches an installed TV application. It does not transfer
+    // Prime Video account credentials, protected media, or playback sessions.
+    const std::wstring appUrl=base+L"PrimeVideo";
+    DWORD status=0;
+    std::wstring response;
+    if(!HttpRequest(appUrl,L"GET",L"",&response,nullptr,&status) || status!=200) {
+        g_lastLaunchError=L"This TV does not advertise the PrimeVideo DIAL application. Use the TV's Prime Video app or Amazon's official Android/iOS Cast button.";
+        return FALSE;
+    }
+
+    if(!HttpRequest(appUrl,L"POST",L"",&response,nullptr,&status) ||
+       !(status==200||status==201||status==202)) {
+        g_lastLaunchError=L"The TV found PrimeVideo through DIAL but rejected the app launch (HTTP "+std::to_wstring(status)+L").";
+        return FALSE;
+    }
+
+    g_lastLaunchError.clear();
+    return TRUE;
+}
+
 extern "C" BOOL ABM_Dial_LaunchYouTube(unsigned int i,const wchar_t *videoId) {
     if(!videoId||wcslen(videoId)!=11)return FALSE;
     for(const wchar_t *p=videoId;*p;++p)if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
