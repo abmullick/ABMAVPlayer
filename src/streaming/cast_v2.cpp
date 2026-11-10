@@ -499,7 +499,7 @@ bool LaunchYouTubeApp(const Receiver &receiver) {
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
     if(!created){Diag(L"Could not start GoCast YouTube launch helper Win32=%lu",GetLastError());CloseHandle(readPipe);return false;}
-    DWORD wait=WaitForSingleObject(pi.hProcess,30000),exitCode=1;
+    DWORD wait=WaitForSingleObject(pi.hProcess,40000),exitCode=1;
     if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
     std::string output;char buffer[512];DWORD got=0;
