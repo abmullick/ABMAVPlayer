@@ -1056,7 +1056,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 StreamingDiag(L"App selector item=%ld choiceIndex=%zu label=%s dialApp=%s castV2=%d castAppId=%s",
                     (long)item,i,choice.label.c_str(),choice.dialApp.c_str(),choice.castV2?1:0,choice.castAppId.c_str());
             }
-            if(SendMessageW(g_deviceAppCombo,CB_GETCOUNT,0,0)>0)SendMessageW(g_deviceAppCombo,CB_SETCURSEL,0,0);
+            /* Require an explicit user selection; never default to the first app. */
+            SendMessageW(g_deviceAppCombo,CB_SETCURSEL,(WPARAM)-1,0);
             EnableWindow(g_deviceAppCombo,!g_streamAppChoices.empty());
             EnableWindow(g_deviceLaunch,!g_streamAppChoices.empty());
             SetStatus(L"TV app checks completed. Select a confirmed app endpoint and choose Launch app.");
