@@ -139,7 +139,7 @@ The Streaming Centre discovers receivers through:
 - **Google Cast / Chromecast** renderer discovery.
 - **DLNA / UPnP** MediaRenderer discovery.
 - **Google Cast V2** discovery for Cast receiver app control over TLS/TCP 8009.
-- **DIAL** app discovery, retained as a YouTube app-launch fallback.
+- **DIAL** app discovery for YouTube app handoff and conditional PrimeVideo app launch when the TV advertises it.
 
 If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. Google Cast V2 is preferred for YouTube app control when available; DIAL remains a fallback.
 
