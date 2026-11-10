@@ -86,6 +86,7 @@ std::string CastPacket(const std::string &src,const std::string &dst,const std::
 class CastTls {
     SOCKET s=INVALID_SOCKET; CredHandle cred{}; CtxtHandle ctx{}; bool haveCred=false,haveCtx=false,connected=false,winsock=false;
     SecPkgContext_StreamSizes sizes{};
+    std::string castPending;
     bool SendRaw(const void *p,int n){const char *b=(const char*)p;while(n>0){int k=send(s,b,n,0);if(k<=0)return false;b+=k;n-=k;}return true;}
     bool RecvRaw(void *p,int n){char *b=(char*)p;while(n>0){int k=recv(s,b,n,0);if(k<=0)return false;b+=k;n-=k;}return true;}
 public:
@@ -133,17 +134,17 @@ public:
         // entire 4-byte-length-prefixed Cast frame is available.
         data.clear();
         std::vector<char> encrypted(65536);
-        std::string pending;
         int used=0;
         for(int loops=0;loops<32;loops++) {
-            if(pending.size()>=4) {
-                unsigned n=((unsigned char)pending[0]<<24)|
-                           ((unsigned char)pending[1]<<16)|
-                           ((unsigned char)pending[2]<<8)|
-                           (unsigned char)pending[3];
+            if(castPending.size()>=4) {
+                unsigned n=((unsigned char)castPending[0]<<24)|
+                           ((unsigned char)castPending[1]<<16)|
+                           ((unsigned char)castPending[2]<<8)|
+                           (unsigned char)castPending[3];
                 if(n==0||n>1024*1024)return false;
-                if(pending.size()>=(size_t)n+4) {
-                    data.assign(pending.data(),(size_t)n+4);
+                if(castPending.size()>=(size_t)n+4) {
+                    data.assign(castPending.data(),(size_t)n+4);
+                    castPending.erase(0,(size_t)n+4);
                     return true;
                 }
             }
@@ -160,7 +161,7 @@ public:
             if(st!=SEC_E_OK&&st!=SEC_I_RENEGOTIATE)return false;
             for(auto &x:b) {
                 if(x.BufferType==SECBUFFER_DATA&&x.cbBuffer)
-                    pending.append((const char*)x.pvBuffer,x.cbBuffer);
+                    castPending.append((const char*)x.pvBuffer,x.cbBuffer);
             }
             // Preserve encrypted bytes following the TLS record. SChannel may
             // return them as SECBUFFER_EXTRA when TCP coalesces records.
