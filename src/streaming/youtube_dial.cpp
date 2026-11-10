@@ -294,9 +294,14 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
 }
 }
 extern "C" int ABM_Dial_LaunchApplication(unsigned int i,const wchar_t *appName) {
-    int capability=ABM_Dial_QueryApplication(i,appName);
-    if(capability==0)return 0;
-    if(capability<0)return capability;
+    /* A DIAL GET probe can be absent or incomplete on some TV firmwares
+       even when the app accepts the standard POST launch request. Callers
+       that offer a confirmed or explicitly labelled manual attempt may
+       therefore POST directly and use the HTTP response as the result. */
+    if(!appName||!*appName)return -2;
+    for(const wchar_t *p=appName;*p;++p)
+        if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||
+             (*p>=L'0'&&*p<=L'9')||*p==L'-'||*p==L' '))return -2;
     std::wstring base;
     {
         std::lock_guard<std::mutex> lock(g_lock);
