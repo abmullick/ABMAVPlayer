@@ -150,7 +150,7 @@ If the same receiver is found through multiple protocols, matching names are con
 ### What can be cast
 
 - **YouTube:** The player recognises a YouTube video URL and uses Google Cast V2 to launch the YouTube receiver app, obtain its MDX screen ID and send the selected video through YouTube Lounge remote control. A compatible DIAL app endpoint is used as a fallback. These app-control protocols are receiver-dependent and YouTube MDX/Lounge is undocumented; DLNA alone cannot launch the YouTube app.
-- **Prime Video:** Desktop browser-to-TV title casting is not supported. Use the Cast button in Amazon's official Android/iOS app, or open Prime Video directly on the TV. The desktop app does not attempt a DIAL launch or extract protected playback.
+- **Prime Video:** Desktop browser-to-TV title casting is not supported. If **Check TV apps** confirms a `PrimeVideo` DIAL endpoint, **Launch app** can open Prime Video on the TV; use the remote to choose a title. This does not transfer the desktop browser title, account session or protected playback. Otherwise, use the official Android/iOS Cast button or open Prime Video on the TV.
 - **Direct video URL:** For other pages, the Streaming Centre looks for a currently active HTML video element with a directly addressable media URL and hands that URL to the selected compatible Google Cast or DLNA renderer.
 - **Not browser mirroring:** This feature does not mirror the browser tab or desktop and is not a general-purpose Google Cast sender.
 
@@ -241,7 +241,7 @@ Audio preferences are stored in `audio.ini`. The WebView2 browser profile is sep
 ### A TV is listed but Cast video does not start
 - Confirm the correct TV is selected in the Streaming Centre panel, then try **Cast video** again.
 - YouTube handoff starts the TV app through Google Cast V2 or DIAL, then uses YouTube Lounge remote control to send the selected video. The Lounge API is undocumented and may change.
-- On a Prime Video page, **Cast video** explains that desktop browser-to-TV title casting is not supported. Use the Cast button in Amazon's official Android/iOS app, or open Prime Video directly on the TV. The desktop app does not attempt a DIAL launch or extract protected playback.
+- On a Prime Video page, **Cast video** explains that desktop browser-to-TV title casting is not supported. If the TV exposes `PrimeVideo` through DIAL, use **Check TV apps** and **Launch app** to open the TV app, then select content with the remote. Otherwise use Amazon's official Android/iOS Cast button or open Prime Video directly on the TV.
 - For other pages, the video must expose a direct media URL and the receiver must be able to fetch/decode it.
 - Protected, adaptive or segmented streaming content may not be handoff-compatible. Use the provider's own Cast control or TV app.
 
