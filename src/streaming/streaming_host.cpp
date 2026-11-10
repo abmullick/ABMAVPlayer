@@ -1040,7 +1040,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             HGDIOBJ oldPen=SelectObject(item->hDC,pen),oldBrush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
             RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,14,14);
             SelectObject(item->hDC,oldBrush);SelectObject(item->hDC,oldPen);DeleteObject(pen);
-            RECT accent={r.left+16,r.top+61,r.right-16,r.top+62};FillRectColor(item->hDC,accent,RGBc(38,112,119));
+            RECT accent={r.left+16,r.top+157,r.right-16,r.top+158};FillRectColor(item->hDC,accent,RGBc(38,112,119));
             return TRUE;
         }
         if(item->hwndItem==g_deviceRefresh){DrawDeviceButton(item,L"Refresh devices",false);return TRUE;}
