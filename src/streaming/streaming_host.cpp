@@ -7,6 +7,7 @@
 #include <shellapi.h>
 #include <wininet.h>
 #include <cwctype>
+#include <cstdarg>
 #include <algorithm>
 #include <vector>
 #include <wchar.h>
@@ -109,6 +110,28 @@ const wchar_t *kLogoFiles[kServiceCount]={L"youtube.png",L"netflix.png",L"primev
 struct CachedTextFont{int height;int weight;HFONT font;};
 CachedTextFont g_textFonts[24]{};
 
+/* Shared diagnostics for the Streaming Centre and GoCast/DIAL investigation. */
+void StreamingDiag(const wchar_t *format,...){
+    wchar_t message[1200]{};
+    va_list args;va_start(args,format);
+    StringCchVPrintfW(message,_countof(message),format,args);
+    va_end(args);
+    SYSTEMTIME now{};GetLocalTime(&now);
+    wchar_t line[1500]{};
+    StringCchPrintfW(line,_countof(line),L"[%04u-%02u-%02u %02u:%02u:%02u.%03u] Streaming: %s\r\n",
+        now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,now.wMilliseconds,message);
+    wchar_t path[MAX_PATH]{};
+    if(GetTempPathW(_countof(path),path)){
+        StringCchCatW(path,_countof(path),L"ABMAVPlayer-GoCast-diagnostics.log");
+        HANDLE file=CreateFileW(path,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if(file!=INVALID_HANDLE_VALUE){
+            char utf8[6000]{};int bytes=WideCharToMultiByte(CP_UTF8,0,line,-1,utf8,(int)sizeof(utf8),nullptr,nullptr);
+            if(bytes>1){DWORD written=0;WriteFile(file,utf8,(DWORD)(bytes-1),&written,nullptr);}
+            CloseHandle(file);
+        }
+    }
+    OutputDebugStringW(line);
+}
 /* Used by the native device panel before its implementation below. */
 void SetStatus(const wchar_t *message);
 
@@ -638,8 +661,11 @@ void RequestProviderFullscreen(){
 }
 
 void CastCurrentBrowserVideo(){
-    if(!g_webView){SetStatus(L"Streaming browser is still starting.");return;}
+    StreamingDiag(L"Cast video clicked; selectedRow=%d dialIndex=%d castV2Index=%d dlnaOnly=%d",
+        g_streamSelectedIndex,g_streamSelectedDialIndex,g_streamSelectedCastV2Index,g_streamSelectedIsDlna?1:0);
+    if(!g_webView){StreamingDiag(L"Cast aborted: WebView2 is null");SetStatus(L"Streaming browser is still starting.");return;}
     if(g_streamSelectedIndex<0){
+        StreamingDiag(L"Cast aborted: no selected receiver");
         ShowDevicePanel();
         SetStatus(L"Select a receiver in this Streaming Centre panel first. The main player will not be opened.");
         return;
@@ -649,16 +675,24 @@ void CastCurrentBrowserVideo(){
         L"(()=>{const host=location.hostname.toLowerCase().replace(/^www\\./,'');if(host==='primevideo.com'||host.endsWith('.primevideo.com'))return 'PRIMEVIDEO';const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
         Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
             [](HRESULT result,LPCWSTR value)->HRESULT{
+                StreamingDiag(L"Page inspection callback HRESULT=0x%08X valuePresent=%d",(unsigned)result,value?1:0);
                 if(FAILED(result)||!value||value[0]!=L'"'){
                     SetStatus(L"Could not inspect the current page for a playable video.");return S_OK;
                 }
                 std::wstring payload=value+1;size_t quote=payload.find(L'"');if(quote!=std::wstring::npos)payload.resize(quote);
+                StreamingDiag(L"Page inspection classification=%s",
+                    payload==L"PRIMEVIDEO"?L"PRIMEVIDEO":payload.rfind(L"YT:",0)==0?L"YOUTUBE":
+                    payload.rfind(L"URL:",0)==0?L"DIRECT_URL":L"NO_VIDEO");
                 if(payload==L"PRIMEVIDEO"){
+                    StreamingDiag(L"Prime Video route entered; DIAL index=%d",g_streamSelectedDialIndex);
                     if(g_streamSelectedDialIndex>=0){
-                        if(ABM_Dial_LaunchPrimeVideo((unsigned int)g_streamSelectedDialIndex))
+                        StreamingDiag(L"Calling ABM_Dial_LaunchPrimeVideo index=%d",g_streamSelectedDialIndex);
+                        if(ABM_Dial_LaunchPrimeVideo((unsigned int)g_streamSelectedDialIndex)){
+                            StreamingDiag(L"Prime Video DIAL launch returned success");
                             SetStatus(L"Prime Video app launch accepted by the TV. Use the TV remote to choose a title. Protected playback stays inside Amazon's official TV app.");
-                        else { wchar_t reason[512]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"Prime Video could not be launched on this TV through DIAL."); }
+                        }else { wchar_t reason[512]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0]){StreamingDiag(L"Prime Video DIAL launch failed: %s",reason);SetStatus(reason);}else {StreamingDiag(L"Prime Video DIAL launch failed without an error string");SetStatus(L"Prime Video could not be launched on this TV through DIAL.");} }
                     }else{
+                        StreamingDiag(L"Prime Video not launched: selected receiver has no DIAL endpoint");
                         SetStatus(L"This TV does not expose a Prime Video DIAL app endpoint. Amazon supports Prime Video casting from its official Android/iOS app; use that Cast button or open Prime Video directly on the TV.");
                     }
                     return S_OK;
@@ -1180,6 +1214,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SetStatus(L"That receiver is no longer available. Refresh the list.");return 0;
             }
             const StreamReceiverRow row=g_streamReceiverRows[(size_t)selected];
+            StreamingDiag(L"Receiver selection row=%d cast=%d dlna=%d dial=%d castV2=%d",(int)selected,row.castIndex,row.dlnaIndex,row.dialIndex,row.castV2Index);
             bool selectedOk=false;
             g_streamSelectedDialIndex=row.dialIndex;
             g_streamSelectedCastV2Index=row.castV2Index;
