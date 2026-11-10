@@ -1210,10 +1210,12 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_COMMAND:{
         switch(LOWORD(wp)){
         case ID_STREAM_DEVICE_REFRESH:
+            if(g_appProbeRunning.load()){SetStatus(L"Wait for the TV application check to finish before refreshing discovery.");return 0;}
             ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();ABM_CastV2_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;g_streamSelectedIsDlna=false;
             ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();ABM_Dial_StartDiscovery();ABM_CastV2_StartDiscovery();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
         case ID_STREAM_DEVICE_SELECT:{
+            if(g_appProbeRunning.load()){SetStatus(L"Wait for the TV application check to finish before changing the selected receiver.");return 0;}
             LRESULT selected=SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
             if(selected==LB_ERR){SetStatus(L"Select a TV from the device list first.");return 0;}
             if((size_t)selected>=g_streamReceiverRows.size()){
