@@ -66,11 +66,26 @@ echo [7/10] Compiling Google Cast V2 backend...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\streaming\cast_v2.cpp /Fo:build\cast_v2.obj
 if errorlevel 1 goto build_failed
 
-echo [8/10] Compiling GitHub Releases updater...
+echo [8/11] Building GoCast YouTube sender...
+where go >nul 2>nul
+if errorlevel 1 (
+  echo Go 1.25 or later is required to build the GoCast sender helper.
+  goto build_failed
+)
+go version
+pushd tools\\gocast
+go build -trimpath -ldflags="-s -w" -o ..\\..\\build\\abm-gocast.exe ./cmd/abm-gocast
+if errorlevel 1 (
+  popd
+  goto build_failed
+)
+popd
+
+echo [9/11] Compiling GitHub Releases updater...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\updater.cpp /Fo:build\updater.obj
 if errorlevel 1 goto build_failed
 
-echo [9/10] Compiling application icon resource...
+echo [10/11] Compiling application icon resource...
 where rc >nul 2>nul
 if errorlevel 1 (
   echo Windows Resource Compiler rc.exe not found. Run from the x64 Native Tools Command Prompt.
@@ -79,7 +94,7 @@ if errorlevel 1 (
 rc /nologo /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
-echo [10/10] Linking ABM AV Player...
+echo [11/11] Linking ABM AV Player...
 cl /nologo build\player.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\youtube_dial.obj build\cast_v2.obj build\updater.obj build\player.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
   wininet.lib oleaut32.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib secur32.lib dnsapi.lib windowscodecs.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
