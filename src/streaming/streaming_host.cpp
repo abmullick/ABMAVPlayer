@@ -723,7 +723,7 @@ void CastCurrentBrowserVideo(){
     }
     SetStatus(L"Checking the current service for a supported TV handoff…");
     HRESULT hr=g_webView->ExecuteScript(
-        L"(()=>{const host=location.hostname.toLowerCase().replace(/^www\\./,'');if(host==='primevideo.com'||host.endsWith('.primevideo.com'))return 'PRIMEVIDEO';if(host==='netflix.com'||host.endsWith('.netflix.com'))return 'NETFLIX';const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
+        L"(()=>{const host=location.hostname.toLowerCase().replace(/^www\\./,'');if(host==='primevideo.com'||host.endsWith('.primevideo.com'))return 'PRIMEVIDEO';if(host==='netflix.com'||host.endsWith('.netflix.com'))return 'NETFLIX';if(host==='zee5.com'||host.endsWith('.zee5.com'))return 'ZEE5';if(host==='sonyliv.com'||host.endsWith('.sonyliv.com'))return 'SONYLIV';const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
         Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
             [](HRESULT result,LPCWSTR value)->HRESULT{
                 StreamingDiag(L"Page inspection callback HRESULT=0x%08X valuePresent=%d",(unsigned)result,value?1:0);
@@ -736,6 +736,46 @@ void CastCurrentBrowserVideo(){
                     payload.rfind(L"URL:",0)==0?L"DIRECT_URL":L"NO_VIDEO");
                 if(payload==L"NETFLIX"){
                     SetStatus(L"Netflix desktop-browser title casting is not supported. Launch Netflix on the TV, then use its remote or the official Netflix mobile app to control playback. DRM-protected browser playback is not relayed.");
+                    return S_OK;
+                }
+                if(payload==L"ZEE5"||payload==L"SONYLIV"){
+                    const int dialIndex=g_streamSelectedDialIndex;
+                    const std::wstring service=payload==L"ZEE5"?L"ZEE5":L"SonyLIV";
+                    if(dialIndex<0){
+                        SetStatus((service+L" desktop title handoff is not integrated. This TV has no DIAL app-control endpoint; use the provider's official mobile Cast button or open its TV app.").c_str());
+                        return S_OK;
+                    }
+                    SetStatus((L"Opening "+service+L" on the selected TV… The desktop browser's title/session is not transferred.").c_str());
+                    const HWND target=g_window;
+                    try{
+                        std::thread([target,dialIndex,service](){
+                            const wchar_t *aliases[3]={
+                                service==L"ZEE5"?L"ZEE5":L"SonyLIV",
+                                service==L"ZEE5"?L"Zee5":L"SonyLiv",
+                                service==L"ZEE5"?L"zee5":L"sonyliv"
+                            };
+                            std::wstring message;
+                            bool attempted=false,launched=false;
+                            for(const wchar_t *app:aliases){
+                                int capability=ABM_Dial_QueryApplication((unsigned int)dialIndex,app);
+                                if(capability==1||capability==2||capability==3){
+                                    attempted=true;
+                                    int code=ABM_Dial_LaunchApplication((unsigned int)dialIndex,app);
+                                    if(code==1){
+                                        launched=true;
+                                        message=service+L" launch request accepted by the TV. Choose the title with the TV remote. ABM does not transfer the desktop browser's provider session or protected video; use the official mobile Cast button for title casting.";
+                                    }else{
+                                        message=L"The TV recognises "+service+L" through DIAL but rejected the launch request. Open the app from the TV home screen.";
+                                    }
+                                    break;
+                                }
+                            }
+                            if(!attempted)message=L"The selected TV does not expose "+service+L" through any supported DIAL app-name variant. Open it from the Android/Google TV home screen. Title handoff from this desktop browser is not implemented.";
+                            auto *result=new std::wstring(std::move(message));
+                            if(!IsWindow(target)||!PostMessageW(target,WM_APP_CAST_VIDEO_RESULT,0,(LPARAM)result))delete result;
+                            StreamingDiag(L"%s browser Cast action DIAL launch=%d",service.c_str(),launched?1:0);
+                        }).detach();
+                    }catch(...){SetStatus((L"Could not start the "+service+L" TV-app launch request.").c_str());}
                     return S_OK;
                 }
                 if(payload==L"PRIMEVIDEO"){
