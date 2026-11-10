@@ -78,7 +78,7 @@ HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHi
 HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr,g_deviceAppCombo=nullptr,g_deviceLaunch=nullptr;
 bool g_devicePanelVisible=false;
 std::atomic<bool> g_appProbeRunning{false};
-struct StreamAppChoice { std::wstring label; std::wstring dialApp; bool castV2=false; };
+struct StreamAppChoice { std::wstring label; std::wstring dialApp; bool castV2=false; std::wstring castAppId; };
 struct DialAppProbePayload { std::wstring report; std::vector<StreamAppChoice> choices; };
 std::vector<StreamAppChoice> g_streamAppChoices;
 int g_streamSelectedIndex=-1;
@@ -1300,14 +1300,22 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                     report=L"TV app checks (read-only):\r\n";
                     if(castV2Index>=0){
                         int castResult=ABM_CastV2_CheckYouTubeAvailability((unsigned int)castV2Index);
-                        report+=L"Cast YouTube: ";
+                        report+=L"Cast YouTube (233637DE): ";
                         if(castResult==1){
                             report+=L"APP_AVAILABLE";
-                            payload->choices.push_back({L"YouTube — Google Cast",L"",true});
+                            payload->choices.push_back({L"YouTube — Google Cast",L"",true,L"233637DE"});
                         }else if(castResult==0)report+=L"APP_UNAVAILABLE";
                         else report+=L"query failed";
                         report+=L"\r\n";
-                    }else report+=L"Cast YouTube: no Cast V2 endpoint\r\n";
+                        int primeCastResult=ABM_CastV2_CheckApplicationAvailability((unsigned int)castV2Index,L"17608BC8");
+                        report+=L"Cast Prime Video (17608BC8, experimental): ";
+                        if(primeCastResult==1){
+                            report+=L"APP_AVAILABLE";
+                            payload->choices.push_back({L"Prime Video — Google Cast (experimental)",L"",true,L"17608BC8"});
+                        }else if(primeCastResult==0)report+=L"APP_UNAVAILABLE";
+                        else report+=L"query failed";
+                        report+=L"\r\n";
+                    }else report+=L"Google Cast app checks: no Cast V2 endpoint\r\n";
                     if(dialIndex>=0){
                         const wchar_t *apps[]={L"YouTube",L"Netflix",L"PrimeVideo",L"JioHotstar",L"SonyLIV",L"ZEE5"};
                         for(const wchar_t *app:apps){
@@ -1348,8 +1356,12 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 std::thread([target,choice,dialIndex,castV2Index](){
                     std::wstring result;
                     if(choice.castV2){
-                        bool ok=castV2Index>=0&&ABM_CastV2_LaunchYouTubeApp((unsigned int)castV2Index)!=FALSE;
-                        result=ok?L"YouTube app launch confirmed by Google Cast. Use the TV remote to choose content.":L"Google Cast could not confirm the YouTube app launch. Check GoCast diagnostics.";
+                        bool ok=castV2Index>=0&&ABM_CastV2_LaunchApplication((unsigned int)castV2Index,choice.castAppId.c_str())!=FALSE;
+                        if(!ok)result=L"Google Cast could not confirm the requested receiver app launch. Check GoCast diagnostics.";
+                        else if(choice.castAppId==L"17608BC8")
+                            result=L"Prime Video Cast receiver app launch confirmed. This is only an app-launch test; Amazon's title/session handoff is not yet implemented. Use Prime Video's official mobile Cast control to start a title.";
+                        else
+                            result=L"YouTube app launch confirmed by Google Cast. Use the TV remote to choose content.";
                     }else{
                         int code=dialIndex>=0?ABM_Dial_LaunchApplication((unsigned int)dialIndex,choice.dialApp.c_str()):-1;
                         if(code==1)result=L"The TV accepted the "+choice.dialApp+L" app launch. Use the TV remote to choose content; no provider session or title was transferred.";
