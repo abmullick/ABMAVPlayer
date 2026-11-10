@@ -739,8 +739,31 @@ void CastCurrentBrowserVideo(){
                     return S_OK;
                 }
                 if(payload==L"PRIMEVIDEO"){
-                    StreamingDiag(L"Prime Video desktop handoff unavailable; no DIAL launch attempted");
-                    SetStatus(L"Prime Video title handoff is not implemented. Check TV apps to test the experimental Google Cast receiver ID 17608BC8; if available, Launch app can open its receiver. This does not transfer a title or Amazon session. Use Amazon's official mobile Cast button for playback. Protected playback is not extracted or relayed.");
+                    /* Prime Video's desktop WebView does not expose Amazon's
+                       mobile sender/session handoff. Make the main Cast action
+                       useful and explicit: open the TV app, but never claim
+                       that the browser title was transferred. */
+                    const int castIndex=g_streamSelectedCastV2Index;
+                    const int dialIndex=g_streamSelectedDialIndex;
+                    const HWND target=g_window;
+                    if(castIndex>=0){
+                        SetStatus(L"Opening Prime Video on the selected TV… Title transfer from the desktop browser is not supported.");
+                        try{
+                            std::thread([target,castIndex](){
+                                std::wstring message;
+                                if(ABM_CastV2_LaunchApplication((unsigned int)castIndex,L"17608BC8"))
+                                    message=L"Prime Video opened on the selected TV. Choose the title using the TV remote. ABM cannot transfer the desktop browser's Amazon session or protected video; use Prime Video's official mobile Cast button for phone-to-TV playback.";
+                                else
+                                    message=L"Could not open Prime Video on the selected TV. Refresh Find TVs, select the receiver and check that the experimental Prime Video app endpoint is available.";
+                                auto *result=new std::wstring(std::move(message));
+                                if(!IsWindow(target)||!PostMessageW(target,WM_APP_CAST_VIDEO_RESULT,0,(LPARAM)result))delete result;
+                            }).detach();
+                        }catch(...){SetStatus(L"Could not start the Prime Video TV-app launch request.");}
+                    }else if(dialIndex>=0){
+                        SetStatus(L"This TV exposes DIAL but not the experimental Google Cast Prime Video endpoint. Prime Video title handoff from the desktop browser is not supported; use the official mobile app.");
+                    }else{
+                        SetStatus(L"The selected TV has no supported Prime Video app-launch endpoint. Reopen Find TVs and check TV apps. Desktop-browser title transfer is not supported.");
+                    }
                     return S_OK;
                 }
                 if(payload.rfind(L"YT:",0)==0){
