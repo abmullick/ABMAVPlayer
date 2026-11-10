@@ -1433,20 +1433,43 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                         report+=L"\r\n";
                     }else report+=L"Google Cast app checks: no Cast V2 endpoint\r\n";
                     if(dialIndex>=0){
-                        const wchar_t *apps[]={L"YouTube",L"Netflix",L"PrimeVideo",L"JioHotstar",L"SonyLIV",L"ZEE5"};
-                        for(const wchar_t *app:apps){
-                            int result=ABM_Dial_QueryApplication((unsigned int)dialIndex,app);
-                            report+=L"DIAL ";report+=app;report+=L": ";
-                            if(result==1||result==2||result==3){
-                                report+=result==1?L"recognized — running":result==2?L"recognized — stopped":L"recognized — state unknown";
-                                payload->choices.push_back({app,app,false});
-                            }else if(result==0)report+=L"not exposed";
-                            else if(result==-1)report+=L"query failed";
-                            else report+=L"unexpected response";
-                            report+=L"\r\n";
+                        /* DIAL application resource names are case-sensitive on
+                           some TV firmwares. Probe common provider spellings,
+                           but expose only the first endpoint the receiver
+                           actually recognises. Never guess a Cast receiver ID. */
+                        struct DialServiceAliases{
+                            const wchar_t *label;
+                            const wchar_t *names[3];
+                        };
+                        const DialServiceAliases services[]={
+                            {L"YouTube",{L"YouTube",nullptr,nullptr}},
+                            {L"Netflix",{L"Netflix",nullptr,nullptr}},
+                            {L"Prime Video",{L"PrimeVideo",L"Prime Video",nullptr}},
+                            {L"JioHotstar",{L"JioHotstar",L"Hotstar",nullptr}},
+                            {L"SonyLIV",{L"SonyLIV",L"SonyLiv",L"sonyliv"}},
+                            {L"ZEE5",{L"ZEE5",L"Zee5",L"zee5"}}
+                        };
+                        for(const auto &service:services){
+                            bool recognised=false;
+                            for(const wchar_t *app:service.names){
+                                if(!app)continue;
+                                int result=ABM_Dial_QueryApplication((unsigned int)dialIndex,app);
+                                report+=L"DIAL ";report+=app;report+=L": ";
+                                if(result==1||result==2||result==3){
+                                    report+=result==1?L"recognized — running":result==2?L"recognized — stopped":L"recognized — state unknown";
+                                    if(!recognised){
+                                        payload->choices.push_back({std::wstring(service.label)+L" — DIAL",app,false});
+                                        recognised=true;
+                                    }
+                                }else if(result==0)report+=L"not exposed";
+                                else if(result==-1)report+=L"query failed";
+                                else report+=L"unexpected response";
+                                report+=L"\r\n";
+                                if(recognised)break;
+                            }
                         }
                     }else report+=L"DIAL apps: no DIAL endpoint\r\n";
-                    report+=L"DIAL 404 = not exposed by DIAL; the Android TV app may still be installed.";
+                    report+=L"DIAL 404 = this app-name variant is not exposed by DIAL; the Android TV app may still be installed.";
                     g_appProbeRunning=false;
                     if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APPS_READY,0,(LPARAM)payload))delete payload;
                 }).detach();
