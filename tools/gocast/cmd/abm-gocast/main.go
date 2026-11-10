@@ -55,6 +55,30 @@ func main() {
 		_ = json.NewEncoder(os.Stdout).Encode(result{OK:true,Availability:"APP_AVAILABLE",Launched:true})
 		return
 	}
+	if len(os.Args)==5 && os.Args[1]=="--app-status" {
+		port,err:=strconv.Atoi(os.Args[3])
+		if err!=nil || port<1 || port>65535 { fail(fmt.Errorf("invalid receiver port")); os.Exit(2) }
+		appID:=os.Args[4]
+		if len(appID)!=8 { fail(fmt.Errorf("invalid Cast application ID")); os.Exit(2) }
+		for _,c:=range appID { if !(c>='0'&&c<='9'||c>='A'&&c<='F') { fail(fmt.Errorf("invalid Cast application ID")); os.Exit(2) } }
+		diag.Printf("checking running Cast app id=%s on %s:%d",appID,os.Args[2],port)
+		conn,err:=client.NewClient(os.Args[2],uint(port),true,nil)
+		if err!=nil { fail(fmt.Errorf("GoCast receiver authentication/connection: %w",err)); os.Exit(1) }
+		defer conn.Close()
+		sender:=client.NewSender(conn,nil)
+		sender.Connect()
+		sender.RequestStatus()
+		status,err:=sender.WaitForStatus(8*time.Second)
+		if err!=nil { fail(fmt.Errorf("query running Cast applications: %w",err)); os.Exit(1) }
+		for _,app:=range status.Applications {
+			if app.AppID==appID {
+				_ = json.NewEncoder(os.Stdout).Encode(result{OK:true,Availability:"APP_RUNNING"})
+				return
+			}
+		}
+		_ = json.NewEncoder(os.Stdout).Encode(result{OK:true,Availability:"APP_NOT_RUNNING"})
+		return
+	}
 	if len(os.Args)==5 && os.Args[1]=="--stop-app" {
 		port,err:=strconv.Atoi(os.Args[3])
 		if err!=nil || port<1 || port>65535 { fail(fmt.Errorf("invalid receiver port")); os.Exit(2) }
