@@ -228,8 +228,8 @@ bool Launch(const Receiver &r,const wchar_t *video) {
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
     if(wait!=WAIT_OBJECT_0) { g_error=L"GoCast timed out while starting YouTube and handing off the video.";return false; }
     if(exitCode!=0) {
-        size_t p=output.find("\\\"error\\\":\\\"");
-        if(p!=std::string::npos) { p+=9;size_t e=output.find('\\\"',p);if(e!=std::string::npos){std::string msg=output.substr(p,e-p);g_error=Wide(msg.c_str());} }
+        size_t p=output.find("\"error\":\"");
+        if(p!=std::string::npos) { p+=9;size_t e=output.find('"',p);if(e!=std::string::npos){std::string msg=output.substr(p,e-p);g_error=Wide(msg.c_str());} }
         if(g_error.empty())g_error=L"GoCast could not complete YouTube casting. See helper diagnostics.";
         return false;
     }
