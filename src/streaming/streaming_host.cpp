@@ -274,7 +274,9 @@ void LayoutDevicePanel(){
     SetWindowPos(g_deviceApps,nullptr,x+342,y+252,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceAppCombo,nullptr,x+18,y+340,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceLaunch,nullptr,x+342,y+340,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);\n    SetWindowPos(g_deviceAppStatus,nullptr,x+342,y+426,156,34,SWP_NOZORDER|SWP_NOACTIVATE);\n    SetWindowPos(g_deviceAppStop,nullptr,x+342,y+469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceAppStatus,nullptr,x+342,y+426,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceAppStop,nullptr,x+342,y+469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -422,7 +424,9 @@ void CreateDevicePanel(HWND parent){
     g_deviceLaunch=CreateWindowExW(0,L"BUTTON",L"Launch app",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LAUNCH,GetModuleHandleW(nullptr),nullptr);
-    g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",\n        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);\n    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV app",\n        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);\n    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
+    g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);\n    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV app",
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);\n    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
     SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
@@ -1217,7 +1221,9 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(item->hwndItem==g_deviceSelect){DrawDeviceButton(item,L"Use selected TV",true);return TRUE;}
         if(item->hwndItem==g_deviceApps){DrawDeviceButton(item,L"Check TV apps",false);return TRUE;}
         if(item->hwndItem==g_deviceLaunch){DrawDeviceButton(item,L"Launch app",true);return TRUE;}
-        if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}\n        if(item->hwndItem==g_deviceAppStatus){DrawDeviceButton(item,L"Refresh app status",false);return TRUE;}\n        if(item->hwndItem==g_deviceAppStop){DrawDeviceButton(item,L"Stop TV app",false);return TRUE;}
+        if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}
+        if(item->hwndItem==g_deviceAppStatus){DrawDeviceButton(item,L"Refresh app status",false);return TRUE;}
+        if(item->hwndItem==g_deviceAppStop){DrawDeviceButton(item,L"Stop TV app",false);return TRUE;}
         if(item->hwndItem==g_deviceList){DrawDeviceListItem(item);return TRUE;}
         if(item->hwndItem==g_deviceAppCombo){
             if(item->itemID==(UINT)-1)return TRUE;
