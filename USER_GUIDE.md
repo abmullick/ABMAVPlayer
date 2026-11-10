@@ -143,14 +143,14 @@ The Streaming Centre discovers receivers through:
 - **Google Cast V2** discovery for Cast receiver app control over TLS/TCP 8009.
 - **DIAL** app discovery for YouTube app handoff.
 
-The **Check TV apps** action queries the selected receiver without launching anything. Google Cast V2 checks whether the YouTube Cast app is available. DIAL checks the known application resource names YouTube, Netflix, PrimeVideo, JioHotstar, SonyLIV and ZEE5. A DIAL result of **recognized** means the receiver exposes that app endpoint; **not exposed by DIAL** does not prove the Android TV app is not installed. DIAL is not a complete installed-app inventory. Apps confirmed by these checks appear in the app selector. **Launch app** opens the selected app through Google Cast V2 (YouTube) or a DIAL POST after a successful DIAL capability check. This launches the TV app only; it does not send the current browser title, provider login or playback session.
+The **Check TV apps** action queries the selected receiver without launching anything. Google Cast V2 checks whether the YouTube Cast app (`233637DE`) and an experimental Prime Video receiver ID (`17608BC8`) are available. The Prime Video ID is community-documented and is not an Amazon-published third-party sender API; verify it against the actual TV. DIAL checks the known application resource names YouTube, Netflix, PrimeVideo, JioHotstar, SonyLIV and ZEE5. A DIAL result of **recognized** means the receiver exposes that app endpoint; **not exposed by DIAL** does not prove the Android TV app is not installed. DIAL is not a complete installed-app inventory. Apps confirmed by these checks appear in the app selector. **Launch app** opens the selected app through Google Cast V2 (YouTube or the experimental Prime Video receiver, if advertised) or a DIAL POST after a successful DIAL capability check. This launches the TV app only; it does not send the current browser title, provider login or playback session.
 
 If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. Google Cast V2 is preferred for YouTube app control when available; DIAL remains a fallback. Prime Video title casting is not supported from the desktop browser.
 
 ### What can be cast
 
 - **YouTube:** The player recognises a YouTube video URL and uses Google Cast V2 to launch the YouTube receiver app, obtain its MDX screen ID and send the selected video through YouTube Lounge remote control. A compatible DIAL app endpoint is used as a fallback. These app-control protocols are receiver-dependent and YouTube MDX/Lounge is undocumented; DLNA alone cannot launch the YouTube app.
-- **Prime Video:** Desktop browser-to-TV title casting is not supported. If **Check TV apps** confirms a `PrimeVideo` DIAL endpoint, **Launch app** can open Prime Video on the TV; use the remote to choose a title. This does not transfer the desktop browser title, account session or protected playback. Otherwise, use the official Android/iOS Cast button or open Prime Video on the TV.
+- **Prime Video:** Desktop browser-to-TV title casting is not implemented. **Check TV apps** now probes the experimental Google Cast receiver ID `17608BC8` as well as the `PrimeVideo` DIAL endpoint. If either is advertised, **Launch app** can request that receiver app to open. This confirms app launch only; it does not send a title, Amazon account session or protected playback. Use Amazon's official Android/iOS Cast button for title playback, or open Prime Video on the TV.
 - **Direct video URL:** For other pages, the Streaming Centre looks for a currently active HTML video element with a directly addressable media URL and hands that URL to the selected compatible Google Cast or DLNA renderer.
 - **Not browser mirroring:** This feature does not mirror the browser tab or desktop and is not a general-purpose Google Cast sender.
 
@@ -236,7 +236,7 @@ Audio preferences are stored in `audio.ini`. The WebView2 browser profile is sep
 ### Check TV apps results
 - **Check TV apps** is a read-only endpoint check. It does not open, stop or change an app on the TV.
 - A DIAL 404 means the requested app name is not exposed through DIAL on that receiver; it does not mean the app is absent from Android TV.
-- Google Cast `APP_AVAILABLE` confirms that the receiver advertises the YouTube Cast app, not that a particular video will play.
+- Google Cast `APP_AVAILABLE` confirms that the receiver advertises the queried app ID, not that a title can be handed off. The Prime Video receiver ID check is experimental; a successful app launch is not confirmation of Amazon title playback.
 
 ### A TV is listed but Cast video does not start
 - Confirm the correct TV is selected in the Streaming Centre panel, then try **Cast video** again.
