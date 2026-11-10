@@ -387,7 +387,14 @@ int CheckYouTubeAvailability(const Receiver &receiver) {
     if(!CreatePipe(&readPipe,&writePipe,&sa,0))return -1;
     SetHandleInformation(readPipe,HANDLE_FLAG_INHERIT,0);
     STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
-    si.wShowWindow=SW_HIDE;si.hStdOutput=writePipe;si.hStdError=writePipe;si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
+    /* Keep verbose GoCast diagnostics off the captured stdout pipe.
+       The parent waits for process exit before draining stdout; piping stderr
+       as well can fill the anonymous pipe and deadlock both processes. The
+       dedicated YouTube launcher correctly inherits stderr separately. */
+    si.wShowWindow=SW_HIDE;
+    si.hStdOutput=writePipe;
+    si.hStdError=GetStdHandle(STD_ERROR_HANDLE);
+    si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
     PROCESS_INFORMATION pi{};
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
