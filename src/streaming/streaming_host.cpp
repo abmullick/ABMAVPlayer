@@ -1518,6 +1518,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                                 if(recognised)break;
                             }
                         }
+                        /* Keep Netflix available as a clearly labelled DIAL POST
+                           attempt when the TV does not expose a readable GET state. */
+                        bool hasNetflix=false;
+                        for(const auto &choice:payload->choices)
+                            if(choice.dialApp==L"Netflix")hasNetflix=true;
+                        if(!hasNetflix)
+                            payload->choices.push_back({L"Netflix — try DIAL launch",L"Netflix",false});
                         /* Keep explicit manual launch attempts visible even
                            when DIAL GET reports 404. Some receiver firmware
                            implements POST launch but does not provide a useful
@@ -1593,13 +1600,35 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 g_appProbeRunning=false;SetStatus(L"Select a TV app first.");return 0;
             }
             const StreamAppChoice choice=g_streamAppChoices[(size_t)choiceIndex];
-            if(choice.castV2||choice.dialApp.empty()||g_streamSelectedDialIndex<0){
+            const bool stop=(LOWORD(wp)==ID_STREAM_DEVICE_APP_STOP);
+            if(choice.castV2){
+                if(!stop){
+                    g_appProbeRunning=false;
+                    SetStatus(L"Google Cast app status refresh is not yet exposed in this panel. Use Stop TV app to query and close the running Cast app.");
+                    return 0;
+                }
+                const int castIndex=g_streamSelectedCastV2Index;
+                const HWND target=hwnd;
+                SetStatus(L"Requesting Google Cast to stop the selected TV application…");
+                try{
+                    std::thread([target,castIndex,choice](){
+                        int code=castIndex>=0?ABM_CastV2_StopApplication((unsigned int)castIndex,choice.castAppId.c_str()):-1;
+                        std::wstring message=code==1?L"Google Cast confirmed that "+choice.label+L" stopped on the TV."
+                            :code==0?L"The selected Google Cast app is not currently running on the TV."
+                            :L"The TV did not confirm that the Google Cast app stopped. Use the TV remote if it remains open.";
+                        g_appProbeRunning=false;
+                        auto *payload=new std::wstring(std::move(message));
+                        if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APP_LAUNCH,0,(LPARAM)payload))delete payload;
+                    }).detach();
+                }catch(...){g_appProbeRunning=false;SetStatus(L"Could not start the Google Cast stop request.");}
+                return 0;
+            }
+            if(choice.dialApp.empty()||g_streamSelectedDialIndex<0){
                 g_appProbeRunning=false;
-                SetStatus(L"This app was launched through Google Cast or has no DIAL control endpoint. DIAL app status/stop controls are unavailable; use the TV remote or provider mobile app.");
+                SetStatus(L"This app has no supported receiver-control endpoint. Use the TV remote or provider mobile app.");
                 return 0;
             }
             const int dialIndex=g_streamSelectedDialIndex;
-            const bool stop=(LOWORD(wp)==ID_STREAM_DEVICE_APP_STOP);
             const HWND target=hwnd;
             SetStatus(stop?L"Sending standard DIAL stop request to the TV…":L"Checking TV application state…");
             try{
