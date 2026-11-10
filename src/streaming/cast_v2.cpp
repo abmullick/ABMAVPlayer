@@ -16,6 +16,8 @@
 #include <string>
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
+#include <cstdarg>
 
 #pragma comment(lib,"secur32.lib")
 #pragma comment(lib,"dnsapi.lib")
@@ -30,6 +32,25 @@ std::thread g_discovery;
 std::atomic<bool> g_stop{false};
 int g_selected=-1;
 std::wstring g_error;
+std::mutex g_logMutex;
+void Diag(const wchar_t *fmt, ...) {
+    wchar_t dir[MAX_PATH]{};
+    DWORD n=GetTempPathW(MAX_PATH,dir);
+    if(!n || n>=MAX_PATH) return;
+    std::wstring path=dir; path+=L"ABMAVPlayer-GoCast-diagnostics.log";
+    SYSTEMTIME st{}; GetLocalTime(&st);
+    wchar_t line[2048]{};
+    int pos=_snwprintf_s(line,_countof(line),_TRUNCATE,L"[%04u-%02u-%02u %02u:%02u:%02u.%03u] ",st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,st.wSecond,st.wMilliseconds);
+    va_list ap; va_start(ap,fmt); _vsnwprintf_s(line+pos,_countof(line)-(size_t)pos,_TRUNCATE,fmt,ap); va_end(ap);
+    size_t len=wcslen(line); line[len++]=L'\r'; line[len++]=L'\n';
+    std::lock_guard<std::mutex> lock(g_logMutex);
+    HANDLE h=CreateFileW(path.c_str(),FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(h!=INVALID_HANDLE_VALUE) {
+        int bytes=WideCharToMultiByte(CP_UTF8,0,line,(int)len,nullptr,0,nullptr,nullptr);
+        if(bytes>0) { std::string out((size_t)bytes,'\0'); WideCharToMultiByte(CP_UTF8,0,line,(int)len,out.data(),bytes,nullptr,nullptr); DWORD written=0; WriteFile(h,out.data(),(DWORD)out.size(),&written,nullptr); }
+        CloseHandle(h);
+    }
+}
 
 std::wstring Wide(const char *s) {
     if(!s||!*s)return {};
@@ -47,12 +68,14 @@ void Discover() {
     while(!g_stop.load()) {
         PDNS_RECORDA ptr=nullptr;
         DNS_STATUS st=DnsQuery_A("_googlecast._tcp.local",DNS_TYPE_PTR,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&ptr),nullptr);
+        if(st!=ERROR_SUCCESS) Diag(L"Discovery PTR query failed DNS_STATUS=%lu",st);
         if(st==ERROR_SUCCESS&&ptr) {
             for(PDNS_RECORDA p=ptr;p&&!g_stop.load();p=p->pNext) {
                 if(p->wType!=DNS_TYPE_PTR||!p->Data.PTR.pNameHost)continue;
                 std::string instance=p->Data.PTR.pNameHost;
                 PDNS_RECORDA srv=nullptr;
-                if(DnsQuery_A(instance.c_str(),DNS_TYPE_SRV,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&srv),nullptr)!=ERROR_SUCCESS||!srv)continue;
+                DNS_STATUS srvStatus=DnsQuery_A(instance.c_str(),DNS_TYPE_SRV,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&srv),nullptr);
+                if(srvStatus!=ERROR_SUCCESS||!srv){Diag(L"Discovery SRV lookup failed instance=%S status=%lu",instance.c_str(),srvStatus);continue;}
                 for(PDNS_RECORDA q=srv;q;q=q->pNext)if(q->wType==DNS_TYPE_SRV&&q->Data.SRV.pNameTarget) {
                     Receiver d;d.host=q->Data.SRV.pNameTarget;d.port=q->Data.SRV.wPort;
                     PDNS_RECORDA txt=nullptr;
@@ -68,7 +91,7 @@ void Discover() {
                     if(d.name.empty())d.name=Wide(instance.c_str());
                     std::lock_guard<std::mutex> lock(g_mutex);
                     auto it=std::find_if(g_receivers.begin(),g_receivers.end(),[&](const Receiver &x){return _stricmp(x.host.c_str(),d.host.c_str())==0;});
-                    if(it==g_receivers.end())g_receivers.push_back(std::move(d));else {it->name=d.name;it->port=d.port;}
+                    if(it==g_receivers.end()){Diag(L"Receiver found name=%s host=%S port=%u",d.name.c_str(),d.host.c_str(),d.port);g_receivers.push_back(std::move(d));}else {it->name=d.name;it->port=d.port;}
                 }
                 DnsRecordListFree(srv,DnsFreeRecordList);
             }
@@ -93,16 +116,16 @@ public:
     ~CastTls(){Close();}
     void Close(){if(connected){DWORD t=SCHANNEL_SHUTDOWN;SecBuffer b{sizeof(t),SECBUFFER_TOKEN,&t};SecBufferDesc d{SECBUFFER_VERSION,1,&b};ApplyControlToken(&ctx,&d);}if(haveCtx)DeleteSecurityContext(&ctx);if(haveCred)FreeCredentialsHandle(&cred);if(s!=INVALID_SOCKET)closesocket(s);s=INVALID_SOCKET;connected=false;if(winsock){WSACleanup();winsock=false;}}
     bool Connect(const std::string &host,unsigned short port) {
-        WSADATA wd{};if(WSAStartup(MAKEWORD(2,2),&wd)!=0)return false;winsock=true;
+        WSADATA wd{};int wsa=WSAStartup(MAKEWORD(2,2),&wd);if(wsa!=0){Diag(L"WSAStartup failed=%d",wsa);return false;}winsock=true;
         addrinfo hints{};hints.ai_family=AF_UNSPEC;hints.ai_socktype=SOCK_STREAM;hints.ai_protocol=IPPROTO_TCP;
         addrinfo *list=nullptr;char service[16];_snprintf_s(service,sizeof(service),_TRUNCATE,"%u",port);
-        if(getaddrinfo(host.c_str(),service,&hints,&list)!=0)return false;
+        int gai=getaddrinfo(host.c_str(),service,&hints,&list);if(gai!=0){Diag(L"getaddrinfo failed host=%S port=%u error=%d",host.c_str(),port,gai);return false;}
         for(addrinfo *a=list;a;a=a->ai_next){s=socket(a->ai_family,a->ai_socktype,a->ai_protocol);if(s!=INVALID_SOCKET&&connect(s,a->ai_addr,(int)a->ai_addrlen)==0)break;if(s!=INVALID_SOCKET)closesocket(s);s=INVALID_SOCKET;}
-        freeaddrinfo(list);if(s==INVALID_SOCKET)return false;
+        freeaddrinfo(list);if(s==INVALID_SOCKET){Diag(L"TCP connect failed host=%S port=%u WSA=%d",host.c_str(),port,WSAGetLastError());return false;} Diag(L"TCP connected host=%S port=%u",host.c_str(),port);
         DWORD ioTimeout=5000;setsockopt(s,SOL_SOCKET,SO_RCVTIMEO,(const char*)&ioTimeout,sizeof(ioTimeout));setsockopt(s,SOL_SOCKET,SO_SNDTIMEO,(const char*)&ioTimeout,sizeof(ioTimeout));
         SCHANNEL_CRED sc{};sc.dwVersion=SCHANNEL_CRED_VERSION;sc.dwFlags=SCH_CRED_MANUAL_CRED_VALIDATION|SCH_CRED_NO_DEFAULT_CREDS;
         TimeStamp expiry{};SECURITY_STATUS ss=AcquireCredentialsHandleW(nullptr,const_cast<wchar_t*>(UNISP_NAME_W),SECPKG_CRED_OUTBOUND,nullptr,&sc,nullptr,nullptr,&cred,&expiry);
-        if(ss!=SEC_E_OK)return false;haveCred=true;
+        if(ss!=SEC_E_OK){Diag(L"AcquireCredentialsHandle failed status=0x%08X",(unsigned)ss);return false;}haveCred=true;
         DWORD req=ISC_REQ_SEQUENCE_DETECT|ISC_REQ_REPLAY_DETECT|ISC_REQ_CONFIDENTIALITY|ISC_REQ_EXTENDED_ERROR|ISC_REQ_ALLOCATE_MEMORY|ISC_REQ_STREAM;
         std::string incoming;bool first=true;
         for(int attempt=0;attempt<8;attempt++){
@@ -113,12 +136,12 @@ public:
             first=false;if(ss==SEC_E_OK||ss==SEC_I_CONTINUE_NEEDED||ss==SEC_I_COMPLETE_NEEDED||ss==SEC_I_COMPLETE_AND_CONTINUE)haveCtx=true;
             if(outBuf.cbBuffer&&outBuf.pvBuffer){bool ok=SendRaw(outBuf.pvBuffer,(int)outBuf.cbBuffer);FreeContextBuffer(outBuf.pvBuffer);if(!ok)return false;}
             if(ss==SEC_E_OK||ss==SEC_I_COMPLETE_NEEDED||ss==SEC_I_COMPLETE_AND_CONTINUE){if(ss==SEC_I_COMPLETE_NEEDED||ss==SEC_I_COMPLETE_AND_CONTINUE)CompleteAuthToken(&ctx,&outDesc);break;}
-            if(ss!=SEC_I_CONTINUE_NEEDED)return false;
+            if(ss!=SEC_I_CONTINUE_NEEDED){Diag(L"TLS handshake failed status=0x%08X",(unsigned)ss);return false;}
             char buf[16384];int got=recv(s,buf,sizeof(buf),0);if(got<=0)return false;incoming.assign(buf,got);
             if(attempt==7)return false;
         }
         if(!haveCtx||QueryContextAttributesW(&ctx,SECPKG_ATTR_STREAM_SIZES,&sizes)!=SEC_E_OK)return false;
-        connected=true;return true;
+        connected=true;Diag(L"TLS channel established");return true;
     }
     bool Send(const std::string &data) {
         if(!connected)return false;
@@ -200,14 +223,14 @@ bool WaitFor(const std::string &host,unsigned short port,const char *needle,std:
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
     wchar_t module[MAX_PATH]{};
-    if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { g_error=L"Cannot locate ABM AV Player installation."; return false; }
+    if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { Diag(L"GetModuleFileName failed Win32=%lu",GetLastError());g_error=L"Cannot locate ABM AV Player installation."; return false; }
     std::wstring directory(module);
     size_t slash=directory.find_last_of(L"\\\\/");
     if(slash==std::wstring::npos) { g_error=L"Cannot locate ABM AV Player installation folder."; return false; }
     directory.resize(slash+1);
     std::wstring helper=directory+L"abm-gocast.exe";
     DWORD attrs=GetFileAttributesW(helper.c_str());
-    if(attrs==INVALID_FILE_ATTRIBUTES) { g_error=L"GoCast helper is missing. Rebuild and reinstall ABM AV Player."; return false; }
+    if(attrs==INVALID_FILE_ATTRIBUTES) { Diag(L"Missing helper path=%s Win32=%lu",helper.c_str(),GetLastError());g_error=L"GoCast helper is missing. Rebuild and reinstall ABM AV Player."; return false; }
     std::wstring videoId(video);
     std::wstring command=L"\""+helper+L"\" \""+Wide(r.host.c_str())+L"\" "+std::to_wstring(r.port)+L" \""+videoId+L"\"";
     SECURITY_ATTRIBUTES sa{sizeof(sa),nullptr,TRUE};
@@ -219,24 +242,26 @@ bool Launch(const Receiver &r,const wchar_t *video) {
     PROCESS_INFORMATION pi{};
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
-    if(!created) { CloseHandle(readPipe);g_error=L"Could not start the GoCast sender helper.";return false; }
+    if(!created) { DWORD e=GetLastError();Diag(L"CreateProcess failed Win32=%lu path=%s",e,helper.c_str());CloseHandle(readPipe);g_error=L"Could not start the GoCast sender helper.";return false; }
     DWORD wait=WaitForSingleObject(pi.hProcess,45000),exitCode=1;
     if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
     std::string output;char buffer[1024];DWORD got=0;
     if(wait==WAIT_OBJECT_0) while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got) { if(output.size()<16384)output.append(buffer,got); }
     CloseHandle(readPipe);
-    if(wait!=WAIT_OBJECT_0) { g_error=L"GoCast timed out while starting YouTube and handing off the video.";return false; }
+    if(wait!=WAIT_OBJECT_0) { Diag(L"Helper wait failed/timed out wait=%lu Win32=%lu",wait,GetLastError());g_error=L"GoCast timed out while starting YouTube and handing off the video.";return false; }
+    Diag(L"Helper exited code=%lu stdout=%S",exitCode,output.c_str());
     if(exitCode!=0) {
         size_t p=output.find("\"error\":\"");
         if(p!=std::string::npos) { p+=9;size_t e=output.find('"',p);if(e!=std::string::npos){std::string msg=output.substr(p,e-p);g_error=Wide(msg.c_str());} }
         if(g_error.empty())g_error=L"GoCast could not complete YouTube casting. See helper diagnostics.";
         return false;
     }
-    g_error.clear();return true;
+    g_error.clear();Diag(L"Helper completed successfully");return true;
 }
 }
 extern "C" void ABM_CastV2_StartDiscovery(void) {
+    Diag(L"========== GoCast discovery started ==========");
     if(g_discovery.joinable()&&!g_stop.load())return;
     ABM_CastV2_StopDiscovery();{std::lock_guard<std::mutex> l(g_mutex);g_receivers.clear();g_selected=-1;}
     g_stop=false;g_discovery=std::thread(Discover);
