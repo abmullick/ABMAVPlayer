@@ -2,10 +2,10 @@
 setlocal EnableExtensions
 
 rem Publish the already-built Windows installer as a GitHub Release.
-rem Usage: publish_release.bat 0.6.0
+rem Usage: publish_release.bat 1.0.2
 if "%~1"=="" (
   echo Usage: publish_release.bat VERSION
-  echo Example: publish_release.bat 0.6.0
+  echo Example: publish_release.bat 1.0.2
   exit /b 2
 )
 set "VERSION=%~1"
