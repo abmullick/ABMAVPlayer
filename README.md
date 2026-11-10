@@ -35,8 +35,8 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 - Browser toolbar: Back, Forward, Reload, Home, Fullscreen, Help, About and Open in browser.
 - WebView2 process-failure recovery makes a bounded number of attempts and can restore the current safe HTTP(S) page.
 - Dedicated **Find TVs** panel, separate from the main player's Playback Output selector. Discovery combines Google Cast, DLNA/UPnP and DIAL receivers; matching receiver names are consolidated.
-- Select a receiver in the panel, then choose **Cast video**. YouTube handoff uses a discovered DIAL YouTube app endpoint when available. Directly addressable video URLs may be sent to compatible Cast/DLNA renderers.
-- This is not browser-tab mirroring. DRM-protected, encrypted, segmented or non-direct browser streams generally cannot be handed off. DLNA alone cannot launch the YouTube app. Provider-native Cast or the provider's official TV app may be needed.
+- Select a receiver in the panel, then choose **Cast video**. YouTube handoff uses Google Cast V2 or a discovered DIAL YouTube endpoint. On a Prime Video page, **Cast video** attempts to launch the installed PrimeVideo TV app through DIAL; the viewer then chooses a title with the TV remote. Directly addressable non-protected video URLs may be sent to compatible Cast/DLNA renderers.
+- Prime Video's official title-casting workflow is provided by Amazon's Android/iOS app. The desktop Streaming Centre does not transfer Prime Video account sessions or protected playback. PrimeVideo DIAL app launch works only when the selected TV advertises that app endpoint. This is not browser-tab mirroring, and DRM-protected, encrypted, segmented or non-direct browser streams are not extracted or relayed.
 
 Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
 
