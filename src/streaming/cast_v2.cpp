@@ -372,17 +372,17 @@ int QueryAppAvailability(const Receiver &receiver,const char *appId) {
     Diag(L"Checking Cast app availability appId=%S receiver=%s host=%S",appId,receiver.name.c_str(),receiver.host.c_str());
     CastTls tls;
     if(!tls.Connect(receiver.host,receiver.port))return -1;
-    if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.tp.connection","{\\"type\\":\\"CONNECT\\"}"))return -1;
-    std::string request="{\\"type\\":\\"GET_APP_AVAILABILITY\\",\\"appId\\":[\\"";
+    if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.tp.connection","{\"type\":\"CONNECT\"}"))return -1;
+    std::string request="{\"type\":\"GET_APP_AVAILABILITY\",\"appId\":[\"";
     request+=appId;
-    request+="\\"],\\"requestId\\":2}";
+    request+="\"],\"requestId\":2}";
     if(!SendCast(tls,"sender-0","receiver-0","urn:x-cast:com.google.cast.receiver",request))return -1;
     for(int i=0;i<8;i++){
         std::string response;
         if(!ReceiveCast(tls,response))return -1;
         if(response.find("GET_APP_AVAILABILITY")==std::string::npos)continue;
-        const std::string available="\\""+std::string(appId)+"\\":\\"APP_AVAILABLE\\"";
-        const std::string unavailable="\\""+std::string(appId)+"\\":\\"APP_UNAVAILABLE\\"";
+        const std::string available="\""+std::string(appId)+"\":\"APP_AVAILABLE\"";
+        const std::string unavailable="\""+std::string(appId)+"\":\"APP_UNAVAILABLE\"";
         if(response.find(available)!=std::string::npos){Diag(L"Cast app availability appId=%S result=APP_AVAILABLE",appId);return 1;}
         if(response.find(unavailable)!=std::string::npos){Diag(L"Cast app availability appId=%S result=APP_UNAVAILABLE",appId);return 0;}
     }
