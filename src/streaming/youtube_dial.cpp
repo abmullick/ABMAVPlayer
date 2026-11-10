@@ -20,6 +20,7 @@ std::mutex g_lock;
 std::vector<DialDevice> g_devices;
 std::thread g_worker;
 std::atomic<bool> g_stop{false};
+std::wstring g_lastLaunchError;
 
 std::wstring Trim(std::wstring s) {
     while(!s.empty() && iswspace(s.front())) s.erase(s.begin());
@@ -120,6 +121,7 @@ extern "C" BOOL ABM_Dial_DeviceName(unsigned int i,wchar_t *b,unsigned int c) {
 }
 
 namespace {
+std::wstring ToWide(const std::string &v) { if(v.empty())return {};int n=MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,nullptr,0);if(n<=1)return {};std::wstring w((size_t)n-1,L'\0');MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,w.data(),n);return w; }
 std::string ToUtf8(const std::wstring &v) {
     if(v.empty())return {};
     int n=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,v.data(),(int)v.size(),nullptr,0,nullptr,nullptr);
@@ -199,7 +201,7 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     std::string token=JsonString(response,"loungeToken");
     if(token.empty()){error="YouTube did not provide a remote-control token for this TV.";return false;}
     std::wstring path=L"/api/lounge/bc/bind?CVER=1&RID=1&VER=8&app=youtube-desktop&device=REMOTE_CONTROL&id=remote&loungeIdToken=";
-    for(char ch:token)path+=(wchar_t)ch;
+    for(char ch:FormEncode(token))path+=(wchar_t)ch;
     path+=L"&name=ABM%20AV%20Player";
     if(!LoungePost(path,"",response,&status)){error="YouTube remote session failed (HTTP "+std::to_string(status)+").";return false;}
     std::string sid=FrameString(response,"[\"c\",\"");
@@ -207,9 +209,9 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     if(sid.empty()||gs.empty()){error="YouTube did not return a valid remote-control session.";return false;}
     std::string body="count=1&req0__sc=setPlaylist&req0_currentIndex=0&req0_currentTime=0&req0_videoId="+FormEncode(video)+"&req0_videoIds="+FormEncode(video);
     std::wstring cmd=L"/api/lounge/bc/bind?CVER=1&RID=2&VER=8&SID=";
-    for(char ch:sid)cmd+=(wchar_t)ch;cmd+=L"&gsessionid=";
-    for(char ch:gs)cmd+=(wchar_t)ch;cmd+=L"&loungeIdToken=";
-    for(char ch:token)cmd+=(wchar_t)ch;
+    for(char ch:FormEncode(sid))cmd+=(wchar_t)ch;cmd+=L"&gsessionid=";
+    for(char ch:FormEncode(gs))cmd+=(wchar_t)ch;cmd+=L"&loungeIdToken=";
+    for(char ch:FormEncode(token))cmd+=(wchar_t)ch;
     if(!LoungePost(cmd,body,response,&status)){error="YouTube rejected the video command (HTTP "+std::to_string(status)+").";return false;}
     if(response.find("error")!=std::string::npos||response.find("ERROR")!=std::string::npos){error="YouTube reported an error while accepting the video.";return false;}
     return true;
@@ -221,8 +223,11 @@ extern "C" BOOL ABM_Dial_LaunchYouTube(unsigned int i,const wchar_t *videoId) {
     std::wstring base;{std::lock_guard<std::mutex> l(g_lock);if(i>=g_devices.size())return FALSE;base=g_devices[i].appUrl;}
     DWORD status=0;std::wstring ignored;
     bool launched=HttpRequest(base+L"YouTube",L"POST",L"",&ignored,nullptr,&status);
-    if(!launched||!(status==200||status==201||status==202))return FALSE;
+    if(!launched||!(status==200||status==201||status==202)){g_lastLaunchError=L"The TV did not start YouTube through DIAL (HTTP "+std::to_wstring(status)+L").";return FALSE;}
     std::string screen,error;
-    if(!GetScreenId(base,screen))return FALSE;
-    return PlayLounge(screen,ToUtf8(videoId),error)?TRUE:FALSE;
+    if(!GetScreenId(base,screen)){g_lastLaunchError=L"YouTube started, but the TV did not expose a YouTube screen ID.";return FALSE;}
+    if(!PlayLounge(screen,ToUtf8(videoId),error)){g_lastLaunchError=ToWide(error);return FALSE;}
+    g_lastLaunchError.clear();return TRUE;
 }
+
+extern "C" BOOL ABM_Dial_LastLaunchError(wchar_t *buffer,unsigned int capacity) { if(!buffer||!capacity)return FALSE;buffer[0]=0;return SUCCEEDED(StringCchCopyW(buffer,capacity,g_lastLaunchError.c_str()))?TRUE:FALSE; }
