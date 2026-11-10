@@ -16,6 +16,8 @@ int ABM_CastV2_CheckApplicationAvailability(unsigned int index,const wchar_t *ap
 BOOL ABM_CastV2_LaunchApplication(unsigned int index,const wchar_t *applicationId);
 /* 1=stopped, 0=not running, -1=transport/protocol failure. */
 int ABM_CastV2_StopApplication(unsigned int index,const wchar_t *applicationId);
+/* 1=running, 0=not running, -1=query failure. */
+int ABM_CastV2_QueryApplicationStatus(unsigned int index,const wchar_t *applicationId);
 BOOL ABM_CastV2_LaunchYouTube(const wchar_t *videoId);
 BOOL ABM_CastV2_LastError(wchar_t *buffer,unsigned int capacity);
 #ifdef __cplusplus
