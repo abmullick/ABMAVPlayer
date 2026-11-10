@@ -77,6 +77,11 @@ struct StreamReceiverRow { int castIndex; int dlnaIndex; int dialIndex; int cast
 int g_streamSelectedDialIndex=-1;
 int g_streamSelectedCastV2Index=-1;
 std::vector<StreamReceiverRow> g_streamReceiverRows;
+bool IsStreamReceiverReady(){
+    if(g_streamSelectedIndex<0 || (size_t)g_streamSelectedIndex>=g_streamReceiverRows.size())return false;
+    const StreamReceiverRow &row=g_streamReceiverRows[(size_t)g_streamSelectedIndex];
+    return row.castIndex>=0 || row.dlnaIndex>=0 || row.dialIndex>=0 || row.castV2Index>=0;
+}
 
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
 constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14;
@@ -751,13 +756,19 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"About",g_aboutRect,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castRect=RECT{482,15,612,55};
-    Rounded(dc,g_castRect,g_hoverControl==8?RGBc(34,112,112):RGBc(24,75,83),10);
-    HPEN castPen=CreatePen(PS_SOLID,g_hoverControl==8?2:1,g_hoverControl==8?RGBc(93,225,207):RGBc(48,137,137));
+    const bool receiverReady=IsStreamReceiverReady();
+    const bool pulseOn=receiverReady && ((GetTickCount64()/400)%2==0);
+    const COLORREF castFill=receiverReady?(pulseOn?RGBc(190,35,48):RGBc(112,22,34)):
+        (g_hoverControl==8?RGBc(34,112,112):RGBc(24,75,83));
+    const COLORREF castEdge=receiverReady?(pulseOn?RGBc(255,105,112):RGBc(220,65,76)):
+        (g_hoverControl==8?RGBc(93,225,207):RGBc(48,137,137));
+    Rounded(dc,g_castRect,castFill,10);
+    HPEN castPen=CreatePen(PS_SOLID,(receiverReady||g_hoverControl==8)?2:1,castEdge);
     HGDIOBJ oldCastPen=SelectObject(dc,castPen);
     HGDIOBJ oldCastBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castRect.left,g_castRect.top,g_castRect.right,g_castRect.bottom,10,10);
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
-    Text(dc,L"Find TVs",g_castRect,RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Find TVs",g_castRect,receiverReady?RGBc(255,255,255):RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castVideoRect=RECT{620,15,750,55};
     Rounded(dc,g_castVideoRect,g_hoverControl==9?RGBc(35,126,111):RGBc(25,91,80),10);
@@ -1002,7 +1013,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_CREATE:{
         g_window=hwnd;
         CreateDevicePanel(hwnd);
-        SetTimer(hwnd,ID_STREAM_DEVICE_TIMER,800,nullptr);
+        SetTimer(hwnd,ID_STREAM_DEVICE_TIMER,400,nullptr);
         LoadServiceLogos();
         HRESULT comResult=CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
         if(SUCCEEDED(comResult))g_comInitialized=true;
@@ -1071,7 +1082,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(FAILED(hr))SetStatus(L"Browser recovery could not be started. Reopen the Streaming Centre.");
         return 0;
     }
-    case WM_TIMER:if(wp==ID_STREAM_DEVICE_TIMER&&g_devicePanelVisible){RefreshDevicePanel(false);return 0;}break;
+    case WM_TIMER:
+        if(wp==ID_STREAM_DEVICE_TIMER){
+            if(g_devicePanelVisible)RefreshDevicePanel(false);
+            if(IsStreamReceiverReady())InvalidateRect(hwnd,&g_castRect,FALSE);
+            return 0;
+        }
+        break;
     case WM_SIZE:LayoutBrowser();if(g_devicePanelVisible)LayoutDevicePanel();InvalidateRect(hwnd,nullptr,FALSE);return 0;
     case WM_MOUSEMOVE:{
         if(!g_trackingMouseLeave){TRACKMOUSEEVENT track{sizeof(track),TME_LEAVE,hwnd,0};if(TrackMouseEvent(&track))g_trackingMouseLeave=true;}
