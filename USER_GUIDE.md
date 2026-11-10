@@ -262,3 +262,10 @@ Audio preferences are stored in `audio.ini`. The WebView2 browser profile is sep
 ABM AV Player is a native Windows desktop application. Win32 owns the application window and controls; Direct2D/DirectWrite render the main interface; LibVLC handles local media decoding and renderer output; Microsoft Edge WebView2 renders the separate Streaming Centre. The Streaming Centre's receiver discovery and cast handoff are isolated from the main player's local playback and casting state.
 
 The application is a media player, not a separate kernel audio/video driver.
+
+
+## Streaming Centre TV app controls
+
+After selecting a TV and choosing a DIAL-exposed Netflix or Prime Video app, use **Refresh app status** to read the app's DIAL running/stopped state. **Stop TV app** sends the standard DIAL application stop request (DELETE); it closes the app and does not pause a movie.
+
+The app status is not playback status. Standard DIAL cannot tell ABM whether a title is playing, paused or buffering, and it does not provide standard pause, resume or seek commands. Those controls require a provider-supported sender session. If the provider's receiver does not expose a compatible session, use the TV remote or the provider's official mobile app. The existing YouTube handoff and local playback/casting paths are unchanged.
