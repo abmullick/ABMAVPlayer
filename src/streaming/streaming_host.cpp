@@ -622,7 +622,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT description={322,347,rc.right-28,397};
             Text(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",description,RGBc(226,238,249),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,410,rc.right-28,436};
-            Text(dc,L"Version 1.0.1   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Version 1.0.2   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,RGBc(35,62,82));
             RECT tributeTitle={32,470,rc.right-32,495};
             Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
