@@ -391,8 +391,8 @@ void CreateDevicePanel(HWND parent){
     g_deviceApps=CreateWindowExW(0,L"BUTTON",L"Check TV apps",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APPS,GetModuleHandleW(nullptr),nullptr);
-    g_deviceAppCombo=CreateWindowExW(0,L"COMBOBOX",L"",
-        WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP,0,0,10,160,parent,
+    g_deviceAppCombo=CreateWindowExW(0,L"LISTBOX",L"",
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_TABSTOP,0,0,10,160,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_COMBO,GetModuleHandleW(nullptr),nullptr);
     g_deviceLaunch=CreateWindowExW(0,L"BUTTON",L"Launch app",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
@@ -405,6 +405,7 @@ void CreateDevicePanel(HWND parent){
     SendMessageW(g_deviceList,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
     SendMessageW(g_deviceAppCombo,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
     SendMessageW(g_deviceList,LB_SETITEMHEIGHT,0,27);
+    SendMessageW(g_deviceAppCombo,LB_SETITEMHEIGHT,0,30);
     EnableWindow(g_deviceAppCombo,FALSE);EnableWindow(g_deviceLaunch,FALSE);
     HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose};
     ShowWindow(g_devicePanel,SW_HIDE);
@@ -1046,20 +1047,20 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(report&&g_devicePanelVisible){
             SetWindowTextW(g_deviceHint,report->report.c_str());
             g_streamAppChoices=std::move(report->choices);
-            SendMessageW(g_deviceAppCombo,CB_RESETCONTENT,0,0);
+            SendMessageW(g_deviceAppCombo,LB_RESETCONTENT,0,0);
             for(size_t i=0;i<g_streamAppChoices.size();++i){
                 const auto &choice=g_streamAppChoices[i];
-                LRESULT item=SendMessageW(g_deviceAppCombo,CB_ADDSTRING,0,(LPARAM)choice.label.c_str());
+                LRESULT item=SendMessageW(g_deviceAppCombo,LB_ADDSTRING,0,(LPARAM)choice.label.c_str());
                 if(item==CB_ERR||item==CB_ERRSPACE){
                     StreamingDiag(L"App selector insertion failed choiceIndex=%zu label=%s",i,choice.label.c_str());
                     continue;
                 }
-                SendMessageW(g_deviceAppCombo,CB_SETITEMDATA,(WPARAM)item,(LPARAM)i);
+                SendMessageW(g_deviceAppCombo,LB_SETITEMDATA,(WPARAM)item,(LPARAM)i);
                 StreamingDiag(L"App selector item=%ld choiceIndex=%zu label=%s dialApp=%s castV2=%d castAppId=%s",
                     (long)item,i,choice.label.c_str(),choice.dialApp.c_str(),choice.castV2?1:0,choice.castAppId.c_str());
             }
             /* Require an explicit user selection; never default to the first app. */
-            SendMessageW(g_deviceAppCombo,CB_SETCURSEL,(WPARAM)-1,0);
+            SendMessageW(g_deviceAppCombo,LB_SETCURSEL,(WPARAM)-1,0);
             EnableWindow(g_deviceAppCombo,!g_streamAppChoices.empty());
             EnableWindow(g_deviceLaunch,!g_streamAppChoices.empty());
             SetStatus(L"TV app checks completed. Select a confirmed app endpoint and choose Launch app.");
@@ -1091,6 +1092,15 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(item->hwndItem==g_deviceLaunch){DrawDeviceButton(item,L"Launch app",true);return TRUE;}
         if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}
         if(item->hwndItem==g_deviceList){DrawDeviceListItem(item);return TRUE;}
+        if(item->hwndItem==g_deviceAppCombo){
+            if(item->itemID==(UINT)-1)return TRUE;
+            wchar_t label[256]{};SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)label);
+            const bool selected=(item->itemState&ODS_SELECTED)!=0;
+            FillRectColor(item->hDC,item->rcItem,selected?RGBc(29,91,103):RGBc(15,31,47));
+            RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
+            Text(item->hDC,label,textRect,selected?RGBc(245,255,255):RGBc(207,225,237),10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            return TRUE;
+        }
         break;
     }
     case WM_CTLCOLORSTATIC:{
@@ -1355,12 +1365,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             return 0;
         }
         case ID_STREAM_DEVICE_LAUNCH:{
+            StreamingDiag(L"Launch button clicked");
             if(g_appProbeRunning.exchange(true)){SetStatus(L"Wait for the current TV operation to finish.");return 0;}
-            LRESULT selected=SendMessageW(g_deviceAppCombo,CB_GETCURSEL,0,0);
+            LRESULT selected=SendMessageW(g_deviceAppCombo,LB_GETCURSEL,0,0);
             if(selected==CB_ERR){
                 g_appProbeRunning=false;SetStatus(L"Run Check TV apps and select a confirmed application first.");return 0;
             }
-            LRESULT choiceIndex=SendMessageW(g_deviceAppCombo,CB_GETITEMDATA,(WPARAM)selected,0);
+            LRESULT choiceIndex=SendMessageW(g_deviceAppCombo,LB_GETITEMDATA,(WPARAM)selected,0);
             if(choiceIndex==CB_ERR||choiceIndex<0||(size_t)choiceIndex>=g_streamAppChoices.size()){
                 g_appProbeRunning=false;SetStatus(L"The selected app entry is invalid. Run Check TV apps again.");return 0;
             }
@@ -1401,6 +1412,18 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         case ID_STREAM_DEVICE_CLOSE:HideDevicePanel();return 0;
         case ID_STREAM_DEVICE_LIST:
             if(HIWORD(wp)==LBN_DBLCLK)SendMessageW(hwnd,WM_COMMAND,MAKEWPARAM(ID_STREAM_DEVICE_SELECT,0),0);
+            return 0;
+        case ID_STREAM_DEVICE_APP_COMBO:
+            if(HIWORD(wp)==LBN_SELCHANGE){
+                LRESULT appSel=SendMessageW(g_deviceAppCombo,LB_GETCURSEL,0,0);
+                LRESULT appData=appSel==LB_ERR?LB_ERR:SendMessageW(g_deviceAppCombo,LB_GETITEMDATA,(WPARAM)appSel,0);
+                if(appData>=0&&(size_t)appData<g_streamAppChoices.size()){
+                    const auto &choice=g_streamAppChoices[(size_t)appData];
+                    StreamingDiag(L"App list selection index=%ld choiceIndex=%ld label=%s appId=%s dialApp=%s",
+                        (long)appSel,(long)appData,choice.label.c_str(),choice.castAppId.c_str(),choice.dialApp.c_str());
+                    SetStatus((std::wstring(L"Selected TV app: ")+choice.label+L". Click Launch app.").c_str());
+                }
+            }
             return 0;
         }
         break;
