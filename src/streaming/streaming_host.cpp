@@ -76,7 +76,7 @@ ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[kServiceCount]{};
 HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
-HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr,g_deviceAppCombo=nullptr,g_deviceLaunch=nullptr;
+HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr,g_deviceAppCombo=nullptr,g_deviceLaunch=nullptr,g_deviceAppStatus=nullptr,g_deviceAppStop=nullptr;
 bool g_devicePanelVisible=false;
 std::atomic<bool> g_appProbeRunning{false};
 struct StreamAppChoice { std::wstring label; std::wstring dialApp; bool castV2=false; std::wstring castAppId; };
@@ -96,7 +96,7 @@ bool IsStreamReceiverReady(){
 }
 
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
-constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14,ID_STREAM_DEVICE_APPS=0x7A15,ID_STREAM_DEVICE_APP_COMBO=0x7A16,ID_STREAM_DEVICE_LAUNCH=0x7A17;
+constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14,ID_STREAM_DEVICE_APPS=0x7A15,ID_STREAM_DEVICE_APP_COMBO=0x7A16,ID_STREAM_DEVICE_LAUNCH=0x7A17,ID_STREAM_DEVICE_APP_STATUS=0x7A18,ID_STREAM_DEVICE_APP_STOP=0x7A19;
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
 int g_activeService=-1;
 int g_hoverService=-1;
@@ -274,7 +274,7 @@ void LayoutDevicePanel(){
     SetWindowPos(g_deviceApps,nullptr,x+342,y+252,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceAppCombo,nullptr,x+18,y+340,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceLaunch,nullptr,x+342,y+340,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);\n    SetWindowPos(g_deviceAppStatus,nullptr,x+342,y+426,156,34,SWP_NOZORDER|SWP_NOACTIVATE);\n    SetWindowPos(g_deviceAppStop,nullptr,x+342,y+469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -422,7 +422,7 @@ void CreateDevicePanel(HWND parent){
     g_deviceLaunch=CreateWindowExW(0,L"BUTTON",L"Launch app",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LAUNCH,GetModuleHandleW(nullptr),nullptr);
-    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
+    g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",\n        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);\n    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV app",\n        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);\n    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
     SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
@@ -432,7 +432,7 @@ void CreateDevicePanel(HWND parent){
     SendMessageW(g_deviceList,LB_SETITEMHEIGHT,0,27);
     SendMessageW(g_deviceAppCombo,LB_SETITEMHEIGHT,0,30);
     EnableWindow(g_deviceAppCombo,FALSE);EnableWindow(g_deviceLaunch,FALSE);
-    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose};
+    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose,g_deviceAppStatus,g_deviceAppStop};
     ShowWindow(g_devicePanel,SW_HIDE);
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
 }
@@ -442,7 +442,7 @@ void ShowDevicePanel(){
     if(!g_devicePanel)return;
     g_devicePanelVisible=true;
     ShowWindow(g_devicePanel,SW_SHOW);
-    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose};
+    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose,g_deviceAppStatus,g_deviceAppStop};
     for(HWND control:controls)if(control)ShowWindow(control,SW_SHOW);
     LayoutDevicePanel();
     ABM_Cast_StreamDiscoveryStart();
@@ -457,7 +457,7 @@ void ShowDevicePanel(){
 void HideDevicePanel(){
     g_devicePanelVisible=false;
     KillTimer(g_window,ID_STREAM_DEVICE_TIMER);
-    HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose};
+    HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose,g_deviceAppStatus,g_deviceAppStop};
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
 }
 
@@ -1217,7 +1217,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(item->hwndItem==g_deviceSelect){DrawDeviceButton(item,L"Use selected TV",true);return TRUE;}
         if(item->hwndItem==g_deviceApps){DrawDeviceButton(item,L"Check TV apps",false);return TRUE;}
         if(item->hwndItem==g_deviceLaunch){DrawDeviceButton(item,L"Launch app",true);return TRUE;}
-        if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}
+        if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}\n        if(item->hwndItem==g_deviceAppStatus){DrawDeviceButton(item,L"Refresh app status",false);return TRUE;}\n        if(item->hwndItem==g_deviceAppStop){DrawDeviceButton(item,L"Stop TV app",false);return TRUE;}
         if(item->hwndItem==g_deviceList){DrawDeviceListItem(item);return TRUE;}
         if(item->hwndItem==g_deviceAppCombo){
             if(item->itemID==(UINT)-1)return TRUE;
