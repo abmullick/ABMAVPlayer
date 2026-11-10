@@ -1045,8 +1045,18 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SetWindowTextW(g_deviceHint,report->report.c_str());
             g_streamAppChoices=std::move(report->choices);
             SendMessageW(g_deviceAppCombo,CB_RESETCONTENT,0,0);
-            for(const auto &choice:g_streamAppChoices)SendMessageW(g_deviceAppCombo,CB_ADDSTRING,0,(LPARAM)choice.label.c_str());
-            if(!g_streamAppChoices.empty())SendMessageW(g_deviceAppCombo,CB_SETCURSEL,0,0);
+            for(size_t i=0;i<g_streamAppChoices.size();++i){
+                const auto &choice=g_streamAppChoices[i];
+                LRESULT item=SendMessageW(g_deviceAppCombo,CB_ADDSTRING,0,(LPARAM)choice.label.c_str());
+                if(item==CB_ERR||item==CB_ERRSPACE){
+                    StreamingDiag(L"App selector insertion failed choiceIndex=%zu label=%s",i,choice.label.c_str());
+                    continue;
+                }
+                SendMessageW(g_deviceAppCombo,CB_SETITEMDATA,(WPARAM)item,(LPARAM)i);
+                StreamingDiag(L"App selector item=%ld choiceIndex=%zu label=%s dialApp=%s castV2=%d castAppId=%s",
+                    (long)item,i,choice.label.c_str(),choice.dialApp.c_str(),choice.castV2?1:0,choice.castAppId.c_str());
+            }
+            if(SendMessageW(g_deviceAppCombo,CB_GETCOUNT,0,0)>0)SendMessageW(g_deviceAppCombo,CB_SETCURSEL,0,0);
             EnableWindow(g_deviceAppCombo,!g_streamAppChoices.empty());
             EnableWindow(g_deviceLaunch,!g_streamAppChoices.empty());
             SetStatus(L"TV app checks completed. Select a confirmed app endpoint and choose Launch app.");
@@ -1343,11 +1353,17 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         case ID_STREAM_DEVICE_LAUNCH:{
             if(g_appProbeRunning.exchange(true)){SetStatus(L"Wait for the current TV operation to finish.");return 0;}
             LRESULT selected=SendMessageW(g_deviceAppCombo,CB_GETCURSEL,0,0);
-            if(selected==CB_ERR||(size_t)selected>=g_streamAppChoices.size()){
+            if(selected==CB_ERR){
                 g_appProbeRunning=false;SetStatus(L"Run Check TV apps and select a confirmed application first.");return 0;
             }
+            LRESULT choiceIndex=SendMessageW(g_deviceAppCombo,CB_GETITEMDATA,(WPARAM)selected,0);
+            if(choiceIndex==CB_ERR||choiceIndex<0||(size_t)choiceIndex>=g_streamAppChoices.size()){
+                g_appProbeRunning=false;SetStatus(L"The selected app entry is invalid. Run Check TV apps again.");return 0;
+            }
             if(g_streamSelectedIndex<0){g_appProbeRunning=false;SetStatus(L"Select a TV first.");return 0;}
-            const StreamAppChoice choice=g_streamAppChoices[(size_t)selected];
+            const StreamAppChoice choice=g_streamAppChoices[(size_t)choiceIndex];
+            StreamingDiag(L"App launch selection comboIndex=%ld choiceIndex=%ld label=%s dialApp=%s castV2=%d castAppId=%s",
+                (long)selected,(long)choiceIndex,choice.label.c_str(),choice.dialApp.c_str(),choice.castV2?1:0,choice.castAppId.c_str());
             const int dialIndex=g_streamSelectedDialIndex;
             const int castV2Index=g_streamSelectedCastV2Index;
             HWND target=hwnd;
@@ -1356,6 +1372,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 std::thread([target,choice,dialIndex,castV2Index](){
                     std::wstring result;
                     if(choice.castV2){
+                        StreamingDiag(L"Dispatching Google Cast launch label=%s appId=%s receiverIndex=%d",
+                            choice.label.c_str(),choice.castAppId.c_str(),castV2Index);
                         bool ok=castV2Index>=0&&ABM_CastV2_LaunchApplication((unsigned int)castV2Index,choice.castAppId.c_str())!=FALSE;
                         if(!ok)result=L"Google Cast could not confirm the requested receiver app launch. Check GoCast diagnostics.";
                         else if(choice.castAppId==L"17608BC8")
