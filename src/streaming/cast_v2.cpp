@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <map>
+#include <cctype>
 
 #pragma comment(lib,"secur32.lib")
 #pragma comment(lib,"dnsapi.lib")
@@ -115,7 +116,7 @@ static bool MakeMdnsQuery(std::vector<unsigned char> &q) {
     }
     q.push_back(0);
     q.push_back(0);q.push_back(12); // PTR
-    q.push_back(0x80);q.push_back(1); // IN, request multicast response
+    q.push_back(0);q.push_back(1); // IN class
     return true;
 }
 struct MdnsRecord {
@@ -170,24 +171,31 @@ static void ParseMdnsPacket(const unsigned char *packet,size_t length,std::vecto
     }
 }
 void Discover() {
+    WSADATA wd{};
+    int wsa=WSAStartup(MAKEWORD(2,2),&wd);
+    if(wsa!=0){Diag(L"mDNS: WSAStartup failed=%d",wsa);g_stop=true;return;}
     SOCKET sock=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
-    if(sock==INVALID_SOCKET){Diag(L"mDNS: socket creation failed WSA=%d",WSAGetLastError());return;}
+    if(sock==INVALID_SOCKET){Diag(L"mDNS: socket creation failed WSA=%d",WSAGetLastError());WSACleanup();g_stop=true;return;}
     BOOL reuse=TRUE;
     setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,(const char*)&reuse,sizeof(reuse));
     sockaddr_in local{};local.sin_family=AF_INET;local.sin_port=htons(5353);local.sin_addr.s_addr=htonl(INADDR_ANY);
     if(bind(sock,(sockaddr*)&local,sizeof(local))==SOCKET_ERROR) {
-        Diag(L"mDNS: bind UDP 5353 failed WSA=%d",WSAGetLastError());closesocket(sock);return;
+        Diag(L"mDNS: bind UDP 5353 failed WSA=%d",WSAGetLastError());closesocket(sock);WSACleanup();g_stop=true;return;
     }
     ip_mreq membership{};membership.imr_multiaddr.s_addr=inet_addr("224.0.0.251");membership.imr_interface.s_addr=htonl(INADDR_ANY);
     if(setsockopt(sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,(const char*)&membership,sizeof(membership))==SOCKET_ERROR) {
-        Diag(L"mDNS: multicast join failed WSA=%d",WSAGetLastError());closesocket(sock);return;
+        Diag(L"mDNS: multicast join failed WSA=%d",WSAGetLastError());closesocket(sock);WSACleanup();g_stop=true;return;
     }
     DWORD timeout=1000;
     setsockopt(sock,SOL_SOCKET,SO_RCVTIMEO,(const char*)&timeout,sizeof(timeout));
+    int multicastTtl=255;
+    setsockopt(sock,IPPROTO_IP,IP_MULTICAST_TTL,(const char*)&multicastTtl,sizeof(multicastTtl));
     g_mdnsSocket.store(sock);
     sockaddr_in multicast{};multicast.sin_family=AF_INET;multicast.sin_port=htons(5353);multicast.sin_addr.s_addr=inet_addr("224.0.0.251");
     std::vector<unsigned char> query;MakeMdnsQuery(query);
     DWORD lastQuery=0;
+    std::map<std::string,Receiver> knownServices;
+    std::map<std::string,std::string> knownAddresses;
     Diag(L"mDNS: listening on UDP 5353 and joined 224.0.0.251");
     while(!g_stop.load()) {
         DWORD now=GetTickCount();
@@ -208,22 +216,20 @@ void Discover() {
         }
         std::vector<MdnsRecord> records;
         ParseMdnsPacket(packet,(size_t)got,records);
-        std::map<std::string,std::string> addresses;
-        std::map<std::string,Receiver> services;
         for(const auto &r:records) {
-            if(r.type==1&&!r.address.empty())addresses[LowerDnsName(r.owner)]=r.address;
+            if(r.type==1&&!r.address.empty())knownAddresses[LowerDnsName(r.owner)]=r.address;
             if(r.type==12&&LowerDnsName(r.owner)=="_googlecast._tcp.local"&&!r.target.empty())
-                services[LowerDnsName(r.target)].name=Wide(r.target.c_str());
+                knownServices[LowerDnsName(r.target)].name=Wide(r.target.c_str());
             if(r.type==33) {
-                auto &d=services[LowerDnsName(r.owner)];
+                auto &d=knownServices[LowerDnsName(r.owner)];
                 d.host=r.target;d.port=r.port;
             }
-            if(r.type==16&&!r.text.empty())services[LowerDnsName(r.owner)].name=Wide(r.text.c_str());
+            if(r.type==16&&!r.text.empty())knownServices[LowerDnsName(r.owner)].name=Wide(r.text.c_str());
         }
-        for(auto &entry:services) {
+        for(auto &entry:knownServices) {
             Receiver d=entry.second;
-            auto ip=addresses.find(LowerDnsName(d.host));
-            if(ip!=addresses.end())d.host=ip->second;
+            auto ip=knownAddresses.find(LowerDnsName(d.host));
+            if(ip!=knownAddresses.end())d.host=ip->second;
             if(d.host.empty()||d.port==0)continue;
             if(d.name.empty())d.name=Wide(entry.first.c_str());
             std::lock_guard<std::mutex> lock(g_mutex);
@@ -237,6 +243,8 @@ void Discover() {
     SOCKET expected=sock;
     if(g_mdnsSocket.compare_exchange_strong(expected,INVALID_SOCKET))closesocket(sock);
     Diag(L"mDNS: discovery worker stopped");
+    WSACleanup();
+    g_stop=true;
 }
 void PutVarint(std::string &o,unsigned v){while(v>=128){o.push_back((char)((v&127)|128));v>>=7;}o.push_back((char)v);}
 void PutField(std::string &o,unsigned field,const std::string &v){PutVarint(o,(field<<3)|2);PutVarint(o,(unsigned)v.size());o+=v;}
