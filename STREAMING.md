@@ -82,6 +82,12 @@ After selecting a receiver, start a video in the browser and choose **Cast video
 
 For a recognised YouTube video URL, the app uses Google Cast V2 when the selected receiver advertises a Cast service: it opens a TLS connection to port 8009, launches the YouTube receiver application, requests the MDX screen ID and sends the video through YouTube Lounge remote control. If Cast V2 is unavailable, a discovered DIAL YouTube endpoint is used as a fallback. DLNA alone cannot launch the YouTube app. YouTube MDX/Lounge is an undocumented protocol and receiver firmware or service changes can break the handoff.
 
+### Amazon Prime Video app launch
+
+When the current WebView2 page is on `primevideo.com`, **Cast video** does not attempt to extract the browser's protected video. Instead, if the selected receiver exposes a DIAL endpoint, ABM checks for the `PrimeVideo` DIAL application and sends the standard DIAL launch request. A successful response means the TV accepted the app launch; it does **not** mean a title has started playing. Use the TV remote to select a title and control playback in Amazon's official TV app.
+
+Amazon documents title casting to Chromecast/Android TV from the Prime Video Android or iOS app. The desktop browser/Streaming Centre does not implement Amazon's private phone-to-TV session protocol, copy Amazon login state, or send protected playback sessions. If the TV does not advertise the `PrimeVideo` DIAL app, use the Prime Video app directly on the TV or Amazon's official mobile Cast button. See [Amazon's Prime Video casting instructions](https://www.primevideo.com/help?nodeId=GDSGFYXXPCSAGVTH).
+
 ### Direct media URL handoff
 
 For other pages, the Streaming Centre looks for a currently active HTML video element with a direct media URL and sends that URL to the selected Google Cast or DLNA renderer using the dedicated Streaming Centre playback path. The receiver must be able to reach and decode that URL.
