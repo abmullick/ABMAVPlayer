@@ -36,6 +36,7 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 - WebView2 process-failure recovery makes a bounded number of attempts and can restore the current safe HTTP(S) page.
 - Dedicated **Find TVs** panel, separate from the main player's Playback Output selector. Discovery combines Google Cast, DLNA/UPnP and DIAL receivers; matching receiver names are consolidated.
 - **Check TV apps** runs read-only Google Cast YouTube availability and DIAL application-endpoint checks. DIAL results describe receiver-exposed app endpoints, not a complete Android TV installed-app inventory.
+- **Launch app** opens only receiver-confirmed targets: YouTube through authenticated Google Cast V2, or DIAL apps after the TV recognises their application endpoint. It launches the TV app but does not transfer a browser title, provider session or protected stream.
 - Select a receiver in the panel, then choose **Cast video**. YouTube handoff uses Google Cast V2 or a discovered DIAL YouTube endpoint. Directly addressable non-protected video URLs may be sent to compatible Cast/DLNA renderers.
 - Prime Video title casting is not supported from the desktop browser. Use the Cast button in Amazon's official Android/iOS app or open Prime Video directly on the TV. ABM AV Player does not attempt an unsupported PrimeVideo DIAL launch, transfer account sessions or relay protected playback. This is not browser-tab mirroring, and DRM-protected, encrypted, segmented or non-direct browser streams are not extracted or relayed.
 
