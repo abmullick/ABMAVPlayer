@@ -1240,6 +1240,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         switch(LOWORD(wp)){
         case ID_STREAM_DEVICE_REFRESH:
             if(g_appProbeRunning.load()){SetStatus(L"Wait for the TV application check to finish before refreshing discovery.");return 0;}
+            g_streamAppChoices.clear();SendMessageW(g_deviceAppCombo,CB_RESETCONTENT,0,0);EnableWindow(g_deviceAppCombo,FALSE);EnableWindow(g_deviceLaunch,FALSE);
             ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();ABM_CastV2_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;g_streamSelectedIsDlna=false;
             ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();ABM_Dial_StartDiscovery();ABM_CastV2_StartDiscovery();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
@@ -1251,6 +1252,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SetStatus(L"That receiver is no longer available. Refresh the list.");return 0;
             }
             const StreamReceiverRow row=g_streamReceiverRows[(size_t)selected];
+            g_streamAppChoices.clear();SendMessageW(g_deviceAppCombo,CB_RESETCONTENT,0,0);EnableWindow(g_deviceAppCombo,FALSE);EnableWindow(g_deviceLaunch,FALSE);
             StreamingDiag(L"Receiver selection row=%d cast=%d dlna=%d dial=%d castV2=%d",(int)selected,row.castIndex,row.dlnaIndex,row.dialIndex,row.castV2Index);
             bool selectedOk=false;
             g_streamSelectedDialIndex=row.dialIndex;
