@@ -1,3 +1,13 @@
+## GoCast YouTube sender
+
+Streaming Centre's native YouTube Cast handoff now uses the vendored GoCast sender implementation (MIT-licensed upstream snapshot, pinned to `6acdd297db1c4b4b3aae13b8d6591488de65130a`). The Windows build compiles `tools/gocast/cmd/abm-gocast` into `abm-gocast.exe` and packages it beside the main application. The C++ Streaming Centre host passes the selected receiver host/port and validated YouTube video ID to this helper.
+
+The GoCast path performs receiver TLS connection and Cast device-authentication challenge verification against the Cast trust anchors, queries YouTube app availability, launches the receiver app, waits for the app transport, requests the YouTube MDX screen ID, and performs the YouTube Lounge playlist handoff. It is separate from the main player's LibVLC renderer/local-casting path. The existing DIAL and DLNA paths remain available.
+
+**Build requirement:** Go 1.25 or later must be installed and available on `PATH` when running `build.bat` or `build_installer.bat`. The build downloads the Go module dependencies on first use. If Go is unavailable, the build fails rather than silently producing an installer without the sender helper.
+
+GoCast's YouTube Lounge control relies on YouTube's receiver-side MDX/Lounge behavior, which is not a stable public API. Receiver compatibility and physical TV playback must be validated on the target TV; a successful helper build does not guarantee that every Cast/Android TV firmware exposes the same YouTube app/session behavior.
+
 # Streaming Centre — User Guide and Technical Notes
 
 The ABM AV Player Streaming Centre is a separate Microsoft Edge WebView2-based browser window. It has its own navigation controls, service selector, TV discovery panel and streaming-cast playback path. Open it from the main Command Centre using **Streaming services** or **Ctrl+Shift+S**.
