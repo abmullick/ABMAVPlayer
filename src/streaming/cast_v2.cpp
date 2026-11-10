@@ -82,14 +82,15 @@ std::string CastPacket(const std::string &src,const std::string &dst,const std::
     std::string frame;unsigned n=(unsigned)p.size();frame.push_back((char)(n>>24));frame.push_back((char)(n>>16));frame.push_back((char)(n>>8));frame.push_back((char)n);frame+=p;return frame;
 }
 class CastTls {
-    SOCKET s=INVALID_SOCKET; CredHandle cred{}; CtxtHandle ctx{}; bool haveCred=false,haveCtx=false,connected=false;
+    SOCKET s=INVALID_SOCKET; CredHandle cred{}; CtxtHandle ctx{}; bool haveCred=false,haveCtx=false,connected=false,winsock=false;
     SecPkgContext_StreamSizes sizes{};
     bool SendRaw(const void *p,int n){const char *b=(const char*)p;while(n>0){int k=send(s,b,n,0);if(k<=0)return false;b+=k;n-=k;}return true;}
     bool RecvRaw(void *p,int n){char *b=(char*)p;while(n>0){int k=recv(s,b,n,0);if(k<=0)return false;b+=k;n-=k;}return true;}
 public:
     ~CastTls(){Close();}
-    void Close(){if(connected){DWORD t=SCHANNEL_SHUTDOWN;SecBuffer b{sizeof(t),SECBUFFER_TOKEN,&t};SecBufferDesc d{SECBUFFER_VERSION,1,&b};ApplyControlToken(&ctx,&d);}if(haveCtx)DeleteSecurityContext(&ctx);if(haveCred)FreeCredentialsHandle(&cred);if(s!=INVALID_SOCKET)closesocket(s);s=INVALID_SOCKET;connected=false;}
+    void Close(){if(connected){DWORD t=SCHANNEL_SHUTDOWN;SecBuffer b{sizeof(t),SECBUFFER_TOKEN,&t};SecBufferDesc d{SECBUFFER_VERSION,1,&b};ApplyControlToken(&ctx,&d);}if(haveCtx)DeleteSecurityContext(&ctx);if(haveCred)FreeCredentialsHandle(&cred);if(s!=INVALID_SOCKET)closesocket(s);s=INVALID_SOCKET;connected=false;if(winsock){WSACleanup();winsock=false;}}
     bool Connect(const std::string &host,unsigned short port) {
+        WSADATA wd{};if(WSAStartup(MAKEWORD(2,2),&wd)!=0)return false;winsock=true;
         addrinfo hints{};hints.ai_family=AF_UNSPEC;hints.ai_socktype=SOCK_STREAM;hints.ai_protocol=IPPROTO_TCP;
         addrinfo *list=nullptr;char service[16];_snprintf_s(service,sizeof(service),_TRUNCATE,"%u",port);
         if(getaddrinfo(host.c_str(),service,&hints,&list)!=0)return false;
