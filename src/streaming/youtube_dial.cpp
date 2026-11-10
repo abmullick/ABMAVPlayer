@@ -14,6 +14,7 @@
 #include <cwctype>
 #include <cstring>
 #include <cctype>
+#include <cstdarg>
 
 namespace {
 struct DialDevice { std::wstring name, appUrl; };
@@ -22,6 +23,28 @@ std::vector<DialDevice> g_devices;
 std::thread g_worker;
 std::atomic<bool> g_stop{false};
 std::wstring g_lastLaunchError;
+
+void DialDiag(const wchar_t *format,...){
+    wchar_t message[1000]{};
+    va_list args;va_start(args,format);
+    StringCchVPrintfW(message,_countof(message),format,args);
+    va_end(args);
+    SYSTEMTIME now{};GetLocalTime(&now);
+    wchar_t line[1300]{};
+    StringCchPrintfW(line,_countof(line),L"[%04u-%02u-%02u %02u:%02u:%02u.%03u] DIAL: %s\r\n",
+        now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,now.wMilliseconds,message);
+    wchar_t path[MAX_PATH]{};
+    if(GetTempPathW(_countof(path),path)){
+        StringCchCatW(path,_countof(path),L"ABMAVPlayer-GoCast-diagnostics.log");
+        HANDLE file=CreateFileW(path,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if(file!=INVALID_HANDLE_VALUE){
+            char utf8[5200]{};int bytes=WideCharToMultiByte(CP_UTF8,0,line,-1,utf8,(int)sizeof(utf8),nullptr,nullptr);
+            if(bytes>1){DWORD written=0;WriteFile(file,utf8,(DWORD)(bytes-1),&written,nullptr);}
+            CloseHandle(file);
+        }
+    }
+    OutputDebugStringW(line);
+}
 
 std::wstring Trim(std::wstring s) {
     while(!s.empty() && iswspace(s.front())) s.erase(s.begin());
@@ -84,18 +107,23 @@ void Discover() {
     BOOL reuse=TRUE;setsockopt(s,SOL_SOCKET,SO_REUSEADDR,(const char*)&reuse,sizeof(reuse));
     sockaddr_in dst{};dst.sin_family=AF_INET;dst.sin_port=htons(1900);InetPtonA(AF_INET,"239.255.255.250",&dst.sin_addr);
     const char *msg="M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: urn:dial-multiscreen-org:service:dial:1\r\n\r\n";
-    sendto(s,msg,(int)strlen(msg),0,(sockaddr*)&dst,sizeof(dst));
+    int sent=sendto(s,msg,(int)strlen(msg),0,(sockaddr*)&dst,sizeof(dst));
+    DialDiag(L"Discovery sent SSDP DIAL M-SEARCH bytes=%d WSA=%d",sent,sent==SOCKET_ERROR?WSAGetLastError():0);
     char buf[8192];
     while(!g_stop.load()) {
-        int n=recvfrom(s,buf,sizeof(buf)-1,0,nullptr,nullptr);if(n<=0)break;buf[n]=0;
+        int n=recvfrom(s,buf,sizeof(buf)-1,0,nullptr,nullptr);if(n<=0){int e=WSAGetLastError();DialDiag(L"Discovery receive ended bytes=%d WSA=%d",n,e);break;}buf[n]=0;
+        DialDiag(L"Discovery received SSDP response bytes=%d",n);
         std::string raw(buf,n),lower=raw;std::transform(lower.begin(),lower.end(),lower.begin(),[](unsigned char c){return (char)tolower(c);});
         size_t p=lower.find("\r\nlocation:");if(p==std::string::npos)continue;p+=11;while(p<raw.size()&&(raw[p]==' '||raw[p]=='\t'))++p;
         size_t e=raw.find("\r\n",p);if(e==std::string::npos)continue;
         int chars=MultiByteToWideChar(CP_UTF8,0,raw.data()+p,(int)(e-p),nullptr,0);if(chars<=0)continue;
         std::wstring location(chars,L'\0');MultiByteToWideChar(CP_UTF8,0,raw.data()+p,(int)(e-p),location.data(),chars);
         std::wstring xml,app;DWORD status=0;
-        if(!HttpRequest(location,L"GET",L"",&xml,&app,&status)||status!=200||app.empty())continue;
-        std::wstring name=XmlValue(xml,L"friendlyName");if(name.empty())name=L"YouTube TV";
+        bool descriptionOk=HttpRequest(location,L"GET",L"",&xml,&app,&status);
+        DialDiag(L"Device description GET completed transport=%d HTTP=%lu applicationUrlPresent=%d",descriptionOk?1:0,status,app.empty()?0:1);
+        if(!descriptionOk||status!=200||app.empty()){DialDiag(L"Device ignored: invalid description or missing Application-URL");continue;}
+        std::wstring name=XmlValue(xml,L"friendlyName");if(name.empty())name=L"DIAL receiver";
+        DialDiag(L"DIAL receiver discovered name=%s",name.c_str());
         if(app.back()!=L'/')app+=L'/';
         std::lock_guard<std::mutex> lock(g_lock);
         auto it=std::find_if(g_devices.begin(),g_devices.end(),[&](const DialDevice &d){return _wcsicmp(d.name.c_str(),name.c_str())==0;});
@@ -106,12 +134,14 @@ void Discover() {
 }
 }
 extern "C" void ABM_Dial_StartDiscovery(void) {
-    if(g_worker.joinable()&&!g_stop.load())return;
+    DialDiag(L"========== DIAL discovery start requested ==========");
+    if(g_worker.joinable()&&!g_stop.load()){DialDiag(L"DIAL discovery already running");return;}
     ABM_Dial_StopDiscovery();{std::lock_guard<std::mutex> l(g_lock);g_devices.clear();}
     g_stop=false;g_worker=std::thread(Discover);
 }
 extern "C" void ABM_Dial_StopDiscovery(void) {
     g_stop=true;if(g_worker.joinable())g_worker.join();
+    DialDiag(L"DIAL discovery stopped");
 }
 extern "C" unsigned int ABM_Dial_DeviceCount(void) {
     std::lock_guard<std::mutex> l(g_lock);return (unsigned int)g_devices.size();
@@ -222,14 +252,17 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
 }
 }
 extern "C" BOOL ABM_Dial_LaunchPrimeVideo(unsigned int i) {
+    DialDiag(L"Prime Video launch requested DIAL index=%u",i);
     std::wstring base;
     {
         std::lock_guard<std::mutex> lock(g_lock);
         if(i>=g_devices.size()) {
             g_lastLaunchError=L"No DIAL receiver is selected for Prime Video.";
+            DialDiag(L"Prime Video launch rejected: index out of range; DIAL device count=%u",(unsigned)g_devices.size());
             return FALSE;
         }
         base=g_devices[i].appUrl;
+        DialDiag(L"Prime Video target resolved to DIAL device name=%s",g_devices[i].name.c_str());
     }
 
     // DIAL only launches an installed TV application. It does not transfer
@@ -237,18 +270,24 @@ extern "C" BOOL ABM_Dial_LaunchPrimeVideo(unsigned int i) {
     const std::wstring appUrl=base+L"PrimeVideo";
     DWORD status=0;
     std::wstring response;
-    if(!HttpRequest(appUrl,L"GET",L"",&response,nullptr,&status) || status!=200) {
+    bool getOk=HttpRequest(appUrl,L"GET",L"",&response,nullptr,&status);
+    DialDiag(L"PrimeVideo application GET transport=%d HTTP=%lu responseChars=%u",getOk?1:0,status,(unsigned)response.size());
+    if(!getOk || status!=200) {
         g_lastLaunchError=L"This TV does not advertise the PrimeVideo DIAL application. Use the TV's Prime Video app or Amazon's official Android/iOS Cast button.";
+        DialDiag(L"PrimeVideo app not advertised; launch aborted");
         return FALSE;
     }
 
-    if(!HttpRequest(appUrl,L"POST",L"",&response,nullptr,&status) ||
-       !(status==200||status==201||status==202)) {
+    bool postOk=HttpRequest(appUrl,L"POST",L"",&response,nullptr,&status);
+    DialDiag(L"PrimeVideo application POST transport=%d HTTP=%lu",postOk?1:0,status);
+    if(!postOk || !(status==200||status==201||status==202)) {
         g_lastLaunchError=L"The TV found PrimeVideo through DIAL but rejected the app launch (HTTP "+std::to_wstring(status)+L").";
+        DialDiag(L"PrimeVideo app launch rejected");
         return FALSE;
     }
 
     g_lastLaunchError.clear();
+    DialDiag(L"PrimeVideo app launch accepted by DIAL receiver");
     return TRUE;
 }
 
