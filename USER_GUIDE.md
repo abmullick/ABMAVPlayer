@@ -269,3 +269,6 @@ The application is a media player, not a separate kernel audio/video driver.
 After selecting a TV and choosing a DIAL-exposed Netflix or Prime Video app, use **Refresh app status** to read the app's DIAL running/stopped state. **Stop TV app** sends the standard DIAL application stop request (DELETE); it closes the app and does not pause a movie.
 
 The app status is not playback status. Standard DIAL cannot tell ABM whether a title is playing, paused or buffering, and it does not provide standard pause, resume or seek commands. Those controls require a provider-supported sender session. If the provider's receiver does not expose a compatible session, use the TV remote or the provider's official mobile app. The existing YouTube handoff and local playback/casting paths are unchanged.
+
+
+**Refresh app status** queries the TV's current receiver application state and reports whether the selected Cast app is running or not running, or reads the selected DIAL app's running/stopped state. It does not report movie playback state (playing, paused or buffering).
