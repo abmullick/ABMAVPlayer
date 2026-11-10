@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #define SECURITY_WIN32
+#include "cast_v2.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
@@ -45,17 +46,17 @@ std::string Utf8(const std::wstring &s) {
 void Discover() {
     while(!g_stop.load()) {
         PDNS_RECORDA ptr=nullptr;
-        DNS_STATUS st=DnsQuery_A("_googlecast._tcp.local",DNS_TYPE_PTR,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,&ptr,nullptr);
+        DNS_STATUS st=DnsQuery_A("_googlecast._tcp.local",DNS_TYPE_PTR,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&ptr),nullptr);
         if(st==ERROR_SUCCESS&&ptr) {
             for(PDNS_RECORDA p=ptr;p&&!g_stop.load();p=p->pNext) {
                 if(p->wType!=DNS_TYPE_PTR||!p->Data.PTR.pNameHost)continue;
                 std::string instance=p->Data.PTR.pNameHost;
                 PDNS_RECORDA srv=nullptr;
-                if(DnsQuery_A(instance.c_str(),DNS_TYPE_SRV,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,&srv,nullptr)!=ERROR_SUCCESS||!srv)continue;
+                if(DnsQuery_A(instance.c_str(),DNS_TYPE_SRV,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&srv),nullptr)!=ERROR_SUCCESS||!srv)continue;
                 for(PDNS_RECORDA q=srv;q;q=q->pNext)if(q->wType==DNS_TYPE_SRV&&q->Data.SRV.pNameTarget) {
                     Receiver d;d.host=q->Data.SRV.pNameTarget;d.port=q->Data.SRV.wPort;
                     PDNS_RECORDA txt=nullptr;
-                    if(DnsQuery_A(instance.c_str(),DNS_TYPE_TEXT,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,&txt,nullptr)==ERROR_SUCCESS&&txt) {
+                    if(DnsQuery_A(instance.c_str(),DNS_TYPE_TEXT,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&txt),nullptr)==ERROR_SUCCESS&&txt) {
                         for(PDNS_RECORDA t=txt;t;t=t->pNext)if(t->wType==DNS_TYPE_TEXT&&t->Data.TXT.dwStringCount) {
                             for(DWORD k=0;k<t->Data.TXT.dwStringCount;k++) {
                                 std::string v=t->Data.TXT.pStringArray[k];
