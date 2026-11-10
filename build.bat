@@ -66,20 +66,20 @@ echo [7/11] Compiling Google Cast V2 backend...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\streaming\cast_v2.cpp /Fo:build\cast_v2.obj
 if errorlevel 1 goto build_failed
 
-echo [8/11] Building GoCast YouTube sender...
-where go >nul 2>nul
-if errorlevel 1 (
-  echo Go 1.25 or later is required to build the GoCast sender helper.
+echo [8/11] Preparing GoCast YouTube sender toolchain...
+set "GO_EXE="
+for /f "usebackq delims=" %%G in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_go.ps1`) do set "GO_EXE=%%G"
+if not defined GO_EXE (
+  echo Could not prepare the verified Go toolchain.
   goto build_failed
 )
-go version
-pushd tools\\gocast
-go build -trimpath -ldflags="-s -w" -o ..\\..\\build\\abm-gocast.exe ./cmd/abm-gocast
-if errorlevel 1 (
-  popd
+echo Using Go toolchain: "%GO_EXE%"
+"%GO_EXE%" -C tools\gocast build -trimpath -mod=mod -ldflags="-s -w" -o ..\..\build\abm-gocast.exe ./cmd/abm-gocast
+if errorlevel 1 goto build_failed
+if not exist build\abm-gocast.exe (
+  echo GoCast helper executable was not created.
   goto build_failed
 )
-popd
 
 echo [9/11] Compiling GitHub Releases updater...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\updater.cpp /Fo:build\updater.obj
