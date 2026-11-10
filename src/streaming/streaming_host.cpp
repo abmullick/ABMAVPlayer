@@ -20,6 +20,7 @@
 #include "streaming_host.h"
 #include "dlna_cast.h"
 #include "youtube_dial.h"
+#include "cast_v2.h"
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -72,8 +73,9 @@ HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
 bool g_devicePanelVisible=false;
 int g_streamSelectedIndex=-1;
 bool g_streamSelectedIsDlna=false;
-struct StreamReceiverRow { int castIndex; int dlnaIndex; int dialIndex; };
+struct StreamReceiverRow { int castIndex; int dlnaIndex; int dialIndex; int castV2Index; };
 int g_streamSelectedDialIndex=-1;
+int g_streamSelectedCastV2Index=-1;
 std::vector<StreamReceiverRow> g_streamReceiverRows;
 
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
@@ -249,12 +251,12 @@ void RefreshDevicePanel(bool force){
     unsigned int dlnaCount=ABM_Dlna_DeviceCount();
     std::vector<std::wstring> castNames(castCount),dlnaNames(dlnaCount);
     std::vector<StreamReceiverRow> rows;
-    rows.reserve(castCount+dlnaCount);
+    rows.reserve(castCount+dlnaCount+ABM_CastV2_DeviceCount());
     for(unsigned int i=0;i<castCount;i++){
         wchar_t name[256]=L"Google Cast receiver";
         if(ABM_Cast_StreamDeviceName(i,name,_countof(name))){
             castNames[i]=name;
-            rows.push_back({(int)i,-1,-1});
+            rows.push_back({(int)i,-1,-1,-1});
         }
     }
     for(unsigned int i=0;i<dlnaCount;i++){
@@ -265,7 +267,7 @@ void RefreshDevicePanel(bool force){
             return row.castIndex>=0 && SameReceiverName(castNames[(size_t)row.castIndex],name);
         });
         if(match!=rows.end())match->dlnaIndex=(int)i;
-        else rows.push_back({-1,(int)i,-1});
+        else rows.push_back({-1,(int)i,-1,-1});
     }
     unsigned int dialCount=ABM_Dial_DeviceCount();
     std::vector<std::wstring> dialNames(dialCount);
@@ -279,12 +281,27 @@ void RefreshDevicePanel(bool force){
             return false;
         });
         if(match!=rows.end())match->dialIndex=(int)i;
-        else rows.push_back({-1,-1,(int)i});
+        else rows.push_back({-1,-1,(int)i,-1});
+    }
+    unsigned int castV2Count=ABM_CastV2_DeviceCount();
+    std::vector<std::wstring> castV2Names(castV2Count);
+    for(unsigned int i=0;i<castV2Count;i++){
+        wchar_t name[256]=L"Google Cast TV";
+        if(!ABM_CastV2_DeviceName(i,name,_countof(name)))continue;
+        castV2Names[i]=name;
+        auto match=std::find_if(rows.begin(),rows.end(),[&](const StreamReceiverRow &row){
+            if(row.castIndex>=0)return SameReceiverName(castNames[(size_t)row.castIndex],name);
+            if(row.dlnaIndex>=0)return SameReceiverName(dlnaNames[(size_t)row.dlnaIndex],name);
+            if(row.dialIndex>=0)return SameReceiverName(dialNames[(size_t)row.dialIndex],name);
+            return false;
+        });
+        if(match!=rows.end())match->castV2Index=(int)i;
+        else rows.push_back({-1,-1,-1,(int)i});
     }
     if(!force && rows.size()==g_streamReceiverRows.size() &&
        std::equal(rows.begin(),rows.end(),g_streamReceiverRows.begin(),
            [](const StreamReceiverRow &a,const StreamReceiverRow &b){
-               return a.castIndex==b.castIndex && a.dlnaIndex==b.dlnaIndex && a.dialIndex==b.dialIndex;
+               return a.castIndex==b.castIndex && a.dlnaIndex==b.dlnaIndex && a.dialIndex==b.dialIndex && a.castV2Index==b.castV2Index;
            })) return;
     g_streamReceiverRows=rows;
     SendMessageW(g_deviceList,LB_RESETCONTENT,0,0);
@@ -293,9 +310,12 @@ void RefreshDevicePanel(bool force){
         if(row.castIndex>=0)name=castNames[(size_t)row.castIndex];
         else if(row.dlnaIndex>=0)name=dlnaNames[(size_t)row.dlnaIndex];
         else if(row.dialIndex>=0)name=dialNames[(size_t)row.dialIndex];
+        else if(row.castV2Index>=0)name=castV2Names[(size_t)row.castV2Index];
         std::wstring label=row.castIndex>=0&&row.dlnaIndex>=0?L"[Google Cast + DLNA] ":
-            row.castIndex>=0?L"[Google Cast] ":row.dlnaIndex>=0?L"[DLNA] ":L"[YouTube DIAL] ";
-        if(row.dialIndex>=0 && (row.castIndex>=0||row.dlnaIndex>=0))label=L"[YouTube + "+label.substr(1);
+            row.castIndex>=0?L"[Google Cast] ":row.dlnaIndex>=0?L"[DLNA] ":
+            row.dialIndex>=0?L"[YouTube DIAL] ":L"[Google Cast V2] ";
+        if(row.dialIndex>=0 && (row.castIndex>=0||row.dlnaIndex>=0||row.castV2Index>=0))label=L"[YouTube + "+label.substr(1);
+        else if(row.castV2Index>=0 && row.castIndex>=0)label=L"[Google Cast + V2] ";
         label+=name;
         SendMessageW(g_deviceList,LB_ADDSTRING,0,(LPARAM)label.c_str());
     }
@@ -349,6 +369,7 @@ void ShowDevicePanel(){
     ABM_Cast_StreamDiscoveryStart();
     ABM_Dlna_StartDiscovery();
     ABM_Dial_StartDiscovery();
+    ABM_CastV2_StartDiscovery();
     RefreshDevicePanel(true);
     SetTimer(g_window,ID_STREAM_DEVICE_TIMER,800,nullptr);
     SetStatus(L"Searching for TVs. Select a receiver in this panel; local-media casting remains separate.");
@@ -629,7 +650,11 @@ void CastCurrentBrowserVideo(){
                 std::wstring payload=value+1;size_t quote=payload.find(L'"');if(quote!=std::wstring::npos)payload.resize(quote);
                 if(payload.rfind(L"YT:",0)==0){
                     std::wstring id=payload.substr(3);
-                    if(g_streamSelectedDialIndex>=0){
+                    if(g_streamSelectedCastV2Index>=0){
+                        if(ABM_CastV2_LaunchYouTube(id.c_str()))
+                            SetStatus(L"Google Cast V2 accepted the YouTube handoff. Check the TV for playback.");
+                        else { wchar_t reason[256]{}; if(ABM_CastV2_LastError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"Google Cast V2 YouTube handoff failed."); }
+                    }else if(g_streamSelectedDialIndex>=0){
                         if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
                             SetStatus(L"YouTube accepted the video handoff. Check the TV for playback.");
                         else { wchar_t reason[256]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"YouTube app launch or remote-control handoff failed."); }
@@ -1118,8 +1143,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_COMMAND:{
         switch(LOWORD(wp)){
         case ID_STREAM_DEVICE_REFRESH:
-            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedIsDlna=false;
-            ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();ABM_Dial_StartDiscovery();RefreshDevicePanel(true);
+            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();ABM_CastV2_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;g_streamSelectedIsDlna=false;
+            ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();ABM_Dial_StartDiscovery();ABM_CastV2_StartDiscovery();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
         case ID_STREAM_DEVICE_SELECT:{
             LRESULT selected=SendMessageW(g_deviceList,LB_GETCURSEL,0,0);
@@ -1130,6 +1155,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             const StreamReceiverRow row=g_streamReceiverRows[(size_t)selected];
             bool selectedOk=false;
             g_streamSelectedDialIndex=row.dialIndex;
+            g_streamSelectedCastV2Index=row.castV2Index;
+            if(row.castV2Index>=0)ABM_CastV2_SelectDevice((unsigned int)row.castV2Index);
             /* Prefer Google Cast when the same TV advertises both protocols.
                DLNA remains selectable automatically when it is the only route. */
             if(row.castIndex>=0){
@@ -1148,7 +1175,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SendMessageW(g_deviceList,LB_GETTEXT,selected,(LPARAM)name);
                 SetStatus((std::wstring(L"Streaming Centre selected: ")+name+L". Now choose Cast video.").c_str());
                 SetWindowTextW(g_deviceHint,(std::wstring(L"Selected: ")+name).c_str());
-            }else {g_streamSelectedDialIndex=-1;SetStatus(L"That receiver is no longer available. Refresh the list.");}
+            }else {g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;SetStatus(L"That receiver is no longer available. Refresh the list.");}
             return 0;
         }
         case ID_STREAM_DEVICE_CLOSE:HideDevicePanel();return 0;
