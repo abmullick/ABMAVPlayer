@@ -121,7 +121,7 @@ extern "C" BOOL ABM_Dial_DeviceName(unsigned int i,wchar_t *b,unsigned int c) {
 }
 
 namespace {
-std::wstring ToWide(const std::string &v) { if(v.empty())return {};int n=MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,nullptr,0);if(n<=1)return {};std::wstring w((size_t)n-1,L'\0');MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,w.data(),n);return w; }
+std::wstring ToWide(const std::string &v) { if(v.empty())return {};int n=MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,nullptr,0);if(n<=1)return {};std::wstring w((size_t)n,L'\0');MultiByteToWideChar(CP_UTF8,0,v.c_str(),-1,w.data(),n);w.resize((size_t)n-1);return w; }
 std::string ToUtf8(const std::wstring &v) {
     if(v.empty())return {};
     int n=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,v.data(),(int)v.size(),nullptr,0,nullptr,nullptr);
@@ -206,12 +206,15 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     if(!LoungePost(path,"",response,&status)){error="YouTube remote session failed (HTTP "+std::to_string(status)+").";return false;}
     std::string sid=FrameString(response,"[\"c\",\"");
     std::string gs=FrameString(response,"[\"S\",\"");
+    std::string aid; size_t sidPos=response.find("[\"c\",\""); if(sidPos!=std::string::npos){size_t first=response.find('"',sidPos+6);if(first!=std::string::npos){size_t second=response.find('"',first+1);if(second!=std::string::npos){size_t third=response.find('"',second+1);if(third!=std::string::npos){size_t fourth=response.find('"',third+1);if(fourth!=std::string::npos)aid=response.substr(third+1,fourth-third-1);}}}}
     if(sid.empty()||gs.empty()){error="YouTube did not return a valid remote-control session.";return false;}
     std::string body="count=1&req0__sc=setPlaylist&req0_currentIndex=0&req0_currentTime=0&req0_videoId="+FormEncode(video)+"&req0_videoIds="+FormEncode(video);
     std::wstring cmd=L"/api/lounge/bc/bind?CVER=1&RID=2&VER=8&SID=";
     for(char ch:FormEncode(sid))cmd+=(wchar_t)ch;cmd+=L"&gsessionid=";
     for(char ch:FormEncode(gs))cmd+=(wchar_t)ch;cmd+=L"&loungeIdToken=";
     for(char ch:FormEncode(token))cmd+=(wchar_t)ch;
+    if(!aid.empty()){cmd+=L"&AID=";for(char ch:FormEncode(aid))cmd+=(wchar_t)ch;}
+    cmd+=L"&app=youtube-desktop&device=REMOTE_CONTROL&name=ABM%20AV%20Player&v=2";
     if(!LoungePost(cmd,body,response,&status)){error="YouTube rejected the video command (HTTP "+std::to_string(status)+").";return false;}
     if(response.find("error")!=std::string::npos||response.find("ERROR")!=std::string::npos){error="YouTube reported an error while accepting the video.";return false;}
     return true;
