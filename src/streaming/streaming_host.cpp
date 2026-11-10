@@ -632,7 +632,7 @@ void CastCurrentBrowserVideo(){
                     if(g_streamSelectedDialIndex>=0){
                         if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
                             SetStatus(L"YouTube accepted the video handoff. Check the TV for playback.");
-                        else SetStatus(L"YouTube app launch or remote-control handoff failed. The TV may not expose a compatible YouTube screen ID or Lounge service.");
+                        else { wchar_t reason[256]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"YouTube app launch or remote-control handoff failed."); }
                     }else if(g_streamSelectedIsDlna)
                         SetStatus(L"This TV is selected through DLNA only. YouTube requires its DIAL or Google Cast app-control service; DLNA cannot launch the YouTube app.");
                     else SetStatus(L"This receiver has no discovered YouTube app-control endpoint. Generic URL casting cannot launch YouTube.");
