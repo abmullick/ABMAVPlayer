@@ -256,15 +256,15 @@ void LayoutDevicePanel(){
     RECT rc{};GetClientRect(g_window,&rc);
     int x=rc.right-530;if(x<12)x=12;
     int y=64;
-    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,360,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,390,SWP_NOACTIVATE|SWP_SHOWWINDOW);
     /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
     SetWindowPos(g_deviceTitle,nullptr,x+18,y+12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,88,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceList,nullptr,x+18,y+136,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+136,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceSelect,nullptr,x+342,y+179,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceApps,nullptr,x+342,y+222,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+308,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,118,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,x+18,y+166,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+166,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,x+342,y+209,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceApps,nullptr,x+342,y+252,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+338,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -365,7 +365,7 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_OWNERDRAW,0,0,516,360,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_OWNERDRAW,0,0,516,390,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
@@ -400,7 +400,7 @@ void ShowDevicePanel(){
     if(!g_devicePanel)return;
     g_devicePanelVisible=true;
     ShowWindow(g_devicePanel,SW_SHOW);
-    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
+    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceClose};
     for(HWND control:controls)if(control)ShowWindow(control,SW_SHOW);
     LayoutDevicePanel();
     ABM_Cast_StreamDiscoveryStart();
