@@ -128,18 +128,50 @@ public:
         return SendRaw(buf.data(),(int)(b[0].cbBuffer+b[1].cbBuffer+b[2].cbBuffer));
     }
     bool Receive(std::string &data) {
-        data.clear();std::vector<char> buf(65536);int used=0;
-        for(int loops=0;loops<8;loops++){
-            if(used==(int)buf.size())return false;
-            int got=recv(s,buf.data()+used,(int)buf.size()-used,0);if(got<=0)return false;used+=got;
-            SecBuffer b[4]={{(ULONG)used,SECBUFFER_DATA,buf.data()},{0,SECBUFFER_EMPTY,nullptr},{0,SECBUFFER_EMPTY,nullptr},{0,SECBUFFER_EMPTY,nullptr}};
-            SecBufferDesc d{SECBUFFER_VERSION,4,b};SECURITY_STATUS st=DecryptMessage(&ctx,&d,0,nullptr);
+        // Cast is a byte stream layered over TLS. TLS record boundaries do not
+        // correspond to Cast frame boundaries, so retain plaintext until an
+        // entire 4-byte-length-prefixed Cast frame is available.
+        data.clear();
+        std::vector<char> encrypted(65536);
+        std::string pending;
+        int used=0;
+        for(int loops=0;loops<32;loops++) {
+            if(pending.size()>=4) {
+                unsigned n=((unsigned char)pending[0]<<24)|
+                           ((unsigned char)pending[1]<<16)|
+                           ((unsigned char)pending[2]<<8)|
+                           (unsigned char)pending[3];
+                if(n==0||n>1024*1024)return false;
+                if(pending.size()>=(size_t)n+4) {
+                    data.assign(pending.data(),(size_t)n+4);
+                    return true;
+                }
+            }
+            if(used==(int)encrypted.size())return false;
+            int got=recv(s,encrypted.data()+used,(int)encrypted.size()-used,0);
+            if(got<=0)return false;
+            used+=got;
+            SecBuffer b[4]={{(ULONG)used,SECBUFFER_DATA,encrypted.data()},
+                            {0,SECBUFFER_EMPTY,nullptr},{0,SECBUFFER_EMPTY,nullptr},
+                            {0,SECBUFFER_EMPTY,nullptr}};
+            SecBufferDesc d{SECBUFFER_VERSION,4,b};
+            SECURITY_STATUS st=DecryptMessage(&ctx,&d,0,nullptr);
             if(st==SEC_E_INCOMPLETE_MESSAGE)continue;
             if(st!=SEC_E_OK&&st!=SEC_I_RENEGOTIATE)return false;
-            for(auto &x:b)if(x.BufferType==SECBUFFER_DATA&&x.cbBuffer)data.append((char*)x.pvBuffer,x.cbBuffer);
-            if(!data.empty())return true;
-            return false;
-        }return false;
+            for(auto &x:b) {
+                if(x.BufferType==SECBUFFER_DATA&&x.cbBuffer)
+                    pending.append((const char*)x.pvBuffer,x.cbBuffer);
+            }
+            // Preserve encrypted bytes following the TLS record. SChannel may
+            // return them as SECBUFFER_EXTRA when TCP coalesces records.
+            int extra=0;
+            for(auto &x:b)if(x.BufferType==SECBUFFER_EXTRA)extra=(int)x.cbBuffer;
+            if(extra>0) {
+                memmove(encrypted.data(),encrypted.data()+used-extra,(size_t)extra);
+                used=extra;
+            } else used=0;
+        }
+        return false;
     }
 };
 std::string JsonValue(const std::string &j,const char *key) {
