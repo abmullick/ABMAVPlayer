@@ -97,7 +97,7 @@ public:
         for(addrinfo *a=list;a;a=a->ai_next){s=socket(a->ai_family,a->ai_socktype,a->ai_protocol);if(s!=INVALID_SOCKET&&connect(s,a->ai_addr,(int)a->ai_addrlen)==0)break;if(s!=INVALID_SOCKET)closesocket(s);s=INVALID_SOCKET;}
         freeaddrinfo(list);if(s==INVALID_SOCKET)return false;
         DWORD ioTimeout=5000;setsockopt(s,SOL_SOCKET,SO_RCVTIMEO,(const char*)&ioTimeout,sizeof(ioTimeout));setsockopt(s,SOL_SOCKET,SO_SNDTIMEO,(const char*)&ioTimeout,sizeof(ioTimeout));
-        SCHANNEL_CRED sc{};sc.dwVersion=SCHANNEL_CRED_VERSION;sc.dwFlags=SCH_CRED_MANUAL_CRED_VALIDATION|SCH_CRED_NO_DEFAULT_CREDS|SCH_CRED_REVOCATION_CHECKS_OFF;
+        SCHANNEL_CRED sc{};sc.dwVersion=SCHANNEL_CRED_VERSION;sc.dwFlags=SCH_CRED_MANUAL_CRED_VALIDATION|SCH_CRED_NO_DEFAULT_CREDS;
         TimeStamp expiry{};SECURITY_STATUS ss=AcquireCredentialsHandleW(nullptr,const_cast<wchar_t*>(UNISP_NAME_W),SECPKG_CRED_OUTBOUND,nullptr,&sc,nullptr,nullptr,&cred,&expiry);
         if(ss!=SEC_E_OK)return false;haveCred=true;
         DWORD req=ISC_REQ_SEQUENCE_DETECT|ISC_REQ_REPLAY_DETECT|ISC_REQ_CONFIDENTIALITY|ISC_REQ_EXTENDED_ERROR|ISC_REQ_ALLOCATE_MEMORY|ISC_REQ_STREAM;
