@@ -260,7 +260,9 @@ void LayoutDevicePanel(){
     RECT rc{};GetClientRect(g_window,&rc);
     int x=rc.right-530;if(x<12)x=12;
     int y=64;
-    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,430,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    /* The app selector was laid out below the old 430px panel and was
+       clipped/covered by the browser. Keep the full app-control row inside. */
+    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,520,SWP_NOACTIVATE|SWP_SHOWWINDOW);
     /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
     SetWindowPos(g_deviceTitle,nullptr,x+18,y+12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,118,SWP_NOZORDER|SWP_NOACTIVATE);
@@ -1080,6 +1082,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,14,14);
             SelectObject(item->hDC,oldBrush);SelectObject(item->hDC,oldPen);DeleteObject(pen);
             RECT accent={r.left+16,r.top+157,r.right-16,r.top+158};FillRectColor(item->hDC,accent,RGBc(38,112,119));
+            RECT appDivider={r.left+16,r.top+326,r.right-16,r.top+327};FillRectColor(item->hDC,appDivider,RGBc(38,112,119));
             return TRUE;
         }
         if(item->hwndItem==g_deviceRefresh){DrawDeviceButton(item,L"Refresh devices",false);return TRUE;}
