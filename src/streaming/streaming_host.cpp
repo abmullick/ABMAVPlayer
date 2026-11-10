@@ -1264,31 +1264,30 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SetStatus(L"Checking which streaming app endpoints this TV exposes…");
             try{
                 std::thread([target,dialIndex,castV2Index](){
-                    std::wstring report=L"TV application capability checks (read-only):\r\n";
+                    std::wstring report=L"TV app checks (read-only):\r\n";
                     if(castV2Index>=0){
                         int castResult=ABM_CastV2_CheckYouTubeAvailability((unsigned int)castV2Index);
-                        report+=L"Google Cast / YouTube: ";
+                        report+=L"Cast YouTube: ";
                         if(castResult==1)report+=L"APP_AVAILABLE";
                         else if(castResult==0)report+=L"APP_UNAVAILABLE";
                         else report+=L"query failed";
                         report+=L"\r\n";
-                    }else report+=L"Google Cast app availability: no Cast V2 endpoint\r\n";
+                    }else report+=L"Cast YouTube: no Cast V2 endpoint\r\n";
                     if(dialIndex>=0){
                         const wchar_t *apps[]={L"YouTube",L"Netflix",L"PrimeVideo",L"JioHotstar",L"SonyLIV",L"ZEE5"};
-                        report+=L"DIAL application endpoints:\r\n";
                         for(const wchar_t *app:apps){
                             int result=ABM_Dial_QueryApplication((unsigned int)dialIndex,app);
-                            report+=app;report+=L": ";
+                            report+=L"DIAL ";report+=app;report+=L": ";
                             if(result==1)report+=L"recognized — running";
                             else if(result==2)report+=L"recognized — stopped";
-                            else if(result==3)report+=L"recognized — state not reported";
-                            else if(result==0)report+=L"not exposed by DIAL";
+                            else if(result==3)report+=L"recognized — state unknown";
+                            else if(result==0)report+=L"not exposed";
                             else if(result==-1)report+=L"query failed";
                             else report+=L"unexpected response";
                             report+=L"\r\n";
                         }
-                    }else report+=L"DIAL app endpoints: not exposed by this receiver\r\n";
-                    report+=L"Note: DIAL 404 means the app name is not exposed by this TV's DIAL service; it does not prove the app is absent from Android TV.";
+                    }else report+=L"DIAL apps: no DIAL endpoint\r\n";
+                    report+=L"DIAL 404 = not exposed by DIAL; the Android TV app may still be installed.";
                     g_appProbeRunning=false;
                     auto *payload=new std::wstring(std::move(report));
                     if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APPS_READY,0,(LPARAM)payload))delete payload;
