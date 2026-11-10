@@ -169,3 +169,14 @@ The Streaming Centre monitors WebView2 process failure. It makes a bounded numbe
 - A dedicated LibVLC media-player instance is used for supported direct-URL casting from the Streaming Centre.
 - Local media playback and the main player's local receiver selection remain independent.
 - Provider access, protected playback, subscriptions and content availability are controlled by each provider.
+
+
+## Netflix and Prime Video receiver controls
+
+Launching Netflix or Prime Video on a TV is a separate operation from transferring a browser title. The Streaming Centre does not copy provider credentials, DRM sessions or protected browser media to the receiver. Netflix and Prime Video desktop-browser title handoff is not implemented.
+
+For a selected application exposed through the TV's DIAL endpoint, **Refresh app status** reads the standard DIAL application state (running/stopped/unknown), and **Stop TV app** sends the standard DIAL application DELETE request. This stops the application; it is not a playback pause command. Standard DIAL does not report whether a title is playing, paused or buffering and does not define provider playback seek/resume commands.
+
+Pause, resume, seek and title metadata require a provider-compatible control session. Google Cast's standard media namespace defines these commands, but they are usable only when the running receiver application exposes/supports that media protocol and its session. A successful app launch alone does not establish such a media session. ABM therefore does not display false playback status or claim pause/resume support for Netflix or Prime Video. Use the TV remote or the provider's official mobile app for playback control when no supported sender session is available.
+
+These app-control additions are confined to the Streaming Centre's DIAL app endpoint. They do not change local playback, local VLC renderer casting or the existing YouTube Cast handoff.
