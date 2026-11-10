@@ -87,6 +87,7 @@ bool g_streamSelectedIsDlna=false;
 struct StreamReceiverRow { int castIndex; int dlnaIndex; int dialIndex; int castV2Index; };
 int g_streamSelectedDialIndex=-1;
 int g_streamSelectedCastV2Index=-1;
+std::wstring g_streamSelectedReceiverName;
 std::vector<StreamReceiverRow> g_streamReceiverRows;
 bool IsStreamReceiverReady(){
     if(g_streamSelectedIndex<0 || (size_t)g_streamSelectedIndex>=g_streamReceiverRows.size())return false;
@@ -340,6 +341,29 @@ void RefreshDevicePanel(bool force){
         });
         if(match!=rows.end())match->castV2Index=(int)i;
         else rows.push_back({-1,-1,-1,(int)i});
+    }
+    /* Keep the chosen TV bound to its identity, not to discovery-array
+       indices. Cast/DIAL discovery can append or reorder receivers while the
+       panel is open; stale indices otherwise launch against the wrong TV. */
+    if(!g_streamSelectedReceiverName.empty()){
+        auto selectedRow=std::find_if(rows.begin(),rows.end(),[&](const StreamReceiverRow &row){
+            if(row.castIndex>=0 && SameReceiverName(castNames[(size_t)row.castIndex],g_streamSelectedReceiverName))return true;
+            if(row.dlnaIndex>=0 && SameReceiverName(dlnaNames[(size_t)row.dlnaIndex],g_streamSelectedReceiverName))return true;
+            if(row.dialIndex>=0 && SameReceiverName(dialNames[(size_t)row.dialIndex],g_streamSelectedReceiverName))return true;
+            if(row.castV2Index>=0 && SameReceiverName(castV2Names[(size_t)row.castV2Index],g_streamSelectedReceiverName))return true;
+            return false;
+        });
+        if(selectedRow!=rows.end()){
+            g_streamSelectedIndex=(int)std::distance(rows.begin(),selectedRow);
+            g_streamSelectedDialIndex=selectedRow->dialIndex;
+            g_streamSelectedCastV2Index=selectedRow->castV2Index;
+            if(selectedRow->castV2Index>=0)ABM_CastV2_SelectDevice((unsigned int)selectedRow->castV2Index);
+        }else{
+            g_streamSelectedIndex=-1;
+            g_streamSelectedDialIndex=-1;
+            g_streamSelectedCastV2Index=-1;
+            g_streamSelectedIsDlna=false;
+        }
     }
     if(!force && rows.size()==g_streamReceiverRows.size() &&
        std::equal(rows.begin(),rows.end(),g_streamReceiverRows.begin(),
@@ -699,7 +723,7 @@ void CastCurrentBrowserVideo(){
     }
     SetStatus(L"Checking the current service for a supported TV handoff…");
     HRESULT hr=g_webView->ExecuteScript(
-        L"(()=>{const host=location.hostname.toLowerCase().replace(/^www\\./,'');if(host==='primevideo.com'||host.endsWith('.primevideo.com'))return 'PRIMEVIDEO';const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
+        L"(()=>{const host=location.hostname.toLowerCase().replace(/^www\\./,'');if(host==='primevideo.com'||host.endsWith('.primevideo.com'))return 'PRIMEVIDEO';if(host==='netflix.com'||host.endsWith('.netflix.com'))return 'NETFLIX';const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{11}$/.test(s);const ids=[];const addUrl=raw=>{try{const u=new URL(raw,location.href);const h=u.hostname.toLowerCase().replace(/^www\\./,'');if(h==='youtu.be'){ids.push(u.pathname.split('/').filter(Boolean)[0]||'');return;}if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){ids.push(u.searchParams.get('v')||'');const m=u.pathname.match(/^\\/(?:shorts|embed|live|v)\\/([A-Za-z0-9_-]{11})(?:[/?]|$)/);if(m)ids.push(m[1]);}}catch(e){}};addUrl(location.href);const canonical=document.querySelector('link[rel=canonical]');if(canonical)addUrl(canonical.href);const og=document.querySelector('meta[property=\\'og:url\\']');if(og)addUrl(og.content);const flexy=document.querySelector('ytd-watch-flexy');if(flexy)ids.push(flexy.getAttribute('video-id')||'');try{ids.push(window.ytInitialPlayerResponse?.videoDetails?.videoId||'');}catch(e){}try{ids.push(window.ytplayer?.config?.args?.video_id||'');}catch(e){}const id=ids.find(valid);if(id)return 'YT:'+id;const vs=[...document.querySelectorAll('video')].filter(v=>v.currentSrc&&v.readyState>=2&&!/^blob:|^data:/i.test(v.currentSrc));if(!vs.length)return 'NONE';vs.sort((a,b)=>(b.videoWidth*b.videoHeight)-(a.videoWidth*a.videoHeight));return 'URL:'+encodeURIComponent(vs[0].currentSrc);})()",
         Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
             [](HRESULT result,LPCWSTR value)->HRESULT{
                 StreamingDiag(L"Page inspection callback HRESULT=0x%08X valuePresent=%d",(unsigned)result,value?1:0);
@@ -710,6 +734,10 @@ void CastCurrentBrowserVideo(){
                 StreamingDiag(L"Page inspection classification=%s",
                     payload==L"PRIMEVIDEO"?L"PRIMEVIDEO":payload.rfind(L"YT:",0)==0?L"YOUTUBE":
                     payload.rfind(L"URL:",0)==0?L"DIRECT_URL":L"NO_VIDEO");
+                if(payload==L"NETFLIX"){
+                    SetStatus(L"Netflix desktop-browser title casting is not supported. Launch Netflix on the TV, then use its remote or the official Netflix mobile app to control playback. DRM-protected browser playback is not relayed.");
+                    return S_OK;
+                }
                 if(payload==L"PRIMEVIDEO"){
                     StreamingDiag(L"Prime Video desktop handoff unavailable; no DIAL launch attempted");
                     SetStatus(L"Prime Video title handoff is not implemented. Check TV apps to test the experimental Google Cast receiver ID 17608BC8; if available, Launch app can open its receiver. This does not transfer a title or Amazon session. Use Amazon's official mobile Cast button for playback. Protected playback is not extracted or relayed.");
@@ -1072,7 +1100,11 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_APP_DIAL_APPS_READY:{
         std::unique_ptr<DialAppProbePayload> report((DialAppProbePayload*)lp);
         if(report&&g_devicePanelVisible){
-            SetWindowTextW(g_deviceHint,report->report.c_str());
+            /* Detailed endpoint diagnostics go to the log, not a second
+               competing on-screen app list. The selectable list below is the
+               single source of truth for what can actually be launched. */
+            StreamingDiag(L"%s",report->report.c_str());
+            SetWindowTextW(g_deviceHint,L"Select an available TV app below, then choose Launch app.");
             g_streamAppChoices=std::move(report->choices);
             SendMessageW(g_deviceAppCombo,LB_RESETCONTENT,0,0);
             for(size_t i=0;i<g_streamAppChoices.size();++i){
@@ -1090,7 +1122,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SendMessageW(g_deviceAppCombo,LB_SETCURSEL,(WPARAM)-1,0);
             EnableWindow(g_deviceAppCombo,!g_streamAppChoices.empty());
             EnableWindow(g_deviceLaunch,!g_streamAppChoices.empty());
-            SetStatus(L"TV app checks completed. Select a confirmed app endpoint and choose Launch app.");
+            SetStatus(L"TV app checks completed. Select an available app in the list and choose Launch app.");
         }
         return 0;
     }
@@ -1297,7 +1329,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         case ID_STREAM_DEVICE_REFRESH:
             if(g_appProbeRunning.load()){SetStatus(L"Wait for the TV application check to finish before refreshing discovery.");return 0;}
             g_streamAppChoices.clear();SendMessageW(g_deviceAppCombo,CB_RESETCONTENT,0,0);EnableWindow(g_deviceAppCombo,FALSE);EnableWindow(g_deviceLaunch,FALSE);
-            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();ABM_CastV2_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;g_streamSelectedIsDlna=false;
+            ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();ABM_CastV2_StopDiscovery();g_streamSelectedIndex=-1;g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;g_streamSelectedIsDlna=false;g_streamSelectedReceiverName.clear();
             ABM_Cast_StreamDiscoveryStart();ABM_Dlna_StartDiscovery();ABM_Dial_StartDiscovery();ABM_CastV2_StartDiscovery();RefreshDevicePanel(true);
             SetStatus(L"Refreshing network receiver discovery…");return 0;
         case ID_STREAM_DEVICE_SELECT:{
@@ -1308,6 +1340,11 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SetStatus(L"That receiver is no longer available. Refresh the list.");return 0;
             }
             const StreamReceiverRow row=g_streamReceiverRows[(size_t)selected];
+            g_streamSelectedReceiverName.clear();
+            if(row.castIndex>=0){wchar_t n[256]{};if(ABM_Cast_StreamDeviceName((unsigned int)row.castIndex,n,_countof(n)))g_streamSelectedReceiverName=n;}
+            if(g_streamSelectedReceiverName.empty()&&row.dlnaIndex>=0){wchar_t n[256]{};if(ABM_Dlna_DeviceName((unsigned int)row.dlnaIndex,n,_countof(n)))g_streamSelectedReceiverName=n;}
+            if(g_streamSelectedReceiverName.empty()&&row.dialIndex>=0){wchar_t n[256]{};if(ABM_Dial_DeviceName((unsigned int)row.dialIndex,n,_countof(n)))g_streamSelectedReceiverName=n;}
+            if(g_streamSelectedReceiverName.empty()&&row.castV2Index>=0){wchar_t n[256]{};if(ABM_CastV2_DeviceName((unsigned int)row.castV2Index,n,_countof(n)))g_streamSelectedReceiverName=n;}
             g_streamAppChoices.clear();SendMessageW(g_deviceAppCombo,CB_RESETCONTENT,0,0);EnableWindow(g_deviceAppCombo,FALSE);EnableWindow(g_deviceLaunch,FALSE);
             StreamingDiag(L"Receiver selection row=%d cast=%d dlna=%d dial=%d castV2=%d",(int)selected,row.castIndex,row.dlnaIndex,row.dialIndex,row.castV2Index);
             bool selectedOk=false;
