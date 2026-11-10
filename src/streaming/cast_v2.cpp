@@ -459,6 +459,11 @@ int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t 
         if(output.find("\"availability\":\"APP_NOT_RUNNING\"")!=std::string::npos)return 0;
         return -1;
     }
+    if(wcscmp(mode,L"--app-status")==0){
+        if(output.find("\"availability\":\"APP_RUNNING\"")!=std::string::npos)return 1;
+        if(output.find("\"availability\":\"APP_NOT_RUNNING\"")!=std::string::npos)return 0;
+        return -1;
+    }
     if(launch)return output.find("\"launched\":true")!=std::string::npos?1:0;
     if(output.find("\"availability\":\"APP_AVAILABLE\"")!=std::string::npos)return 1;
     if(output.find("\"availability\":\"APP_UNAVAILABLE\"")!=std::string::npos)return 0;
