@@ -547,6 +547,16 @@ extern "C" int ABM_CastV2_CheckApplicationAvailability(unsigned int i,const wcha
     }
     return CheckCastAppAvailability(receiver,appId);
 }
+extern "C" int ABM_CastV2_StopApplication(unsigned int i,const wchar_t *appId) {
+    Receiver receiver;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if(i>=g_receivers.size())return -1;
+        receiver=g_receivers[i];
+    }
+    int result=RunCastAppHelper(receiver,L"--stop-app",appId,true);
+    return result;
+}
 extern "C" BOOL ABM_CastV2_LaunchApplication(unsigned int i,const wchar_t *appId) {
     Receiver receiver;
     {
