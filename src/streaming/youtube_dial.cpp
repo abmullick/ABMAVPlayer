@@ -4,6 +4,7 @@
 #include <windows.h>
 #include "youtube_dial.h"
 #include <winhttp.h>
+#include <strsafe.h>
 #include <atomic>
 #include <mutex>
 #include <thread>
