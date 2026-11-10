@@ -425,8 +425,12 @@ void CreateDevicePanel(HWND parent){
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LAUNCH,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",
-        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);\n    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV app",
-        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,\n        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);\n    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);
+    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV app",
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);
+    g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
     SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
