@@ -1508,8 +1508,18 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                                 if(recognised)break;
                             }
                         }
-                    }else report+=L"DIAL apps: no DIAL endpoint\r\n";
-                    report+=L"DIAL 404 = this app-name variant is not exposed by DIAL; the Android TV app may still be installed.";
+                        /* Keep explicit manual launch attempts visible even
+                           when DIAL GET reports 404. Some receiver firmware
+                           implements POST launch but does not provide a useful
+                           GET state document. The launch result remains
+                           authoritative; these entries are clearly labelled
+                           as unverified attempts. */
+                        payload->choices.push_back({L"SonyLIV — try DIAL launch",L"SonyLIV",false});
+                        payload->choices.push_back({L"SonyLiv — try DIAL launch",L"SonyLiv",false});
+                        payload->choices.push_back({L"ZEE5 — try DIAL launch",L"ZEE5",false});
+                        payload->choices.push_back({L"Zee5 — try DIAL launch",L"Zee5",false});
+                    }else report+=L"DIAL apps: no DIAL endpoint; manual SonyLIV/ZEE5 launch requires a DIAL endpoint.\r\n";
+                    report+=L"DIAL 404 = this app-name variant is not exposed by DIAL; manual entries below try POST anyway.";
                     g_appProbeRunning=false;
                     if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APPS_READY,0,(LPARAM)payload))delete payload;
                 }).detach();
