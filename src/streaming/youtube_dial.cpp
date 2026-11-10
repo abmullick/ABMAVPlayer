@@ -71,11 +71,12 @@ bool ParseHttpUrl(const std::wstring &url,std::wstring &host,INTERNET_PORT &port
     if(path.empty())path=L"/";
     return IsPrivateIPv4(host);
 }
-bool HttpRequest(const std::wstring &url,const wchar_t *verb,const std::wstring &body,std::wstring *response,std::wstring *applicationUrl,DWORD *statusOut) {
+bool HttpRequest(const std::wstring &url,const wchar_t *verb,const std::wstring &body,std::wstring *response,std::wstring *applicationUrl,DWORD *statusOut,DWORD timeoutMs=0) {
     std::wstring host,path;INTERNET_PORT port=0;if(!ParseHttpUrl(url,host,port,path))return false;
     HINTERNET session=WinHttpOpen(L"ABM-AV-Player/1.0",WINHTTP_ACCESS_TYPE_NO_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
     if(!session)return false;
-    WinHttpSetTimeouts(session,1500,1500,2000,2000);
+    if(timeoutMs)WinHttpSetTimeouts(session,timeoutMs,timeoutMs,timeoutMs,timeoutMs);
+    else WinHttpSetTimeouts(session,1500,1500,2000,2000);
     HINTERNET connect=WinHttpConnect(session,host.c_str(),port,0);
     HINTERNET request=connect?WinHttpOpenRequest(connect,verb,path.c_str(),nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,0):nullptr;
     bool ok=false;
@@ -166,7 +167,7 @@ extern "C" int ABM_Dial_QueryApplication(unsigned int i,const wchar_t *appName) 
     }
     std::wstring xml;
     DWORD status=0;
-    if(!HttpRequest(base+appName,L"GET",L"",&xml,nullptr,&status)) {
+    if(!HttpRequest(base+appName,L"GET",L"",&xml,nullptr,&status,900)) {
         DialDiag(L"Application probe transport failed app=%s",appName);
         return -1;
     }
