@@ -220,12 +220,12 @@ bool Launch(const Receiver &r,const wchar_t *video) {
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
     if(!created) { CloseHandle(readPipe);g_error=L"Could not start the GoCast sender helper.";return false; }
-    std::string output;char buffer[1024];DWORD got=0;
-    while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got) { if(output.size()<16384)output.append(buffer,got); }
-    CloseHandle(readPipe);
     DWORD wait=WaitForSingleObject(pi.hProcess,45000),exitCode=1;
     if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
+    std::string output;char buffer[1024];DWORD got=0;
+    if(wait==WAIT_OBJECT_0) while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got) { if(output.size()<16384)output.append(buffer,got); }
+    CloseHandle(readPipe);
     if(wait!=WAIT_OBJECT_0) { g_error=L"GoCast timed out while starting YouTube and handing off the video.";return false; }
     if(exitCode!=0) {
         size_t p=output.find("\"error\":\"");
