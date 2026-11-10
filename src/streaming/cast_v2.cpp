@@ -199,20 +199,40 @@ bool WaitFor(const std::string &host,unsigned short port,const char *needle,std:
     return false;
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
-    CastTls tls;if(!tls.Connect(r.host,r.port)){g_error=L"Could not establish a secure Google Cast connection to this TV.";return false;}
-    const std::string src="sender-0",receiver="receiver-0",conn="urn:x-cast:com.google.cast.tp.connection",recvns="urn:x-cast:com.google.cast.receiver";
-    if(!SendCast(tls,src,receiver,conn,"{\"type\":\"CONNECT\"}")||
-       !SendCast(tls,src,receiver,recvns,"{\"type\":\"LAUNCH\",\"appId\":\"233637DE\",\"requestId\":1}")){g_error=L"Could not send the YouTube app launch request.";return false;}
-    std::string transport;
-    for(int i=0;i<12;i++){std::string j;if(!ReceiveCast(tls,j))continue;transport=JsonValue(j,"transportId");if(!transport.empty())break;}
-    if(transport.empty()){g_error=L"The Cast receiver did not start the YouTube application (no transport session was returned).";return false;}
-    if(!SendCast(tls,src,transport,conn,"{\"type\":\"CONNECT\"}")){g_error=L"Could not connect to the YouTube receiver application.";return false;}
-    const std::string mdx="urn:x-cast:com.google.youtube.mdx";
-    if(!SendCast(tls,src,transport,mdx,"{\"type\":\"getMdxSessionStatus\"}")){g_error=L"Could not query the YouTube TV session.";return false;}
-    std::string screen;
-    for(int i=0;i<12;i++){std::string j;if(!ReceiveCast(tls,j))continue;if(j.find("mdxSessionStatus")!=std::string::npos){screen=JsonValue(j,"screenId");if(!screen.empty())break;}}
-    if(screen.empty()){g_error=L"YouTube opened, but did not provide an MDX screen ID. This TV may not expose YouTube remote control.";return false;}
-    if(!ABM_Dial_PlayLoungeScreenId(screen.c_str(),video)){g_error=L"YouTube returned a screen ID, but the video handoff through its remote-control service failed.";return false;}
+    wchar_t module[MAX_PATH]{};
+    if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { g_error=L"Cannot locate ABM AV Player installation."; return false; }
+    std::wstring directory(module);
+    size_t slash=directory.find_last_of(L"\\\\/");
+    if(slash==std::wstring::npos) { g_error=L"Cannot locate ABM AV Player installation folder."; return false; }
+    directory.resize(slash+1);
+    std::wstring helper=directory+L"abm-gocast.exe";
+    DWORD attrs=GetFileAttributesW(helper.c_str());
+    if(attrs==INVALID_FILE_ATTRIBUTES) { g_error=L"GoCast helper is missing. Rebuild and reinstall ABM AV Player."; return false; }
+    std::wstring videoId(video);
+    std::wstring command=L"\\\""+helper+L"\\\" \\""+Wide(r.host.c_str())+L"\\" "+std::to_wstring(r.port)+L" \\""+videoId+L"\\"";
+    SECURITY_ATTRIBUTES sa{sizeof(sa),nullptr,TRUE};
+    HANDLE readPipe=nullptr,writePipe=nullptr;
+    if(!CreatePipe(&readPipe,&writePipe,&sa,0)) { g_error=L"Could not create GoCast process pipe."; return false; }
+    SetHandleInformation(readPipe,HANDLE_FLAG_INHERIT,0);
+    STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;si.wShowWindow=SW_HIDE;
+    si.hStdOutput=writePipe;si.hStdError=GetStdHandle(STD_ERROR_HANDLE);si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
+    PROCESS_INFORMATION pi{};
+    BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
+    CloseHandle(writePipe);
+    if(!created) { CloseHandle(readPipe);g_error=L"Could not start the GoCast sender helper.";return false; }
+    std::string output;char buffer[1024];DWORD got=0;
+    while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got) { if(output.size()<16384)output.append(buffer,got); }
+    CloseHandle(readPipe);
+    DWORD wait=WaitForSingleObject(pi.hProcess,45000),exitCode=1;
+    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
+    CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
+    if(wait!=WAIT_OBJECT_0) { g_error=L"GoCast timed out while starting YouTube and handing off the video.";return false; }
+    if(exitCode!=0) {
+        size_t p=output.find("\\\"error\\\":\\\"");
+        if(p!=std::string::npos) { p+=9;size_t e=output.find('\\\"',p);if(e!=std::string::npos){std::string msg=output.substr(p,e-p);g_error=Wide(msg.c_str());} }
+        if(g_error.empty())g_error=L"GoCast could not complete YouTube casting. See helper diagnostics.";
+        return false;
+    }
     g_error.clear();return true;
 }
 }
