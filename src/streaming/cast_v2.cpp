@@ -209,7 +209,7 @@ bool Launch(const Receiver &r,const wchar_t *video) {
     DWORD attrs=GetFileAttributesW(helper.c_str());
     if(attrs==INVALID_FILE_ATTRIBUTES) { g_error=L"GoCast helper is missing. Rebuild and reinstall ABM AV Player."; return false; }
     std::wstring videoId(video);
-    std::wstring command=L"\\\""+helper+L"\\\" \\""+Wide(r.host.c_str())+L"\\" "+std::to_wstring(r.port)+L" \\""+videoId+L"\\"";
+    std::wstring command=L"\""+helper+L"\" \""+Wide(r.host.c_str())+L"\" "+std::to_wstring(r.port)+L" \""+videoId+L"\"";
     SECURITY_ATTRIBUTES sa{sizeof(sa),nullptr,TRUE};
     HANDLE readPipe=nullptr,writePipe=nullptr;
     if(!CreatePipe(&readPipe,&writePipe,&sa,0)) { g_error=L"Could not create GoCast process pipe."; return false; }
