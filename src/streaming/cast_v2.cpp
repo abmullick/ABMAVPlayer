@@ -477,6 +477,51 @@ extern "C" int ABM_CastV2_CheckYouTubeAvailability(unsigned int i) {
     }
     return CheckYouTubeAvailability(receiver);
 }
+
+bool LaunchYouTubeApp(const Receiver &receiver) {
+    Diag(L"Launching YouTube Cast app receiver=%s host=%S",receiver.name.c_str(),receiver.host.c_str());
+    wchar_t module[MAX_PATH]{};
+    if(!GetModuleFileNameW(nullptr,module,MAX_PATH))return false;
+    std::wstring directory(module);
+    size_t slash=directory.find_last_of(L"\\/");
+    if(slash==std::wstring::npos)return false;
+    directory.resize(slash+1);
+    std::wstring helper=directory+L"abm-gocast.exe";
+    if(GetFileAttributesW(helper.c_str())==INVALID_FILE_ATTRIBUTES){g_error=L"GoCast helper is missing. Rebuild and reinstall ABM AV Player.";return false;}
+    std::wstring command=L"\""+helper+L"\" --launch-youtube \""+Wide(receiver.host.c_str())+L"\" "+std::to_wstring(receiver.port);
+    SECURITY_ATTRIBUTES sa{sizeof(sa),nullptr,TRUE};
+    HANDLE readPipe=nullptr,writePipe=nullptr;
+    if(!CreatePipe(&readPipe,&writePipe,&sa,0))return false;
+    SetHandleInformation(readPipe,HANDLE_FLAG_INHERIT,0);
+    STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
+    si.wShowWindow=SW_HIDE;si.hStdOutput=writePipe;si.hStdError=writePipe;si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
+    PROCESS_INFORMATION pi{};
+    BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
+    CloseHandle(writePipe);
+    if(!created){Diag(L"Could not start GoCast YouTube launch helper Win32=%lu",GetLastError());CloseHandle(readPipe);return false;}
+    DWORD wait=WaitForSingleObject(pi.hProcess,30000),exitCode=1;
+    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
+    CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
+    std::string output;char buffer[512];DWORD got=0;
+    if(wait==WAIT_OBJECT_0)while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got){if(output.size()<8192)output.append(buffer,got);}
+    CloseHandle(readPipe);
+    if(wait!=WAIT_OBJECT_0||exitCode!=0||output.find("\"launched\":true")==std::string::npos){
+        Diag(L"GoCast YouTube app launch failed wait=%lu exit=%lu output=%S",wait,exitCode,output.c_str());
+        g_error=L"Google Cast could not confirm that the YouTube TV app launched. See GoCast diagnostics.";
+        return false;
+    }
+    g_error.clear();Diag(L"YouTube TV app launch confirmed");return true;
+}
+
+extern "C" BOOL ABM_CastV2_LaunchYouTubeApp(unsigned int i) {
+    Receiver receiver;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if(i>=g_receivers.size())return FALSE;
+        receiver=g_receivers[i];
+    }
+    return LaunchYouTubeApp(receiver)?TRUE:FALSE;
+}
 extern "C" BOOL ABM_CastV2_LaunchYouTube(const wchar_t *id) {
     if(!id||wcslen(id)!=11){Diag(L"Launch rejected: invalid YouTube video ID");return FALSE;}
     for(const wchar_t *p=id;*p;++p)if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
