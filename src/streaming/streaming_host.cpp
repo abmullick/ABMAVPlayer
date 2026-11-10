@@ -631,8 +631,8 @@ void CastCurrentBrowserVideo(){
                     std::wstring id=payload.substr(3);
                     if(g_streamSelectedDialIndex>=0){
                         if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
-                            SetStatus(L"YouTube app launch accepted by the TV. The TV should now open the selected video.");
-                        else SetStatus(L"The TV's DIAL service did not accept the YouTube launch. Check that YouTube casting is enabled on the TV.");
+                            SetStatus(L"YouTube accepted the video handoff. Check the TV for playback.");
+                        else SetStatus(L"YouTube app launch or remote-control handoff failed. The TV may not expose a compatible YouTube screen ID or Lounge service.");
                     }else if(g_streamSelectedIsDlna)
                         SetStatus(L"This TV is selected through DLNA only. YouTube requires its DIAL or Google Cast app-control service; DLNA cannot launch the YouTube app.");
                     else SetStatus(L"This receiver has no discovered YouTube app-control endpoint. Generic URL casting cannot launch YouTube.");
