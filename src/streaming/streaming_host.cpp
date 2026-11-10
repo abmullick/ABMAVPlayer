@@ -9,6 +9,8 @@
 #include <cwctype>
 #include <cstdarg>
 #include <algorithm>
+#include <atomic>
+#include <thread>
 #include <vector>
 #include <wchar.h>
 #include <string>
@@ -47,6 +49,7 @@ using Microsoft::WRL::ComPtr;
 namespace {
 const wchar_t *kClassName=L"ABMAVPlayer.Streaming";
 constexpr UINT WM_APP_WEBVIEW_RECOVER=WM_APP+20;
+constexpr UINT WM_APP_DIAL_APPS_READY=WM_APP+21;
 constexpr int kMaxWebViewRecoveries=3;
 constexpr int kServiceCount=6;
 const wchar_t *kServices[kServiceCount]={
@@ -70,8 +73,9 @@ ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[kServiceCount]{};
 HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
-HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr;
+HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr;
 bool g_devicePanelVisible=false;
+std::atomic<bool> g_appProbeRunning{false};
 int g_streamSelectedIndex=-1;
 bool g_streamSelectedIsDlna=false;
 struct StreamReceiverRow { int castIndex; int dlnaIndex; int dialIndex; int castV2Index; };
@@ -85,7 +89,7 @@ bool IsStreamReceiverReady(){
 }
 
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
-constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14;
+constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14,ID_STREAM_DEVICE_APPS=0x7A15;
 RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
 int g_activeService=-1;
 int g_hoverService=-1;
@@ -251,14 +255,15 @@ void LayoutDevicePanel(){
     RECT rc{};GetClientRect(g_window,&rc);
     int x=rc.right-530;if(x<12)x=12;
     int y=64;
-    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,204,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,260,SWP_NOACTIVATE|SWP_SHOWWINDOW);
     /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
     SetWindowPos(g_deviceTitle,nullptr,x+18,y+12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,20,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceList,nullptr,x+18,y+68,310,120,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+68,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceSelect,nullptr,x+342,y+111,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+154,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,38,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,x+18,y+82,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+82,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,x+342,y+125,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceApps,nullptr,x+342,y+168,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+211,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -359,7 +364,7 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_OWNERDRAW,0,0,516,204,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_OWNERDRAW,0,0,516,260,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
@@ -374,6 +379,9 @@ void CreateDevicePanel(HWND parent){
     g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_SELECT,GetModuleHandleW(nullptr),nullptr);
+    g_deviceApps=CreateWindowExW(0,L"BUTTON",L"Check TV apps",
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
+        (HMENU)(INT_PTR)ID_STREAM_DEVICE_APPS,GetModuleHandleW(nullptr),nullptr);
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
@@ -381,7 +389,7 @@ void CreateDevicePanel(HWND parent){
     SendMessageW(g_deviceHint,WM_SETFONT,(WPARAM)GetCachedTextFont(10,500),TRUE);
     SendMessageW(g_deviceList,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
     SendMessageW(g_deviceList,LB_SETITEMHEIGHT,0,27);
-    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
+    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceClose};
     ShowWindow(g_devicePanel,SW_HIDE);
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
 }
@@ -406,7 +414,7 @@ void ShowDevicePanel(){
 void HideDevicePanel(){
     g_devicePanelVisible=false;
     KillTimer(g_window,ID_STREAM_DEVICE_TIMER);
-    HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceClose};
+    HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceClose};
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
 }
 
@@ -1016,6 +1024,11 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
 }
 LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
+    case WM_APP_DIAL_APPS_READY:{
+        std::unique_ptr<std::wstring> report((std::wstring*)lp);
+        if(report&&g_devicePanelVisible){SetWindowTextW(g_deviceHint,report->c_str());SetStatus(L"TV application endpoint check completed. A DIAL result confirms endpoint recognition, not playback compatibility.");}
+        return 0;
+    }
     case WM_DRAWITEM:{
         const DRAWITEMSTRUCT *item=(const DRAWITEMSTRUCT*)lp;
         if(!item)return TRUE;
@@ -1031,6 +1044,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }
         if(item->hwndItem==g_deviceRefresh){DrawDeviceButton(item,L"Refresh devices",false);return TRUE;}
         if(item->hwndItem==g_deviceSelect){DrawDeviceButton(item,L"Use selected TV",true);return TRUE;}
+        if(item->hwndItem==g_deviceApps){DrawDeviceButton(item,L"Check TV apps",false);return TRUE;}
         if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}
         if(item->hwndItem==g_deviceList){DrawDeviceListItem(item);return TRUE;}
         break;
@@ -1229,6 +1243,44 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SetStatus((std::wstring(L"Streaming Centre selected: ")+name+L". Now choose Cast video.").c_str());
                 SetWindowTextW(g_deviceHint,(std::wstring(L"Selected: ")+name).c_str());
             }else {g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;SetStatus(L"That receiver is no longer available. Refresh the list.");}
+            return 0;
+        }
+        case ID_STREAM_DEVICE_APPS:{
+            if(g_streamSelectedDialIndex<0){
+                SetStatus(L"The selected TV has no DIAL endpoint. App inventory is not exposed by Google Cast discovery.");
+                return 0;
+            }
+            if(g_appProbeRunning.exchange(true)){
+                SetStatus(L"TV application checks are already running…");
+                return 0;
+            }
+            const unsigned int dialIndex=(unsigned int)g_streamSelectedDialIndex;
+            HWND target=hwnd;
+            SetWindowTextW(g_deviceHint,L"Checking DIAL application endpoints. This is a read-only check; no TV app will be launched.");
+            SetStatus(L"Checking which streaming app endpoints this TV exposes…");
+            try{
+                std::thread([target,dialIndex](){
+                    const wchar_t *apps[]={L"YouTube",L"Netflix",L"PrimeVideo",L"JioHotstar",L"SonyLIV",L"ZEE5"};
+                    std::wstring report=L"DIAL app endpoint checks (read-only):\r\n";
+                    for(const wchar_t *app:apps){
+                        int result=ABM_Dial_QueryApplication(dialIndex,app);
+                        report+=app;report+=L": ";
+                        if(result==1)report+=L"recognized — running";
+                        else if(result==2)report+=L"recognized — stopped";
+                        else if(result==3)report+=L"recognized — state not reported";
+                        else if(result==0)report+=L"not exposed by DIAL";
+                        else if(result==-1)report+=L"query failed";
+                        else report+=L"unexpected response";
+                        report+=L"\r\n";
+                    }
+                    g_appProbeRunning=false;
+                    auto *payload=new std::wstring(std::move(report));
+                    if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APPS_READY,0,(LPARAM)payload))delete payload;
+                }).detach();
+            }catch(...){
+                g_appProbeRunning=false;
+                SetStatus(L"Could not start the TV application check.");
+            }
             return 0;
         }
         case ID_STREAM_DEVICE_CLOSE:HideDevicePanel();return 0;
