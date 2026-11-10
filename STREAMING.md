@@ -57,7 +57,7 @@ Discovery checks three receiver families:
 
 - **Google Cast / Chromecast:** Uses the LibVLC renderer-discovery session.
 - **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
-- **DIAL:** Discovers app-launch endpoints, including compatible YouTube app targets.
+- **DIAL + YouTube Lounge:** Discovers the app-launch endpoint, starts the TV YouTube app, reads its screen ID and sends the selected video through YouTube Lounge remote control. The Lounge API is undocumented and may change.
 
 The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube app launch.
 

@@ -538,7 +538,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 L"Back and Forward navigate browser history. Reload refreshes the current page; Home returns to the service start page. Previous/Next are intended for supported YouTube playlist navigation.",
                 L"Use the Fullscreen toolbar control, F11 or the provider's own video control. Press Esc to leave fullscreen. Open in browser launches the current page in your default desktop browser.",
                 L"Choose Find TVs to open the dedicated device panel. Discovery checks Google Cast, DLNA/UPnP and DIAL receivers. Select a TV, use Refresh devices if needed, then click Use selected TV. Duplicate receiver entries are consolidated where names match.",
-                L"Choose Cast video after selecting a receiver. YouTube handoff requires a compatible DIAL YouTube app endpoint (or supported Cast app control); DLNA alone cannot launch YouTube. Other content requires a directly addressable video URL. Protected, encrypted or segmented streams generally cannot be handed off. If playback fails, try the provider's official browser/app."
+                L"Choose Cast video after selecting a receiver. YouTube handoff starts the TV app through DIAL, reads its screen ID and sends the selected video through YouTube Lounge remote control; DLNA alone cannot launch YouTube. Other content requires a directly addressable video URL. Protected, encrypted or segmented streams generally cannot be handed off. If playback fails, try the provider's official browser/app."
             };
             int y=140;
             for(int i=0;i<6;i++){
@@ -631,8 +631,8 @@ void CastCurrentBrowserVideo(){
                     std::wstring id=payload.substr(3);
                     if(g_streamSelectedDialIndex>=0){
                         if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
-                            SetStatus(L"YouTube app launch accepted by the TV. The TV should now open the selected video.");
-                        else SetStatus(L"The TV's DIAL service did not accept the YouTube launch. Check that YouTube casting is enabled on the TV.");
+                            SetStatus(L"YouTube accepted the video handoff. Check the TV for playback.");
+                        else { wchar_t reason[256]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"YouTube app launch or remote-control handoff failed."); }
                     }else if(g_streamSelectedIsDlna)
                         SetStatus(L"This TV is selected through DLNA only. YouTube requires its DIAL or Google Cast app-control service; DLNA cannot launch the YouTube app.");
                     else SetStatus(L"This receiver has no discovered YouTube app-control endpoint. Generic URL casting cannot launch YouTube.");
