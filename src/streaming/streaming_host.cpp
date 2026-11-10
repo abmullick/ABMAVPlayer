@@ -708,7 +708,7 @@ void CastCurrentBrowserVideo(){
                     payload.rfind(L"URL:",0)==0?L"DIRECT_URL":L"NO_VIDEO");
                 if(payload==L"PRIMEVIDEO"){
                     StreamingDiag(L"Prime Video desktop handoff unavailable; no DIAL launch attempted");
-                    SetStatus(L"Desktop Prime Video casting is not supported here. Use the Cast button in Amazon's official Android/iOS app, or open Prime Video on your TV. Protected playback is not extracted or relayed.");
+                    SetStatus(L"Desktop Prime Video title casting is not supported. If Check TV apps lists PrimeVideo, use Launch app to open the TV app; otherwise use Amazon's official mobile Cast button or the TV app. Protected playback is not extracted or relayed.");
                     return S_OK;
                 }
                 if(payload.rfind(L"YT:",0)==0){
