@@ -206,7 +206,7 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     if(!LoungePost(path,"",response,&status)){error="YouTube remote session failed (HTTP "+std::to_string(status)+").";return false;}
     std::string sid=FrameString(response,"[\"c\",\"");
     std::string gs=FrameString(response,"[\"S\",\"");
-    std::string aid; size_t sidPos=response.find("[\"c\",\""); if(sidPos!=std::string::npos){size_t first=response.find('"',sidPos+6);if(first!=std::string::npos){size_t second=response.find('"',first+1);if(second!=std::string::npos){size_t third=response.find('"',second+1);if(third!=std::string::npos){size_t fourth=response.find('"',third+1);if(fourth!=std::string::npos)aid=response.substr(third+1,fourth-third-1);}}}}
+    std::string aid; size_t sidPos=response.find("[\"c\",\""); if(sidPos!=std::string::npos){size_t first=response.find('"',sidPos+6);if(first!=std::string::npos){size_t second=response.find('"',first+1);if(second!=std::string::npos){size_t third=response.find('"',second+1);if(third!=std::string::npos){size_t fourth=response.find('"',third+1);if(third!=std::string::npos)aid=response.substr(second+1,third-second-1);}}}}
     if(sid.empty()||gs.empty()){error="YouTube did not return a valid remote-control session.";return false;}
     std::string body="count=1&req0__sc=setPlaylist&req0_currentIndex=0&req0_currentTime=0&req0_videoId="+FormEncode(video)+"&req0_videoIds="+FormEncode(video);
     std::wstring cmd=L"/api/lounge/bc/bind?CVER=1&RID=2&VER=8&SID=";
