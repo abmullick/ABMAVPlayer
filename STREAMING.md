@@ -53,13 +53,14 @@ The panel provides:
 3. **Use selected TV** to apply the highlighted receiver.
 4. **Close** to dismiss the panel.
 
-Discovery checks three receiver families:
+Discovery checks four receiver paths:
 
-- **Google Cast / Chromecast:** Uses the LibVLC renderer-discovery session.
+- **Google Cast / Chromecast renderer:** Uses the existing LibVLC renderer-discovery session for direct media URL playback.
+- **Google Cast V2:** Discovers `_googlecast._tcp.local` receivers through Windows DNS-SD, then uses TLS on TCP 8009 and Cast protobuf messages for YouTube app control.
 - **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
-- **DIAL + YouTube Lounge:** Discovers the app-launch endpoint, starts the TV YouTube app, reads its screen ID and sends the selected video through YouTube Lounge remote control. The Lounge API is undocumented and may change.
+- **DIAL + YouTube Lounge:** Retained as a fallback for TVs that advertise a compatible DIAL app endpoint. The Lounge API is undocumented and may change.
 
-The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube app launch.
+The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained as a YouTube app-control fallback. Cast V2 and DIAL are independent app-control paths.
 
 The receiver list refreshes while the panel is open. If a device has disappeared or a selection is stale, use **Refresh devices**, select it again and press **Use selected TV**.
 
@@ -69,7 +70,7 @@ After selecting a receiver, start a video in the browser and choose **Cast video
 
 ### YouTube handoff
 
-For a recognised YouTube video URL, the app asks the selected receiver's discovered DIAL YouTube app endpoint to launch that video. The TV must expose and accept the YouTube app launch request. If the selected receiver is DLNA-only, DLNA cannot launch the YouTube app. If no compatible app-control endpoint was discovered, the app reports that YouTube handoff is unavailable for that receiver.
+For a recognised YouTube video URL, the app uses Google Cast V2 when the selected receiver advertises a Cast service: it opens a TLS connection to port 8009, launches the YouTube receiver application, requests the MDX screen ID and sends the video through YouTube Lounge remote control. If Cast V2 is unavailable, a discovered DIAL YouTube endpoint is used as a fallback. DLNA alone cannot launch the YouTube app. YouTube MDX/Lounge is an undocumented protocol and receiver firmware or service changes can break the handoff.
 
 ### Direct media URL handoff
 
