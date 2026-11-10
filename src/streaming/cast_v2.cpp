@@ -18,6 +18,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
+#include <map>
 
 #pragma comment(lib,"secur32.lib")
 #pragma comment(lib,"dnsapi.lib")
@@ -64,41 +65,178 @@ std::string Utf8(const std::wstring &s) {
     if(n<=0)return {};
     std::string out((size_t)n,'\0');WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,s.data(),(int)s.size(),out.data(),n,nullptr,nullptr);return out;
 }
-void Discover() {
-    while(!g_stop.load()) {
-        PDNS_RECORDA ptr=nullptr;
-        DNS_STATUS st=DnsQuery_A("_googlecast._tcp.local",DNS_TYPE_PTR,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&ptr),nullptr);
-        if(st!=ERROR_SUCCESS) Diag(L"Discovery PTR query failed DNS_STATUS=%lu",st);
-        if(st==ERROR_SUCCESS&&ptr) {
-            for(PDNS_RECORDA p=ptr;p&&!g_stop.load();p=p->pNext) {
-                if(p->wType!=DNS_TYPE_PTR||!p->Data.PTR.pNameHost)continue;
-                std::string instance=p->Data.PTR.pNameHost;
-                PDNS_RECORDA srv=nullptr;
-                DNS_STATUS srvStatus=DnsQuery_A(instance.c_str(),DNS_TYPE_SRV,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&srv),nullptr);
-                if(srvStatus!=ERROR_SUCCESS||!srv){Diag(L"Discovery SRV lookup failed instance=%S status=%lu",instance.c_str(),srvStatus);continue;}
-                for(PDNS_RECORDA q=srv;q;q=q->pNext)if(q->wType==DNS_TYPE_SRV&&q->Data.SRV.pNameTarget) {
-                    Receiver d;d.host=q->Data.SRV.pNameTarget;d.port=q->Data.SRV.wPort;
-                    PDNS_RECORDA txt=nullptr;
-                    if(DnsQuery_A(instance.c_str(),DNS_TYPE_TEXT,DNS_QUERY_BYPASS_CACHE|DNS_QUERY_NO_HOSTS_FILE,nullptr,reinterpret_cast<PDNS_RECORD*>(&txt),nullptr)==ERROR_SUCCESS&&txt) {
-                        for(PDNS_RECORDA t=txt;t;t=t->pNext)if(t->wType==DNS_TYPE_TEXT&&t->Data.TXT.dwStringCount) {
-                            for(DWORD k=0;k<t->Data.TXT.dwStringCount;k++) {
-                                std::string v=t->Data.TXT.pStringArray[k];
-                                if(v.rfind("fn=",0)==0)d.name=Wide(v.c_str()+3);
-                            }
-                        }
-                        DnsRecordListFree(txt,DnsFreeRecordList);
-                    }
-                    if(d.name.empty())d.name=Wide(instance.c_str());
-                    std::lock_guard<std::mutex> lock(g_mutex);
-                    auto it=std::find_if(g_receivers.begin(),g_receivers.end(),[&](const Receiver &x){return _stricmp(x.host.c_str(),d.host.c_str())==0;});
-                    if(it==g_receivers.end()){Diag(L"Receiver found name=%s host=%S port=%u",d.name.c_str(),d.host.c_str(),d.port);g_receivers.push_back(std::move(d));}else {it->name=d.name;it->port=d.port;}
-                }
-                DnsRecordListFree(srv,DnsFreeRecordList);
-            }
-            DnsRecordListFree(ptr,DnsFreeRecordList);
+std::atomic<SOCKET> g_mdnsSocket{INVALID_SOCKET};
+
+static unsigned ReadU16(const unsigned char *p) {
+    return ((unsigned)p[0]<<8)|(unsigned)p[1];
+}
+static unsigned ReadU32(const unsigned char *p) {
+    return ((unsigned)p[0]<<24)|((unsigned)p[1]<<16)|((unsigned)p[2]<<8)|(unsigned)p[3];
+}
+static bool ReadDnsName(const unsigned char *packet,size_t length,size_t &offset,std::string &name) {
+    size_t pos=offset, resume=0;
+    bool jumped=false;
+    unsigned hops=0;
+    name.clear();
+    while(pos<length && hops++<128) {
+        unsigned char n=packet[pos++];
+        if(n==0) {
+            if(!jumped) offset=pos; else offset=resume;
+            return true;
         }
-        for(int i=0;i<20&&!g_stop.load();++i)Sleep(500);
+        if((n&0xC0)==0xC0) {
+            if(pos>=length) return false;
+            size_t pointer=((size_t)(n&0x3F)<<8)|packet[pos++];
+            if(pointer>=length) return false;
+            if(!jumped){resume=pos;jumped=true;}
+            pos=pointer;
+            continue;
+        }
+        if((n&0xC0)!=0 || n>63 || pos+n>length) return false;
+        if(!name.empty()) name.push_back('.');
+        name.append((const char*)packet+pos,n);
+        pos+=n;
     }
+    return false;
+}
+static std::string LowerDnsName(std::string value) {
+    while(!value.empty()&&value.back()=='.') value.pop_back();
+    for(char &c:value)c=(char)tolower((unsigned char)c);
+    return value;
+}
+static bool MakeMdnsQuery(std::vector<unsigned char> &q) {
+    q.assign(12,0);
+    q[5]=1; // QDCOUNT=1
+    const char *labels[]={"_googlecast","_tcp","local"};
+    for(const char *label:labels) {
+        size_t n=strlen(label);
+        q.push_back((unsigned char)n);
+        q.insert(q.end(),label,label+n);
+    }
+    q.push_back(0);
+    q.push_back(0);q.push_back(12); // PTR
+    q.push_back(0x80);q.push_back(1); // IN, request multicast response
+    return true;
+}
+struct MdnsRecord {
+    std::string owner;
+    unsigned type=0;
+    std::string target;
+    std::string text;
+    unsigned short port=0;
+    std::string address;
+};
+static void ParseMdnsPacket(const unsigned char *packet,size_t length,std::vector<MdnsRecord> &records) {
+    if(length<12)return;
+    unsigned questions=ReadU16(packet+4);
+    unsigned total=(unsigned)ReadU16(packet+6)+(unsigned)ReadU16(packet+8)+(unsigned)ReadU16(packet+10);
+    size_t off=12;
+    for(unsigned i=0;i<questions;i++) {
+        std::string qname;
+        if(!ReadDnsName(packet,length,off,qname)||off+4>length)return;
+        off+=4;
+    }
+    for(unsigned i=0;i<total;i++) {
+        MdnsRecord r;
+        if(!ReadDnsName(packet,length,off,r.owner)||off+10>length)return;
+        r.type=ReadU16(packet+off);
+        unsigned klass=ReadU16(packet+off+2);
+        unsigned rdlen=ReadU16(packet+off+8);
+        off+=10;
+        if(off+rdlen>length)return;
+        size_t rdata=off;
+        if(r.type==12) {
+            size_t p=rdata;
+            ReadDnsName(packet,length,p,r.target);
+        } else if(r.type==33&&rdlen>=7) {
+            r.port=(unsigned short)ReadU16(packet+rdata+4);
+            size_t p=rdata+6;
+            ReadDnsName(packet,length,p,r.target);
+        } else if(r.type==16) {
+            size_t p=rdata,limit=rdata+rdlen;
+            while(p<limit) {
+                unsigned n=packet[p++];
+                if(p+n>limit)break;
+                std::string item((const char*)packet+p,n);
+                if(item.rfind("fn=",0)==0)r.text=item.substr(3);
+                p+=n;
+            }
+        } else if(r.type==1&&rdlen==4) {
+            char ip[INET_ADDRSTRLEN]{};
+            if(inet_ntop(AF_INET,packet+rdata,ip,sizeof(ip)))r.address=ip;
+        }
+        if(r.type==12||r.type==16||r.type==33||r.type==1)records.push_back(std::move(r));
+        off+=rdlen;
+    }
+}
+void Discover() {
+    SOCKET sock=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+    if(sock==INVALID_SOCKET){Diag(L"mDNS: socket creation failed WSA=%d",WSAGetLastError());return;}
+    BOOL reuse=TRUE;
+    setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,(const char*)&reuse,sizeof(reuse));
+    sockaddr_in local{};local.sin_family=AF_INET;local.sin_port=htons(5353);local.sin_addr.s_addr=htonl(INADDR_ANY);
+    if(bind(sock,(sockaddr*)&local,sizeof(local))==SOCKET_ERROR) {
+        Diag(L"mDNS: bind UDP 5353 failed WSA=%d",WSAGetLastError());closesocket(sock);return;
+    }
+    ip_mreq membership{};membership.imr_multiaddr.s_addr=inet_addr("224.0.0.251");membership.imr_interface.s_addr=htonl(INADDR_ANY);
+    if(setsockopt(sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,(const char*)&membership,sizeof(membership))==SOCKET_ERROR) {
+        Diag(L"mDNS: multicast join failed WSA=%d",WSAGetLastError());closesocket(sock);return;
+    }
+    DWORD timeout=1000;
+    setsockopt(sock,SOL_SOCKET,SO_RCVTIMEO,(const char*)&timeout,sizeof(timeout));
+    g_mdnsSocket.store(sock);
+    sockaddr_in multicast{};multicast.sin_family=AF_INET;multicast.sin_port=htons(5353);multicast.sin_addr.s_addr=inet_addr("224.0.0.251");
+    std::vector<unsigned char> query;MakeMdnsQuery(query);
+    DWORD lastQuery=0;
+    Diag(L"mDNS: listening on UDP 5353 and joined 224.0.0.251");
+    while(!g_stop.load()) {
+        DWORD now=GetTickCount();
+        if(lastQuery==0||now-lastQuery>=5000) {
+            int sent=sendto(sock,(const char*)query.data(),(int)query.size(),0,(sockaddr*)&multicast,sizeof(multicast));
+            if(sent==SOCKET_ERROR)Diag(L"mDNS: multicast query send failed WSA=%d",WSAGetLastError());
+            else Diag(L"mDNS: sent PTR query for _googlecast._tcp.local");
+            lastQuery=now;
+        }
+        unsigned char packet[9000];
+        sockaddr_in from{};int fromLen=sizeof(from);
+        int got=recvfrom(sock,(char*)packet,sizeof(packet),0,(sockaddr*)&from,&fromLen);
+        if(got==SOCKET_ERROR) {
+            int e=WSAGetLastError();
+            if(e==WSAETIMEDOUT||e==WSAEWOULDBLOCK)continue;
+            if(g_stop.load())break;
+            Diag(L"mDNS: recvfrom failed WSA=%d",e);continue;
+        }
+        std::vector<MdnsRecord> records;
+        ParseMdnsPacket(packet,(size_t)got,records);
+        std::map<std::string,std::string> addresses;
+        std::map<std::string,Receiver> services;
+        for(const auto &r:records) {
+            if(r.type==1&&!r.address.empty())addresses[LowerDnsName(r.owner)]=r.address;
+            if(r.type==12&&LowerDnsName(r.owner)=="_googlecast._tcp.local"&&!r.target.empty())
+                services[LowerDnsName(r.target)].name=Wide(r.target.c_str());
+            if(r.type==33) {
+                auto &d=services[LowerDnsName(r.owner)];
+                d.host=r.target;d.port=r.port;
+            }
+            if(r.type==16&&!r.text.empty())services[LowerDnsName(r.owner)].name=Wide(r.text.c_str());
+        }
+        for(auto &entry:services) {
+            Receiver d=entry.second;
+            auto ip=addresses.find(LowerDnsName(d.host));
+            if(ip!=addresses.end())d.host=ip->second;
+            if(d.host.empty()||d.port==0)continue;
+            if(d.name.empty())d.name=Wide(entry.first.c_str());
+            std::lock_guard<std::mutex> lock(g_mutex);
+            auto it=std::find_if(g_receivers.begin(),g_receivers.end(),[&](const Receiver &x){return _stricmp(x.host.c_str(),d.host.c_str())==0;});
+            if(it==g_receivers.end()) {
+                Diag(L"mDNS: receiver discovered name=%s host=%S port=%u",d.name.c_str(),d.host.c_str(),d.port);
+                g_receivers.push_back(std::move(d));
+            } else {it->name=d.name;it->port=d.port;}
+        }
+    }
+    SOCKET expected=sock;
+    if(g_mdnsSocket.compare_exchange_strong(expected,INVALID_SOCKET))closesocket(sock);
+    Diag(L"mDNS: discovery worker stopped");
 }
 void PutVarint(std::string &o,unsigned v){while(v>=128){o.push_back((char)((v&127)|128));v>>=7;}o.push_back((char)v);}
 void PutField(std::string &o,unsigned field,const std::string &v){PutVarint(o,(field<<3)|2);PutVarint(o,(unsigned)v.size());o+=v;}
@@ -268,7 +406,10 @@ extern "C" void ABM_CastV2_StartDiscovery(void) {
     g_stop=false;g_discovery=std::thread(Discover);
 }
 extern "C" void ABM_CastV2_StopDiscovery(void) {
-    g_stop=true;if(g_discovery.joinable())g_discovery.join();
+    g_stop=true;
+    SOCKET active=g_mdnsSocket.exchange(INVALID_SOCKET);
+    if(active!=INVALID_SOCKET)closesocket(active); // interrupt recvfrom immediately
+    if(g_discovery.joinable())g_discovery.join();
 }
 extern "C" unsigned int ABM_CastV2_DeviceCount(void) {
     std::lock_guard<std::mutex> l(g_mutex);return (unsigned int)g_receivers.size();
