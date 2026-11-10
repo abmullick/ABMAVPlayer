@@ -138,13 +138,14 @@ The Streaming Centre has its own **Find TVs** button and integrated receiver-sel
 The Streaming Centre discovers receivers through:
 - **Google Cast / Chromecast** renderer discovery.
 - **DLNA / UPnP** MediaRenderer discovery.
-- **DIAL** app discovery, used for compatible app-launch targets such as YouTube.
+- **Google Cast V2** discovery for Cast receiver app control over TLS/TCP 8009.
+- **DIAL** app discovery, retained as a YouTube app-launch fallback.
 
-If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. A discovered DIAL endpoint can be used for YouTube app launch.
+If the same receiver is found through multiple protocols, matching names are consolidated in the list. The implementation prefers Google Cast when a matching receiver exposes both Google Cast and DLNA; DLNA is used when it is the available media-renderer route. Google Cast V2 is preferred for YouTube app control when available; DIAL remains a fallback.
 
 ### What can be cast
 
-- **YouTube:** The player recognises a YouTube video URL and asks a discovered DIAL YouTube app endpoint on the selected TV to launch that video. This requires the TV's YouTube app/DIAL service to accept the request. DLNA alone cannot launch the YouTube app.
+- **YouTube:** The player recognises a YouTube video URL and uses Google Cast V2 to launch the YouTube receiver app, obtain its MDX screen ID and send the selected video through YouTube Lounge remote control. A compatible DIAL app endpoint is used as a fallback. These app-control protocols are receiver-dependent and YouTube MDX/Lounge is undocumented; DLNA alone cannot launch the YouTube app.
 - **Direct video URL:** For other pages, the Streaming Centre looks for a currently active HTML video element with a directly addressable media URL and hands that URL to the selected compatible Google Cast or DLNA renderer.
 - **Not browser mirroring:** This feature does not mirror the browser tab or desktop and is not a general-purpose Google Cast sender.
 

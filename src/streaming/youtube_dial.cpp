@@ -253,4 +253,15 @@ extern "C" BOOL ABM_Dial_LaunchYouTube(unsigned int i,const wchar_t *videoId) {
     g_lastLaunchError.clear();return TRUE;
 }
 
+
+extern "C" BOOL ABM_Dial_PlayLoungeScreenId(const char *screenId,const wchar_t *videoId) {
+    if(!screenId||!*screenId||!videoId||wcslen(videoId)!=11)return FALSE;
+    for(const wchar_t *p=videoId;*p;++p)
+        if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
+    std::string error;
+    if(!PlayLounge(screenId,ToUtf8(videoId),error)){g_lastLaunchError=ToWide(error);return FALSE;}
+    g_lastLaunchError.clear();
+    return TRUE;
+}
+
 extern "C" BOOL ABM_Dial_LastLaunchError(wchar_t *buffer,unsigned int capacity) { if(!buffer||!capacity)return FALSE;buffer[0]=0;return SUCCEEDED(StringCchCopyW(buffer,capacity,g_lastLaunchError.c_str()))?TRUE:FALSE; }
