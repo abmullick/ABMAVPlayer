@@ -20,6 +20,7 @@ std::mutex g_lock;
 std::vector<DialDevice> g_devices;
 std::thread g_worker;
 std::atomic<bool> g_stop{false};
+std::atomic<DWORD> g_lastLaunchHttpStatus{0};
 
 std::wstring Trim(std::wstring s) {
     while(!s.empty() && iswspace(s.front())) s.erase(s.begin());
@@ -118,11 +119,14 @@ extern "C" BOOL ABM_Dial_DeviceName(unsigned int i,wchar_t *b,unsigned int c) {
     if(!b||!c)return FALSE;b[0]=0;std::lock_guard<std::mutex> l(g_lock);
     if(i>=g_devices.size())return FALSE;return wcsncpy_s(b,c,g_devices[i].name.c_str(),_TRUNCATE)==0;
 }
+extern "C" unsigned int ABM_Dial_LastLaunchHttpStatus(void) { return (unsigned int)g_lastLaunchHttpStatus.load(); }
 extern "C" BOOL ABM_Dial_LaunchYouTube(unsigned int i,const wchar_t *videoId) {
+    g_lastLaunchHttpStatus=0;
     if(!videoId||wcslen(videoId)!=11)return FALSE;
     for(const wchar_t *p=videoId;*p;++p)if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
     std::wstring base;{std::lock_guard<std::mutex> l(g_lock);if(i>=g_devices.size())return FALSE;base=g_devices[i].appUrl;}
     DWORD status=0;std::wstring instance;
     bool ok=HttpRequest(base+L"YouTube",L"POST",std::wstring(L"v=")+videoId,nullptr,nullptr,&status);
+    if(ok)g_lastLaunchHttpStatus=status;
     return ok&&(status==200||status==201||status==202)?TRUE:FALSE;
 }
