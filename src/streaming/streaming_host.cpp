@@ -1602,25 +1602,31 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             const StreamAppChoice choice=g_streamAppChoices[(size_t)choiceIndex];
             const bool stop=(LOWORD(wp)==ID_STREAM_DEVICE_APP_STOP);
             if(choice.castV2){
-                if(!stop){
-                    g_appProbeRunning=false;
-                    SetStatus(L"Google Cast app status refresh is not yet exposed in this panel. Use Stop TV app to query and close the running Cast app.");
-                    return 0;
-                }
                 const int castIndex=g_streamSelectedCastV2Index;
                 const HWND target=hwnd;
-                SetStatus(L"Requesting Google Cast to stop the selected TV application…");
+                SetStatus(stop?L"Requesting Google Cast to stop the selected TV application…":L"Refreshing Google Cast application status…");
                 try{
-                    std::thread([target,castIndex,choice](){
-                        int code=castIndex>=0?ABM_CastV2_StopApplication((unsigned int)castIndex,choice.castAppId.c_str()):-1;
-                        std::wstring message=code==1?L"Google Cast confirmed that "+choice.label+L" stopped on the TV."
-                            :code==0?L"The selected Google Cast app is not currently running on the TV."
-                            :L"The TV did not confirm that the Google Cast app stopped. Use the TV remote if it remains open.";
+                    std::thread([target,castIndex,choice,stop](){
+                        int code=-1;
+                        if(castIndex>=0){
+                            code=stop?ABM_CastV2_StopApplication((unsigned int)castIndex,choice.castAppId.c_str())
+                                     :ABM_CastV2_QueryApplicationStatus((unsigned int)castIndex,choice.castAppId.c_str());
+                        }
+                        std::wstring message;
+                        if(stop){
+                            message=code==1?L"Google Cast confirmed that "+choice.label+L" stopped on the TV."
+                                :code==0?L"The selected Google Cast app is not currently running on the TV."
+                                :L"The TV did not confirm that the Google Cast app stopped. Use the TV remote if it remains open.";
+                        }else{
+                            message=code==1?choice.label+L" is RUNNING on the TV (Google Cast receiver status). This does not indicate whether a movie is playing or paused."
+                                :code==0?choice.label+L" is NOT RUNNING on the TV."
+                                :L"Could not refresh Google Cast app status. Check the TV connection and GoCast diagnostics.";
+                        }
                         g_appProbeRunning=false;
                         auto *payload=new std::wstring(std::move(message));
                         if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APP_LAUNCH,0,(LPARAM)payload))delete payload;
                     }).detach();
-                }catch(...){g_appProbeRunning=false;SetStatus(L"Could not start the Google Cast stop request.");}
+                }catch(...){g_appProbeRunning=false;SetStatus(stop?L"Could not start the Google Cast stop request.":L"Could not start the app status query.");}
                 return 0;
             }
             if(choice.dialApp.empty()||g_streamSelectedDialIndex<0){
