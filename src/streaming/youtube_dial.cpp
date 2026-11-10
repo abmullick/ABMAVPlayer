@@ -293,6 +293,31 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     return true;
 }
 }
+extern "C" int ABM_Dial_StopApplication(unsigned int i,const wchar_t *appName) {
+    if(!appName||!*appName)return -2;
+    for(const wchar_t *p=appName;*p;++p)
+        if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||
+             (*p>=L'0'&&*p<=L'9')||*p==L'-'))return -2;
+    std::wstring base;
+    {
+        std::lock_guard<std::mutex> lock(g_lock);
+        if(i>=g_devices.size())return -1;
+        base=g_devices[i].appUrl;
+    }
+    DWORD status=0;
+    if(!HttpRequest(base+appName,L"DELETE",L"",nullptr,nullptr,&status,2500)) {
+        DialDiag(L"Application stop transport failed app=%s",appName);
+        return -1;
+    }
+    if(status==200||status==202||status==204) {
+        DialDiag(L"Application stop accepted app=%s HTTP=%lu",appName,status);
+        return 1;
+    }
+    if(status==404)return 0;
+    DialDiag(L"Application stop rejected app=%s HTTP=%lu",appName,status);
+    return -2;
+}
+
 extern "C" int ABM_Dial_LaunchApplication(unsigned int i,const wchar_t *appName) {
     /* A DIAL GET probe can be absent or incomplete on some TV firmwares
        even when the app accepts the standard POST launch request. Callers
