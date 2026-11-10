@@ -78,6 +78,8 @@ RECT g_serviceRects[kServiceCount]{};
 HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
 HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr,g_deviceAppCombo=nullptr,g_deviceLaunch=nullptr,g_deviceAppStatus=nullptr,g_deviceAppStop=nullptr;
 bool g_devicePanelVisible=false;
+bool g_deviceSelectPulse=false,g_deviceLaunchPulse=false,g_devicePulsePhase=false;
+constexpr UINT ID_STREAM_DEVICE_PULSE_TIMER=0x7A1B;
 std::atomic<bool> g_appProbeRunning{false};
 struct StreamAppChoice { std::wstring label; std::wstring dialApp; bool castV2=false; std::wstring castAppId; };
 struct DialAppProbePayload { std::wstring report; std::vector<StreamAppChoice> choices; };
@@ -228,9 +230,12 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
     HDC dc=item->hDC;RECT r=item->rcItem;
     bool pressed=(item->itemState&ODS_SELECTED)!=0;
     bool focused=(item->itemState&ODS_FOCUS)!=0;
-    COLORREF fill=primary?(pressed?RGBc(25,112,101):RGBc(24,91,82)):
+    const bool pulse=(item->hwndItem==g_deviceSelect&&g_deviceSelectPulse)||
+                     (item->hwndItem==g_deviceLaunch&&g_deviceLaunchPulse);
+    COLORREF fill=pulse?(g_devicePulsePhase?RGBc(255,145,28):RGBc(194,83,16)):
+        primary?(pressed?RGBc(25,112,101):RGBc(24,91,82)):
         (pressed?RGBc(35,75,94):RGBc(20,42,60));
-    COLORREF edge=primary?RGBc(65,190,165):RGBc(48,91,113);
+    COLORREF edge=pulse?RGBc(255,190,82):primary?RGBc(65,190,165):RGBc(48,91,113);
     Rounded(dc,r,fill,9);
     HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGBc(99,225,205):edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
@@ -274,9 +279,9 @@ void LayoutDevicePanel(){
     SetWindowPos(g_deviceApps,nullptr,x+342,y+252,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceAppCombo,nullptr,x+18,y+340,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceLaunch,nullptr,x+342,y+340,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceAppStop,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
     SetWindowPos(g_deviceAppStatus,nullptr,x+342,y+426,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceAppStop,nullptr,x+342,y+469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,x+342,y+469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -427,7 +432,7 @@ void CreateDevicePanel(HWND parent){
     g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);
-    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV app",
+    g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV",
         WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
@@ -464,6 +469,8 @@ void ShowDevicePanel(){
 }
 void HideDevicePanel(){
     g_devicePanelVisible=false;
+    g_deviceSelectPulse=false;g_deviceLaunchPulse=false;
+    KillTimer(g_window,ID_STREAM_DEVICE_PULSE_TIMER);
     KillTimer(g_window,ID_STREAM_DEVICE_TIMER);
     HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose,g_deviceAppStatus,g_deviceAppStop};
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
@@ -1200,6 +1207,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_APP_DIAL_APP_LAUNCH:{
         std::unique_ptr<std::wstring> message((std::wstring*)lp);
         if(message){SetStatus(message->c_str());if(g_devicePanelVisible)SetWindowTextW(g_deviceHint,message->c_str());}
+        if(wp){g_deviceLaunchPulse=true;g_devicePulsePhase=true;SetTimer(hwnd,ID_STREAM_DEVICE_PULSE_TIMER,180,nullptr);InvalidateRect(g_deviceLaunch,nullptr,FALSE);}
         return 0;
     }
     case WM_APP_CAST_VIDEO_RESULT:{
@@ -1227,7 +1235,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(item->hwndItem==g_deviceLaunch){DrawDeviceButton(item,L"Launch app",true);return TRUE;}
         if(item->hwndItem==g_deviceClose){DrawDeviceButton(item,L"Close",false);return TRUE;}
         if(item->hwndItem==g_deviceAppStatus){DrawDeviceButton(item,L"Refresh app status",false);return TRUE;}
-        if(item->hwndItem==g_deviceAppStop){DrawDeviceButton(item,L"Stop TV app",false);return TRUE;}
+        if(item->hwndItem==g_deviceAppStop){DrawDeviceButton(item,L"Stop TV",false);return TRUE;}
         if(item->hwndItem==g_deviceList){DrawDeviceListItem(item);return TRUE;}
         if(item->hwndItem==g_deviceAppCombo){
             if(item->itemID==(UINT)-1)return TRUE;
@@ -1326,6 +1334,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(wp==ID_STREAM_DEVICE_TIMER){
             if(g_devicePanelVisible)RefreshDevicePanel(false);
             if(IsStreamReceiverReady())InvalidateRect(hwnd,&g_castRect,FALSE);
+            return 0;
+        }
+        if(wp==ID_STREAM_DEVICE_PULSE_TIMER){
+            if(!g_deviceSelectPulse&&!g_deviceLaunchPulse){KillTimer(hwnd,ID_STREAM_DEVICE_PULSE_TIMER);return 0;}
+            g_devicePulsePhase=!g_devicePulsePhase;
+            if(g_deviceSelectPulse&&g_deviceSelect)InvalidateRect(g_deviceSelect,nullptr,FALSE);
+            if(g_deviceLaunchPulse&&g_deviceLaunch)InvalidateRect(g_deviceLaunch,nullptr,FALSE);
             return 0;
         }
         break;
@@ -1438,8 +1453,14 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             }
             if(selectedOk){
                 g_streamSelectedIndex=(int)selected;
+                g_deviceSelectPulse=true;g_devicePulsePhase=true;
+                SetTimer(hwnd,ID_STREAM_DEVICE_PULSE_TIMER,180,nullptr);
+                InvalidateRect(g_deviceSelect,nullptr,FALSE);
                 wchar_t name[256]=L"TV";
                 SendMessageW(g_deviceList,LB_GETTEXT,selected,(LPARAM)name);
+                g_deviceSelectPulse=true;g_devicePulsePhase=true;
+                SetTimer(hwnd,ID_STREAM_DEVICE_PULSE_TIMER,180,nullptr);
+                InvalidateRect(g_deviceSelect,nullptr,FALSE);
                 SetStatus((std::wstring(L"Streaming Centre selected: ")+name+L". Now choose Cast video.").c_str());
                 SetWindowTextW(g_deviceHint,(std::wstring(L"Selected: ")+name).c_str());
             }else {g_streamSelectedDialIndex=-1;g_streamSelectedCastV2Index=-1;SetStatus(L"That receiver is no longer available. Refresh the list.");}
@@ -1568,6 +1589,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             try{
                 std::thread([target,choice,dialIndex,castV2Index](){
                     std::wstring result;
+                    bool launchConfirmed=false;
                     if(choice.castV2){
                         StreamingDiag(L"Dispatching Google Cast launch label=%s appId=%s receiverIndex=%d",
                             choice.label.c_str(),choice.castAppId.c_str(),castV2Index);
@@ -1577,8 +1599,10 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                             result=L"Prime Video Cast receiver app launch confirmed. This is only an app-launch test; Amazon's title/session handoff is not yet implemented. Use Prime Video's official mobile Cast control to start a title.";
                         else
                             result=L"YouTube app launch confirmed by Google Cast. Use the TV remote to choose content.";
+                        launchConfirmed=ok;
                     }else{
                         int code=dialIndex>=0?ABM_Dial_LaunchApplication((unsigned int)dialIndex,choice.dialApp.c_str()):-1;
+                        launchConfirmed=(code==1);
                         if(code==1)result=L"The TV accepted the "+choice.dialApp+L" app launch. Use Refresh app status to check the DIAL app state or Stop TV app to close it. These are app-level controls; playback pause/resume/seek and browser-title transfer require a provider-supported sender session.";
                         else if(code==0)result=L"The TV no longer exposes the "+choice.dialApp+L" app through DIAL.";
                         else if(code==-1)result=L"Could not reach the TV's DIAL app endpoint.";
@@ -1586,7 +1610,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                     }
                     g_appProbeRunning=false;
                     auto *payload=new std::wstring(std::move(result));
-                    if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APP_LAUNCH,0,(LPARAM)payload))delete payload;
+                    if(!IsWindow(target)||!PostMessageW(target,WM_APP_DIAL_APP_LAUNCH,launchConfirmed?1:0,(LPARAM)payload))delete payload;
                 }).detach();
             }catch(...){g_appProbeRunning=false;SetStatus(L"Could not start the TV app launch request.");}
             return 0;
