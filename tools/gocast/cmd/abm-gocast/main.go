@@ -13,7 +13,7 @@ import (
 	"github.com/tristanpenman/go-cast/internal/client"
 )
 
-type result struct { OK bool `json:"ok"`; Error string `json:"error,omitempty"`; ScreenID string `json:"screenId,omitempty"` }
+type result struct { OK bool `json:"ok"`; Error string `json:"error,omitempty"`; ScreenID string `json:"screenId,omitempty"`; Availability string `json:"availability,omitempty"` }
 
 var diag = func() *log.Logger {
     f, err := os.OpenFile(filepath.Join(os.TempDir(), "ABMAVPlayer-GoCast-diagnostics.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -24,6 +24,23 @@ var diag = func() *log.Logger {
 func fail(err error) { diag.Printf("FAILED: %v", err); _ = json.NewEncoder(os.Stdout).Encode(result{OK:false,Error:err.Error()}) }
 
 func main() {
+	if len(os.Args)==4 && os.Args[1]=="--check-youtube" {
+		port,err:=strconv.Atoi(os.Args[3])
+		if err!=nil || port<1 || port>65535 { fail(fmt.Errorf("invalid receiver port")); os.Exit(2) }
+		diag.Printf("checking YouTube Cast app availability on %s:%d",os.Args[2],port)
+		conn,err:=client.NewClient(os.Args[2],uint(port),true,nil)
+		if err!=nil { fail(fmt.Errorf("GoCast receiver authentication/connection: %w",err)); os.Exit(1) }
+		defer conn.Close()
+		sender:=client.NewSender(conn,nil)
+		sender.Connect()
+		sender.RequestAppAvailability([]string{"233637DE"})
+		availability,err:=sender.WaitForAvailability(8*time.Second)
+		diag.Printf("YouTube app availability response: %v",availability)
+		if err!=nil { fail(fmt.Errorf("query YouTube app availability: %w",err)); os.Exit(1) }
+		value:=availability["233637DE"]
+		_ = json.NewEncoder(os.Stdout).Encode(result{OK:true,Availability:value})
+		return
+	}
 	if len(os.Args)!=4 { fail(fmt.Errorf("usage: abm-gocast.exe <receiver-host> <port> <youtube-video-id>")); os.Exit(2) }
 	port,err:=strconv.Atoi(os.Args[2]); if err!=nil || port<1 || port>65535 { fail(fmt.Errorf("invalid receiver port")); os.Exit(2) }
 	video:=os.Args[3]
