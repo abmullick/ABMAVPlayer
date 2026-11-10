@@ -1572,7 +1572,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                             result=L"YouTube app launch confirmed by Google Cast. Use the TV remote to choose content.";
                     }else{
                         int code=dialIndex>=0?ABM_Dial_LaunchApplication((unsigned int)dialIndex,choice.dialApp.c_str()):-1;
-                        if(code==1)result=L"The TV accepted the "+choice.dialApp+L" app launch. Use the TV remote to choose content; no provider session or title was transferred.";
+                        if(code==1)result=L"The TV accepted the "+choice.dialApp+L" app launch. Use Refresh app status to check the DIAL app state or Stop TV app to close it. These are app-level controls; playback pause/resume/seek and browser-title transfer require a provider-supported sender session.";
                         else if(code==0)result=L"The TV no longer exposes the "+choice.dialApp+L" app through DIAL.";
                         else if(code==-1)result=L"Could not reach the TV's DIAL app endpoint.";
                         else result=L"The TV rejected the "+choice.dialApp+L" app launch request.";
