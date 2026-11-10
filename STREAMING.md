@@ -86,9 +86,9 @@ For a recognised YouTube video URL, the app uses Google Cast V2 when the selecte
 
 ### Amazon Prime Video
 
-When the current WebView2 page is on `primevideo.com`, **Cast video** does not attempt a desktop title handoff, extract the browser's protected video, or relay a playback session. The desktop Streaming Centre does not have a supported Amazon title-casting interface. If the TV exposes a recognised `PrimeVideo` DIAL app endpoint, use **Check TV apps** and **Launch app** to open the TV app separately.
+When the current WebView2 page is on `primevideo.com`, **Cast video** requests the selected TV to open the experimental Prime Video Google Cast receiver app (`17608BC8`) when that endpoint was discovered. The result is reported as an app launch only; it does not transfer the desktop title, Amazon account session or playback state. The desktop Streaming Centre does not have a supported Amazon title-casting interface. If the selected TV has no Cast V2 endpoint, ABM explains that limitation instead of reporting a successful cast.
 
-To cast a title, use the Cast button in Amazon's official Prime Video Android or iOS app and select the TV, or open Prime Video directly on the TV and choose the title with its remote. The experimental Cast receiver check can tell whether the TV advertises app ID `17608BC8`; a successful launch is not a title handoff. ABM AV Player does not copy Amazon login state, transfer provider credentials, or bypass DRM. See [Amazon's Prime Video casting instructions](https://www.primevideo.com/help?nodeId=GDSGFYXXPCSAGVTH).
+After ABM opens Prime Video on the TV, choose the title with the TV remote. To transfer a title from a phone, use the Cast button in Amazon's official Prime Video Android or iOS app and select the TV. The experimental Cast receiver check can tell whether the TV advertises app ID `17608BC8`; a successful launch is not a title handoff. ABM AV Player does not copy Amazon login state, transfer provider credentials, or bypass DRM. See [Amazon's Prime Video casting instructions](https://www.primevideo.com/help?nodeId=GDSGFYXXPCSAGVTH).
 
 ### Direct media URL handoff
 
