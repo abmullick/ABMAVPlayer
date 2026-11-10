@@ -632,7 +632,7 @@ void CastCurrentBrowserVideo(){
                     if(g_streamSelectedDialIndex>=0){
                         if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
                             SetStatus(L"YouTube app launch accepted by the TV. The TV should now open the selected video.");
-                        else SetStatus(L"The TV's DIAL service did not accept the YouTube launch. Check that YouTube casting is enabled on the TV.");
+                        else { unsigned int code=ABM_Dial_LastLaunchHttpStatus(); wchar_t message[256]{}; if(code) StringCchPrintfW(message,_countof(message),L"The TV rejected the DIAL YouTube launch (HTTP %u). Your phone may use Google Cast app control, which this path does not yet implement.",code); else StringCchCopyW(message,_countof(message),L"The DIAL YouTube launch could not reach the TV. Your phone may use Google Cast app control, which this path does not yet implement."); SetStatus(message); }
                     }else if(g_streamSelectedIsDlna)
                         SetStatus(L"This TV is selected through DLNA only. YouTube requires its DIAL or Google Cast app-control service; DLNA cannot launch the YouTube app.");
                     else SetStatus(L"This receiver has no discovered YouTube app-control endpoint. Generic URL casting cannot launch YouTube.");
