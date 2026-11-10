@@ -99,7 +99,7 @@ bool IsStreamReceiverReady(){
 
 constexpr UINT ID_STREAM_DEVICE_TIMER=0x7A10;
 constexpr int ID_STREAM_DEVICE_LIST=0x7A11,ID_STREAM_DEVICE_REFRESH=0x7A12,ID_STREAM_DEVICE_SELECT=0x7A13,ID_STREAM_DEVICE_CLOSE=0x7A14,ID_STREAM_DEVICE_APPS=0x7A15,ID_STREAM_DEVICE_APP_COMBO=0x7A16,ID_STREAM_DEVICE_LAUNCH=0x7A17,ID_STREAM_DEVICE_APP_STATUS=0x7A18,ID_STREAM_DEVICE_APP_STOP=0x7A19;
-RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{};
+RECT g_backRect{},g_forwardRect{},g_reloadRect{},g_homeRect{},g_fullscreenRect{},g_externalRect{},g_helpRect{},g_aboutRect{},g_castRect{},g_castVideoRect{},g_stopTvRect{};
 int g_activeService=-1;
 int g_hoverService=-1;
 int g_hoverControl=-1;
@@ -964,7 +964,7 @@ void PaintChrome(HWND hwnd){
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
     Text(dc,L"Find TVs",g_castRect,receiverReady?RGBc(255,255,255):RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    g_castVideoRect=RECT{620,15,750,55};
+    g_castVideoRect=RECT{620,15,730,55};
     Rounded(dc,g_castVideoRect,g_hoverControl==9?RGBc(35,126,111):RGBc(25,91,80),10);
     HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,g_hoverControl==9?RGBc(113,237,198):RGBc(57,164,132));
     HGDIOBJ oldVideoPen=SelectObject(dc,videoPen);
@@ -972,6 +972,15 @@ void PaintChrome(HWND hwnd){
     RoundRect(dc,g_castVideoRect.left,g_castVideoRect.top,g_castVideoRect.right,g_castVideoRect.bottom,10,10);
     SelectObject(dc,oldVideoBrush);SelectObject(dc,oldVideoPen);DeleteObject(videoPen);
     Text(dc,L"Cast video",g_castVideoRect,RGBc(226,255,241),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    g_stopTvRect=RECT{740,15,850,55};
+    Rounded(dc,g_stopTvRect,g_hoverControl==10?RGBc(150,55,34):RGBc(100,43,32),10);
+    HPEN stopPen=CreatePen(PS_SOLID,g_hoverControl==10?2:1,RGBc(220,119,83));
+    HGDIOBJ oldStopPen=SelectObject(dc,stopPen);
+    HGDIOBJ oldStopBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,g_stopTvRect.left,g_stopTvRect.top,g_stopTvRect.right,g_stopTvRect.bottom,10,10);
+    SelectObject(dc,oldStopBrush);SelectObject(dc,oldStopPen);DeleteObject(stopPen);
+    Text(dc,L"Stop TV",g_stopTvRect,RGBc(255,239,232),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
     Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
@@ -1360,6 +1369,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         else if(PtInRect(&g_externalRect,pt))control=7;
         else if(PtInRect(&g_castRect,pt))control=8;
         else if(PtInRect(&g_castVideoRect,pt))control=9;
+        else if(PtInRect(&g_stopTvRect,pt))control=10;
         if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;InvalidateRect(hwnd,nullptr,FALSE);}
         SetCursor((service>=0||control>=0)?LoadCursorW(nullptr,IDC_HAND):LoadCursorW(nullptr,IDC_ARROW));
         return 0;
@@ -1383,6 +1393,17 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             return 0;
         }
         if(PtInRect(&g_castVideoRect,POINT{x,y})){CastCurrentBrowserVideo();return 0;}
+        if(PtInRect(&g_stopTvRect,POINT{x,y})){
+            if(!IsStreamReceiverReady()){SetStatus(L"Find TVs and select a receiver before stopping its app.");return 0;}
+            if(g_streamAppChoices.empty()){SetStatus(L"Open Find TVs, select the TV app to stop, then use Stop TV here.");ShowDevicePanel();return 0;}
+            LRESULT appSel=SendMessageW(g_deviceAppCombo,LB_GETCURSEL,0,0);
+            LRESULT choiceIndex=appSel==LB_ERR?LB_ERR:SendMessageW(g_deviceAppCombo,LB_GETITEMDATA,(WPARAM)appSel,0);
+            if(choiceIndex==LB_ERR||choiceIndex<0||(size_t)choiceIndex>=g_streamAppChoices.size()){
+                SetStatus(L"Select the running TV app in Find TVs before pressing Stop TV.");ShowDevicePanel();return 0;
+            }
+            SendMessageW(hwnd,WM_COMMAND,MAKEWPARAM(ID_STREAM_DEVICE_APP_STOP,0),0);
+            return 0;
+        }
         if(PtInRect(&g_externalRect,POINT{x,y})){
             LPWSTR current=nullptr;
             if(g_webView&&SUCCEEDED(g_webView->get_Source(&current))&&current){
