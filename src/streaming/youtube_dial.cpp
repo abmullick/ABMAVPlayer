@@ -81,7 +81,9 @@ bool HttpRequest(const std::wstring &url,const wchar_t *verb,const std::wstring 
     bool ok=false;
     if(request) {
         const bool isPost=_wcsicmp(verb,L"POST")==0;
-        const wchar_t *headers=isPost?L"Content-Type: text/plain; charset=\"utf-8\"\r\nOrigin: https://www.youtube.com\r\n":WINHTTP_NO_ADDITIONAL_HEADERS;
+        // This is a native DIAL client, not a YouTube web origin. Do not
+        // send a misleading YouTube Origin header to unrelated TV applications.
+        const wchar_t *headers=isPost?L"Content-Type: text/plain; charset=\"utf-8\"\r\n":WINHTTP_NO_ADDITIONAL_HEADERS;
         std::string bodyUtf8;
         if(isPost&&!body.empty()){
             int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,body.data(),(int)body.size(),nullptr,0,nullptr,nullptr);
