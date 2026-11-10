@@ -70,7 +70,7 @@ Discovery checks four receiver paths:
 - **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
 - **DIAL + YouTube Lounge:** Retained as a fallback for TVs that advertise a compatible DIAL app endpoint. The Lounge API is undocumented and may change.
 
-The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube handoff and conditional PrimeVideo app launch when the TV advertises that application. Cast V2 and DIAL are independent app-control paths.
+The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube handoff. Prime Video is not launched through DIAL: the desktop browser has no supported Amazon title-handoff interface. Cast V2 and DIAL are independent app-control paths.
 
 The receiver list refreshes while the panel is open. If a device has disappeared or a selection is stale, use **Refresh devices**, select it again and press **Use selected TV**.
 
@@ -82,11 +82,11 @@ After selecting a receiver, start a video in the browser and choose **Cast video
 
 For a recognised YouTube video URL, the app uses Google Cast V2 when the selected receiver advertises a Cast service: it opens a TLS connection to port 8009, launches the YouTube receiver application, requests the MDX screen ID and sends the video through YouTube Lounge remote control. If Cast V2 is unavailable, a discovered DIAL YouTube endpoint is used as a fallback. DLNA alone cannot launch the YouTube app. YouTube MDX/Lounge is an undocumented protocol and receiver firmware or service changes can break the handoff.
 
-### Amazon Prime Video app launch
+### Amazon Prime Video
 
-When the current WebView2 page is on `primevideo.com`, **Cast video** does not attempt to extract the browser's protected video. Instead, if the selected receiver exposes a DIAL endpoint, ABM checks for the `PrimeVideo` DIAL application and sends the standard DIAL launch request. A successful response means the TV accepted the app launch; it does **not** mean a title has started playing. Use the TV remote to select a title and control playback in Amazon's official TV app.
+When the current WebView2 page is on `primevideo.com`, **Cast video** does not attempt a DIAL app launch, extract the browser's protected video, or relay a playback session. The desktop Streaming Centre does not have a supported Amazon title-casting interface. It reports this limitation instead of claiming that a launch or cast succeeded.
 
-Amazon documents title casting to Chromecast/Android TV from the Prime Video Android or iOS app. The desktop browser/Streaming Centre does not implement Amazon's private phone-to-TV session protocol, copy Amazon login state, or send protected playback sessions. If the TV does not advertise the `PrimeVideo` DIAL app, use the Prime Video app directly on the TV or Amazon's official mobile Cast button. See [Amazon's Prime Video casting instructions](https://www.primevideo.com/help?nodeId=GDSGFYXXPCSAGVTH).
+To cast a title, use the Cast button in Amazon's official Prime Video Android or iOS app and select the TV, or open Prime Video directly on the TV and choose the title with its remote. ABM AV Player does not copy Amazon login state, transfer provider credentials, or bypass DRM. See [Amazon's Prime Video casting instructions](https://www.primevideo.com/help?nodeId=GDSGFYXXPCSAGVTH).
 
 ### Direct media URL handoff
 
