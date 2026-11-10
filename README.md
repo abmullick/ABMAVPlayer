@@ -164,3 +164,6 @@ User preferences and recent/playlist state are stored under %APPDATA%\\ABMAVPlay
 A TV must expose a compatible Google Cast / Chromecast receiver service. Android TV branding alone does not guarantee that it does. The PC and TV should be on the same non-guest LAN, and multicast DNS (mDNS) must be allowed. Windows Defender Firewall should allow ABM AV Player / VLC on Private networks. VPNs, guest Wi-Fi, router client isolation and multicast filtering can prevent discovery.
 
 See CASTING.md for the full procedure and troubleshooting notes.
+
+
+**Refresh app status** queries the TV's current receiver application state and reports whether the selected Cast app is running or not running, or reads the selected DIAL app's running/stopped state. It does not report movie playback state (playing, paused or buffering).
