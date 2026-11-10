@@ -293,6 +293,29 @@ bool PlayLounge(const std::string &screen,const std::string &video,std::string &
     return true;
 }
 }
+extern "C" int ABM_Dial_LaunchApplication(unsigned int i,const wchar_t *appName) {
+    int capability=ABM_Dial_QueryApplication(i,appName);
+    if(capability==0)return 0;
+    if(capability<0)return capability;
+    std::wstring base;
+    {
+        std::lock_guard<std::mutex> lock(g_lock);
+        if(i>=g_devices.size())return -1;
+        base=g_devices[i].appUrl;
+    }
+    DWORD status=0;
+    if(!HttpRequest(base+appName,L"POST",L"",nullptr,nullptr,&status)) {
+        DialDiag(L"Application launch transport failed app=%s",appName);
+        return -1;
+    }
+    if(status==200||status==201||status==202) {
+        DialDiag(L"Application launch accepted app=%s HTTP=%lu",appName,status);
+        return 1;
+    }
+    DialDiag(L"Application launch rejected app=%s HTTP=%lu",appName,status);
+    return -2;
+}
+
 extern "C" BOOL ABM_Dial_LaunchYouTube(unsigned int i,const wchar_t *videoId) {
     if(!videoId||wcslen(videoId)!=11)return FALSE;
     for(const wchar_t *p=videoId;*p;++p)if(!((*p>=L'a'&&*p<=L'z')||(*p>=L'A'&&*p<=L'Z')||(*p>=L'0'&&*p<=L'9')||*p==L'_'||*p==L'-'))return FALSE;
