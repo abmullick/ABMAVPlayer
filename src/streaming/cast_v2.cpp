@@ -405,32 +405,32 @@ int CheckYouTubeAvailability(const Receiver &receiver) {
     if(output.find("\"availability\":\"APP_UNAVAILABLE\"")!=std::string::npos)return 0;
     return -1;
 }
-bool RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t *appId,bool launch) {
-    if(!appId||wcslen(appId)!=8)return false;
+int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t *appId,bool launch) {
+    if(!appId||wcslen(appId)!=8)return -1;
     for(const wchar_t *p=appId;*p;++p)
-        if(!((*p>=L'0'&&*p<=L'9')||(*p>=L'A'&&*p<=L'F')))return false;
+        if(!((*p>=L'0'&&*p<=L'9')||(*p>=L'A'&&*p<=L'F')))return -1;
     wchar_t module[MAX_PATH]{};
-    if(!GetModuleFileNameW(nullptr,module,MAX_PATH))return false;
+    if(!GetModuleFileNameW(nullptr,module,MAX_PATH))return -1;
     std::wstring directory(module);
     size_t slash=directory.find_last_of(L"\\/");
-    if(slash==std::wstring::npos)return false;
+    if(slash==std::wstring::npos)return -1;
     directory.resize(slash+1);
     std::wstring helper=directory+L"abm-gocast.exe";
     if(GetFileAttributesW(helper.c_str())==INVALID_FILE_ATTRIBUTES){
-        Diag(L"Cast app helper missing path=%s",helper.c_str());return false;
+        Diag(L"Cast app helper missing path=%s",helper.c_str());return -1;
     }
     std::wstring command=L"\""+helper+L"\" "+mode+L" \""+Wide(receiver.host.c_str())+L"\" "+
         std::to_wstring(receiver.port)+L" \""+appId+L"\"";
     SECURITY_ATTRIBUTES sa{sizeof(sa),nullptr,TRUE};
     HANDLE readPipe=nullptr,writePipe=nullptr;
-    if(!CreatePipe(&readPipe,&writePipe,&sa,0))return false;
+    if(!CreatePipe(&readPipe,&writePipe,&sa,0))return -1;
     SetHandleInformation(readPipe,HANDLE_FLAG_INHERIT,0);
     STARTUPINFOW si{};si.cb=sizeof(si);si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
     si.wShowWindow=SW_HIDE;si.hStdOutput=writePipe;si.hStdError=writePipe;si.hStdInput=GetStdHandle(STD_INPUT_HANDLE);
     PROCESS_INFORMATION pi{};
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
-    if(!created){Diag(L"Could not start Cast app helper Win32=%lu",GetLastError());CloseHandle(readPipe);return false;}
+    if(!created){Diag(L"Could not start Cast app helper Win32=%lu",GetLastError());CloseHandle(readPipe);return -1;}
     DWORD wait=WaitForSingleObject(pi.hProcess,launch?40000:15000),exitCode=1;
     if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
@@ -440,15 +440,17 @@ bool RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t
     }
     CloseHandle(readPipe);
     Diag(L"Cast app helper app=%s mode=%s wait=%lu exit=%lu output=%S",appId,mode,wait,exitCode,output.c_str());
-    if(wait!=WAIT_OBJECT_0||exitCode!=0)return false;
-    if(launch)return output.find("\"launched\":true")!=std::string::npos;
-    return output.find("\"availability\":\"APP_AVAILABLE\"")!=std::string::npos;
+    if(wait!=WAIT_OBJECT_0||exitCode!=0)return -1;
+    if(launch)return output.find("\"launched\":true")!=std::string::npos?1:0;
+    if(output.find("\"availability\":\"APP_AVAILABLE\"")!=std::string::npos)return 1;
+    if(output.find("\"availability\":\"APP_UNAVAILABLE\"")!=std::string::npos)return 0;
+    return -1;
 }
 int CheckCastAppAvailability(const Receiver &receiver,const wchar_t *appId) {
-    return RunCastAppHelper(receiver,L"--check-app",appId,false)?1:-1;
+    return RunCastAppHelper(receiver,L"--check-app",appId,false);
 }
 bool LaunchCastApp(const Receiver &receiver,const wchar_t *appId) {
-    return RunCastAppHelper(receiver,L"--launch-app",appId,true);
+    return RunCastAppHelper(receiver,L"--launch-app",appId,true)==1;
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
     Diag(L"Launch requested receiver=%s host=%S port=%u",r.name.c_str(),r.host.c_str(),r.port);
