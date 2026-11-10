@@ -70,6 +70,8 @@ Discovery checks four receiver paths:
 - **DLNA / UPnP:** Discovers compatible UPnP MediaRenderer devices.
 - **DIAL + YouTube Lounge:** Retained as a fallback for TVs that advertise a compatible DIAL app endpoint. The Lounge API is undocumented and may change.
 
+The panel's **Check TV apps** action performs read-only capability checks. Over Google Cast V2 it asks the receiver whether the YouTube Cast app (`233637DE`) is available, using the authenticated GoCast helper. Over DIAL it queries the application resources `YouTube`, `Netflix`, `PrimeVideo`, `JioHotstar`, `SonyLIV` and `ZEE5` with HTTP GET only; it does not launch or stop applications. A DIAL `200` response means the endpoint recognises that application name and reports its state (running/stopped where supplied); `404` means that name is not exposed by that TV's DIAL service, not that the Android TV app is necessarily uninstalled. Provider-specific DIAL names vary, so these checks are evidence about receiver endpoints, not a complete Android TV installed-app inventory.
+
 The panel combines matching receiver names into one visible row when a device advertises more than one protocol. Where a matching device offers both Google Cast and DLNA, the Streaming Centre prefers the Google Cast route; DLNA is used when that is the available media-renderer route. A discovered DIAL endpoint is retained for YouTube handoff. Prime Video is not launched through DIAL: the desktop browser has no supported Amazon title-handoff interface. Cast V2 and DIAL are independent app-control paths.
 
 The receiver list refreshes while the panel is open. If a device has disappeared or a selection is stale, use **Refresh devices**, select it again and press **Use selected TV**.
@@ -139,6 +141,11 @@ The Streaming Centre monitors WebView2 process failure. It makes a bounded numbe
 - Click **Refresh devices**.
 - Check multicast/mDNS and SSDP/UPnP discovery are not blocked by the router, firewall, VPN or client isolation.
 - The TV may expose only one of Google Cast, DLNA or DIAL. Support for one protocol does not imply support for the others.
+
+### Check TV apps reports an app as not exposed
+- The check probes known DIAL application names and the Google Cast YouTube app ID; it is not a full Android TV installed-app inventory.
+- A DIAL 404 means the TV's DIAL service does not recognise that application resource name. It does not prove that the app is absent from the TV launcher.
+- A Cast `APP_UNAVAILABLE` response means the receiver did not advertise the requested Cast app ID. Use the TV's own app launcher for apps that are not exposed through these control protocols.
 
 ### A TV appears but YouTube does not launch
 - YouTube app handoff requires a discovered and enabled DIAL YouTube app endpoint (or supported Cast app-control route).
