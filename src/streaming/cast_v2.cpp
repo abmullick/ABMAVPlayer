@@ -454,7 +454,7 @@ int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t 
     CloseHandle(readPipe);
     Diag(L"Cast app helper app=%s mode=%s wait=%lu exit=%lu output=%S",appId,mode,wait,exitCode,output.c_str());
     if(wait!=WAIT_OBJECT_0||exitCode!=0)return -1;
-    if(launch)return output.find("\"launched\":true")!=std::string::npos?1:0;
+    if(wcscmp(mode,L"--stop-app")==0){\n        if(output.find("\"availability\":\"APP_STOPPED\"")!=std::string::npos)return 1;\n        if(output.find("\"availability\":\"APP_NOT_RUNNING\"")!=std::string::npos)return 0;\n        return -1;\n    }\n    if(launch)return output.find("\"launched\":true")!=std::string::npos?1:0;
     if(output.find("\"availability\":\"APP_AVAILABLE\"")!=std::string::npos)return 1;
     if(output.find("\"availability\":\"APP_UNAVAILABLE\"")!=std::string::npos)return 0;
     return -1;
