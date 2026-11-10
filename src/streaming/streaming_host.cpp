@@ -609,8 +609,8 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 L"Sign in directly on the provider's website with your own account. Supported cookies and sessions persist in the current Windows profile at %LOCALAPPDATA%\\ABMAVPlayer\\WebView2. The player does not collect or proxy passwords.",
                 L"Back and Forward navigate browser history. Reload refreshes the current page; Home returns to the service start page. Previous/Next are intended for supported YouTube playlist navigation.",
                 L"Use the Fullscreen toolbar control, F11 or the provider's own video control. Press Esc to leave fullscreen. Open in browser launches the current page in your default desktop browser.",
-                L"Choose Find TVs to open the dedicated device panel. Discovery checks Google Cast, DLNA/UPnP and DIAL receivers. Select a TV, use Refresh devices if needed, then click Use selected TV. Duplicate receiver entries are consolidated where names match.",
-                L"Choose Cast video after selecting a receiver. YouTube handoff uses Google Cast V2 when the TV advertises a Cast receiver, launches the YouTube receiver app, requests its MDX screen ID and sends the selected video through YouTube Lounge remote control. DIAL remains a fallback for compatible TVs; DLNA alone cannot launch YouTube. Other content requires a directly addressable video URL. Protected, encrypted or segmented streams generally cannot be handed off. If playback fails, try the provider's official browser/app."
+                L"Choose Find TVs, select a receiver and click Use selected TV. Check TV apps performs read-only Google Cast YouTube availability and DIAL app-endpoint checks; only confirmed launch targets appear in the app selector.",
+                L"Select a confirmed app and click Launch app to open it on the TV; use the remote to choose content. Cast video supports YouTube handoff and directly addressable media URLs. Desktop Prime Video title handoff is not supported."
             };
             int y=140;
             for(int i=0;i<6;i++){
