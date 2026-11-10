@@ -52,6 +52,7 @@ const wchar_t *kClassName=L"ABMAVPlayer.Streaming";
 constexpr UINT WM_APP_WEBVIEW_RECOVER=WM_APP+20;
 constexpr UINT WM_APP_DIAL_APPS_READY=WM_APP+21;
 constexpr UINT WM_APP_DIAL_APP_LAUNCH=WM_APP+22;
+constexpr UINT WM_APP_CAST_VIDEO_RESULT=WM_APP+23;
 constexpr int kMaxWebViewRecoveries=3;
 constexpr int kServiceCount=6;
 const wchar_t *kServices[kServiceCount]={
@@ -715,18 +716,44 @@ void CastCurrentBrowserVideo(){
                     return S_OK;
                 }
                 if(payload.rfind(L"YT:",0)==0){
-                    std::wstring id=payload.substr(3);
-                    if(g_streamSelectedCastV2Index>=0){
-                        if(ABM_CastV2_LaunchYouTube(id.c_str()))
-                            SetStatus(L"Google Cast V2 accepted the YouTube handoff. Check the TV for playback.");
-                        else { wchar_t reason[256]{}; if(ABM_CastV2_LastError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"Google Cast V2 YouTube handoff failed."); }
-                    }else if(g_streamSelectedDialIndex>=0){
-                        if(ABM_Dial_LaunchYouTube((unsigned int)g_streamSelectedDialIndex,id.c_str()))
-                            SetStatus(L"YouTube accepted the video handoff. Check the TV for playback.");
-                        else { wchar_t reason[256]{}; if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])SetStatus(reason);else SetStatus(L"YouTube app launch or remote-control handoff failed."); }
-                    }else if(g_streamSelectedIsDlna)
-                        SetStatus(L"This TV is selected through DLNA only. YouTube requires its DIAL or Google Cast app-control service; DLNA cannot launch the YouTube app.");
-                    else SetStatus(L"This receiver has no discovered YouTube app-control endpoint. Generic URL casting cannot launch YouTube.");
+                    const std::wstring id=payload.substr(3);
+                    const int castIndex=g_streamSelectedCastV2Index;
+                    const int dialIndex=g_streamSelectedDialIndex;
+                    const bool dlnaOnly=g_streamSelectedIsDlna;
+                    const HWND target=g_window;
+                    if(castIndex<0&&dialIndex<0){
+                        SetStatus(dlnaOnly?
+                            L"This TV is selected through DLNA only. YouTube needs Google Cast or DIAL app control.":
+                            L"The selected TV has no usable YouTube app-control endpoint. Reopen Find TVs and select the receiver again.");
+                        return S_OK;
+                    }
+                    SetStatus(L"Connecting to the selected TV and transferring the YouTube video…");
+                    try{
+                        std::thread([target,id,castIndex,dialIndex](){
+                            std::wstring message;
+                            if(castIndex>=0){
+                                StreamingDiag(L"Starting asynchronous Google Cast YouTube handoff videoId=%s receiverIndex=%d",id.c_str(),castIndex);
+                                if(ABM_CastV2_LaunchYouTube(id.c_str()))
+                                    message=L"YouTube video handoff completed. Check the TV for playback.";
+                                else{
+                                    wchar_t reason[256]{};
+                                    if(ABM_CastV2_LastError(reason,_countof(reason))&&reason[0])message=reason;
+                                    else message=L"Google Cast could not complete the YouTube video handoff. Check the TV connection and retry.";
+                                }
+                            }else{
+                                StreamingDiag(L"Starting asynchronous DIAL YouTube handoff videoId=%s receiverIndex=%d",id.c_str(),dialIndex);
+                                if(ABM_Dial_LaunchYouTube((unsigned int)dialIndex,id.c_str()))
+                                    message=L"YouTube video handoff completed. Check the TV for playback.";
+                                else{
+                                    wchar_t reason[256]{};
+                                    if(ABM_Dial_LastLaunchError(reason,_countof(reason))&&reason[0])message=reason;
+                                    else message=L"The TV did not complete the YouTube app launch or video handoff.";
+                                }
+                            }
+                            auto *result=new std::wstring(std::move(message));
+                            if(!IsWindow(target)||!PostMessageW(target,WM_APP_CAST_VIDEO_RESULT,0,(LPARAM)result))delete result;
+                        }).detach();
+                    }catch(...){SetStatus(L"Could not start the YouTube casting operation.");}
                     return S_OK;
                 }
                 if(payload.rfind(L"URL:",0)!=0){
@@ -1070,6 +1097,11 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_APP_DIAL_APP_LAUNCH:{
         std::unique_ptr<std::wstring> message((std::wstring*)lp);
         if(message){SetStatus(message->c_str());if(g_devicePanelVisible)SetWindowTextW(g_deviceHint,message->c_str());}
+        return 0;
+    }
+    case WM_APP_CAST_VIDEO_RESULT:{
+        std::unique_ptr<std::wstring> message((std::wstring*)lp);
+        if(message)SetStatus(message->c_str());
         return 0;
     }
     case WM_DRAWITEM:{
