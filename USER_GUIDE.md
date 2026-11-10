@@ -225,7 +225,8 @@ Audio preferences are stored in `audio.ini`. The WebView2 browser profile is sep
 
 ### A TV is listed but Cast video does not start
 - Confirm the correct TV is selected in the Streaming Centre panel, then try **Cast video** again.
-- YouTube handoff starts the TV app through DIAL, reads its YouTube screen ID, then uses YouTube Lounge remote control to send the selected video. This is the same general remote-control path used by YouTube phone casting; DLNA alone is not sufficient. The Lounge API is undocumented and may change.
+- YouTube handoff starts the TV app through Google Cast V2 or DIAL, then uses YouTube Lounge remote control to send the selected video. The Lounge API is undocumented and may change.
+- On a Prime Video page, **Cast video** attempts to launch the TV's installed `PrimeVideo` app through DIAL. If the TV accepts the launch, use its remote to choose a title; this does not transfer a title or playback session from the desktop browser. If the TV does not expose the DIAL app, use Prime Video directly on the TV or the official Prime Video Cast button in the Android/iOS app.
 - For other pages, the video must expose a direct media URL and the receiver must be able to fetch/decode it.
 - Protected, adaptive or segmented streaming content may not be handoff-compatible. Use the provider's own Cast control or TV app.
 
