@@ -4628,6 +4628,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;
             if(g_torrentStreamRequest){free(g_torrentStreamRequest);g_torrentStreamRequest=NULL;}
         }
+        if(g_torrentTvStreamThread) {
+            InterlockedExchange(&g_torrentTvStreamCancel,1);
+            if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+            WaitForSingleObject(g_torrentTvStreamThread,INFINITE);
+            CloseHandle(g_torrentTvStreamThread);g_torrentTvStreamThread=NULL;
+            if(g_torrentTvStreamRequest){free(g_torrentTvStreamRequest);g_torrentTvStreamRequest=NULL;}
+        }
         if(g_torrentInitThread){WaitForSingleObject(g_torrentInitThread,INFINITE);CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
         g_torrentInitPending=FALSE;
         if(g_torrentTvPlaybackActive)ABM_TorrentDlna_StopPlayback();
