@@ -37,7 +37,7 @@ The Command Centre includes a dedicated **Settings** window styled to match the 
 - Torrent network: download and upload limits (0 = unlimited).
 - Maintenance: manual GitHub release update check.
 
-On a new installation, torrent cache data is stored under the Windows user's resolved Downloads folder in `ABM AV Player\\torrent-cache`. Redirected Windows Downloads locations are respected. Existing installations with a legacy cache retain that location. Cache-location changes made while the torrent engine is active take effect after an application restart.
+On a new installation, torrent cache data is stored under the Windows user's resolved Downloads folder in `ABM AV Player\\torrent-cache`. Redirected Windows Downloads locations are respected. Existing installations with a legacy cache retain that location. Cache-location changes made while the torrent engine is active take effect after an application restart. Changing the location does not automatically move existing cache files; the previous folder is left intact. See [SETTINGS.md](SETTINGS.md) for the full behaviour and configuration reference.
 
 ### Streaming Centre — browser services and independent TV casting
 
