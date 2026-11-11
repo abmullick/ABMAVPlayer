@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <filesystem>\n#include <fstream>\n#include <sstream>\n#include <functional>\n#include <cctype>\n#include <limits>
+#include <filesystem>\n#include <fstream>\n#include <sstream>\n#include <functional>\n#include <cctype>\n#include <limits>\n#include <cwctype>\n#include <cstdio>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -73,7 +73,7 @@ public:
             stopping_=false;
             worker_=std::thread([this]{Monitor();});
             return true;
-        } catch(...) { session_.reset(); return false; }
+        } catch(...) { session_.reset();if(winsock_ready_){WSACleanup();winsock_ready_=false;}return false; }
     }
     void Stop() {
         StopHttpStream();
@@ -161,7 +161,7 @@ public:
         if(pause)i->second->handle.pause();else i->second->handle.resume();return true;
     }
     bool Remove(uint64_t id,bool delete_data) {
-        if(http_task_id_==id)StopHttpStream();
+        if(http_task_id_.load()==id)StopHttpStream();
         std::lock_guard<std::mutex> g(m_);auto i=tasks_.find(id);
         if(i==tasks_.end()||!session_)return false;
         lt::remove_flags_t flags{};
@@ -189,7 +189,7 @@ public:
         const int64_t fileStart=ti->files().file_offset(index);
         const int64_t firstGlobal=fileStart+offset;
         const int64_t requestedEnd=std::min<int64_t>(size,offset+std::min<int64_t>(length,size-offset));
-        const int64_t windowEnd=std::min<int64_t>(size,requestedEnd+ahead);
+        const int64_t windowEnd=requestedEnd+std::min<int64_t>(size-requestedEnd,ahead);
         const int firstPiece=static_cast<int>(firstGlobal/pieceLen);
         const int lastPiece=static_cast<int>((fileStart+std::max<int64_t>(offset,windowEnd-1))/pieceLen);
         std::lock_guard<std::mutex> schedule(schedule_mutex_);
@@ -230,6 +230,7 @@ public:
 
     bool WaitForRange(uint64_t id,int index,int64_t offset,int64_t length,
                       unsigned timeout,const std::atomic<bool> *cancel=nullptr) {
+        if(length>0)SetReadWindow(id,index,offset,length,8*1024*1024);
         const auto until=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);
         do {
             if(RangeVerified(id,index,offset,length))return true;
@@ -305,13 +306,13 @@ public:
         std::wstring streamUrl=L"http://127.0.0.1:"+std::to_wstring(port)+L"/stream/"+token;
         if(streamUrl.size()+1>cap){closesocket(listener);err=L"Output URL buffer is too small.";return false;}
         http_stop_.store(false);
-        http_task_id_=id;http_file_index_=index;http_file_size_=size;
+        http_task_id_.store(id);http_file_index_=index;http_file_size_=size;
         http_token_=token;http_socket_=listener;
         url[0]=0;wcsncpy_s(url,cap,streamUrl.c_str(),_TRUNCATE);
         try {
             http_accept_thread_=std::thread([this,listener,token,id,index,size]{HttpAcceptLoop(listener,token,id,index,size);});
         } catch(...) {
-            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_=0;http_token_.clear();
+            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_.store(0);http_token_.clear();
             err=L"Could not start the local HTTP stream worker.";return false;
         }
         return true;
@@ -323,7 +324,7 @@ public:
         if(http_socket_!=INVALID_SOCKET)shutdown(http_socket_,SD_BOTH);
         if(http_accept_thread_.joinable())http_accept_thread_.join();
         if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
-        http_task_id_=0;http_file_index_=-1;http_file_size_=0;http_token_.clear();
+        http_task_id_.store(0);http_file_index_=-1;http_file_size_=0;http_token_.clear();
     }
 
 private:
@@ -499,7 +500,7 @@ private:
     std::thread http_accept_thread_;
     std::atomic<bool> http_stop_{true};
     SOCKET http_socket_=INVALID_SOCKET;
-    uint64_t http_task_id_=0;
+    std::atomic<uint64_t> http_task_id_{0};
     int http_file_index_=-1;
     int64_t http_file_size_=0;
     std::wstring http_token_;
