@@ -1,6 +1,6 @@
 # Torrent Stream — Design and Implementation Plan
 
-**Status:** Phase 1 engine foundation committed on `feature/windows-torrent-stream-phase1`; not yet wired to the UI or included in a published Windows release  
+**Status:** Phase 2 engine loader committed on `feature/windows-torrent-stream-phase1`; optional DLL is loaded and initialized on demand from the Command Centre, but torrent task controls and progressive playback are not yet wired or included in a published Windows release  
 **Target:** Windows 11 x64 desktop application  
 **Repository:** ABM AV Player  
 **Design principle:** Add an optional torrent-backed media source without changing or destabilising existing local playback, Streaming Centre, or TV-casting paths.
@@ -156,4 +156,4 @@ The feature is not complete until all of the following pass on Windows 11 x64:
 - Existing local playback, Streaming Centre, TV discovery and local casting regressions are absent.
 - Installer works on a clean Windows test machine with all pinned runtime dependencies.
 
-**Current state:** The feature branch now contains a native libtorrent 2.1.2 engine DLL, a C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, a Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The engine has not yet been compiled on the target Windows environment or loaded by the application UI. Progressive playback, verified-piece reads, the loopback HTTP source, and the Torrent Stream UI remain outstanding.
+**Current state:** The feature branch now contains a native libtorrent 2.1.2 engine DLL, a C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, a Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The application now exposes **Torrent Stream (initialize engine)** in the Command Centre. Selecting it loads `torrent-runtime\\abm_torrent_engine.dll`, resolves the initialization/shutdown exports, and initializes libtorrent on a worker thread. The engine is not loaded and no torrent network session is started during ordinary application startup. Shutdown waits for any in-flight initialization, shuts down a successfully initialized session, and unloads the DLL. This is a loader/lifecycle milestone only: magnet/.torrent ingestion from the UI, verified-piece reads, the loopback HTTP source, progressive LibVLC playback, task management UI, and TV delivery remain outstanding. The Windows x64 build and runtime still require validation on a real Windows machine.
