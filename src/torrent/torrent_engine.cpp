@@ -59,6 +59,7 @@ struct Task {
     std::wstring error;
     bool metadata_applied=false;
     int file_count=0;
+    std::atomic<bool> removed{false};
 };
 class Engine {
 public:
@@ -377,13 +378,17 @@ private:
             fd_set readSet;FD_ZERO(&readSet);FD_SET(listener,&readSet);
             timeval tv{};tv.tv_sec=0;tv.tv_usec=250000;
             int ready=select(0,&readSet,nullptr,nullptr,&tv);
-            if(ready<=0)continue;
+            if(ready==SOCKET_ERROR)break;
+            if(ready==0)continue;
             sockaddr_in remote{};int remoteLen=sizeof(remote);
             SOCKET client=accept(listener,reinterpret_cast<sockaddr*>(&remote),&remoteLen);
             if(client==INVALID_SOCKET)continue;
             if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
             std::lock_guard<std::mutex> g(http_clients_mutex_);
-            http_clients_.emplace_back([this,client,token,id,index,size]{HandleHttpClient(client,token,id,index,size);});
+            if(http_clients_.size()>=4){closesocket(client);continue;}
+            try {
+                http_clients_.emplace_back([this,client,token,id,index,size]{HandleHttpClient(client,token,id,index,size);});
+            } catch(...) { closesocket(client); }
         }
         std::vector<std::thread> clients;
         {std::lock_guard<std::mutex> g(http_clients_mutex_);clients.swap(http_clients_);}
