@@ -619,6 +619,7 @@ private:
         return result;
     }
     bool EnsureCacheCapacity(uint64_t additional,const fs::path &protectedPath) {
+        if(additional>cache_limit_bytes_)return false;
         uint64_t used=DirectoryBytes(data_);
         if(additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional)return true;
         auto candidates=EvictableCacheFolders();std::error_code ec;
