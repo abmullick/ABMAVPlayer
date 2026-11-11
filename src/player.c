@@ -3374,6 +3374,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 libvlc_media_t *media=libvlc_media_new_location(g_vlc,url);
                 if(media) {
                     libvlc_media_player_stop(g_player);
+                    g_hasMedia=FALSE;g_current=-1;
                     libvlc_media_player_set_media(g_player,media);
                     BeginArtworkParse(media);
                     int result=libvlc_media_player_play(g_player);
@@ -3385,6 +3386,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     } else {
                         SetStatus(L"LibVLC could not start the torrent stream.");
                         TorrentSetLabel(g_torrentStatusLabel,L"LibVLC could not start playback.");
+                        g_torrentPlaybackActive=FALSE;g_hasMedia=FALSE;g_current=-1;
+                        ResetArtwork();
                         g_torrentStopHttpStream();
                     }
                 } else {
