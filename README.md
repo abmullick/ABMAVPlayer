@@ -21,6 +21,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
 - [Torrent Stream design](TORRENT_STREAM.md): magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
+- [Application Settings guide](SETTINGS.md): playback/audio preferences, torrent cache location, quota, bandwidth limits and configuration files.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
@@ -36,7 +37,7 @@ The Command Centre includes a dedicated **Settings** window styled to match the 
 - Torrent network: download and upload limits (0 = unlimited).
 - Maintenance: manual GitHub release update check.
 
-On a new installation, torrent cache data is stored under the Windows user's resolved Downloads folder in `ABM AV Player\\torrent-cache`. Redirected Windows Downloads locations are respected. Existing installations with a legacy cache retain that location. Cache-location changes made while the torrent engine is active take effect after an application restart.
+On a new installation, torrent cache data is stored under the Windows user's resolved Downloads folder in `ABM AV Player\\torrent-cache`. Redirected Windows Downloads locations are respected. Existing installations with a legacy cache retain that location. Cache-location changes made while the torrent engine is active take effect after an application restart. Changing the location does not automatically move existing cache files; the previous folder is left intact. See [SETTINGS.md](SETTINGS.md) for the full behaviour and configuration reference.
 
 ### Streaming Centre — browser services and independent TV casting
 

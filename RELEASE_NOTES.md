@@ -3,6 +3,7 @@
 > Release candidate documentation. Publish this version only after the Windows build, installer and receiver workflows have been validated.
 
 ## What's new
+- Added a dedicated dark-themed Settings window to centralise playback, audio, torrent storage, bandwidth and update preferences. New installations use the Windows Downloads known folder for torrent cache data; existing legacy cache locations are retained. See [SETTINGS.md](SETTINGS.md) for configuration and restart behaviour.
 - Expanded Streaming Centre TV application selection with explicit DIAL launch attempts for Netflix, SonyLIV and ZEE5 when a selected TV exposes a DIAL endpoint but does not provide a readable application status resource.
 - Added app-level status refresh for Google Cast V2 receiver applications, alongside DIAL application-state queries.
 - Added Google Cast V2 application stop handling using the receiver's active application session and STOP command.
