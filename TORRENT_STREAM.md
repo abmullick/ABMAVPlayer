@@ -7,7 +7,7 @@
 
 ## 1. User experience
 
-Add a separate **Torrent Stream** entry point to ABM AV Player. The first release should accept only user-supplied sources:
+Open the prominent **Torrent Stream** launch card in the main player's Command Centre, or press **Ctrl+Shift+T**. Torrent Stream opens in its own manager window, visually aligned with the main player's dark navy/blue interface. The main LibVLC player remains the playback surface for torrent video; the manager window remains available for source selection, task status and download controls. This workflow is separate from the Streaming & TVs card (or **Ctrl+Shift+S**), the Streaming Centre, and local TV-output controls. The first release should accept only user-supplied sources:
 
 - Magnet URI.
 - Local `.torrent` file.
