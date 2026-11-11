@@ -27,6 +27,7 @@ std::mutex g_lock;
 std::vector<DlnaReceiver> g_devices;
 std::thread g_worker;
 std::atomic<bool> g_stop{false};
+std::atomic<bool> g_running{false};
 IUPnPService *g_selected=nullptr;
 
 std::wstring BstrValue(BSTR value) {
@@ -149,19 +150,21 @@ void DiscoverWorker() {
     if(devices)devices->Release();
     if(finder)finder->Release();
     if(SUCCEEDED(init))CoUninitialize();
+    g_running.store(false);
 }
 }
 
 extern "C" void ABM_TorrentDlna_StartDiscovery(void) {
-    if(g_worker.joinable()&&!g_stop.load())return;
-    ABM_TorrentDlna_StopDiscovery();
+    if(g_running.load())return;
+    if(g_worker.joinable())g_worker.join();
     {std::lock_guard<std::mutex> guard(g_lock);g_devices.clear();}
-    g_stop=false;
+    g_stop=false;g_running=true;
     g_worker=std::thread(DiscoverWorker);
 }
 extern "C" void ABM_TorrentDlna_StopDiscovery(void) {
     g_stop=true;
     if(g_worker.joinable())g_worker.join();
+    g_running=false;
     std::lock_guard<std::mutex> guard(g_lock);
     if(g_selected){g_selected->Release();g_selected=nullptr;}
 }
