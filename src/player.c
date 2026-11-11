@@ -2910,7 +2910,7 @@ static void TorrentDetachPlayerEvents(void) {
     g_torrentAttachedEventCount=0;
 }
 static void TorrentCheckPlaybackStall(void) {
-    if(!g_torrentPlaybackActive||
+    if(!g_torrentPlaybackActive||!g_torrentPlayerEventManager||
        InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_PLAYING||
        !g_torrentLastProgressTick)return;
     ULONGLONG now=GetTickCount64();
@@ -2970,8 +2970,15 @@ static void TorrentRefreshStatus(void) {
     else if(!info.has_metadata)TorrentSetLabel(g_torrentStatusLabel,L"Fetching torrent metadata…");
     else TorrentSetLabel(g_torrentStatusLabel,state);
     TorrentRefreshFiles();
+    TorrentPlaybackState playbackState=(TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0);
     const wchar_t *playbackText=TorrentPlaybackStateText();
-    if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
+    if(playbackState==TORRENT_PLAYBACK_BUFFERING_START||playbackState==TORRENT_PLAYBACK_BUFFERING) {
+        wchar_t buffering[160];
+        StringCchPrintfW(buffering,_countof(buffering),L"%s  (%ld%%)",
+            playbackState==TORRENT_PLAYBACK_BUFFERING_START?L"Buffering before playback starts…":L"Buffering during playback…",
+            InterlockedCompareExchange(&g_torrentBufferPercent,0,0));
+        TorrentSetLabel(g_torrentStatusLabel,buffering);
+    } else if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
 }
 static void TorrentStopPlayback(void) {
     TorrentDetachPlayerEvents();
@@ -3513,12 +3520,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 int percent=(int)lp;
                 InterlockedExchange(&g_torrentBufferPercent,percent);
                 if(percent<100) {
-                    if(g_torrentEverPlayed)
-                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING,
-                            L"Buffering during playback — waiting for more verified pieces…");
-                    else
-                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
-                            L"Buffering before playback starts…");
+                    wchar_t buffering[160];
+                    if(g_torrentEverPlayed) {
+                        StringCchPrintfW(buffering,_countof(buffering),
+                            L"Buffering during playback — waiting for verified pieces (%d%%)…",percent);
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING,buffering);
+                    } else {
+                        StringCchPrintfW(buffering,_countof(buffering),
+                            L"Buffering before playback starts (%d%%)…",percent);
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,buffering);
+                    }
                 }
                 break;
             }
@@ -3545,11 +3556,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case libvlc_MediaPlayerEndReached:
                 g_torrentPlaybackActive=FALSE;
                 g_hasMedia=FALSE;
+                TorrentDetachPlayerEvents();
+                if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
                 TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
                 break;
             case libvlc_MediaPlayerEncounteredError:
                 g_torrentPlaybackActive=FALSE;
                 g_hasMedia=FALSE;
+                TorrentDetachPlayerEvents();
+                if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
                 TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,
                     L"Stream failed — LibVLC could not continue reading the torrent source.");
                 break;
@@ -3581,8 +3596,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                         TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
                             L"Buffering before playback starts — waiting for LibVLC to begin playback…");
                         if(!eventsAttached)
-                            TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,
-                                L"Playback started, but live buffer monitoring could not attach to LibVLC events.");
+                            TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,
+                                L"Playing normally — LibVLC live event monitoring is unavailable.");
                     } else {
                         TorrentDetachPlayerEvents();
                         SetStatus(L"LibVLC could not start the torrent stream.");
