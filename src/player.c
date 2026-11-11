@@ -627,9 +627,20 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/18;
-    if(menuRowHeight<1)menuRowHeight=1;
-    for(int i=0;i<18;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
+    /* Give the two streaming destinations genuinely prominent, full-width
+       navigation tiles while keeping every other command compact. Weighted
+       rows preserve the complete menu at shorter window heights. */
+    int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
+    int menuUnit=menuUsable/20;
+    if(menuUnit<1)menuUnit=1;
+    int menuY=R_MENU_PANEL.top+54;
+    for(int i=0;i<18;i++){
+        int weight=(i==11||i==17)?2:1;
+        int rowH=menuUnit*weight;
+        if(i==17)rowH=R_MENU_PANEL.bottom-6-menuY;
+        R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,menuY,R_MENU_PANEL.right-10,menuY+rowH-3};
+        menuY+=rowH;
+    }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1308,13 +1319,25 @@ static void DrawUI(HDC dc,RECT client) {
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             RECT row=item;InflateRect(&row,-1,-1);
-            if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
+            BOOL featured=(i==11||i==17);
+            if(featured){
+                if(hot)GradientRound(dc,row,i==11?RGB(23,111,119):RGB(139,70,29),i==11?RGB(52,82,157):RGB(104,58,113),13);
+                else GradientRound(dc,row,i==11?RGB(17,65,82):RGB(76,43,39),i==11?RGB(27,43,82):RGB(54,39,65),13);
+                ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,
+                    hot?RGB(111,208,222):(i==11?RGB(52,139,161):RGB(155,104,94)),1.2f);
+            }else if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
             else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),10);
-            RECT glyph={item.left+9,item.top+5,item.left+39,item.bottom-5};
-            GradientRound(dc,glyph,hot?RGB(34,132,157):RGB(27,48,73),hot?RGB(75,82,166):RGB(42,53,91),8);
-            Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+49,item.top+2,item.right-104,item.bottom-2};
-            Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            int glyphW=featured?42:30;
+            RECT glyph={item.left+(featured?15:9),item.top+(featured?10:5),item.left+(featured?57:39),item.bottom-(featured?10:5)};
+            GradientRound(dc,glyph,hot?RGB(34,132,157):(featured?(i==11?RGB(28,118,132):RGB(145,78,48)):RGB(27,48,73)),hot?RGB(75,82,166):(featured?RGB(42,53,91):RGB(42,53,91)),featured?11:8);
+            Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),featured?g_titleFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label={item.left+(featured?70:49),item.top+(featured?7:2),item.right-104,item.bottom-(featured?7:2)};
+            if(featured){
+                RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+4;
+                RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
+                Txt(dc,i==11?L"STREAMING TVs & SERVICES":L"TORRENT STREAMING",mainLabel,hot?RGB(255,255,255):RGB(245,249,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,i==11?L"Open online services, discover Google / Android TVs and cast video":L"Open the dedicated torrent window to add a magnet or .torrent and play",subLabel,hot?RGB(225,245,255):RGB(190,211,229),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }else Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             RECT shortcut={item.right-100,item.top+2,item.right-10,item.bottom-2};
             Txt(dc,shortcuts[i],shortcut,hot?RGB(201,231,248):RGB(144,171,198),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
