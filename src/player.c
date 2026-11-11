@@ -3360,6 +3360,18 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,684,105,32,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST,140,684,260,180,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
+        SendMessageW(g_torrentTvCombo,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Cast to TV",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,415,684,115,32,hwnd,(HMENU)ID_TORRENT_CAST_TV,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Stop TV",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,545,684,100,32,hwnd,(HMENU)ID_TORRENT_STOP_TV,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        wchar_t downloadPath[PATH_CAP+128]=L"";
+        StringCchPrintfW(downloadPath,_countof(downloadPath),L"Permanent downloads: %s\\Torrent Downloads",g_torrentCacheBaseDir);
+        g_torrentDownloadPathLabel=CreateWindowW(L"STATIC",downloadPath,WS_CHILD|WS_VISIBLE,20,724,800,28,hwnd,NULL,NULL,NULL);
+        SendMessageW(g_torrentDownloadPathLabel,WM_SETFONT,(WPARAM)font,TRUE);
         SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         const struct {int id;const wchar_t *label;int x,w;} buttons[]={
             {ID_TORRENT_PAUSE,L"Pause / Resume",20,125},{ID_TORRENT_STREAM,L"Stream selected",155,135},
@@ -3368,6 +3380,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         };
         for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
         TorrentRefreshCacheStatus();
+        g_torrentTvKnownCount=-1;TorrentRefreshTvDevices();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
     case WM_COMMAND:
@@ -3377,9 +3390,15 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case ID_TORRENT_PAUSE:
                 if(g_torrentTaskId&&g_torrentGetTask){ABM_TorrentTaskInfo info={0};if(g_torrentGetTask(g_torrentTaskId,&info)){if(info.state==5)g_torrentResume(g_torrentTaskId);else g_torrentPause(g_torrentTaskId);TorrentRefreshStatus();}}return 0;
             case ID_TORRENT_STREAM:TorrentBeginStream();return 0;
+            case ID_TORRENT_FIND_TVS:
+                ABM_TorrentDlna_StartDiscovery();g_torrentTvKnownCount=-1;
+                TorrentSetLabel(g_torrentStatusLabel,L"Searching for Android/Google TVs with DLNA MediaRenderer support…");
+                TorrentRefreshTvDevices();return 0;
+            case ID_TORRENT_CAST_TV:TorrentBeginCastToTV();return 0;
+            case ID_TORRENT_STOP_TV:TorrentStopTvCasting();return 0;
             case ID_TORRENT_STOP:TorrentStopPlayback();TorrentSetLabel(g_torrentStatusLabel,L"Stream stopped.");return 0;
             case ID_TORRENT_REMOVE:
-                TorrentStopPlayback();
+                TorrentStopTvCasting();TorrentStopPlayback();
                 if(g_torrentTaskId&&g_torrentRemove)g_torrentRemove(g_torrentTaskId,FALSE);
                 g_torrentTaskId=0;g_torrentListedForTask=-1;g_torrentListedFileCount=0;
                 SendMessageW(g_torrentFileList,LB_RESETCONTENT,0,0);
@@ -3432,7 +3451,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 return 0;
             }
         }break;
-    case WM_TIMER:if(wp==1){TorrentRefreshStatus();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
+    case WM_TIMER:if(wp==1){TorrentRefreshStatus();TorrentRefreshTvDevices();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         KillTimer(hwnd,1);
@@ -3441,7 +3460,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
-        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;return 0;
+        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3450,7 +3469,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
+    RECT wr;GetWindowRect(owner,&wr);int w=860,h=810;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
