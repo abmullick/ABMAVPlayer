@@ -174,6 +174,12 @@ public:
         const uint64_t fileBytes=static_cast<uint64_t>(ti->files().file_size(index));
         const uint64_t existing=DirectoryBytes(i->second->cache_path);
         const uint64_t additional=fileBytes>existing?fileBytes-existing:0;
+        ULARGE_INTEGER freeAvailable{},totalBytes{},totalFree{};
+        if(!GetDiskFreeSpaceExW(i->second->cache_path.c_str(),&freeAvailable,&totalBytes,&totalFree)||
+           freeAvailable.QuadPart<additional) {
+            i->second->error=L"Not enough free disk space for the selected file's remaining cache data.";
+            return false;
+        }
         if(!EnsureCacheCapacity(additional,i->second->cache_path)) {
             i->second->error=L"Torrent cache quota reached. Increase the cache limit or clear inactive cached torrents.";
             return false;
