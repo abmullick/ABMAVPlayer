@@ -206,12 +206,8 @@ public:
             output.flush();
             if(!output)return false;
             output.close();
-            std::error_code ec;fs::rename(temporary,config,ec);
-            if(ec) {
-                fs::remove(config,ec);ec.clear();
-                fs::rename(temporary,config,ec);
-                if(ec)return false;
-            }
+            if(!MoveFileExW(temporary.c_str(),config.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))
+                return false;
         }
         CleanupCacheToLimit();
         const uint64_t current=DirectoryBytes(data_);
