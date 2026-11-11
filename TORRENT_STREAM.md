@@ -97,7 +97,7 @@ Torrent playback and casting are separate concerns.
 - Stop and remove task.
 - Download and upload speed limits.
 - Connection/peer count and download/upload rates.
-- Playback buffer/readiness indicator.
+- [x] Playback buffer/readiness indicator with initial buffering, in-playback buffering, stall recovery and terminal states (runtime validation pending).
 - Storage location and cache usage.
 - Per-task progress and error details.
 - Clear warning that BitTorrent may upload pieces to other peers.
