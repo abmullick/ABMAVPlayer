@@ -99,7 +99,7 @@ public:
             fs::path p=fs::canonical(fs::path(path));
             if(!fs::is_regular_file(p)||fs::file_size(p)>16*1024*1024){err=L"Torrent file is missing or exceeds the 16 MiB metadata limit.";return false;}
             lt::error_code ec;
-            auto ti=std::make_shared<lt::torrent_info>(p.string(),ec);
+            auto ti=std::make_shared<lt::torrent_info>(p.u8string(),ec);
             if(ec||!ti||!ti->is_valid()){err=ec?FromUtf8(ec.message()):L"Invalid torrent metadata.";return false;}
             lt::add_torrent_params atp;
             atp.ti=std::move(ti);
@@ -210,13 +210,13 @@ Engine g_engine;
 void ErrorOut(wchar_t *p,unsigned cap,const std::wstring &s){if(p&&cap)wcsncpy_s(p,cap,s.c_str(),_TRUNCATE);}
 }
 BOOL WINAPI ABM_Torrent_Initialize(const wchar_t *p){return g_engine.Init(p)?TRUE:FALSE;}
-void WINAPI ABM_Torrent_Shutdown(void){g_engine.Stop();}
+void WINAPI ABM_Torrent_Shutdown(void){try{g_engine.Stop();}catch(...){}}
 BOOL WINAPI ABM_Torrent_AddMagnet(const wchar_t *u,uint64_t *id,wchar_t *e,unsigned c){std::wstring s;bool ok=g_engine.AddMagnet(u,id,s);ErrorOut(e,c,s);return ok?TRUE:FALSE;}
 BOOL WINAPI ABM_Torrent_AddFile(const wchar_t *p,uint64_t *id,wchar_t *e,unsigned c){std::wstring s;bool ok=g_engine.AddFile(p,id,s);ErrorOut(e,c,s);return ok?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_GetTask(uint64_t id,ABM_TorrentTaskInfo *p){return g_engine.Get(id,p)?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_GetFile(uint64_t id,int i,wchar_t *p,unsigned c,int64_t *s){return g_engine.GetFile(id,i,p,c,s)?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_SelectFile(uint64_t id,int i){return g_engine.Select(id,i)?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_Pause(uint64_t id){return g_engine.Pause(id,true)?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_Resume(uint64_t id){return g_engine.Pause(id,false)?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_Remove(uint64_t id,BOOL d){return g_engine.Remove(id,d!=FALSE)?TRUE:FALSE;}
-BOOL WINAPI ABM_Torrent_SetRateLimits(int d,int u){return g_engine.Limits(d,u)?TRUE:FALSE;}
+BOOL WINAPI ABM_Torrent_GetTask(uint64_t id,ABM_TorrentTaskInfo *p){try{return g_engine.Get(id,p)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_GetFile(uint64_t id,int i,wchar_t *p,unsigned c,int64_t *s){try{return g_engine.GetFile(id,i,p,c,s)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_SelectFile(uint64_t id,int i){try{return g_engine.Select(id,i)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_Pause(uint64_t id){try{return g_engine.Pause(id,true)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_Resume(uint64_t id){try{return g_engine.Pause(id,false)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_Remove(uint64_t id,BOOL d){try{return g_engine.Remove(id,d!=FALSE)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_SetRateLimits(int d,int u){try{return g_engine.Limits(d,u)?TRUE:FALSE;}catch(...){return FALSE;}}
