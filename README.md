@@ -43,9 +43,9 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 
 Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
 
-### Torrent Stream — planned feature
+### Torrent Stream — development foundation
 
-A dedicated Torrent Stream module is planned for a future Windows release. It will use libtorrent for user-supplied magnet links and `.torrent` files, allow the user to select a media file, prioritize playback-needed pieces, and feed verified cached data into the existing LibVLC engine. It will not include a torrent search/catalogue or facilitate access to copyrighted material. This feature is **not implemented or available in the current release**; see [TORRENT_STREAM.md](TORRENT_STREAM.md) for the proposed architecture and phased implementation.
+The Windows development branch now includes the native libtorrent 2.1.2 engine and an on-demand loader in the Command Centre. Selecting **Torrent Stream (initialize engine)** loads the optional DLL and initializes its network session on a worker thread; ordinary player startup does not start torrent networking. The current step verifies engine loading and initialization only: magnet/.torrent task controls, verified-piece buffering, progressive LibVLC playback and the Torrent Stream task window are **not yet implemented or available in the published release**. It does not include a torrent search/catalogue. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for implementation status and limitations.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
