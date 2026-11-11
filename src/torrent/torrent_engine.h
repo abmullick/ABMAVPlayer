@@ -29,8 +29,9 @@ __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetRateLimits(int download_bytes_p
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_GetCacheInfo(uint64_t *used_bytes, uint64_t *limit_bytes);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetCacheLimit(uint64_t limit_bytes, uint64_t *used_bytes);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_ClearCache(uint64_t *freed_bytes, uint64_t *remaining_bytes);
-/* Verified-piece streaming. The server binds exclusively to 127.0.0.1 and
-   returns a per-stream random bearer URL. */
+/* Verified-piece streaming. The loopback API binds only to 127.0.0.1; the separate
+   LAN API binds to one private IPv4 interface and only accepts same-subnet clients.
+   Both return per-stream random bearer URLs. */
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t task_id, int file_index, int64_t offset, int64_t length, int ahead_bytes);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_WaitForRange(uint64_t task_id, int file_index, int64_t offset, int64_t length, unsigned int timeout_ms);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_StartHttpStream(uint64_t task_id, int file_index, wchar_t *url, unsigned int url_capacity, wchar_t *error, unsigned int error_capacity);
