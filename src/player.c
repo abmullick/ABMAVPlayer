@@ -3367,8 +3367,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORLISTBOX: {
         HDC dc=(HDC)wp;
         SetTextColor(dc,RGB(226,236,248));
-        SetBkColor(dc,RGB(17,28,44));
-        return (LRESULT)(g_torrentWindowBrush?g_torrentWindowBrush:GetStockObject(DKGRAY_BRUSH));
+        SetBkColor(dc,RGB(9,15,26));
+        return (LRESULT)(g_torrentWindowBrush?g_torrentWindowBrush:(HBRUSH)GetStockObject(DKGRAY_BRUSH));
     }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
@@ -4664,8 +4664,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&darkTitle,sizeof(darkTitle));
 #ifndef DWMWA_WINDOW_CORNER_PREFERENCE
 #define DWMWA_WINDOW_CORNER_PREFERENCE 33
-#define DWMWA_BORDER_COLOR 34
-#define DWMWA_CAPTION_COLOR 35
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
 #endif
     { int corners=2; COLORREF border=RGB(46,70,104),caption=RGB(10,15,25); int backdrop=2;
