@@ -38,8 +38,8 @@ if not exist "build\torrent-runtime\abm_torrent_engine.dll" (
   echo ERROR: Torrent engine DLL missing. Run build.bat with vcpkg configured.
   exit /b 1
 )
-copy /y "build\torrent-runtime\*.dll" "%DEST%\" >nul
-if errorlevel 1 exit /b 1
+xcopy "build\torrent-runtime" "%DEST%\torrent-runtime\" /E /I /H /Y >nul
+if errorlevel 2 exit /b 1
 
 rem Creator portrait used by the Streaming Centre About window.
 if not exist "assets\owner_portrait.bmp" (
