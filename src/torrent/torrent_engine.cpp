@@ -26,16 +26,18 @@ std::string ToUtf8(const std::wstring &s) {
     if(s.empty()) return {};
     int n=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,s.c_str(),-1,nullptr,0,nullptr,nullptr);
     if(n<=1) throw std::runtime_error("Invalid Unicode input");
-    std::string out((size_t)n-1,'\0');
+    std::string out((size_t)n,'\0');
     WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,s.c_str(),-1,out.data(),n,nullptr,nullptr);
+    out.resize((size_t)n-1);
     return out;
 }
 std::wstring FromUtf8(const std::string &s) {
     if(s.empty()) return {};
     int n=MultiByteToWideChar(CP_UTF8,0,s.c_str(),-1,nullptr,0);
     if(n<=1) return {};
-    std::wstring out((size_t)n-1,L'\0');
+    std::wstring out((size_t)n,L'\0');
     MultiByteToWideChar(CP_UTF8,0,s.c_str(),-1,out.data(),n);
+    out.resize((size_t)n-1);
     return out;
 }
 void CopyText(wchar_t *dst,size_t cap,const std::wstring &s) {
