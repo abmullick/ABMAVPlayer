@@ -35,6 +35,12 @@
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
+#ifndef DWMWA_BORDER_COLOR
+#define DWMWA_BORDER_COLOR 34
+#endif
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
+#endif
 
 #define APP_NAME L"ABM AV Player"
 #define APP_VERSION L"1.0.2"
@@ -3229,6 +3235,11 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     TorrentRefreshStatus();
 }
 static HBRUSH g_torrentWindowBrush=NULL;
+static BOOL CALLBACK TorrentApplyDarkTheme(HWND child,LPARAM unused) {
+    (void)unused;
+    SetWindowTheme(child,L"DarkMode_Explorer",NULL);
+    return TRUE;
+}
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -3277,6 +3288,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
         for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        /* Apply the same dark-mode control theme as the main application.
+           WM_CTLCOLOR handlers below provide a consistent fallback background. */
+        EnumChildWindows(hwnd,TorrentApplyDarkTheme,0);
         TorrentRefreshCacheStatus();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
