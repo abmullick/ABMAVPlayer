@@ -1,6 +1,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #include <windows.h>
+#include <iphlpapi.h>
+#include <iptypes.h>
+#include <ws2tcpip.h>
 #include <bcrypt.h>
 #include <algorithm>
 #include <atomic>
@@ -350,6 +353,12 @@ public:
     }
 
     bool StartHttpStream(uint64_t id,int index,wchar_t *url,unsigned cap,std::wstring &err) {
+        return StartHttpStreamInternal(id,index,url,cap,err,false);
+    }
+    bool StartLanHttpStream(uint64_t id,int index,wchar_t *url,unsigned cap,std::wstring &err) {
+        return StartHttpStreamInternal(id,index,url,cap,err,true);
+    }
+    bool StartHttpStreamInternal(uint64_t id,int index,wchar_t *url,unsigned cap,std::wstring &err,bool lan) {
         if(!url||cap==0){err=L"Output URL buffer is unavailable.";return false;}
         StopHttpStream();
         if(!Select(id,index)){err=L"Select a valid torrent file after metadata is available.";return false;}
@@ -368,26 +377,41 @@ public:
         std::wstring token;token.reserve(64);
         for(unsigned char b:randomToken){token.push_back(hex[b>>4]);token.push_back(hex[b&15]);}
         SecureZeroMemory(randomToken,sizeof(randomToken));
+        sockaddr_in lanAddress{};ULONG lanMask=0;
+        if(lan&&!FindPrivateLanIPv4(lanAddress,lanMask)) {
+            err=L"No private IPv4 network adapter was found. Connect this PC to the same Wi-Fi/LAN as the TV.";
+            return false;
+        }
         SOCKET listener=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
-        if(listener==INVALID_SOCKET){err=L"Could not create the loopback HTTP socket.";return false;}
+        if(listener==INVALID_SOCKET){err=L"Could not create the HTTP stream socket.";return false;}
         BOOL exclusive=TRUE;setsockopt(listener,SOL_SOCKET,SO_EXCLUSIVEADDRUSE,(const char*)&exclusive,sizeof(exclusive));
-        sockaddr_in address{};address.sin_family=AF_INET;address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);address.sin_port=0;
+        sockaddr_in address{};address.sin_family=AF_INET;
+        address.sin_addr.s_addr=lan?lanAddress.sin_addr.s_addr:htonl(INADDR_LOOPBACK);address.sin_port=0;
         if(bind(listener,reinterpret_cast<sockaddr*>(&address),sizeof(address))==SOCKET_ERROR||listen(listener,8)==SOCKET_ERROR){
-            closesocket(listener);err=L"Could not bind the loopback-only HTTP stream.";return false;
+            closesocket(listener);err=lan?L"Could not bind the TV stream to the private LAN interface. Check Windows Firewall permissions.":L"Could not bind the loopback-only HTTP stream.";return false;
         }
         int addressLen=sizeof(address);
         if(getsockname(listener,reinterpret_cast<sockaddr*>(&address),&addressLen)==SOCKET_ERROR){
             closesocket(listener);err=L"Could not determine the local stream port.";return false;
         }
         const unsigned short port=ntohs(address.sin_port);
-        std::wstring streamUrl=L"http://127.0.0.1:"+std::to_wstring(port)+L"/stream/"+token;
+        std::wstring host=L"127.0.0.1";
+        if(lan) {
+            char ip[INET_ADDRSTRLEN]={0};
+            if(!inet_ntop(AF_INET,&address.sin_addr,ip,sizeof(ip))) {
+                closesocket(listener);err=L"Could not format the PC's private LAN address.";return false;
+            }
+            host=FromUtf8(ip);
+        }
+        std::wstring streamUrl=L"http://"+host+L":"+std::to_wstring(port)+L"/stream/"+token;
         if(streamUrl.size()+1>cap){closesocket(listener);err=L"Output URL buffer is too small.";return false;}
         http_stop_.store(false);
         http_task_id_.store(id);http_file_index_=index;http_file_size_=size;
         http_token_=token;http_socket_=listener;
         url[0]=0;wcsncpy_s(url,cap,streamUrl.c_str(),_TRUNCATE);
         try {
-            http_accept_thread_=std::thread([this,listener,token,id,index,size]{HttpAcceptLoop(listener,token,id,index,size);});
+            const uint32_t lanIp=lan?ntohl(address.sin_addr.s_addr):0;
+            http_accept_thread_=std::thread([this,listener,token,id,index,size,lan,lanIp,lanMask]{HttpAcceptLoop(listener,token,id,index,size,lan,lanIp,lanMask);});
         } catch(...) {
             closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_.store(0);http_token_.clear();
             err=L"Could not start the local HTTP stream worker.";return false;
@@ -447,7 +471,35 @@ private:
         std::thread thread;
         std::shared_ptr<std::atomic<bool>> done;
     };
-    void HttpAcceptLoop(SOCKET listener,const std::wstring &token,uint64_t id,int index,int64_t size) {
+    static bool IsPrivateIPv4(uint32_t ip) {
+        return (ip>>24)==10 || (ip>>20)==0xAC1 || (ip>>16)==0xC0A8;
+    }
+    static bool FindPrivateLanIPv4(sockaddr_in &selected,ULONG &maskOut) {
+        ULONG bytes=16*1024;
+        std::vector<unsigned char> storage(bytes);
+        ULONG rc=GetAdaptersAddresses(AF_INET,GAA_FLAG_SKIP_ANYCAST|GAA_FLAG_SKIP_MULTICAST|GAA_FLAG_SKIP_DNS_SERVER,
+                                      nullptr,reinterpret_cast<IP_ADAPTER_ADDRESSES*>(storage.data()),&bytes);
+        if(rc==ERROR_BUFFER_OVERFLOW){storage.resize(bytes);rc=GetAdaptersAddresses(AF_INET,GAA_FLAG_SKIP_ANYCAST|GAA_FLAG_SKIP_MULTICAST|GAA_FLAG_SKIP_DNS_SERVER,
+                                      nullptr,reinterpret_cast<IP_ADAPTER_ADDRESSES*>(storage.data()),&bytes);}
+        if(rc!=NO_ERROR)return false;
+        for(auto adapter=reinterpret_cast<IP_ADAPTER_ADDRESSES*>(storage.data());adapter;adapter=adapter->Next) {
+            if(adapter->OperStatus!=IfOperStatusUp||adapter->IfType==IF_TYPE_SOFTWARE_LOOPBACK)continue;
+            for(auto unicast=adapter->FirstUnicastAddress;unicast;unicast=unicast->Next) {
+                if(!unicast->Address.lpSockaddr||unicast->Address.lpSockaddr->sa_family!=AF_INET)continue;
+                auto *sin=reinterpret_cast<sockaddr_in*>(unicast->Address.lpSockaddr);
+                uint32_t ip=ntohl(sin->sin_addr.s_addr);
+                if(!IsPrivateIPv4(ip))continue;
+                ULONG prefix=unicast->OnLinkPrefixLength;
+                if(prefix>32)continue;
+                maskOut=prefix==0?0u:(0xFFFFFFFFu<<(32-prefix));
+                selected=*sin;selected.sin_port=0;
+                return true;
+            }
+        }
+        return false;
+    }
+    void HttpAcceptLoop(SOCKET listener,const std::wstring &token,uint64_t id,int index,int64_t size,
+                        bool lan,uint32_t lanIp,ULONG lanMask) {
         while(!http_stop_.load()) {
             fd_set readSet;FD_ZERO(&readSet);FD_SET(listener,&readSet);
             timeval tv{};tv.tv_sec=0;tv.tv_usec=250000;
@@ -457,7 +509,10 @@ private:
             sockaddr_in remote{};int remoteLen=sizeof(remote);
             SOCKET client=accept(listener,reinterpret_cast<sockaddr*>(&remote),&remoteLen);
             if(client==INVALID_SOCKET)continue;
-            if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
+            const uint32_t remoteIp=ntohl(remote.sin_addr.s_addr);
+            if(lan) {
+                if(!IsPrivateIPv4(remoteIp)||(remoteIp&lanMask)!=(lanIp&lanMask)){closesocket(client);continue;}
+            } else if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
             std::lock_guard<std::mutex> g(http_clients_mutex_);
             for(auto it=http_clients_.begin();it!=http_clients_.end();) {
                 if(it->done&&it->done->load()) {
@@ -721,4 +776,5 @@ BOOL WINAPI ABM_Torrent_ClearCache(uint64_t *freed,uint64_t *remaining){try{retu
 BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t id,int i,int64_t o,int64_t n,int a){try{return g_engine.SetReadWindow(id,i,o,n,a)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_WaitForRange(uint64_t id,int i,int64_t o,int64_t n,unsigned t){try{return g_engine.WaitForRange(id,i,o,n,t)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_StartHttpStream(uint64_t id,int i,wchar_t *u,unsigned uc,wchar_t *e,unsigned ec){std::wstring err;bool ok=false;try{ok=g_engine.StartHttpStream(id,i,u,uc,err);}catch(...){err=L"Unexpected error while starting loopback stream.";}ErrorOut(e,ec,err);return ok?TRUE:FALSE;}
+BOOL WINAPI ABM_Torrent_StartLanHttpStream(uint64_t id,int i,wchar_t *u,unsigned uc,wchar_t *e,unsigned ec){std::wstring err;bool ok=false;try{ok=g_engine.StartLanHttpStream(id,i,u,uc,err);}catch(...){err=L"Unexpected error while starting the private-LAN torrent stream.";}ErrorOut(e,ec,err);return ok?TRUE:FALSE;}
 void WINAPI ABM_Torrent_StopHttpStream(void){try{g_engine.StopHttpStream();}catch(...){}}
