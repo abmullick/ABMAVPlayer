@@ -2698,6 +2698,9 @@ static HANDLE g_torrentInitThread=NULL;
 static volatile LONG g_torrentInitResult=0; /* 0=pending, 1=ready, -1=failed */
 static BOOL g_torrentInitPending=FALSE;
 static BOOL g_torrentInitialized=FALSE;
+static void ShowTorrentWindow(HWND owner);
+static volatile LONG g_torrentStreamCancel=0;
+static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
@@ -2869,9 +2872,8 @@ static void TorrentRefreshStatus(void) {
 }
 static void TorrentStopPlayback(void) {
     if(g_torrentStreamThread) {
+        InterlockedExchange(&g_torrentStreamCancel,1);
         if(g_torrentStopHttpStream)g_torrentStopHttpStream();
-        WaitForSingleObject(g_torrentStreamThread,INFINITE);
-        CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;
     }
     if(g_torrentPlaybackActive) {
         if(g_player)libvlc_media_player_stop(g_player);
@@ -2882,7 +2884,14 @@ static void TorrentStopPlayback(void) {
 static DWORD WINAPI TorrentStreamWorker(void *arg) {
     TorrentStreamRequest *r=(TorrentStreamRequest*)arg;
     if(!r)return 1;
-    if(!g_torrentStartHttpStream(r->task_id,r->file_index,r->url,(unsigned)_countof(r->url),r->error,(unsigned)_countof(r->error))) {
+    if(InterlockedCompareExchange(&g_torrentStreamCancel,0,0)) {
+        StringCchCopyW(r->error,_countof(r->error),L"Stream start cancelled.");
+        r->ok=FALSE;
+    } else if(!g_torrentStartHttpStream(r->task_id,r->file_index,r->url,(unsigned)_countof(r->url),r->error,(unsigned)_countof(r->error))) {
+        r->ok=FALSE;
+    } else if(InterlockedCompareExchange(&g_torrentStreamCancel,0,0)) {
+        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+        StringCchCopyW(r->error,_countof(r->error),L"Stream start cancelled.");
         r->ok=FALSE;
     } else {
         int64_t initial=r->file_size<8LL*1024*1024?r->file_size:8LL*1024*1024;
@@ -2913,8 +2922,9 @@ static void TorrentBeginStream(void) {
     TorrentStreamRequest *req=(TorrentStreamRequest*)calloc(1,sizeof(*req));
     if(!req){TorrentSetLabel(g_torrentStatusLabel,L"Not enough memory to start streaming.");return;}
     req->owner=g_main;req->task_id=g_torrentTaskId;req->file_index=fileIndex;req->file_size=size;
+    InterlockedExchange(&g_torrentStreamCancel,0);g_torrentStreamRequest=req;
     g_torrentStreamThread=CreateThread(NULL,0,TorrentStreamWorker,req,0,NULL);
-    if(!g_torrentStreamThread){free(req);TorrentSetLabel(g_torrentStatusLabel,L"Could not start the stream worker.");}
+    if(!g_torrentStreamThread){g_torrentStreamRequest=NULL;free(req);TorrentSetLabel(g_torrentStatusLabel,L"Could not start the stream worker.");}
 }
 static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     if(!g_torrentInitialized){TorrentSetLabel(g_torrentStatusLabel,L"Torrent engine is not initialized.");return;}
@@ -3346,6 +3356,41 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetBkColor((HDC)wp,RGB(31,34,38));
         return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
+    case WM_TORRENT_STREAM_READY: {
+        TorrentStreamRequest *req=(TorrentStreamRequest*)lp;
+        if(g_torrentStreamThread){CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;}
+        if(g_torrentStreamRequest==req)g_torrentStreamRequest=NULL;
+        BOOL cancelled=InterlockedCompareExchange(&g_torrentStreamCancel,0,0)!=0;
+        if(req&&req->ok&&!cancelled) {
+            int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,req->url,-1,NULL,0,NULL,NULL);
+            char *url=bytes>0?(char*)malloc((size_t)bytes):NULL;
+            if(url&&WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,req->url,-1,url,bytes,NULL,NULL)>0) {
+                libvlc_media_t *media=libvlc_media_new_location(g_vlc,url);
+                if(media) {
+                    libvlc_media_player_stop(g_player);
+                    libvlc_media_player_set_media(g_player,media);
+                    BeginArtworkParse(media);
+                    int result=libvlc_media_player_play(g_player);
+                    libvlc_media_release(media);
+                    if(result==0) {
+                        g_torrentPlaybackActive=TRUE;g_hasMedia=TRUE;g_current=-1;
+                        SetStatus(L"Torrent stream playing locally through verified-piece buffering.");
+                        TorrentSetLabel(g_torrentStatusLabel,L"Playback started. Torrent peers may receive upload traffic while the task is active.");
+                    } else {
+                        SetStatus(L"LibVLC could not start the torrent stream.");
+                        TorrentSetLabel(g_torrentStatusLabel,L"LibVLC could not start playback.");
+                        g_torrentStopHttpStream();
+                    }
+                } else TorrentSetLabel(g_torrentStatusLabel,L"LibVLC rejected the local torrent stream URL.");
+            } else TorrentSetLabel(g_torrentStatusLabel,L"Could not encode the local stream URL.");
+            free(url);
+        } else if(req&&!cancelled) {
+            TorrentSetLabel(g_torrentStatusLabel,req->error[0]?req->error:L"Initial buffering failed.");
+            g_torrentStopHttpStream();
+        } else if(!cancelled) TorrentSetLabel(g_torrentStatusLabel,L"Stream preparation failed.");
+        if(req)free(req);
+        return 0;
+    }
     case WM_TORRENT_INIT_DONE: {
         if(g_torrentInitThread){CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
         g_torrentInitPending=FALSE;
@@ -3889,6 +3934,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
     case WM_DESTROY:
+        if(g_torrentStreamThread) {
+            InterlockedExchange(&g_torrentStreamCancel,1);
+            if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+            WaitForSingleObject(g_torrentStreamThread,INFINITE);
+            CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;
+            if(g_torrentStreamRequest){free(g_torrentStreamRequest);g_torrentStreamRequest=NULL;}
+        }
         if(g_torrentInitThread){WaitForSingleObject(g_torrentInitThread,INFINITE);CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
         g_torrentInitPending=FALSE;
         if(g_torrentInitResult==1 && g_torrentShutdown)g_torrentShutdown();
