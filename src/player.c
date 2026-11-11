@@ -4282,8 +4282,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+16)%17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+17)%18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_END){g_menuSelection=16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
