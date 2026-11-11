@@ -98,7 +98,7 @@ Torrent playback and casting are separate concerns.
 - Download and upload speed limits.
 - Connection/peer count and download/upload rates.
 - [x] Playback buffer/readiness indicator with initial buffering, in-playback buffering, stall recovery and terminal states (runtime validation pending).
-- Storage location and cache usage.
+- [x] Storage location and cache usage reporting.
 - Per-task progress and error details.
 - Clear warning that BitTorrent may upload pieces to other peers.
 - Explicit control over seeding after the selected file is complete.
@@ -112,7 +112,8 @@ Torrent playback and casting are separate concerns.
 - Respect private-torrent tracker requirements; do not silently alter announce or peer settings.
 - Validate magnet URIs and torrent metadata; reject malformed or oversized metadata and unsafe paths.
 - Prevent path traversal and writes outside the configured torrent data directory.
-- Apply disk-space checks, per-task/global limits, and a configurable cache quota.
+- [x] Configurable cache quota and cleanup of inactive per-torrent cache folders.
+- [ ] Check available disk space before starting large downloads; add per-task/global limits.
 - Keep network listeners loopback-only by default. Any future LAN serving must require an explicit user action and clear security warning.
 
 ## 8. Build and dependency strategy
@@ -151,7 +152,8 @@ Do not add a guessed NuGet package or unpinned binary dependency. Do not claim t
 - [x] Add separate download/upload rate-limit controls in the Torrent Stream window (KiB/s; 0 = unlimited; runtime validation pending).
 - [x] Add live LibVLC buffer percentage, playback state and stall/recovery indication (runtime validation pending).
 - [ ] Persist bandwidth preferences across application restarts.
-- Add cache quota, cleanup, and explicit seeding controls.
+- [x] Add per-torrent persistent cache folders, quota persistence, usage reporting and inactive-cache cleanup.
+- [ ] Add explicit seeding controls.
 
 ### Phase 4 — TV casting and release hardening
 - Evaluate receiver reachability and codec compatibility.
@@ -175,4 +177,4 @@ The feature is not complete until all of the following pass on Windows 11 x64:
 - Existing local playback, Streaming Centre, TV discovery and local casting regressions are absent.
 - Installer works on a clean Windows test machine with all pinned runtime dependencies.
 
-**Current state:** `main` contains the native libtorrent 2.1.2 engine DLL, C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The Torrent Stream source manager supports magnet and local `.torrent` sources, metadata/file listing, task progress, pause/resume/remove, and separate download/upload rate limits (KiB/s; 0 = unlimited). The verified-piece streaming pipeline schedules selected-file ranges, checks piece completion before reading, and serves authenticated GET/HEAD plus HTTP byte ranges from a random-token URL bound only to `127.0.0.1`. The UI waits for an initial verified buffer on a worker thread and hands the URL to LibVLC. LibVLC events now drive a live status state machine for initial buffering, normal playback, buffering during playback, recovery after six seconds without media-time progress, pause, stop and failure; a progress bar shows the reported cache percentage. Persistent bandwidth preferences, advanced cache/seeding controls, TV delivery and Windows runtime validation remain outstanding. Existing local playback, Streaming Centre and TV discovery/casting are not modified by the Torrent Stream feature. No LAN listener or TV casting path is created.
+**Current state:** `main` contains the native libtorrent 2.1.2 engine DLL, C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The Torrent Stream source manager supports magnet and local `.torrent` sources, metadata/file listing, task progress, pause/resume/remove, and separate download/upload rate limits (KiB/s; 0 = unlimited). Torrent data is stored persistently in a dedicated `torrent-cache` directory, partitioned by torrent info-hash so re-adding a source can reuse and recheck existing pieces. The cache has a persisted 20 GiB default quota (user-adjustable from 1 to 4096 GiB), disk-usage reporting, preflight quota checks before selecting a file, and oldest-inactive-torrent eviction; active task folders are protected. The UI offers explicit clearing of inactive cached torrents and reports the space freed. The verified-piece streaming pipeline schedules selected-file ranges, checks piece completion before reading, and serves authenticated GET/HEAD plus HTTP byte ranges from a random-token URL bound only to `127.0.0.1`. The UI waits for an initial verified buffer on a worker thread and hands the URL to LibVLC. LibVLC events drive a live status state machine for initial buffering, normal playback, buffering during playback, recovery after six seconds without media-time progress, pause, stop and failure; a progress bar shows the reported cache percentage. Remaining work includes free-disk-space preflight, explicit seeding controls, TV delivery and Windows runtime validation. Existing local playback, Streaming Centre and TV discovery/casting are not modified by the Torrent Stream feature. No LAN listener or TV casting path is created.
