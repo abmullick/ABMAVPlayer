@@ -3055,7 +3055,7 @@ static void TorrentRefreshCacheStatus(void) {
     TorrentFormatBytes((int64_t)(used>INT64_MAX?INT64_MAX:used),usedText,_countof(usedText));
     TorrentFormatBytes((int64_t)(limit>INT64_MAX?INT64_MAX:limit),limitText,_countof(limitText));
     StringCchPrintfW(line,_countof(line),L"Disk cache: %s used of %s  |  Location: %s\\torrent-cache",
-        usedText,limitText,g_dataDir);
+        usedText,limitText,g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir);
     TorrentSetLabel(g_torrentCacheInfoLabel,line);
     if(g_torrentCacheLimitEdit&&GetFocus()!=g_torrentCacheLimitEdit) {
         wchar_t quota[32];StringCchPrintfW(quota,_countof(quota),L"%llu",(unsigned long long)(limit/(1024ULL*1024ULL*1024ULL)));
