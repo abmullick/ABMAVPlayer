@@ -3001,7 +3001,11 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_TIMER:if(wp==1){TorrentRefreshStatus();return 0;}break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
-        KillTimer(hwnd,1);g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
+        KillTimer(hwnd,1);
+        /* Closing the manager while startup buffering is pending cancels that
+           request; closing it after playback starts leaves playback running. */
+        if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
+        g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
