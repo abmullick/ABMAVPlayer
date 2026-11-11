@@ -121,7 +121,7 @@ public:
         CopyText(out->name,_countof(out->name),i->second->name);
         CopyText(out->error,_countof(out->error),i->second->error);
         if(!i->second->error.empty())out->state=ABM_TORRENT_ERROR;
-        else if((s.flags & lt::torrent_flags::paused)!=lt::torrent_flags_t{})out->state=ABM_TORRENT_PAUSED;
+        else if(s.flags & lt::torrent_flags::paused)out->state=ABM_TORRENT_PAUSED;
         else switch(s.state){
             case lt::torrent_status::checking_files:
             case lt::torrent_status::checking_resume_data:out->state=ABM_TORRENT_CHECKING;break;
