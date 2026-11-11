@@ -2859,13 +2859,19 @@ static const wchar_t *TorrentPlaybackStateText(void) {
 }
 static void TorrentSetBufferProgress(int percent) {
     if(percent<0)percent=0;if(percent>100)percent=100;
-    if(g_torrentBufferBar&&IsWindow(g_torrentBufferBar))
+    if(g_torrentBufferBar&&IsWindow(g_torrentBufferBar)) {
+        SendMessageW(g_torrentBufferBar,PBM_SETMARQUEE,FALSE,0);
         SendMessageW(g_torrentBufferBar,PBM_SETPOS,(WPARAM)percent,0);
+    }
 }
 static void TorrentSetPlaybackState(TorrentPlaybackState state,const wchar_t *detail) {
     InterlockedExchange(&g_torrentPlaybackState,(LONG)state);
-    if(state==TORRENT_PLAYBACK_BUFFERING_START||state==TORRENT_PLAYBACK_BUFFERING)
-        TorrentSetBufferProgress((int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0));
+    if(state==TORRENT_PLAYBACK_BUFFERING_START||state==TORRENT_PLAYBACK_BUFFERING) {
+        if(state==TORRENT_PLAYBACK_BUFFERING_START&&!g_torrentPlaybackActive&&g_torrentBufferBar&&IsWindow(g_torrentBufferBar))
+            SendMessageW(g_torrentBufferBar,PBM_SETMARQUEE,TRUE,30);
+        else
+            TorrentSetBufferProgress((int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0));
+    }
     else if(state==TORRENT_PLAYBACK_PLAYING)TorrentSetBufferProgress(100);
     else if(state==TORRENT_PLAYBACK_RECOVERING||state==TORRENT_PLAYBACK_STOPPED||state==TORRENT_PLAYBACK_FAILED)
         TorrentSetBufferProgress(0);
@@ -3053,11 +3059,11 @@ static void TorrentBeginStream(void) {
     TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
         L"Buffering before playback starts — collecting the initial verified pieces…");
     TorrentStreamRequest *req=(TorrentStreamRequest*)calloc(1,sizeof(*req));
-    if(!req){TorrentSetLabel(g_torrentStatusLabel,L"Not enough memory to start streaming.");return;}
+    if(!req){TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — not enough memory to start streaming.");return;}
     req->owner=g_main;req->task_id=g_torrentTaskId;req->file_index=fileIndex;req->file_size=size;
     InterlockedExchange(&g_torrentStreamCancel,0);g_torrentStreamRequest=req;
     g_torrentStreamThread=CreateThread(NULL,0,TorrentStreamWorker,req,0,NULL);
-    if(!g_torrentStreamThread){g_torrentStreamRequest=NULL;free(req);TorrentSetLabel(g_torrentStatusLabel,L"Could not start the stream worker.");}
+    if(!g_torrentStreamThread){g_torrentStreamRequest=NULL;free(req);TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — could not start the buffering worker.");}
 }
 static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     if(!g_torrentInitialized){TorrentSetLabel(g_torrentStatusLabel,L"Torrent engine is not initialized.");return;}
@@ -3540,10 +3546,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(percent<100) {
                     wchar_t buffering[160];
                     if(g_torrentEverPlayed) {
-                        if(!g_torrentBufferingSinceTick)g_torrentBufferingSinceTick=GetTickCount64();
-                        StringCchPrintfW(buffering,_countof(buffering),
-                            L"Buffering during playback — waiting for verified pieces (%d%%)…",percent);
-                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING,buffering);
+                        TorrentPlaybackState current=(TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0);
+                        if(current!=TORRENT_PLAYBACK_RECOVERING) {
+                            if(!g_torrentBufferingSinceTick)g_torrentBufferingSinceTick=GetTickCount64();
+                            StringCchPrintfW(buffering,_countof(buffering),
+                                L"Buffering during playback — waiting for verified pieces (%d%%)…",percent);
+                            TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING,buffering);
+                        }
                     } else {
                         StringCchPrintfW(buffering,_countof(buffering),
                             L"Buffering before playback starts (%d%%)…",percent);
