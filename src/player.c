@@ -2703,6 +2703,7 @@ static BOOL g_torrentInitialized=FALSE;
 static void ShowTorrentWindow(HWND owner);
 static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
+static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
 static BOOL g_torrentPlaybackActive=FALSE;
@@ -2726,6 +2727,9 @@ static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 #define ID_TORRENT_REMOVE 5107
 #define ID_TORRENT_STOP 5108
 #define ID_TORRENT_REFRESH 5109
+#define ID_TORRENT_DOWN_LIMIT 5110
+#define ID_TORRENT_UP_LIMIT 5111
+#define ID_TORRENT_APPLY_LIMITS 5112
 
 static BOOL LoadTorrentEngine(HWND owner) {
     if(g_torrentModule && g_torrentInitialize && g_torrentShutdown) return TRUE;
@@ -2970,14 +2974,24 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentFileList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,20,158,800,365,hwnd,(HMENU)ID_TORRENT_FILES,NULL,NULL);
         SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,534,800,42,hwnd,NULL,NULL,NULL);
+        g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,534,800,30,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentStatusLabel,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"STATIC",L"Download limit (KiB/s; 0 = unlimited)",WS_CHILD|WS_VISIBLE,20,568,220,22,hwnd,NULL,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentDownLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,245,565,85,26,hwnd,(HMENU)ID_TORRENT_DOWN_LIMIT,NULL,NULL);
+        SendMessageW(g_torrentDownLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"STATIC",L"Upload limit (KiB/s; 0 = unlimited)",WS_CHILD|WS_VISIBLE,350,568,215,22,hwnd,NULL,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentUpLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,570,565,85,26,hwnd,(HMENU)ID_TORRENT_UP_LIMIT,NULL,NULL);
+        SendMessageW(g_torrentUpLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,670,563,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         const struct {int id;const wchar_t *label;int x,w;} buttons[]={
             {ID_TORRENT_PAUSE,L"Pause / Resume",20,125},{ID_TORRENT_STREAM,L"Stream selected",155,135},
             {ID_TORRENT_STOP,L"Stop stream",300,110},{ID_TORRENT_REMOVE,L"Remove task",420,110},
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
-        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,590,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,620,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
     case WM_COMMAND:
@@ -2997,6 +3011,27 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 TorrentSetLabel(g_torrentStatusLabel,L"Task removed. Downloaded data was retained.");
                 return 0;
             case ID_TORRENT_REFRESH:TorrentRefreshStatus();return 0;
+            case ID_TORRENT_APPLY_LIMITS: {
+                wchar_t downText[32]=L"",upText[32]=L"";
+                GetWindowTextW(g_torrentDownLimitEdit,downText,(int)_countof(downText));
+                GetWindowTextW(g_torrentUpLimitEdit,upText,(int)_countof(upText));
+                wchar_t *endDown=NULL,*endUp=NULL;
+                unsigned long long down=wcstoui64(downText,&endDown,10);
+                unsigned long long up=wcstoui64(upText,&endUp,10);
+                if(!downText[0]||!upText[0]||!endDown||*endDown||!endUp||*endUp||
+                   down>(unsigned long long)INT_MAX/1024ULL||up>(unsigned long long)INT_MAX/1024ULL) {
+                    TorrentSetLabel(g_torrentStatusLabel,L"Enter whole-number limits from 0 to 2,097,151 KiB/s.");
+                    return 0;
+                }
+                if(!g_torrentSetRateLimits||(g_torrentInitialized&&!g_torrentSetRateLimits((int)(down*1024ULL),(int)(up*1024ULL)))) {
+                    TorrentSetLabel(g_torrentStatusLabel,L"Could not apply torrent bandwidth limits.");
+                    return 0;
+                }
+                wchar_t applied[192];
+                StringCchPrintfW(applied,_countof(applied),L"Limits applied — download: %s KiB/s, upload: %s KiB/s. 0 = unlimited.",downText,upText);
+                TorrentSetLabel(g_torrentStatusLabel,applied);
+                return 0;
+            }
         }break;
     case WM_TIMER:if(wp==1){TorrentRefreshStatus();return 0;}break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
@@ -3006,7 +3041,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            request; closing it after playback starts leaves playback running. */
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
-        g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;return 0;
+        g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
