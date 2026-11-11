@@ -20,6 +20,7 @@
 #include <string.h>
 #include <strsafe.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <shlobj.h>
 #include <urlmon.h>
 #include <winhttp.h>
@@ -3016,8 +3017,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 GetWindowTextW(g_torrentDownLimitEdit,downText,(int)_countof(downText));
                 GetWindowTextW(g_torrentUpLimitEdit,upText,(int)_countof(upText));
                 wchar_t *endDown=NULL,*endUp=NULL;
-                unsigned long long down=wcstoui64(downText,&endDown,10);
-                unsigned long long up=wcstoui64(upText,&endUp,10);
+                unsigned long long down=_wcstoui64(downText,&endDown,10);
+                unsigned long long up=_wcstoui64(upText,&endUp,10);
                 if(!downText[0]||!upText[0]||!endDown||*endDown||!endUp||*endUp||
                    down>(unsigned long long)INT_MAX/1024ULL||up>(unsigned long long)INT_MAX/1024ULL) {
                     TorrentSetLabel(g_torrentStatusLabel,L"Enter whole-number limits from 0 to 2,097,151 KiB/s.");
@@ -3050,7 +3051,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);int w=860,h=680;
+    RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
