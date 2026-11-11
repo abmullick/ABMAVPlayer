@@ -18,7 +18,7 @@ set VCPKG_ROOT=C:\vcpkg
 "%VCPKG_ROOT%\vcpkg.exe" install libtorrent:x64-windows
 ```
 
-The repository manifest pins libtorrent 2.1.2 and a vcpkg baseline. The install is manifest-mode and is placed in the repository-local `vcpkg_installed` folder. Do not mix x86, ARM64, static-triplet, or unrelated DLL files with this x64 build.
+The repository manifest pins libtorrent 2.1.2 and a vcpkg baseline. From the repository root, run `vcpkg install`; manifest mode installs into the repository-local `vcpkg_installed` folder. Do not mix x86, ARM64, static-triplet, or unrelated DLL files with this x64 build.
 
 ## Build
 
