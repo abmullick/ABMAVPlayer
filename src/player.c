@@ -2778,6 +2778,8 @@ static void ShowSettingsDialog(HWND owner);
 static BOOL EnsureTorrentCacheBaseDir(void);
 static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
+static HFONT g_torrentUiFont=NULL;
+static HBRUSH g_torrentUiBrush=NULL,g_torrentEditBrush=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
 static HWND g_torrentCacheLimitEdit=NULL,g_torrentCacheInfoLabel=NULL;
 static uint64_t g_torrentTaskId=0;
@@ -3200,7 +3202,9 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        g_torrentUiBrush=CreateSolidBrush(RGB(8,14,25));g_torrentEditBrush=CreateSolidBrush(RGB(22,37,56));
+        g_torrentUiFont=CreateFontW(-16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        HFONT font=g_torrentUiFont;
         HWND h=CreateWindowExW(0,L"STATIC",L"Add a magnet URI or open a local .torrent file. Only select content you are legally entitled to access.",WS_CHILD|WS_VISIBLE,20,16,760,36,hwnd,NULL,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
@@ -3247,6 +3251,11 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         TorrentRefreshCacheStatus();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
+    case WM_ERASEBKGND: { RECT rc;GetClientRect(hwnd,&rc);FillRect((HDC)wp,&rc,g_torrentUiBrush);return 1; }
+    case WM_CTLCOLORSTATIC: { HDC dc=(HDC)wp;SetTextColor(dc,RGB(218,231,243));SetBkColor(dc,RGB(8,14,25));return (LRESULT)g_torrentUiBrush; }
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX: { HDC dc=(HDC)wp;SetTextColor(dc,RGB(239,246,253));SetBkColor(dc,RGB(22,37,56));return (LRESULT)g_torrentEditBrush; }
+    case WM_CTLCOLORBTN: { HDC dc=(HDC)wp;SetTextColor(dc,RGB(232,242,251));SetBkColor(dc,RGB(22,45,67));return (LRESULT)g_torrentUiBrush; }
     case WM_COMMAND:
         switch(LOWORD(wp)) {
             case ID_TORRENT_ADD_MAGNET:TorrentAddSource(hwnd,FALSE);return 0;
@@ -3318,7 +3327,10 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
-        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;return 0;
+        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;
+        if(g_torrentUiFont)DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;
+        if(g_torrentUiBrush)DeleteObject(g_torrentUiBrush);g_torrentUiBrush=NULL;
+        if(g_torrentEditBrush)DeleteObject(g_torrentEditBrush);g_torrentEditBrush=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3326,11 +3338,11 @@ static void ShowTorrentWindow(HWND owner) {
     if(!g_torrentInitialized){StartTorrentEngine(owner);return;}
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(8,14,25));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
-    if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
+    if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
 }
 
 
@@ -4386,6 +4398,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
+        if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
