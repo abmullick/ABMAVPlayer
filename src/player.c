@@ -39,6 +39,7 @@
 #define WM_RENDERERS_CHANGED (WM_APP + 10)
 #define WM_ARTWORK_READY (WM_APP + 11)
 #define WM_ARTWORK_DOWNLOAD_READY (WM_APP + 12)
+#define WM_TORRENT_INIT_DONE (WM_APP + 13)
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -148,7 +149,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[16], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[17], R_FULLSCREEN;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
 static float g_eqPreamp=0.0f;
@@ -600,9 +601,9 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/16;
+    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/17;
     if(menuRowHeight<1)menuRowHeight=1;
-    for(int i=0;i<16;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
+    for(int i=0;i<17;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1259,20 +1260,21 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
         Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
-        const wchar_t *labels[16]={
+        const wchar_t *labels[17]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
-            L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player"
+            L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
+            L"Torrent Stream (initialize engine)"
         };
-        const wchar_t *shortcuts[16]={
+        const wchar_t *shortcuts[17]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I"
+            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L""
         };
-        const wchar_t *icons[16]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i"};
-        for(int i=0;i<16;i++) {
+        const wchar_t *icons[17]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"BT"};
+        for(int i=0;i<17;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==9)labels[9]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
@@ -2648,6 +2650,91 @@ static void ShowEqualizer(void) {
 }
 
 
+
+/* The optional torrent DLL is loaded only when the user explicitly opens
+   Torrent Stream. Session initialization runs on a worker thread so DHT,
+   tracker and peer setup can never block the Win32 UI thread. */
+typedef BOOL (WINAPI *ABM_TorrentInitializeFn)(const wchar_t *);
+typedef void (WINAPI *ABM_TorrentShutdownFn)(void);
+static HMODULE g_torrentModule=NULL;
+static ABM_TorrentInitializeFn g_torrentInitialize=NULL;
+static ABM_TorrentShutdownFn g_torrentShutdown=NULL;
+static HANDLE g_torrentInitThread=NULL;
+static volatile LONG g_torrentInitResult=0; /* 0=pending, 1=ready, -1=failed */
+static BOOL g_torrentInitPending=FALSE;
+static BOOL g_torrentInitialized=FALSE;
+
+static BOOL LoadTorrentEngine(HWND owner) {
+    if(g_torrentModule && g_torrentInitialize && g_torrentShutdown) return TRUE;
+    wchar_t exePath[PATH_CAP]={0}, dllPath[PATH_CAP]={0};
+    DWORD n=GetModuleFileNameW(NULL,exePath,_countof(exePath));
+    if(!n || n>=_countof(exePath)) return FALSE;
+    wchar_t *slash=wcsrchr(exePath,L'\\');
+    if(!slash) return FALSE;
+    *slash=0;
+    if(FAILED(StringCchPrintfW(dllPath,_countof(dllPath),
+        L"%s\\torrent-runtime\\abm_torrent_engine.dll",exePath))) return FALSE;
+    g_torrentModule=LoadLibraryExW(dllPath,NULL,LOAD_WITH_ALTERED_SEARCH_PATH);
+    if(!g_torrentModule) {
+        wchar_t message[PATH_CAP+256];
+        StringCchPrintfW(message,_countof(message),
+            L"The optional torrent engine was not found or could not load.\n\nExpected:\n%s\n\nBuild the Windows x64 torrent runtime and keep its dependency DLLs in the same torrent-runtime folder.",
+            dllPath);
+        MessageBoxW(owner,message,L"Torrent Stream",MB_OK|MB_ICONINFORMATION);
+        return FALSE;
+    }
+    g_torrentInitialize=(ABM_TorrentInitializeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Initialize");
+    g_torrentShutdown=(ABM_TorrentShutdownFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Shutdown");
+    if(!g_torrentInitialize || !g_torrentShutdown) {
+        MessageBoxW(owner,L"The torrent engine DLL is missing required exports. Rebuild the matching x64 runtime.",
+                    L"Torrent Stream",MB_OK|MB_ICONERROR);
+        FreeLibrary(g_torrentModule);g_torrentModule=NULL;
+        g_torrentInitialize=NULL;g_torrentShutdown=NULL;
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static DWORD WINAPI TorrentInitializeWorker(void *parameter) {
+    HWND owner=(HWND)parameter;
+    BOOL ok=g_torrentInitialize && g_torrentInitialize(g_dataDir);
+    InterlockedExchange(&g_torrentInitResult,ok?1:-1);
+    if(owner)PostMessageW(owner,WM_TORRENT_INIT_DONE,0,0);
+    return 0;
+}
+
+static void StartTorrentEngine(HWND owner) {
+    if(g_torrentInitialized) {
+        MessageBoxW(owner,L"The libtorrent engine is already initialized. Torrent source controls and progressive playback are being added in the next implementation step.",
+                    L"Torrent Stream",MB_OK|MB_ICONINFORMATION);
+        return;
+    }
+    if(g_torrentInitPending) {
+        SetStatus(L"Torrent engine initialization is already in progress...");
+        return;
+    }
+    if(!EnsureDataDirectory()) {
+        MessageBoxW(owner,L"ABM AV Player could not create its application data directory.",
+                    L"Torrent Stream",MB_OK|MB_ICONWARNING);
+        return;
+    }
+    if(!LoadTorrentEngine(owner)) {
+        SetStatus(L"Torrent engine runtime is unavailable");
+        return;
+    }
+    InterlockedExchange(&g_torrentInitResult,0);
+    g_torrentInitPending=TRUE;
+    g_torrentInitThread=CreateThread(NULL,0,TorrentInitializeWorker,owner,0,NULL);
+    if(!g_torrentInitThread) {
+        g_torrentInitPending=FALSE;
+        SetStatus(L"Could not start torrent engine initialization");
+        MessageBoxW(owner,L"Windows could not start the torrent initialization worker.",
+                    L"Torrent Stream",MB_OK|MB_ICONERROR);
+        return;
+    }
+    SetStatus(L"Initializing optional libtorrent engine...");
+}
+
 static HBITMAP g_aboutPortrait = NULL;
 
 static HBITMAP LoadAboutPortrait(void) {
@@ -2993,6 +3080,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetBkColor((HDC)wp,RGB(31,34,38));
         return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
+    case WM_TORRENT_INIT_DONE: {
+        if(g_torrentInitThread){CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
+        g_torrentInitPending=FALSE;
+        if(InterlockedCompareExchange(&g_torrentInitResult,0,0)==1) {
+            g_torrentInitialized=TRUE;
+            SetStatus(L"Torrent engine initialized - torrent tasks are not yet connected to playback");
+            MessageBoxW(hwnd,L"The native libtorrent engine initialized successfully.\n\nThe engine is now loaded on demand. Magnet/.torrent controls, verified-piece buffering and progressive LibVLC playback are the next implementation step.",
+                        L"Torrent Stream - Engine Ready",MB_OK|MB_ICONINFORMATION);
+        } else {
+            SetStatus(L"Torrent engine initialization failed");
+            MessageBoxW(hwnd,L"The native torrent engine could not initialize. Normal playback and Streaming Centre remain available.",
+                        L"Torrent Stream",MB_OK|MB_ICONWARNING);
+        }
+        return 0;
+    }
     case WM_RENDERERS_CHANGED:{
         RefreshRendererList();
         if(g_rendererCount>0){wchar_t found[128];swprintf_s(found,_countof(found),L"Found %u receiver(s)",(unsigned int)g_rendererCount);SetStatus(found);}
@@ -3273,7 +3375,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<16;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<17;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 PositionVideoWindow();
                 SyncRendererComboVisibility();
@@ -3293,6 +3395,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==13)ABM_CheckForUpdates(hwnd,APP_VERSION);
                 else if(mi==14)PostMessageW(hwnd,WM_CLOSE,0,0);
                 else if(mi==15)ShowAboutDialog(hwnd);
+                else if(mi==16)StartTorrentEngine(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -3358,10 +3461,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+15)%16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+16)%17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=15;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
         if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
@@ -3520,7 +3623,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
-    case WM_DESTROY:ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+    case WM_DESTROY:
+        if(g_torrentInitThread){WaitForSingleObject(g_torrentInitThread,INFINITE);CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
+        g_torrentInitPending=FALSE;
+        if(g_torrentInitResult==1 && g_torrentShutdown)g_torrentShutdown();
+        g_torrentInitialized=FALSE;
+        if(g_torrentModule){FreeLibrary(g_torrentModule);g_torrentModule=NULL;g_torrentInitialize=NULL;g_torrentShutdown=NULL;}
+        ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
