@@ -2945,7 +2945,10 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
         ok=g_torrentAddMagnet(source,&id,error,(unsigned)_countof(error));
     }
     if(!ok){TorrentSetLabel(g_torrentStatusLabel,error[0]?error:L"Could not add this torrent source.");return;}
-    if(g_torrentTaskId&&g_torrentTaskId!=id)g_torrentRemove(g_torrentTaskId,FALSE);
+    if(g_torrentTaskId&&g_torrentTaskId!=id) {
+        TorrentStopPlayback();
+        g_torrentRemove(g_torrentTaskId,FALSE);
+    }
     g_torrentTaskId=id;g_torrentListedForTask=-1;g_torrentListedFileCount=0;g_torrentSelectedFile=-1;
     SendMessageW(g_torrentFileList,LB_RESETCONTENT,0,0);
     TorrentSetLabel(g_torrentStatusLabel,L"Torrent added. Waiting for metadata…");
