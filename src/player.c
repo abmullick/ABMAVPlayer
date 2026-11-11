@@ -3338,7 +3338,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(!g_torrentInitialized){StartTorrentEngine(owner);return;}
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(8,14,25));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
@@ -4398,7 +4398,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
-        if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
