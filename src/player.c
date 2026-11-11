@@ -60,6 +60,7 @@
 #define WM_TORRENT_INIT_DONE (WM_APP + 13)
 #define WM_TORRENT_STREAM_READY (WM_APP + 14)
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
+#define WM_TORRENT_TV_READY (WM_APP + 16)
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -2772,6 +2773,14 @@ typedef BOOL (WINAPI *ABM_TorrentClearCacheFn)(uint64_t *,uint64_t *);
 typedef BOOL (WINAPI *ABM_TorrentSetReadWindowFn)(uint64_t,int,int64_t,int64_t,int);
 typedef BOOL (WINAPI *ABM_TorrentWaitForRangeFn)(uint64_t,int,int64_t,int64_t,unsigned int);
 typedef BOOL (WINAPI *ABM_TorrentStartHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentStartLanHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+void ABM_TorrentDlna_StartDiscovery(void);
+void ABM_TorrentDlna_StopDiscovery(void);
+unsigned int ABM_TorrentDlna_DeviceCount(void);
+BOOL ABM_TorrentDlna_DeviceName(unsigned int,wchar_t *,unsigned int);
+BOOL ABM_TorrentDlna_SelectDevice(unsigned int);
+BOOL ABM_TorrentDlna_PlayUrl(const wchar_t *);
+BOOL ABM_TorrentDlna_StopPlayback(void);
 typedef void (WINAPI *ABM_TorrentStopHttpStreamFn)(void);
 static HMODULE g_torrentModule=NULL;
 static ABM_TorrentInitializeFn g_torrentInitialize=NULL;
@@ -2790,6 +2799,7 @@ static ABM_TorrentClearCacheFn g_torrentClearCache=NULL;
 static ABM_TorrentSetReadWindowFn g_torrentSetReadWindow=NULL;
 static ABM_TorrentWaitForRangeFn g_torrentWaitForRange=NULL;
 static ABM_TorrentStartHttpStreamFn g_torrentStartHttpStream=NULL;
+static ABM_TorrentStartLanHttpStreamFn g_torrentStartLanHttpStream=NULL;
 static ABM_TorrentStopHttpStreamFn g_torrentStopHttpStream=NULL;
 static HANDLE g_torrentInitThread=NULL;
 static volatile LONG g_torrentInitResult=0; /* 0=pending, 1=ready, -1=failed */
@@ -2802,6 +2812,16 @@ static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
 static HWND g_torrentCacheLimitEdit=NULL,g_torrentCacheInfoLabel=NULL;
+static HWND g_torrentTvCombo=NULL,g_torrentDownloadPathLabel=NULL;
+static int g_torrentTvKnownCount=-1;
+static BOOL g_torrentTvPlaybackActive=FALSE;
+static HANDLE g_torrentTvStreamThread=NULL;
+static volatile LONG g_torrentTvStreamCancel=0;
+typedef struct TorrentTvStreamRequest {
+    HWND owner; uint64_t task_id; int file_index; int64_t file_size; BOOL ok;
+    wchar_t url[2048]; wchar_t error[512];
+} TorrentTvStreamRequest;
+static TorrentTvStreamRequest *g_torrentTvStreamRequest=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
 static BOOL g_torrentPlaybackActive=FALSE;
@@ -2850,6 +2870,10 @@ static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 #define ID_TORRENT_DOWN_LIMIT 5110
 #define ID_TORRENT_UP_LIMIT 5111
 #define ID_TORRENT_APPLY_LIMITS 5112
+#define ID_TORRENT_FIND_TVS 5123
+#define ID_TORRENT_TV_COMBO 5124
+#define ID_TORRENT_CAST_TV 5125
+#define ID_TORRENT_STOP_TV 5126
 
 static BOOL LoadTorrentEngine(HWND owner) {
     if(g_torrentModule && g_torrentInitialize && g_torrentShutdown) return TRUE;
@@ -2887,13 +2911,14 @@ static BOOL LoadTorrentEngine(HWND owner) {
     g_torrentSetReadWindow=(ABM_TorrentSetReadWindowFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetReadWindow");
     g_torrentWaitForRange=(ABM_TorrentWaitForRangeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_WaitForRange");
     g_torrentStartHttpStream=(ABM_TorrentStartHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StartHttpStream");
+    g_torrentStartLanHttpStream=(ABM_TorrentStartLanHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StartLanHttpStream");
     g_torrentStopHttpStream=(ABM_TorrentStopHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StopHttpStream");
     if(!g_torrentInitialize || !g_torrentShutdown || !g_torrentAddMagnet ||
        !g_torrentAddFile || !g_torrentGetTask || !g_torrentGetFile ||
        !g_torrentSelectFile || !g_torrentPause || !g_torrentResume ||
        !g_torrentRemove || !g_torrentSetRateLimits || !g_torrentGetCacheInfo ||
        !g_torrentSetCacheLimit || !g_torrentClearCache || !g_torrentSetReadWindow ||
-       !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStopHttpStream) {
+       !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStartLanHttpStream || !g_torrentStopHttpStream) {
         MessageBoxW(owner,L"The torrent engine DLL is missing one or more required C ABI exports. Rebuild and install the matching Windows x64 runtime.",
                     L"Torrent Stream",MB_OK|MB_ICONERROR);
         FreeLibrary(g_torrentModule);g_torrentModule=NULL;
@@ -2903,7 +2928,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
         g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
         g_torrentGetCacheInfo=NULL;g_torrentSetCacheLimit=NULL;g_torrentClearCache=NULL;
         g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
-        g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
+        g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         return FALSE;
     }
     return TRUE;
