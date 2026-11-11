@@ -2901,6 +2901,7 @@ static DWORD WINAPI TorrentStreamWorker(void *arg) {
     }
     if(!PostMessageW(r->owner,WM_TORRENT_STREAM_READY,0,(LPARAM)r)) {
         if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+        if(g_torrentStreamRequest==r)g_torrentStreamRequest=NULL;
         free(r);
     }
     return 0;
@@ -3381,8 +3382,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                         TorrentSetLabel(g_torrentStatusLabel,L"LibVLC could not start playback.");
                         g_torrentStopHttpStream();
                     }
-                } else TorrentSetLabel(g_torrentStatusLabel,L"LibVLC rejected the local torrent stream URL.");
-            } else TorrentSetLabel(g_torrentStatusLabel,L"Could not encode the local stream URL.");
+                } else {
+                    TorrentSetLabel(g_torrentStatusLabel,L"LibVLC rejected the local torrent stream URL.");
+                    g_torrentStopHttpStream();
+                }
+            } else {
+                TorrentSetLabel(g_torrentStatusLabel,L"Could not encode the local stream URL.");
+                g_torrentStopHttpStream();
+            }
             free(url);
         } else if(req&&!cancelled) {
             TorrentSetLabel(g_torrentStatusLabel,req->error[0]?req->error:L"Initial buffering failed.");
