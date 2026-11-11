@@ -3350,18 +3350,19 @@ static void ShowTorrentWindow(HWND owner) {
 #define ID_MEDIA_HUB_TORRENT 5302
 static HWND g_mediaHubWindow=NULL;
 static HFONT g_mediaHubTitleFont=NULL,g_mediaHubBodyFont=NULL;
-static HBRUSH g_mediaHubBrush=NULL,g_mediaHubCardBrush=NULL;
+static HBRUSH g_mediaHubBrush=NULL;
 static LRESULT CALLBACK MediaHubWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
         g_mediaHubBrush=CreateSolidBrush(RGB(8,14,25));
-        g_mediaHubCardBrush=CreateSolidBrush(RGB(16,29,47));
+        
         g_mediaHubTitleFont=CreateFontW(-30,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         g_mediaHubBodyFont=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         HWND a=CreateWindowW(L"BUTTON",L"",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,28,142,410,270,hwnd,(HMENU)ID_MEDIA_HUB_STREAMING,GetModuleHandleW(NULL),NULL);
         HWND b=CreateWindowW(L"BUTTON",L"",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,462,142,410,270,hwnd,(HMENU)ID_MEDIA_HUB_TORRENT,GetModuleHandleW(NULL),NULL);
         (void)a;(void)b;return 0;
     }
+    case WM_ERASEBKGND: { RECT rc;GetClientRect(hwnd,&rc);FillRect((HDC)wp,&rc,g_mediaHubBrush);return 1; }
     case WM_DRAWITEM: {
         DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
         if(d&&(d->CtlID==ID_MEDIA_HUB_STREAMING||d->CtlID==ID_MEDIA_HUB_TORRENT)) {
@@ -3412,7 +3413,6 @@ static LRESULT CALLBACK MediaHubWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) 
         if(g_mediaHubTitleFont)DeleteObject(g_mediaHubTitleFont);g_mediaHubTitleFont=NULL;
         if(g_mediaHubBodyFont)DeleteObject(g_mediaHubBodyFont);g_mediaHubBodyFont=NULL;
         if(g_mediaHubBrush)DeleteObject(g_mediaHubBrush);g_mediaHubBrush=NULL;
-        if(g_mediaHubCardBrush)DeleteObject(g_mediaHubCardBrush);g_mediaHubCardBrush=NULL;
         return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
@@ -3569,7 +3569,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"\r\n"
             L"KEYBOARD SHORTCUTS\r\n"
             L"Ctrl+O  Open media     |     Ctrl+D  Find network devices\r\n"
-            L"Ctrl+Shift+C  Start local-player receiver discovery     |     Ctrl+Shift+S  Open Streaming Centre\r\n"
+            L"Ctrl+Shift+C  Start local-player receiver discovery     |     Ctrl+Shift+S  Open Streaming Centre     |     Ctrl+Shift+T  Open Torrent Stream\r\n"
             L"Space  Play/Pause     |     Left/Right  Seek 10 seconds     |     Home  Seek to beginning\r\n"
             L"N / P  Next/Previous item     |     + / -  Change playback speed     |     F11  Fullscreen\r\n"
             L"Ctrl+L  Load playlist     |     Ctrl+S  Save playlist     |     Ctrl+J  Recent media\r\n"
