@@ -3206,6 +3206,9 @@ static void TorrentBeginCastToTV(void) {
     if(!g_torrentGetFile(g_torrentTaskId,fileIndex,relativePath,(unsigned)_countof(relativePath),&size)||size<=0) {
         TorrentSetLabel(g_torrentStatusLabel,L"Could not read the selected torrent file.");return;
     }
+    if(!IsVideoPath(relativePath)) {
+        TorrentSetLabel(g_torrentStatusLabel,L"Select a video file to cast to the TV.");return;
+    }
     int tv=(int)SendMessageW(g_torrentTvCombo,CB_GETCURSEL,0,0);
     if(tv==CB_ERR||!ABM_TorrentDlna_SelectDevice((unsigned int)tv)) {
         TorrentSetLabel(g_torrentStatusLabel,L"Find TVs and select an available DLNA receiver first.");return;
@@ -4627,6 +4630,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_torrentInitThread){WaitForSingleObject(g_torrentInitThread,INFINITE);CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
         g_torrentInitPending=FALSE;
+        if(g_torrentTvPlaybackActive)ABM_TorrentDlna_StopPlayback();
+        ABM_TorrentDlna_StopDiscovery();
         if(g_torrentInitResult==1 && g_torrentShutdown)g_torrentShutdown();
         g_torrentInitialized=FALSE;
         if(g_torrentModule){
@@ -4636,7 +4641,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentGetFile=NULL;g_torrentSelectFile=NULL;g_torrentPause=NULL;
             g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
-            g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
+            g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
         ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
