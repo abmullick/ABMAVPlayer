@@ -2679,6 +2679,9 @@ typedef BOOL (WINAPI *ABM_TorrentSelectFileFn)(uint64_t,int);
 typedef BOOL (WINAPI *ABM_TorrentTaskActionFn)(uint64_t);
 typedef BOOL (WINAPI *ABM_TorrentRemoveFn)(uint64_t,BOOL);
 typedef BOOL (WINAPI *ABM_TorrentSetRateLimitsFn)(int,int);
+typedef BOOL (WINAPI *ABM_TorrentGetCacheInfoFn)(uint64_t *,uint64_t *);
+typedef BOOL (WINAPI *ABM_TorrentSetCacheLimitFn)(uint64_t,uint64_t *);
+typedef BOOL (WINAPI *ABM_TorrentClearCacheFn)(uint64_t *,uint64_t *);
 typedef BOOL (WINAPI *ABM_TorrentSetReadWindowFn)(uint64_t,int,int64_t,int64_t,int);
 typedef BOOL (WINAPI *ABM_TorrentWaitForRangeFn)(uint64_t,int,int64_t,int64_t,unsigned int);
 typedef BOOL (WINAPI *ABM_TorrentStartHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
@@ -2694,6 +2697,9 @@ static ABM_TorrentSelectFileFn g_torrentSelectFile=NULL;
 static ABM_TorrentTaskActionFn g_torrentPause=NULL,g_torrentResume=NULL;
 static ABM_TorrentRemoveFn g_torrentRemove=NULL;
 static ABM_TorrentSetRateLimitsFn g_torrentSetRateLimits=NULL;
+static ABM_TorrentGetCacheInfoFn g_torrentGetCacheInfo=NULL;
+static ABM_TorrentSetCacheLimitFn g_torrentSetCacheLimit=NULL;
+static ABM_TorrentClearCacheFn g_torrentClearCache=NULL;
 static ABM_TorrentSetReadWindowFn g_torrentSetReadWindow=NULL;
 static ABM_TorrentWaitForRangeFn g_torrentWaitForRange=NULL;
 static ABM_TorrentStartHttpStreamFn g_torrentStartHttpStream=NULL;
@@ -2706,6 +2712,7 @@ static void ShowTorrentWindow(HWND owner);
 static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
+static HWND g_torrentCacheLimitEdit=NULL,g_torrentCacheInfoLabel=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
 static BOOL g_torrentPlaybackActive=FALSE;
@@ -2748,6 +2755,8 @@ static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 #define ID_TORRENT_REMOVE 5107
 #define ID_TORRENT_STOP 5108
 #define ID_TORRENT_REFRESH 5109
+#define ID_TORRENT_CACHE_LIMIT 5110
+#define ID_TORRENT_CLEAR_CACHE 5111
 #define ID_TORRENT_DOWN_LIMIT 5110
 #define ID_TORRENT_UP_LIMIT 5111
 #define ID_TORRENT_APPLY_LIMITS 5112
@@ -2782,6 +2791,9 @@ static BOOL LoadTorrentEngine(HWND owner) {
     g_torrentResume=(ABM_TorrentTaskActionFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Resume");
     g_torrentRemove=(ABM_TorrentRemoveFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Remove");
     g_torrentSetRateLimits=(ABM_TorrentSetRateLimitsFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetRateLimits");
+    g_torrentGetCacheInfo=(ABM_TorrentGetCacheInfoFn)GetProcAddress(g_torrentModule,"ABM_Torrent_GetCacheInfo");
+    g_torrentSetCacheLimit=(ABM_TorrentSetCacheLimitFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetCacheLimit");
+    g_torrentClearCache=(ABM_TorrentClearCacheFn)GetProcAddress(g_torrentModule,"ABM_Torrent_ClearCache");
     g_torrentSetReadWindow=(ABM_TorrentSetReadWindowFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetReadWindow");
     g_torrentWaitForRange=(ABM_TorrentWaitForRangeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_WaitForRange");
     g_torrentStartHttpStream=(ABM_TorrentStartHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StartHttpStream");
@@ -2789,7 +2801,8 @@ static BOOL LoadTorrentEngine(HWND owner) {
     if(!g_torrentInitialize || !g_torrentShutdown || !g_torrentAddMagnet ||
        !g_torrentAddFile || !g_torrentGetTask || !g_torrentGetFile ||
        !g_torrentSelectFile || !g_torrentPause || !g_torrentResume ||
-       !g_torrentRemove || !g_torrentSetRateLimits || !g_torrentSetReadWindow ||
+       !g_torrentRemove || !g_torrentSetRateLimits || !g_torrentGetCacheInfo ||
+       !g_torrentSetCacheLimit || !g_torrentClearCache || !g_torrentSetReadWindow ||
        !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStopHttpStream) {
         MessageBoxW(owner,L"The torrent engine DLL is missing one or more required C ABI exports. Rebuild and install the matching Windows x64 runtime.",
                     L"Torrent Stream",MB_OK|MB_ICONERROR);
@@ -2798,6 +2811,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
         g_torrentAddMagnet=NULL;g_torrentAddFile=NULL;g_torrentGetTask=NULL;
         g_torrentGetFile=NULL;g_torrentSelectFile=NULL;g_torrentPause=NULL;
         g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
+        g_torrentGetCacheInfo=NULL;g_torrentSetCacheLimit=NULL;g_torrentClearCache=NULL;
         g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
         g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
         return FALSE;
@@ -2967,6 +2981,17 @@ static void TorrentRefreshFiles(void) {
     g_torrentListedForTask=(int)(g_torrentTaskId&0x7fffffff);
     if(g_torrentListedFileCount>0)SendMessageW(g_torrentFileList,LB_SETCURSEL,0,0);
 }
+static void TorrentRefreshCacheStatus(void) {
+    if(!g_torrentInitialized||!g_torrentGetCacheInfo||!g_torrentCacheInfoLabel)return;
+    uint64_t used=0,limit=0;
+    if(!g_torrentGetCacheInfo(&used,&limit))return;
+    wchar_t usedText[64],limitText[64],line[256];
+    TorrentFormatBytes((int64_t)(used>INT64_MAX?INT64_MAX:used),usedText,_countof(usedText));
+    TorrentFormatBytes((int64_t)(limit>INT64_MAX?INT64_MAX:limit),limitText,_countof(limitText));
+    StringCchPrintfW(line,_countof(line),L"Disk cache: %s used of %s  |  Location: %s\\torrent-cache",
+        usedText,limitText,g_dataDir);
+    TorrentSetLabel(g_torrentCacheInfoLabel,line);
+}
 static void TorrentRefreshStatus(void) {
     if(!g_torrentWindow||!g_torrentTaskId||!g_torrentGetTask)return;
     ABM_TorrentTaskInfo info={0};
@@ -3125,12 +3150,23 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentUpLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,670,563,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"STATIC",L"Cache quota (GiB)",WS_CHILD|WS_VISIBLE,20,674,145,22,hwnd,NULL,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentCacheLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"20",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,165,670,65,26,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
+        SendMessageW(g_torrentCacheLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,245,668,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,668,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,710,800,24,hwnd,NULL,NULL,NULL);
+        SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         const struct {int id;const wchar_t *label;int x,w;} buttons[]={
             {ID_TORRENT_PAUSE,L"Pause / Resume",20,125},{ID_TORRENT_STREAM,L"Stream selected",155,135},
             {ID_TORRENT_STOP,L"Stop stream",300,110},{ID_TORRENT_REMOVE,L"Remove task",420,110},
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
         for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,630,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        TorrentRefreshCacheStatus();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
     case WM_COMMAND:
@@ -3149,7 +3185,30 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 TorrentSetLabel(g_torrentInfoLabel,L"No torrent loaded");
                 TorrentSetLabel(g_torrentStatusLabel,L"Task removed. Downloaded data was retained.");
                 return 0;
-            case ID_TORRENT_REFRESH:TorrentRefreshStatus();return 0;
+            case ID_TORRENT_REFRESH:TorrentRefreshStatus();TorrentRefreshCacheStatus();return 0;
+            case ID_TORRENT_CACHE_LIMIT: {
+                wchar_t value[32]=L"";GetWindowTextW(g_torrentCacheLimitEdit,value,(int)_countof(value));
+                wchar_t *end=NULL;unsigned long long gib=_wcstoui64(value,&end,10);
+                if(!value[0]||!end||*end||gib<1||gib>4096) {
+                    TorrentSetLabel(g_torrentStatusLabel,L"Cache quota must be a whole number from 1 to 4096 GiB.");return 0;
+                }
+                uint64_t used=0,limit=(uint64_t)gib*1024ULL*1024ULL*1024ULL;
+                BOOL applied=g_torrentSetCacheLimit&&g_torrentSetCacheLimit(limit,&used);
+                TorrentRefreshCacheStatus();
+                if(applied)TorrentSetLabel(g_torrentStatusLabel,L"Cache quota applied. Oldest inactive torrent folders are evicted first when needed.");
+                else TorrentSetLabel(g_torrentStatusLabel,L"Quota saved, but active torrent data prevents cleanup below this limit. Stop/remove active tasks or choose a larger quota.");
+                return 0;
+            }
+            case ID_TORRENT_CLEAR_CACHE: {
+                if(MessageBoxW(hwnd,L"Delete cached data for inactive torrents? Data belonging to the currently loaded torrent is protected. This cannot be undone.",L"Clear Torrent Cache",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return 0;
+                uint64_t freed=0,remaining=0;
+                if(g_torrentClearCache&&g_torrentClearCache(&freed,&remaining)) {
+                    wchar_t a[64],b[64],msg[192];TorrentFormatBytes((int64_t)freed,a,_countof(a));TorrentFormatBytes((int64_t)remaining,b,_countof(b));
+                    StringCchPrintfW(msg,_countof(msg),L"Inactive cache cleared — freed %s. Remaining cache: %s.",a,b);
+                    TorrentSetLabel(g_torrentStatusLabel,msg);TorrentRefreshCacheStatus();
+                } else TorrentSetLabel(g_torrentStatusLabel,L"Could not clear inactive torrent cache.");
+                return 0;
+            }
             case ID_TORRENT_APPLY_LIMITS: {
                 wchar_t downText[32]=L"",upText[32]=L"";
                 GetWindowTextW(g_torrentDownLimitEdit,downText,(int)_countof(downText));
@@ -3172,7 +3231,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 return 0;
             }
         }break;
-    case WM_TIMER:if(wp==1){TorrentRefreshStatus();return 0;}break;
+    case WM_TIMER:if(wp==1){TorrentRefreshStatus();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         KillTimer(hwnd,1);
@@ -3180,7 +3239,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            request; closing it after playback starts leaves playback running. */
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
-        g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;return 0;
+        g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
+        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3189,7 +3249,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
+    RECT wr;GetWindowRect(owner,&wr);int w=860,h=820;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
