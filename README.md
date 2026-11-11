@@ -87,6 +87,7 @@ LibVLC handles media decoding and device output. ABM AV Player owns the desktop 
 - Visual Studio / Build Tools with Desktop development with C++ and Windows 10/11 SDK.
 - Microsoft Edge WebView2 Evergreen Runtime (required for the Streaming Centre; the app checks for it before browser startup and reports an installation instruction if missing).
 - Microsoft.Web.WebView2 NuGet SDK package for compiling the streaming module.
+- CMake 3.21+, vcpkg, and the manifest-pinned libtorrent 2.1.2 dependency for the Torrent Stream engine.
 - 64-bit VLC installation and matching 64-bit LibVLC SDK (LibVLC 3.0 or later for renderer discovery).
 - For Google Cast, use a full VLC runtime containing its renderer-discovery and Chromecast plugins. The SDK alone is not a complete runtime.
 
@@ -127,7 +128,8 @@ Updates are installed over the existing ABM AV Player installation. User prefere
 5. Set SDK paths if they are not in the default locations:
    `set VLC_SDK=C:\\vlc-sdk`
    `set WEBVIEW2_SDK=%CD%\\packages\\Microsoft.Web.WebView2`
-6. Run build.bat from the repository root.
+6. Set `VCPKG_ROOT` to your vcpkg checkout and run `vcpkg install` from the repository root to install the pinned libtorrent dependency.
+7. Run build.bat from the repository root. The build compiles the separate `abm_torrent_engine.dll` and stages its runtime dependencies.
 
 The executable is written to build\\ABMAVPlayer.exe.
 
