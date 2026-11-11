@@ -72,6 +72,7 @@ public:
         try {
             data_=(fs::absolute(directory)/L"torrent-cache").lexically_normal();
             fs::create_directories(data_);
+            cache_used_bytes_.store(DirectoryBytes(data_));
             {
                 std::ifstream config(data_/L"cache_limit.txt");
                 uint64_t persisted=0;
@@ -184,7 +185,7 @@ public:
     bool CacheInfo(uint64_t *used,uint64_t *limit) {
         if(!used||!limit)return false;
         std::lock_guard<std::mutex> g(m_);
-        *used=DirectoryBytes(data_);*limit=cache_limit_bytes_;return true;
+        *used=cache_used_bytes_.load();*limit=cache_limit_bytes_;return true;
     }
     bool SetCacheLimit(uint64_t limit,uint64_t *used) {
         if(limit<1024ULL*1024*1024||limit>4096ULL*1024*1024*1024)return false;
@@ -207,8 +208,10 @@ public:
             }
         }
         CleanupCacheToLimit();
-        if(used)*used=DirectoryBytes(data_);
-        return DirectoryBytes(data_)<=cache_limit_bytes_;
+        const uint64_t current=DirectoryBytes(data_);
+        cache_used_bytes_.store(current);
+        if(used)*used=current;
+        return current<=cache_limit_bytes_;
     }
     bool ClearCache(uint64_t *freed,uint64_t *remaining) {
         std::lock_guard<std::mutex> g(m_);
@@ -216,6 +219,7 @@ public:
         auto candidates=EvictableCacheFolders();
         for(const auto &path:candidates){std::error_code ec;fs::remove_all(path,ec);}
         const uint64_t after=DirectoryBytes(data_);
+        cache_used_bytes_.store(after);
         if(freed)*freed=before>after?before-after:0;
         if(remaining)*remaining=after;
         return true;
@@ -634,6 +638,7 @@ private:
         }
     }
     void Monitor() {
+        auto lastCacheScan=std::chrono::steady_clock::now();
         while(!stopping_) {
             {
                 std::lock_guard<std::mutex> g(m_);
@@ -656,6 +661,11 @@ private:
                     }
                 }
             }
+            const auto now=std::chrono::steady_clock::now();
+            if(now-lastCacheScan>=std::chrono::seconds(10)) {
+                cache_used_bytes_.store(DirectoryBytes(data_));
+                lastCacheScan=now;
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
     }
@@ -664,6 +674,7 @@ private:
     std::map<uint64_t,std::shared_ptr<Task>> tasks_;
     fs::path data_;
     uint64_t cache_limit_bytes_=20ULL*1024*1024*1024;
+    std::atomic<uint64_t> cache_used_bytes_{0};
     std::thread worker_;
     std::atomic<bool> stopping_{false};
     std::mutex schedule_mutex_;
