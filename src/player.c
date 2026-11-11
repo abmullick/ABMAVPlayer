@@ -2700,7 +2700,6 @@ static BOOL g_torrentInitPending=FALSE;
 static BOOL g_torrentInitialized=FALSE;
 static void ShowTorrentWindow(HWND owner);
 static volatile LONG g_torrentStreamCancel=0;
-static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
@@ -2715,6 +2714,7 @@ typedef struct TorrentStreamRequest {
     wchar_t url[2048];
     wchar_t error[512];
 } TorrentStreamRequest;
+static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 #define ID_TORRENT_MAGNET 5101
 #define ID_TORRENT_ADD_MAGNET 5102
 #define ID_TORRENT_BROWSE 5103
