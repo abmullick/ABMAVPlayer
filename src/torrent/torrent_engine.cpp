@@ -72,6 +72,12 @@ public:
         try {
             data_=(fs::absolute(directory)/L"torrent-cache").lexically_normal();
             fs::create_directories(data_);
+            {
+                std::ifstream config(data_/L"cache_limit.txt");
+                uint64_t persisted=0;
+                if(config>>persisted&&persisted>=1024ULL*1024*1024&&persisted<=4096ULL*1024*1024*1024)
+                    cache_limit_bytes_=persisted;
+            }
             lt::settings_pack s;
             s.set_str(lt::settings_pack::user_agent,"ABM-AV-Player/1.0");
             s.set_str(lt::settings_pack::listen_interfaces,"0.0.0.0:0");
@@ -184,6 +190,22 @@ public:
         if(limit<1024ULL*1024*1024||limit>4096ULL*1024*1024*1024)return false;
         std::lock_guard<std::mutex> g(m_);
         cache_limit_bytes_=limit;
+        {
+            const fs::path temporary=data_/L"cache_limit.tmp";
+            const fs::path config=data_/L"cache_limit.txt";
+            std::ofstream output(temporary,std::ios::trunc);
+            if(!output)return false;
+            output<<cache_limit_bytes_;
+            output.flush();
+            if(!output)return false;
+            output.close();
+            std::error_code ec;fs::rename(temporary,config,ec);
+            if(ec) {
+                fs::remove(config,ec);ec.clear();
+                fs::rename(temporary,config,ec);
+                if(ec)return false;
+            }
+        }
         CleanupCacheToLimit();
         if(used)*used=DirectoryBytes(data_);
         return DirectoryBytes(data_)<=cache_limit_bytes_;
