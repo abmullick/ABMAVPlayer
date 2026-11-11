@@ -20,6 +20,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [User Guide](USER_GUIDE.md): Getting started, playback, playlists, audio processing, subtitles, casting, shortcuts and troubleshooting.
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
+- [Torrent Stream design](TORRENT_STREAM.md): magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
@@ -41,6 +42,10 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 - Netflix and Prime Video title casting is not supported from the desktop browser. **Launch app** opens the TV app separately; it does not transfer the desktop title or account session. **Refresh app status** queries the selected Cast receiver session or DIAL application state and reports running/not running (or query failure); it does not report movie playback state. **Stop TV** sends a Google Cast session `STOP` for Cast-launched apps or a DIAL application `DELETE` for DIAL-launched apps. The Cast path checks the running session ID and waits for receiver confirmation. DIAL does not expose playback state or pause/resume/seek controls. Use the TV remote or provider's official mobile app when no provider-supported sender session is available. DRM-protected, encrypted, segmented or non-direct browser streams are not extracted or relayed.
 
 Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
+
+### Torrent Stream — development branch
+
+The Windows development branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, separate download/upload rate limits (KiB/s; 0 = unlimited), and an initial local LibVLC progressive-playback handoff. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
@@ -82,6 +87,7 @@ LibVLC handles media decoding and device output. ABM AV Player owns the desktop 
 - Visual Studio / Build Tools with Desktop development with C++ and Windows 10/11 SDK.
 - Microsoft Edge WebView2 Evergreen Runtime (required for the Streaming Centre; the app checks for it before browser startup and reports an installation instruction if missing).
 - Microsoft.Web.WebView2 NuGet SDK package for compiling the streaming module.
+- CMake 3.21+, vcpkg, and the manifest-pinned libtorrent 2.1.2 dependency for the Torrent Stream engine.
 - 64-bit VLC installation and matching 64-bit LibVLC SDK (LibVLC 3.0 or later for renderer discovery).
 - For Google Cast, use a full VLC runtime containing its renderer-discovery and Chromecast plugins. The SDK alone is not a complete runtime.
 
@@ -122,7 +128,8 @@ Updates are installed over the existing ABM AV Player installation. User prefere
 5. Set SDK paths if they are not in the default locations:
    `set VLC_SDK=C:\\vlc-sdk`
    `set WEBVIEW2_SDK=%CD%\\packages\\Microsoft.Web.WebView2`
-6. Run build.bat from the repository root.
+6. Set `VCPKG_ROOT` to your vcpkg checkout and run `vcpkg install` from the repository root to install the pinned libtorrent dependency.
+7. Run build.bat from the repository root. The build compiles the separate `abm_torrent_engine.dll` and stages its runtime dependencies.
 
 The executable is written to build\\ABMAVPlayer.exe.
 
