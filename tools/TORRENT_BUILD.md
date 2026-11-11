@@ -39,3 +39,9 @@ Payload files start at `dont_download` priority. The caller must select a file a
 ## Scope
 
 This is Phase 1 engine foundation. It does not yet add the Torrent Stream window or connect torrent data to LibVLC. Progressive verified-piece reads, loopback HTTP playback, UI and installer integration remain subsequent work.
+
+## Persistent cache
+
+Torrent payload data is stored below the application data directory supplied to `ABM_Torrent_Initialize`: `torrent-cache\<info-hash>\`. Each torrent gets its own stable info-hash folder, allowing libtorrent to recheck and reuse verified pieces when the same source is added again. The default cache quota is 20 GiB and is persisted in `torrent-cache\cache_limit.txt`; the UI allows 1–4096 GiB. Before prioritizing a selected file, the engine checks both the quota and available disk space. When space under the quota is needed, oldest inactive torrent folders are evicted first. Folders belonging to loaded tasks are never auto-evicted. **Clear inactive cache** removes only folders not owned by a currently loaded task; removing a task normally retains its data for later reuse.
+
+The C ABI cache calls are `ABM_Torrent_GetCacheInfo`, `ABM_Torrent_SetCacheLimit`, and `ABM_Torrent_ClearCache`. Windows build/runtime validation is still required.
