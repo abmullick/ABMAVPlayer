@@ -3108,7 +3108,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,534,800,30,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentStatusLabel,WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentBufferBar=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH,20,602,770,14,hwnd,NULL,NULL,NULL);
+        g_torrentBufferBar=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,20,602,770,14,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentBufferBar,PBM_SETRANGE32,0,100);
         SendMessageW(g_torrentBufferBar,PBM_SETPOS,0,0);
         h=CreateWindowW(L"STATIC",L"Download limit (KiB/s; 0 = unlimited)",WS_CHILD|WS_VISIBLE,20,568,220,22,hwnd,NULL,NULL,NULL);
