@@ -100,6 +100,7 @@ static wchar_t g_recent[MAX_RECENT][PATH_CAP];
 static int g_recentCount=0;
 static wchar_t g_dataDir[PATH_CAP];
 static wchar_t g_torrentCacheBaseDir[PATH_CAP];
+static wchar_t g_torrentActiveCacheBaseDir[PATH_CAP];
 static uint64_t g_torrentCacheQuotaGiB=20;
 static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
 
@@ -2888,7 +2889,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
 
 static DWORD WINAPI TorrentInitializeWorker(void *parameter) {
     HWND owner=(HWND)parameter;
-    BOOL ok=g_torrentInitialize && g_torrentInitialize(g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir);
+    BOOL ok=g_torrentInitialize && g_torrentInitialize(g_torrentActiveCacheBaseDir[0]?g_torrentActiveCacheBaseDir:(g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir));
     InterlockedExchange(&g_torrentInitResult,ok?1:-1);
     if(owner)PostMessageW(owner,WM_TORRENT_INIT_DONE,0,0);
     return 0;
@@ -2911,6 +2912,7 @@ static void StartTorrentEngine(HWND owner) {
     }
     InterlockedExchange(&g_torrentInitResult,0);
     g_torrentInitPending=TRUE;
+    wcsncpy_s(g_torrentActiveCacheBaseDir,_countof(g_torrentActiveCacheBaseDir),g_torrentCacheBaseDir,_TRUNCATE);
     g_torrentInitThread=CreateThread(NULL,0,TorrentInitializeWorker,owner,0,NULL);
     if(!g_torrentInitThread) {
         g_torrentInitPending=FALSE;
@@ -3056,7 +3058,7 @@ static void TorrentRefreshCacheStatus(void) {
     TorrentFormatBytes((int64_t)(used>INT64_MAX?INT64_MAX:used),usedText,_countof(usedText));
     TorrentFormatBytes((int64_t)(limit>INT64_MAX?INT64_MAX:limit),limitText,_countof(limitText));
     StringCchPrintfW(line,_countof(line),L"Disk cache: %s used of %s  |  Location: %s\\torrent-cache",
-        usedText,limitText,g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir);
+        usedText,limitText,(g_torrentInitialized||g_torrentInitPending)?(g_torrentActiveCacheBaseDir[0]?g_torrentActiveCacheBaseDir:g_dataDir):(g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir));
     TorrentSetLabel(g_torrentCacheInfoLabel,line);
     if(g_torrentCacheLimitEdit&&GetFocus()!=g_torrentCacheLimitEdit) {
         wchar_t quota[32];StringCchPrintfW(quota,_countof(quota),L"%llu",(unsigned long long)(limit/(1024ULL*1024ULL*1024ULL)));
@@ -3641,7 +3643,7 @@ static void SettingsApply(HWND w) {
  if(attr==INVALID_FILE_ATTRIBUTES) {if(!CreateDirectoryW(path,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS){SetWindowTextW(g_settingsStatus,L"Could not create the selected folder.");return;}}
  else if(!(attr&FILE_ATTRIBUTE_DIRECTORY)){SetWindowTextW(g_settingsStatus,L"Cache location must be a folder.");return;}
  BOOL changed=_wcsicmp(path,g_torrentCacheBaseDir)!=0;
- if(changed&&g_torrentInitialized&&MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
+ if(changed&&(g_torrentInitialized||g_torrentInitPending)&&MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
  wcsncpy_s(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path,_TRUNCATE);
  g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
  g_shuffle=SendMessageW(GetDlgItem(w,6209),BM_GETCHECK,0,0)==BST_CHECKED;
@@ -3652,7 +3654,7 @@ static void SettingsApply(HWND w) {
  if(g_player)libvlc_audio_set_volume(g_player,g_volume);if(g_hasMedia)libvlc_media_player_set_rate(g_player,g_playbackRate);
  SavePersistentState();SaveAudioPreferences();ApplyEqProfile();
  if(g_torrentInitialized){uint64_t used=0;if(g_torrentSetCacheLimit)g_torrentSetCacheLimit(quota*1024ULL*1024ULL*1024ULL,&used);if(g_torrentSetRateLimits)g_torrentSetRateLimits((int)(down*1024),(int)(up*1024));}
- SetWindowTextW(g_settingsStatus,changed&&g_torrentInitialized?L"Saved. Restart the application to activate the new torrent cache location.":L"All settings saved successfully.");
+ SetWindowTextW(g_settingsStatus,changed&&(g_torrentInitialized||g_torrentInitPending)?L"Saved. Restart the application to activate the new torrent cache location.":L"All settings saved successfully.");
  InvalidateRect(g_main,NULL,FALSE);
 }
 static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
