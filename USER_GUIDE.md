@@ -23,20 +23,6 @@ The two windows are separate from local playback and from each other's receiver/
 
 ## 3. Application settings
 
-Open **Settings** from the Command Centre. The dedicated dark settings window follows the player's navy/blue visual theme and groups the preferences that are currently supported by the application.
-
-- **General:** default volume, playback speed, shuffle and repeat.
-- **Audio:** ReplayGain normalisation and dynamic-range compressor preferences.
-- **Torrent & Storage:** torrent cache parent folder and cache quota. The engine creates a `torrent-cache` subfolder inside the selected location.
-- **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
-- **Updates:** manually check the latest published GitHub release.
-
-Choose **Browse** to select a different cache folder, then **Save settings** to persist changes. The first-run default is the current Windows user's Downloads known folder, followed by an `ABM AV Player` folder. Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy torrent cache retain their existing location rather than silently abandoning cached data.
-
-If the torrent engine is already running, changing its cache location takes effect after restarting ABM AV Player. Other supported settings are applied immediately where possible. The settings file is stored at `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences remain in `audio.ini`.
-
-## 2. Application settings
-
 Open **Settings** from the Command Centre. The dedicated window uses the player's dark navy/blue visual theme and groups the currently supported preferences.
 
 - **General:** volume (0–100), playback speed (0.5x–2.0x), shuffle and repeat.
@@ -59,7 +45,7 @@ Changing the cache parent does not automatically move existing cache data. If To
 
 Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences are also stored in `audio.ini`. For the full option reference and troubleshooting, see [Application Settings](SETTINGS.md).
 
-## 3. Playback and fullscreen
+## 4. Playback and fullscreen
 
 | Control | What it does |
 |---|---|
@@ -72,7 +58,7 @@ Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing p
 
 In fullscreen, move the pointer to reveal the playback overlay. Drag the timeline to seek and use the overlay controls. Press **Esc** or **F11** to return to the windowed player.
 
-## 4. Playlist and recent media
+## 5. Playlist and recent media
 
 - **Add media:** Add more files to the current playlist.
 - **Remove:** Right-click a playlist entry to remove it from the list.
@@ -85,7 +71,7 @@ In fullscreen, move the pointer to reveal the playback overlay. Drag the timelin
 
 Recent items and playback preferences are stored in the current Windows user's application data folder.
 
-## 5. Audio, video and subtitles
+## 6. Audio, video and subtitles
 
 Right-click the video surface while media is playing to access available media actions:
 
@@ -100,7 +86,7 @@ Right-click the video surface while media is playing to access available media a
 
 The audio-track and subtitle menus show only streams exposed by the current media and VLC build.
 
-## 6. Advanced equalizer, now playing and visualizer
+## 7. Advanced equalizer, now playing and visualizer
 
 Open **Advanced equalizer** from the Command Centre or press **Ctrl+E**. The ABM 10-band graphic EQ provides these fixed profiles:
 
@@ -115,7 +101,7 @@ The selected curve is applied through LibVLC's equalizer API. This is a fixed-ba
 
 During audio playback, the player can show now-playing metadata and a live spectrum/visualizer when the required playback data is available. The visualizer currently captures the Windows default render mix, so sounds from other applications may also contribute. Process-specific audio capture is not implemented.
 
-## 6. Local playback output — Find network devices / Cast to TV
+## 8. Local playback output — Find network devices / Cast to TV
 
 The main player's local casting controls are in the **Media / Settings** drawer under **Playback Output**.
 
@@ -139,7 +125,7 @@ When output is switched during playback, ABM AV Player recreates the LibVLC medi
 
 See [CASTING.md](CASTING.md) for additional network and receiver troubleshooting.
 
-## 7. Streaming Centre — online video services
+## 9. Streaming Centre — online video services
 
 Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 browser window with six service cards:
 
@@ -172,7 +158,7 @@ Supported cookies and sign-in sessions can persist between launches for the curr
 
 A subscription does not guarantee that protected video will play in an embedded browser. Provider policy, DRM requirements, browser allow-lists, device certification, region and WebView2 runtime version can affect compatibility. If a provider blocks embedded playback or a video fails to start, use **Open in browser** or the provider's official supported browser/app. The player does not extract protected streams or bypass DRM.
 
-## 8. Streaming Centre — Find TVs and Cast video
+## 10. Streaming Centre — Find TVs and Cast video
 
 The Streaming Centre has its own **Find TVs** button and integrated receiver-selection panel. This is separate from the main player's Playback Output selector.
 
@@ -207,7 +193,7 @@ A successful launch/request does not guarantee that the TV can fetch or decode t
 
 See [STREAMING.md](STREAMING.md) for implementation details and limitations.
 
-## 9. In-app updates
+## 11. In-app updates
 
 Choose **Check for updates** in the Command Centre.
 
@@ -222,7 +208,7 @@ No GitHub account, login, access token or code-signing certificate is required f
 
 Users can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases). Older installed versions that do not include the SHA-256-only updater may need one manual update before using this certificate-free update flow.
 
-## 10. Keyboard shortcuts
+## 12. Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -249,7 +235,7 @@ Users can also download the installer manually from [GitHub Releases](https://gi
 
 Streaming Centre keyboard controls: **F5** reloads the page; **F11** requests provider fullscreen; **Esc** exits fullscreen; **Ctrl+R** reloads; **Ctrl+L** opens the active provider page in the default browser; **Ctrl+W** minimises the Streaming Centre. Browser Back/Forward keys navigate history.
 
-## 11. Preferences and local data
+## 13. Preferences and local data
 
 General preferences, recent items and playlist-related state are stored under:
 
@@ -257,7 +243,7 @@ General preferences, recent items and playlist-related state are stored under:
 
 Audio preferences are stored in `audio.ini`. The WebView2 browser profile is separate under `%LOCALAPPDATA%\\ABMAVPlayer\\WebView2`. The application does not currently maintain a database-backed, automatically indexed media library.
 
-## 12. Troubleshooting
+## 14. Troubleshooting
 
 ### A file does not play
 - Confirm that the source file exists and can be opened by VLC.
@@ -304,7 +290,7 @@ Audio preferences are stored in `audio.ini`. The WebView2 browser profile is sep
 - The release asset must have a GitHub SHA-256 digest; if GitHub does not provide one, the updater blocks automatic installation.
 - Download the installer manually from the official Releases page if necessary.
 
-## 13. Application architecture
+## 15. Application architecture
 
 ABM AV Player is a native Windows desktop application. Win32 owns the application window and controls; Direct2D/DirectWrite render the main interface; LibVLC handles local media decoding and renderer output; Microsoft Edge WebView2 renders the separate Streaming Centre. The Streaming Centre's receiver discovery and cast handoff are isolated from the main player's local playback and casting state.
 
