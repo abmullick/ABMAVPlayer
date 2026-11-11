@@ -25,6 +25,12 @@ __declspec(dllexport) BOOL WINAPI ABM_Torrent_Pause(uint64_t task_id);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_Resume(uint64_t task_id);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_Remove(uint64_t task_id, BOOL delete_downloaded_data);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetRateLimits(int download_bytes_per_second, int upload_bytes_per_second);
+/* Verified-piece streaming. The server binds exclusively to 127.0.0.1 and
+   returns a per-stream random bearer URL. */
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t task_id, int file_index, int64_t offset, int64_t length, int ahead_bytes);
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_WaitForRange(uint64_t task_id, int file_index, int64_t offset, int64_t length, unsigned int timeout_ms);
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_StartHttpStream(uint64_t task_id, int file_index, wchar_t *url, unsigned int url_capacity, wchar_t *error, unsigned int error_capacity);
+__declspec(dllexport) void WINAPI ABM_Torrent_StopHttpStream(void);
 #ifdef __cplusplus
 }
 #endif
