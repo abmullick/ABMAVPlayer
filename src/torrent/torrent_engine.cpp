@@ -71,7 +71,9 @@ public:
         if(!directory||!*directory) return false;
         try {
             data_=(fs::absolute(directory)/L"torrent-cache").lexically_normal();
+            downloads_=(fs::absolute(directory)/L"Torrent Downloads").lexically_normal();
             fs::create_directories(data_);
+            fs::create_directories(downloads_);
             cache_used_bytes_.store(DirectoryBytes(data_));
             {
                 std::ifstream config(data_/L"cache_limit.txt");
@@ -112,7 +114,7 @@ public:
             lt::error_code ec;
             auto p=lt::parse_magnet_uri(ToUtf8(w),ec);
             if(ec){err=FromUtf8(ec.message());return false;}
-            p.save_path=(data_/HashFolder(p.info_hashes)).u8string();
+            p.save_path=(downloads_/HashFolder(p.info_hashes)).u8string();
             return Add(std::move(p),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
         catch(...){err=L"Unable to parse magnet URI.";return false;}
@@ -127,7 +129,7 @@ public:
             if(ec||!ti||!ti->is_valid()){err=ec?FromUtf8(ec.message()):L"Invalid torrent metadata.";return false;}
             lt::add_torrent_params atp;
             atp.ti=std::move(ti);
-            atp.save_path=(data_/HashFolder(atp.ti->info_hashes())).u8string();
+            atp.save_path=(downloads_/HashFolder(atp.ti->info_hashes())).u8string();
             return Add(std::move(atp),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
         catch(...){err=L"Unable to load torrent file.";return false;}
@@ -174,14 +176,10 @@ public:
         const uint64_t fileBytes=static_cast<uint64_t>(ti->files().file_size(index));
         const uint64_t existing=DirectoryBytes(i->second->cache_path);
         const uint64_t additional=fileBytes>existing?fileBytes-existing:0;
-        if(!EnsureCacheCapacity(additional,i->second->cache_path)) {
-            i->second->error=L"Torrent cache quota reached. Increase the cache limit or clear inactive cached torrents.";
-            return false;
-        }
         ULARGE_INTEGER freeAvailable{},totalBytes{},totalFree{};
         if(!GetDiskFreeSpaceExW(i->second->cache_path.c_str(),&freeAvailable,&totalBytes,&totalFree)||
            freeAvailable.QuadPart<additional) {
-            i->second->error=L"Not enough free disk space for the selected file's remaining cache data.";
+            i->second->error=L"Not enough free disk space in the permanent Torrent Downloads folder for this file.";
             return false;
         }
         i->second->error.clear();
@@ -562,7 +560,7 @@ private:
     bool Add(lt::add_torrent_params p,uint64_t *id,std::wstring &err) {
         std::lock_guard<std::mutex> g(m_);
         if(!session_){err=L"Torrent engine is not initialized.";return false;}
-        if(p.save_path.empty())p.save_path=(data_/HashFolder(p.info_hashes)).u8string();
+        if(p.save_path.empty())p.save_path=(downloads_/HashFolder(p.info_hashes)).u8string();
         fs::path taskCachePath=fs::absolute(fs::u8path(p.save_path)).lexically_normal();
         std::error_code dirError;fs::create_directories(taskCachePath,dirError);
         if(dirError){err=L"Could not create the torrent's cache folder.";return false;}
@@ -684,6 +682,7 @@ private:
     std::unique_ptr<lt::session> session_;
     std::map<uint64_t,std::shared_ptr<Task>> tasks_;
     fs::path data_;
+    fs::path downloads_;
     uint64_t cache_limit_bytes_=20ULL*1024*1024*1024;
     std::atomic<uint64_t> cache_used_bytes_{0};
     std::thread worker_;
