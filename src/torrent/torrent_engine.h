@@ -34,6 +34,8 @@ __declspec(dllexport) BOOL WINAPI ABM_Torrent_ClearCache(uint64_t *freed_bytes, 
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t task_id, int file_index, int64_t offset, int64_t length, int ahead_bytes);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_WaitForRange(uint64_t task_id, int file_index, int64_t offset, int64_t length, unsigned int timeout_ms);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_StartHttpStream(uint64_t task_id, int file_index, wchar_t *url, unsigned int url_capacity, wchar_t *error, unsigned int error_capacity);
+/* Private-LAN variant for an authorized TV receiver on the same subnet. */
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_StartLanHttpStream(uint64_t task_id, int file_index, wchar_t *url, unsigned int url_capacity, wchar_t *error, unsigned int error_capacity);
 __declspec(dllexport) void WINAPI ABM_Torrent_StopHttpStream(void);
 #ifdef __cplusplus
 }
