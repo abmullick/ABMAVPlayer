@@ -1,9 +1,9 @@
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <winsock2.h>\n#include <windows.h>\n#include <bcrypt.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <filesystem>
+#include <filesystem>\n#include <fstream>\n#include <sstream>\n#include <functional>\n#include <cctype>\n#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -67,6 +67,8 @@ public:
             s.set_bool(lt::settings_pack::enable_lsd,true);
             s.set_bool(lt::settings_pack::enable_upnp,true);
             s.set_bool(lt::settings_pack::enable_natpmp,true);
+            WSADATA wsa{};if(WSAStartup(MAKEWORD(2,2),&wsa)!=0)return false;
+            winsock_ready_=true;
             session_=std::make_unique<lt::session>(s);
             stopping_=false;
             worker_=std::thread([this]{Monitor();});
@@ -74,11 +76,14 @@ public:
         } catch(...) { session_.reset(); return false; }
     }
     void Stop() {
+        StopHttpStream();
         stopping_=true;
         if(worker_.joinable()) worker_.join();
         std::lock_guard<std::mutex> g(m_);
+        for(auto &entry:tasks_)entry.second->removed.store(true);
         tasks_.clear();
         session_.reset();
+        if(winsock_ready_){WSACleanup();winsock_ready_=false;}
     }
     bool AddMagnet(const wchar_t *uri,uint64_t *id,std::wstring &err) {
         if(!uri||!id) {err=L"Magnet URI is empty.";return false;}
@@ -156,10 +161,12 @@ public:
         if(pause)i->second->handle.pause();else i->second->handle.resume();return true;
     }
     bool Remove(uint64_t id,bool delete_data) {
+        if(http_task_id_==id)StopHttpStream();
         std::lock_guard<std::mutex> g(m_);auto i=tasks_.find(id);
         if(i==tasks_.end()||!session_)return false;
         lt::remove_flags_t flags{};
         if(delete_data)flags=lt::session_handle::delete_files;
+        i->second->removed.store(true);
         session_->remove_torrent(i->second->handle,flags);tasks_.erase(i);return true;
     }
     bool Limits(int down,int up) {
@@ -168,7 +175,282 @@ public:
         lt::settings_pack s;s.set_int(lt::settings_pack::download_rate_limit,down);
         s.set_int(lt::settings_pack::upload_rate_limit,up);session_->apply_settings(s);return true;
     }
+
+    bool SetReadWindow(uint64_t id,int index,int64_t offset,int64_t length,int ahead) {
+        std::shared_ptr<Task> task; 
+        { std::lock_guard<std::mutex> g(m_); auto it=tasks_.find(id); if(it==tasks_.end())return false; task=it->second; }
+        if(task->removed.load())return false;
+        auto ti=task->handle.torrent_file();
+        if(!ti||index<0||index>=ti->files().num_files())return false;
+        const int64_t size=ti->files().file_size(index);
+        if(offset<0||length<=0||offset>=size)return false;
+        if(ahead<0)ahead=0;if(ahead>64*1024*1024)ahead=64*1024*1024;
+        const int pieceLen=ti->piece_length();if(pieceLen<=0)return false;
+        const int64_t fileStart=ti->files().file_offset(index);
+        const int64_t firstGlobal=fileStart+offset;
+        const int64_t requestedEnd=std::min<int64_t>(size,offset+std::min<int64_t>(length,size-offset));
+        const int64_t windowEnd=std::min<int64_t>(size,requestedEnd+ahead);
+        const int firstPiece=static_cast<int>(firstGlobal/pieceLen);
+        const int lastPiece=static_cast<int>((fileStart+std::max<int64_t>(offset,windowEnd-1))/pieceLen);
+        std::lock_guard<std::mutex> schedule(schedule_mutex_);
+        try {
+            task->handle.clear_piece_deadlines();
+            int ordinal=0;
+            for(int p=firstPiece;p<=lastPiece && ordinal<4096;++p,++ordinal) {
+                int deadline=100+std::min(ordinal,120)*150;
+                task->handle.set_piece_deadline(lt::piece_index_t(p),deadline);
+            }
+            return true;
+        } catch(...) { return false; }
+    }
+
+    bool RangeVerified(uint64_t id,int index,int64_t offset,int64_t length,
+                       std::shared_ptr<Task> *taskOut=nullptr,
+                       std::shared_ptr<const lt::torrent_info> *infoOut=nullptr) {
+        std::shared_ptr<Task> task;
+        { std::lock_guard<std::mutex> g(m_); auto it=tasks_.find(id); if(it==tasks_.end())return false; task=it->second; }
+        if(task->removed.load())return false;
+        auto ti=task->handle.torrent_file();
+        if(!ti||index<0||index>=ti->files().num_files())return false;
+        const int64_t size=ti->files().file_size(index);
+        if(offset<0||length<0||offset>size||length>size-offset)return false;
+        if(taskOut)*taskOut=task;if(infoOut)*infoOut=ti;
+        if(length==0)return true;
+        const int pieceLen=ti->piece_length();if(pieceLen<=0)return false;
+        const int64_t start=ti->files().file_offset(index)+offset;
+        const int64_t end=start+length-1;
+        const int first=static_cast<int>(start/pieceLen);
+        const int last=static_cast<int>(end/pieceLen);
+        try {
+            for(int p=first;p<=last;++p)
+                if(!task->handle.have_piece(lt::piece_index_t(p)))return false;
+        } catch(...) { return false; }
+        return true;
+    }
+
+    bool WaitForRange(uint64_t id,int index,int64_t offset,int64_t length,
+                      unsigned timeout,const std::atomic<bool> *cancel=nullptr) {
+        const auto until=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);
+        do {
+            if(RangeVerified(id,index,offset,length))return true;
+            if((cancel&&cancel->load())||stopping_.load())return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        } while(std::chrono::steady_clock::now()<until);
+        return RangeVerified(id,index,offset,length);
+    }
+
+    bool ReadVerified(uint64_t id,int index,int64_t offset,char *buffer,size_t count,
+                      unsigned timeout,const std::atomic<bool> *cancel=nullptr) {
+        if(!buffer||count==0||count>1024*1024)return false;
+        std::shared_ptr<Task> task;std::shared_ptr<const lt::torrent_info> ti;
+        if(!RangeVerified(id,index,offset,static_cast<int64_t>(count),&task,&ti)) {
+            if(!task) {
+                { std::lock_guard<std::mutex> g(m_); auto it=tasks_.find(id);if(it!=tasks_.end())task=it->second; }
+            }
+            if(!task||task->removed.load())return false;
+            auto metadata=task->handle.torrent_file();
+            if(!metadata||index<0||index>=metadata->files().num_files())return false;
+            const int64_t size=metadata->files().file_size(index);
+            if(offset<0||offset>size||static_cast<int64_t>(count)>size-offset)return false;
+            if(!WaitForRange(id,index,offset,static_cast<int64_t>(count),timeout,cancel))return false;
+            ti=std::move(metadata);
+        }
+        if(!task||task->removed.load()||!ti)return false;
+        if(ti->files().symlink(index).size()!=0)return false;
+        try {
+            const std::string fullUtf8=ti->files().file_path(index,data_.u8string());
+            fs::path target=fs::weakly_canonical(fs::u8path(fullUtf8));
+            fs::path root=fs::weakly_canonical(data_);
+            auto ri=root.begin(),tiPath=target.begin();
+            for(;ri!=root.end();++ri,++tiPath)
+                if(tiPath==target.end()||_wcsicmp(ri->c_str(),tiPath->c_str())!=0)return false;
+            if(tiPath==target.end())return false;
+            std::ifstream input(target,std::ios::binary);
+            if(!input)return false;
+            input.seekg(static_cast<std::streamoff>(offset),std::ios::beg);
+            input.read(buffer,static_cast<std::streamsize>(count));
+            return input.gcount()==static_cast<std::streamsize>(count);
+        } catch(...) { return false; }
+    }
+
+    bool StartHttpStream(uint64_t id,int index,wchar_t *url,unsigned cap,std::wstring &err) {
+        if(!url||cap==0){err=L"Output URL buffer is unavailable.";return false;}
+        StopHttpStream();
+        if(!Select(id,index)){err=L"Select a valid torrent file after metadata is available.";return false;}
+        std::shared_ptr<Task> task;
+        {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end()){err=L"Torrent task no longer exists.";return false;}task=it->second;}
+        auto ti=task->handle.torrent_file();
+        if(!ti||index<0||index>=ti->files().num_files()){err=L"Torrent file metadata is not ready.";return false;}
+        if(ti->files().symlink(index).size()!=0){err=L"Symbolic-link entries cannot be streamed.";return false;}
+        const int64_t size=ti->files().file_size(index);
+        if(size<=0){err=L"Empty files cannot be streamed.";return false;}
+        if(BCryptGenRandom(nullptr,token_bytes_,sizeof(token_bytes_),BCRYPT_USE_SYSTEM_PREFERRED_RNG)<0){
+            err=L"Windows could not create a secure stream token.";return false;
+        }
+        static const wchar_t hex[]=L"0123456789abcdef";
+        std::wstring token;token.reserve(64);
+        for(unsigned char b:token_bytes_){token.push_back(hex[b>>4]);token.push_back(hex[b&15]);}
+        SOCKET listener=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+        if(listener==INVALID_SOCKET){err=L"Could not create the loopback HTTP socket.";return false;}
+        BOOL exclusive=TRUE;setsockopt(listener,SOL_SOCKET,SO_EXCLUSIVEADDRUSE,(const char*)&exclusive,sizeof(exclusive));
+        sockaddr_in address{};address.sin_family=AF_INET;address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);address.sin_port=0;
+        if(bind(listener,reinterpret_cast<sockaddr*>(&address),sizeof(address))==SOCKET_ERROR||listen(listener,8)==SOCKET_ERROR){
+            closesocket(listener);err=L"Could not bind the loopback-only HTTP stream.";return false;
+        }
+        int addressLen=sizeof(address);
+        if(getsockname(listener,reinterpret_cast<sockaddr*>(&address),&addressLen)==SOCKET_ERROR){
+            closesocket(listener);err=L"Could not determine the local stream port.";return false;
+        }
+        const unsigned short port=ntohs(address.sin_port);
+        std::wstring streamUrl=L"http://127.0.0.1:"+std::to_wstring(port)+L"/stream/"+token;
+        if(streamUrl.size()+1>cap){closesocket(listener);err=L"Output URL buffer is too small.";return false;}
+        http_stop_.store(false);
+        http_task_id_=id;http_file_index_=index;http_file_size_=size;
+        http_token_=token;http_socket_=listener;
+        url[0]=0;wcsncpy_s(url,cap,streamUrl.c_str(),_TRUNCATE);
+        try {
+            http_accept_thread_=std::thread([this,listener,token,id,index,size]{HttpAcceptLoop(listener,token,id,index,size);});
+        } catch(...) {
+            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_=0;http_token_.clear();
+            err=L"Could not start the local HTTP stream worker.";return false;
+        }
+        return true;
+    }
+
+    void StopHttpStream() {
+        std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        http_stop_.store(true);
+        if(http_socket_!=INVALID_SOCKET)shutdown(http_socket_,SD_BOTH);
+        if(http_accept_thread_.joinable())http_accept_thread_.join();
+        if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
+        http_task_id_=0;http_file_index_=-1;http_file_size_=0;http_token_.clear();
+    }
+
 private:
+
+    static bool SendAll(SOCKET client,const char *data,size_t size) {
+        while(size) {
+            int part=static_cast<int>(std::min<size_t>(size,64*1024));
+            int sent=send(client,data,part,0);
+            if(sent<=0)return false;
+            data+=sent;size-=static_cast<size_t>(sent);
+        }
+        return true;
+    }
+    static std::string Lower(std::string v) {
+        std::transform(v.begin(),v.end(),v.begin(),[](unsigned char c){return static_cast<char>(std::tolower(c));});
+        return v;
+    }
+    static std::string MimeType(const std::wstring &path) {
+        std::wstring ext=fs::path(path).extension().wstring();
+        for(auto &c:ext)c=static_cast<wchar_t>(towlower(c));
+        if(ext==L".mp4"||ext==L".m4v")return "video/mp4";
+        if(ext==L".mkv")return "video/x-matroska";
+        if(ext==L".webm")return "video/webm";
+        if(ext==L".mov")return "video/quicktime";
+        if(ext==L".avi")return "video/x-msvideo";
+        if(ext==L".mp3")return "audio/mpeg";
+        if(ext==L".flac")return "audio/flac";
+        if(ext==L".wav")return "audio/wav";
+        if(ext==L".ogg"||ext==L".ogv")return "application/ogg";
+        if(ext==L".m4a")return "audio/mp4";
+        return "application/octet-stream";
+    }
+    static bool ParseUnsigned(const std::string &v,uint64_t &out) {
+        if(v.empty())return false;
+        out=0;
+        for(unsigned char c:v){if(c<'0'||c>'9')return false;unsigned d=c-'0';if(out>(UINT64_MAX-d)/10)return false;out=out*10+d;}
+        return true;
+    }
+    void HttpAcceptLoop(SOCKET listener,const std::wstring &token,uint64_t id,int index,int64_t size) {
+        while(!http_stop_.load()) {
+            fd_set readSet;FD_ZERO(&readSet);FD_SET(listener,&readSet);
+            timeval tv{};tv.tv_sec=0;tv.tv_usec=250000;
+            int ready=select(0,&readSet,nullptr,nullptr,&tv);
+            if(ready<=0)continue;
+            sockaddr_in remote{};int remoteLen=sizeof(remote);
+            SOCKET client=accept(listener,reinterpret_cast<sockaddr*>(&remote),&remoteLen);
+            if(client==INVALID_SOCKET)continue;
+            if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
+            std::lock_guard<std::mutex> g(http_clients_mutex_);
+            http_clients_.emplace_back([this,client,token,id,index,size]{HandleHttpClient(client,token,id,index,size);});
+        }
+        std::vector<std::thread> clients;
+        {std::lock_guard<std::mutex> g(http_clients_mutex_);clients.swap(http_clients_);}
+        for(auto &t:clients)if(t.joinable())t.join();
+    }
+    void HandleHttpClient(SOCKET client,const std::wstring &token,uint64_t id,int index,int64_t size) {
+        DWORD timeout=5000;setsockopt(client,SOL_SOCKET,SO_RCVTIMEO,(const char*)&timeout,sizeof(timeout));
+        timeout=15000;setsockopt(client,SOL_SOCKET,SO_SNDTIMEO,(const char*)&timeout,sizeof(timeout));
+        std::string request;char buf[1024];bool complete=false;
+        while(request.size()<8192&&!http_stop_.load()) {
+            int n=recv(client,buf,sizeof(buf),0);if(n<=0)break;
+            request.append(buf,static_cast<size_t>(n));
+            if(request.find("\r\n\r\n")!=std::string::npos){complete=true;break;}
+        }
+        auto respond=[&](int code,const char *reason,const char *extra="") {
+            char h[1024];int n=snprintf(h,sizeof(h),"HTTP/1.1 %d %s\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n%sContent-Length: 0\r\n\r\n",code,reason,extra);
+            if(n>0)SendAll(client,h,static_cast<size_t>(n));
+        };
+        if(!complete){closesocket(client);return;}
+        std::istringstream lines(request);
+        std::string method,path,version;lines>>method>>path>>version;
+        if((method!="GET"&&method!="HEAD")||version.rfind("HTTP/1.",0)!=0){respond(405,"Method Not Allowed","Allow: GET, HEAD\r\n");closesocket(client);return;}
+        const std::string expected="/stream/"+std::string(token.begin(),token.end());
+        if(path!=expected){respond(404,"Not Found");closesocket(client);return;}
+        std::string rangeHeader;
+        std::string line;std::getline(lines,line);
+        while(std::getline(lines,line)){
+            if(line=="\r"||line.empty())break;
+            auto colon=line.find(':');if(colon==std::string::npos)continue;
+            if(Lower(line.substr(0,colon))=="range"){
+                rangeHeader=line.substr(colon+1);
+                auto first=rangeHeader.find_first_not_of(" \t");if(first!=std::string::npos)rangeHeader=rangeHeader.substr(first);
+                while(!rangeHeader.empty()&&(rangeHeader.back()=='\r'||rangeHeader.back()==' '||rangeHeader.back()=='\t'))rangeHeader.pop_back();
+            }
+        }
+        uint64_t start=0,end=static_cast<uint64_t>(size-1);
+        bool partial=false;
+        if(!rangeHeader.empty()){
+            if(rangeHeader.rfind("bytes=",0)!=0||rangeHeader.find(',')!=std::string::npos){
+                respond(416,"Range Not Satisfiable",("Content-Range: bytes */"+std::to_string(size)+"\r\n").c_str());closesocket(client);return;
+            }
+            std::string spec=rangeHeader.substr(6);auto dash=spec.find('-');
+            if(dash==std::string::npos){respond(416,"Range Not Satisfiable");closesocket(client);return;}
+            std::string left=spec.substr(0,dash),right=spec.substr(dash+1);uint64_t a=0,b=0;
+            if(left.empty()){
+                uint64_t suffix=0;if(!ParseUnsigned(right,suffix)||suffix==0){respond(416,"Range Not Satisfiable");closesocket(client);return;}
+                start=suffix>=static_cast<uint64_t>(size)?0:static_cast<uint64_t>(size)-suffix;
+            } else {
+                if(!ParseUnsigned(left,a)||a>=static_cast<uint64_t>(size)){respond(416,"Range Not Satisfiable");closesocket(client);return;}
+                start=a;
+                if(!right.empty()){
+                    if(!ParseUnsigned(right,b)||b<a){respond(416,"Range Not Satisfiable");closesocket(client);return;}
+                    end=std::min<uint64_t>(b,static_cast<uint64_t>(size-1));
+                }
+            }
+            partial=true;
+        }
+        const uint64_t length=end-start+1;
+        std::string mime=MimeType([&](){std::shared_ptr<Task> t;{std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it!=tasks_.end())t=it->second;}if(!t)return std::wstring();auto ti=t->handle.torrent_file();if(!ti||index>=ti->files().num_files())return std::wstring();return FromUtf8(ti->files().file_path(index));}());
+        std::string header="HTTP/1.1 "+std::string(partial?"206 Partial Content":"200 OK")+"\r\n";
+        header+="Connection: close\r\nAccept-Ranges: bytes\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n";
+        header+="Content-Type: "+mime+"\r\nContent-Length: "+std::to_string(length)+"\r\n";
+        if(partial)header+="Content-Range: bytes "+std::to_string(start)+"-"+std::to_string(end)+"/"+std::to_string(size)+"\r\n";
+        header+="\r\n";
+        if(!SendAll(client,header.data(),header.size())){closesocket(client);return;}
+        if(method=="HEAD"){closesocket(client);return;}
+        uint64_t cursor=start,remaining=length;
+        std::vector<char> data(256*1024);
+        while(remaining&&!http_stop_.load()){
+            size_t chunk=static_cast<size_t>(std::min<uint64_t>(remaining,data.size()));
+            SetReadWindow(id,index,static_cast<int64_t>(cursor),static_cast<int64_t>(chunk),8*1024*1024);
+            if(!ReadVerified(id,index,static_cast<int64_t>(cursor),data.data(),chunk,30000,&http_stop_))break;
+            if(!SendAll(client,data.data(),chunk))break;
+            cursor+=chunk;remaining-=chunk;
+        }
+        closesocket(client);
+    }
     bool Add(lt::add_torrent_params p,uint64_t *id,std::wstring &err) {
         std::lock_guard<std::mutex> g(m_);
         if(!session_){err=L"Torrent engine is not initialized.";return false;}
@@ -211,6 +493,18 @@ private:
     fs::path data_;
     std::thread worker_;
     std::atomic<bool> stopping_{false};
+    std::mutex schedule_mutex_;
+    std::mutex http_lifecycle_mutex_,http_clients_mutex_;
+    std::vector<std::thread> http_clients_;
+    std::thread http_accept_thread_;
+    std::atomic<bool> http_stop_{true};
+    SOCKET http_socket_=INVALID_SOCKET;
+    uint64_t http_task_id_=0;
+    int http_file_index_=-1;
+    int64_t http_file_size_=0;
+    std::wstring http_token_;
+    unsigned char token_bytes_[32]{};
+    bool winsock_ready_=false;
     uint64_t next_=0;
 };
 Engine g_engine;
@@ -227,3 +521,7 @@ BOOL WINAPI ABM_Torrent_Pause(uint64_t id){try{return g_engine.Pause(id,true)?TR
 BOOL WINAPI ABM_Torrent_Resume(uint64_t id){try{return g_engine.Pause(id,false)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_Remove(uint64_t id,BOOL d){try{return g_engine.Remove(id,d!=FALSE)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_SetRateLimits(int d,int u){try{return g_engine.Limits(d,u)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t id,int i,int64_t o,int64_t n,int a){try{return g_engine.SetReadWindow(id,i,o,n,a)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_WaitForRange(uint64_t id,int i,int64_t o,int64_t n,unsigned t){try{return g_engine.WaitForRange(id,i,o,n,t)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_StartHttpStream(uint64_t id,int i,wchar_t *u,unsigned uc,wchar_t *e,unsigned ec){std::wstring err;bool ok=false;try{ok=g_engine.StartHttpStream(id,i,u,uc,err);}catch(...){err=L"Unexpected error while starting loopback stream.";}ErrorOut(e,ec,err);return ok?TRUE:FALSE;}
+void WINAPI ABM_Torrent_StopHttpStream(void){try{g_engine.StopHttpStream();}catch(...){}}
