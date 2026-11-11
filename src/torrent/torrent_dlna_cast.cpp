@@ -1,5 +1,5 @@
 #define _WIN32_DCOM
-#include "dlna_cast.h"
+#include "../streaming/dlna_cast.h"
 #include <upnp.h>
 #include <atomic>
 #include <mutex>
