@@ -1,6 +1,6 @@
 # Torrent Stream — Design and Implementation Plan
 
-**Status:** Phase 2 backend pipeline committed on `feature/windows-torrent-stream-phase1`; verified-piece reads, piece-window scheduling and an authenticated loopback HTTP Range server are implemented in the native DLL. The app UI still does not create torrent tasks or hand the returned URL to LibVLC, and the feature is not in a published Windows release  
+**Status:** Native source manager and initial local LibVLC handoff are now implemented on `feature/windows-torrent-stream-phase1`. The UI accepts magnet URIs and local `.torrent` files, polls metadata/status, lists torrent files, selects a file, waits for an initial verified buffer on a worker thread and passes the loopback URL to LibVLC. Windows x64 compilation, runtime behaviour and real-peer playback remain unverified; the feature is not in a published Windows release  
 **Target:** Windows 11 x64 desktop application  
 **Repository:** ABM AV Player  
 **Design principle:** Add an optional torrent-backed media source without changing or destabilising existing local playback, Streaming Centre, or TV-casting paths.
@@ -142,12 +142,13 @@ Do not add a guessed NuGet package or unpinned binary dependency. Do not claim t
 - [x] Implement verified-piece cache reads and reject unverified ranges.
 - [x] Add loopback-only HTTP source with Range support and per-session authentication.
 - [x] Implement bounded wait-for-range, time-critical piece scheduling and seek-range reprioritization.
-- [ ] Connect the source to the existing LibVLC player without changing normal file playback.
+- [x] Connect the source to the existing LibVLC player without changing normal file playback (development-branch implementation; runtime validation pending).
 - [ ] Exercise stall recovery and cancellation against real peers on Windows.
 
 ### Phase 3 — native UI and download manager
-- Add Torrent Stream UI, task list, file picker and controls.
-- Add rate/peer/buffer indicators and persistent preferences.
+- [x] Add an initial Torrent Stream window, magnet/.torrent ingestion, metadata file list, task status, pause/resume/remove and stream/stop controls (runtime validation pending).
+- [x] Add task progress, peer count, transfer rates and uploaded-byte status.
+- [ ] Add explicit download/upload rate-limit controls, a dedicated buffer/stall indicator and persistent preferences.
 - Add cache quota, cleanup, and explicit seeding controls.
 
 ### Phase 4 — TV casting and release hardening
