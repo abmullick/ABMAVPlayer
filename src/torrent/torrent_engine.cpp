@@ -240,13 +240,19 @@ public:
 
     bool WaitForRange(uint64_t id,int index,int64_t offset,int64_t length,
                       unsigned timeout,const std::atomic<bool> *cancel=nullptr) {
-        if(length>0)SetReadWindow(id,index,offset,length,8*1024*1024);
+        std::shared_ptr<Task> task;
+        {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end())return false;task=it->second;}
+        const uint64_t generation=wait_cancel_generation_.load();
+        if(length>0&&!SetReadWindow(id,index,offset,length,8*1024*1024))return false;
         const auto until=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);
         do {
+            if(task->removed.load()||wait_cancel_generation_.load()!=generation||
+               (cancel&&cancel->load())||stopping_.load())return false;
             if(RangeVerified(id,index,offset,length))return true;
-            if((cancel&&cancel->load())||stopping_.load())return false;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         } while(std::chrono::steady_clock::now()<until);
+        if(task->removed.load()||wait_cancel_generation_.load()!=generation||
+           (cancel&&cancel->load())||stopping_.load())return false;
         return RangeVerified(id,index,offset,length);
     }
 
@@ -331,10 +337,12 @@ public:
     void StopHttpStream() {
         std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
         http_stop_.store(true);
+        wait_cancel_generation_.fetch_add(1);
         if(http_socket_!=INVALID_SOCKET)shutdown(http_socket_,SD_BOTH);
         if(http_accept_thread_.joinable())http_accept_thread_.join();
         if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
         http_task_id_.store(0);http_file_index_=-1;http_file_size_=0;http_token_.clear();
+        SecureZeroMemory(token_bytes_,sizeof(token_bytes_));
     }
 
 private:
@@ -513,6 +521,7 @@ private:
     std::vector<std::thread> http_clients_;
     std::thread http_accept_thread_;
     std::atomic<bool> http_stop_{true};
+    std::atomic<uint64_t> wait_cancel_generation_{0};
     SOCKET http_socket_=INVALID_SOCKET;
     std::atomic<uint64_t> http_task_id_{0};
     int http_file_index_=-1;
