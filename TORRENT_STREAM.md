@@ -28,7 +28,7 @@ No public torrent index, search engine, curated catalogue, or copyrighted-conten
 
 ## 2. Technology choice
 
-Use **libtorrent 2.x** as the BitTorrent engine, subject to a pinned and reproducible Windows x64 dependency build.
+Use **libtorrent 2.1.2** as the BitTorrent engine, pinned through the repository's vcpkg manifest and baseline for a reproducible Windows x64 dependency build.
 
 Official project: https://libtorrent.org/
 
