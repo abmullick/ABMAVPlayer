@@ -88,7 +88,7 @@ public:
             lt::error_code ec;
             auto p=lt::parse_magnet_uri(ToUtf8(w),ec);
             if(ec){err=FromUtf8(ec.message());return false;}
-            p.save_path=data_.string();
+            p.save_path=data_.u8string();
             return Add(std::move(p),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
         catch(...){err=L"Unable to parse magnet URI.";return false;}
@@ -103,7 +103,7 @@ public:
             if(ec||!ti||!ti->is_valid()){err=ec?FromUtf8(ec.message()):L"Invalid torrent metadata.";return false;}
             lt::add_torrent_params atp;
             atp.ti=std::move(ti);
-            atp.save_path=data_.string();
+            atp.save_path=data_.u8string();
             return Add(std::move(atp),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
         catch(...){err=L"Unable to load torrent file.";return false;}
@@ -121,7 +121,7 @@ public:
         CopyText(out->name,_countof(out->name),i->second->name);
         CopyText(out->error,_countof(out->error),i->second->error);
         if(!i->second->error.empty())out->state=ABM_TORRENT_ERROR;
-        else if(s.paused)out->state=ABM_TORRENT_PAUSED;
+        else if((s.flags & lt::torrent_flags::paused)!=lt::torrent_flags_t{})out->state=ABM_TORRENT_PAUSED;
         else switch(s.state){
             case lt::torrent_status::checking_files:
             case lt::torrent_status::checking_resume_data:out->state=ABM_TORRENT_CHECKING;break;
@@ -159,7 +159,7 @@ public:
         std::lock_guard<std::mutex> g(m_);auto i=tasks_.find(id);
         if(i==tasks_.end()||!session_)return false;
         lt::remove_flags_t flags{};
-        if(delete_data)flags=lt::session::delete_files;
+        if(delete_data)flags=lt::session_handle::delete_files;
         session_->remove_torrent(i->second->handle,flags);tasks_.erase(i);return true;
     }
     bool Limits(int down,int up) {
@@ -173,7 +173,8 @@ private:
         std::lock_guard<std::mutex> g(m_);
         if(!session_){err=L"Torrent engine is not initialized.";return false;}
         if(p.ti) p.file_priorities.assign((size_t)p.ti->files().num_files(),lt::dont_download);
-        lt::error_code ec;auto h=session_->add_torrent(std::move(p),ec);
+        lt::error_code ec;p.flags &= ~lt::torrent_flags::auto_managed;
+        auto h=session_->add_torrent(std::move(p),ec);
         if(ec||!h.is_valid()){err=FromUtf8(ec.message());return false;}
         auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);
         tasks_.emplace(t->id,t);*id=t->id;return true;
@@ -183,7 +184,10 @@ private:
             {
                 std::lock_guard<std::mutex> g(m_);
                 for(auto &e:tasks_) {
-                    Task &t=*e.second;if(t.metadata_applied||!t.handle.is_valid())continue;
+                    Task &t=*e.second;if(!t.handle.is_valid())continue;
+                    auto snapshot=t.handle.status();
+                    if(snapshot.errc)t.error=FromUtf8(snapshot.errc.message());
+                    if(t.metadata_applied)continue;
                     auto ti=t.handle.torrent_file();if(!ti)continue;
                     auto const &files=ti->files();
                     std::vector<lt::download_priority_t> p((size_t)files.num_files(),lt::dont_download);
