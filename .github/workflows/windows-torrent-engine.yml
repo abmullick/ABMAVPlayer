@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/windows-torrent-stream-phase1
+      - feature/torrent-tv-casting-downloads
     paths:
       - "src/torrent/**"
       - "tools/build_torrent_engine.bat"

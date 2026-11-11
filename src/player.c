@@ -60,6 +60,7 @@
 #define WM_TORRENT_INIT_DONE (WM_APP + 13)
 #define WM_TORRENT_STREAM_READY (WM_APP + 14)
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
+#define WM_TORRENT_TV_READY (WM_APP + 16)
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -2772,6 +2773,14 @@ typedef BOOL (WINAPI *ABM_TorrentClearCacheFn)(uint64_t *,uint64_t *);
 typedef BOOL (WINAPI *ABM_TorrentSetReadWindowFn)(uint64_t,int,int64_t,int64_t,int);
 typedef BOOL (WINAPI *ABM_TorrentWaitForRangeFn)(uint64_t,int,int64_t,int64_t,unsigned int);
 typedef BOOL (WINAPI *ABM_TorrentStartHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentStartLanHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+void ABM_TorrentDlna_StartDiscovery(void);
+void ABM_TorrentDlna_StopDiscovery(void);
+unsigned int ABM_TorrentDlna_DeviceCount(void);
+BOOL ABM_TorrentDlna_DeviceName(unsigned int,wchar_t *,unsigned int);
+BOOL ABM_TorrentDlna_SelectDevice(unsigned int);
+BOOL ABM_TorrentDlna_PlayUrl(const wchar_t *);
+BOOL ABM_TorrentDlna_StopPlayback(void);
 typedef void (WINAPI *ABM_TorrentStopHttpStreamFn)(void);
 static HMODULE g_torrentModule=NULL;
 static ABM_TorrentInitializeFn g_torrentInitialize=NULL;
@@ -2790,6 +2799,7 @@ static ABM_TorrentClearCacheFn g_torrentClearCache=NULL;
 static ABM_TorrentSetReadWindowFn g_torrentSetReadWindow=NULL;
 static ABM_TorrentWaitForRangeFn g_torrentWaitForRange=NULL;
 static ABM_TorrentStartHttpStreamFn g_torrentStartHttpStream=NULL;
+static ABM_TorrentStartLanHttpStreamFn g_torrentStartLanHttpStream=NULL;
 static ABM_TorrentStopHttpStreamFn g_torrentStopHttpStream=NULL;
 static HANDLE g_torrentInitThread=NULL;
 static volatile LONG g_torrentInitResult=0; /* 0=pending, 1=ready, -1=failed */
@@ -2802,6 +2812,16 @@ static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
 static HWND g_torrentCacheLimitEdit=NULL,g_torrentCacheInfoLabel=NULL;
+static HWND g_torrentTvCombo=NULL,g_torrentDownloadPathLabel=NULL;
+static int g_torrentTvKnownCount=-1;
+static BOOL g_torrentTvPlaybackActive=FALSE;
+static HANDLE g_torrentTvStreamThread=NULL;
+static volatile LONG g_torrentTvStreamCancel=0;
+typedef struct TorrentTvStreamRequest {
+    HWND owner; uint64_t task_id; int file_index; int64_t file_size; BOOL ok;
+    wchar_t url[2048]; wchar_t error[512];
+} TorrentTvStreamRequest;
+static TorrentTvStreamRequest *g_torrentTvStreamRequest=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
 static BOOL g_torrentPlaybackActive=FALSE;
@@ -2850,6 +2870,10 @@ static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 #define ID_TORRENT_DOWN_LIMIT 5110
 #define ID_TORRENT_UP_LIMIT 5111
 #define ID_TORRENT_APPLY_LIMITS 5112
+#define ID_TORRENT_FIND_TVS 5123
+#define ID_TORRENT_TV_COMBO 5124
+#define ID_TORRENT_CAST_TV 5125
+#define ID_TORRENT_STOP_TV 5126
 
 static BOOL LoadTorrentEngine(HWND owner) {
     if(g_torrentModule && g_torrentInitialize && g_torrentShutdown) return TRUE;
@@ -2887,13 +2911,14 @@ static BOOL LoadTorrentEngine(HWND owner) {
     g_torrentSetReadWindow=(ABM_TorrentSetReadWindowFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetReadWindow");
     g_torrentWaitForRange=(ABM_TorrentWaitForRangeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_WaitForRange");
     g_torrentStartHttpStream=(ABM_TorrentStartHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StartHttpStream");
+    g_torrentStartLanHttpStream=(ABM_TorrentStartLanHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StartLanHttpStream");
     g_torrentStopHttpStream=(ABM_TorrentStopHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StopHttpStream");
     if(!g_torrentInitialize || !g_torrentShutdown || !g_torrentAddMagnet ||
        !g_torrentAddFile || !g_torrentGetTask || !g_torrentGetFile ||
        !g_torrentSelectFile || !g_torrentPause || !g_torrentResume ||
        !g_torrentRemove || !g_torrentSetRateLimits || !g_torrentGetCacheInfo ||
        !g_torrentSetCacheLimit || !g_torrentClearCache || !g_torrentSetReadWindow ||
-       !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStopHttpStream) {
+       !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStartLanHttpStream || !g_torrentStopHttpStream) {
         MessageBoxW(owner,L"The torrent engine DLL is missing one or more required C ABI exports. Rebuild and install the matching Windows x64 runtime.",
                     L"Torrent Stream",MB_OK|MB_ICONERROR);
         FreeLibrary(g_torrentModule);g_torrentModule=NULL;
@@ -2903,7 +2928,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
         g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
         g_torrentGetCacheInfo=NULL;g_torrentSetCacheLimit=NULL;g_torrentClearCache=NULL;
         g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
-        g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
+        g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         return FALSE;
     }
     return TRUE;
@@ -3121,6 +3146,7 @@ static void TorrentRefreshStatus(void) {
     } else if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
 }
 static void TorrentStopPlayback(void) {
+    BOOL hadLocalStream=(g_torrentStreamThread!=NULL)||g_torrentPlaybackActive;
     TorrentDetachPlayerEvents();
     if(g_torrentStreamThread) {
         InterlockedExchange(&g_torrentStreamCancel,1);
@@ -3130,9 +3156,89 @@ static void TorrentStopPlayback(void) {
         if(g_player)libvlc_media_player_stop(g_player);
         g_torrentPlaybackActive=FALSE;g_hasMedia=FALSE;ResetArtwork();
     }
-    if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
+    if(hadLocalStream&&g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
     if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_IDLE)
         TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
+}
+static void TorrentRefreshTvDevices(void) {
+    if(!g_torrentTvCombo||!IsWindow(g_torrentTvCombo))return;
+    unsigned int count=ABM_TorrentDlna_DeviceCount();
+    if((int)count==g_torrentTvKnownCount)return;
+    SendMessageW(g_torrentTvCombo,CB_RESETCONTENT,0,0);
+    for(unsigned int i=0;i<count;i++) {
+        wchar_t name[256]=L"";
+        if(ABM_TorrentDlna_DeviceName(i,name,(unsigned int)_countof(name)))
+            SendMessageW(g_torrentTvCombo,CB_ADDSTRING,0,(LPARAM)name);
+    }
+    if(count)SendMessageW(g_torrentTvCombo,CB_SETCURSEL,0,0);
+    g_torrentTvKnownCount=(int)count;
+}
+static DWORD WINAPI TorrentTvStreamWorker(void *arg) {
+    TorrentTvStreamRequest *r=(TorrentTvStreamRequest*)arg;
+    if(!r)return 1;
+    if(InterlockedCompareExchange(&g_torrentTvStreamCancel,0,0)) {
+        StringCchCopyW(r->error,_countof(r->error),L"TV stream preparation cancelled.");r->ok=FALSE;
+    } else if(!g_torrentStartLanHttpStream(r->task_id,r->file_index,r->url,(unsigned)_countof(r->url),r->error,(unsigned)_countof(r->error))) {
+        r->ok=FALSE;
+    } else if(InterlockedCompareExchange(&g_torrentTvStreamCancel,0,0)) {
+        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+        StringCchCopyW(r->error,_countof(r->error),L"TV stream preparation cancelled.");r->ok=FALSE;
+    } else {
+        int64_t initial=r->file_size<8LL*1024*1024?r->file_size:8LL*1024*1024;
+        if(initial<=0)initial=1;
+        r->ok=g_torrentWaitForRange(r->task_id,r->file_index,0,initial,180000);
+        if(!r->ok&&!r->error[0])StringCchCopyW(r->error,_countof(r->error),L"Timed out waiting for the initial verified TV playback buffer.");
+    }
+    if(!PostMessageW(r->owner,WM_TORRENT_TV_READY,0,(LPARAM)r)) {
+        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+        if(g_torrentTvStreamRequest==r)g_torrentTvStreamRequest=NULL;
+        free(r);
+    }
+    return 0;
+}
+static void TorrentBeginCastToTV(void) {
+    if(!g_torrentInitialized||!g_torrentTaskId||!g_torrentStartLanHttpStream)return;
+    if(g_torrentTvStreamThread){TorrentSetLabel(g_torrentStatusLabel,L"TV stream is already preparing.");return;}
+    int sel=(int)SendMessageW(g_torrentFileList,LB_GETCURSEL,0,0);
+    if(sel==LB_ERR){TorrentSetLabel(g_torrentStatusLabel,L"Select a video file before casting.");return;}
+    int fileIndex=(int)SendMessageW(g_torrentFileList,LB_GETITEMDATA,(WPARAM)sel,0);
+    wchar_t relativePath[1024]=L"";int64_t size=0;
+    if(!g_torrentGetFile(g_torrentTaskId,fileIndex,relativePath,(unsigned)_countof(relativePath),&size)||size<=0) {
+        TorrentSetLabel(g_torrentStatusLabel,L"Could not read the selected torrent file.");return;
+    }
+    if(!IsVideoPath(relativePath)) {
+        TorrentSetLabel(g_torrentStatusLabel,L"Select a video file to cast to the TV.");return;
+    }
+    int tv=(int)SendMessageW(g_torrentTvCombo,CB_GETCURSEL,0,0);
+    if(tv==CB_ERR||!ABM_TorrentDlna_SelectDevice((unsigned int)tv)) {
+        TorrentSetLabel(g_torrentStatusLabel,L"Find TVs and select an available DLNA receiver first.");return;
+    }
+    if(!g_torrentSelectFile(g_torrentTaskId,fileIndex)) {
+        ABM_TorrentTaskInfo info={0};
+        if(g_torrentGetTask(g_torrentTaskId,&info)&&info.error[0])TorrentSetLabel(g_torrentStatusLabel,info.error);
+        else TorrentSetLabel(g_torrentStatusLabel,L"Could not prioritize the selected video for download.");
+        return;
+    }
+    TorrentStopPlayback();
+    if(g_torrentTvPlaybackActive){ABM_TorrentDlna_StopPlayback();g_torrentTvPlaybackActive=FALSE;}
+    TorrentTvStreamRequest *req=(TorrentTvStreamRequest*)calloc(1,sizeof(*req));
+    if(!req){TorrentSetLabel(g_torrentStatusLabel,L"Not enough memory to prepare TV casting.");return;}
+    req->owner=g_main;req->task_id=g_torrentTaskId;req->file_index=fileIndex;req->file_size=size;
+    InterlockedExchange(&g_torrentTvStreamCancel,0);g_torrentTvStreamRequest=req;
+    g_torrentTvStreamThread=CreateThread(NULL,0,TorrentTvStreamWorker,req,0,NULL);
+    if(!g_torrentTvStreamThread){g_torrentTvStreamRequest=NULL;free(req);TorrentSetLabel(g_torrentStatusLabel,L"Could not start the TV stream worker.");return;}
+    TorrentSetLabel(g_torrentStatusLabel,L"Preparing a secure LAN stream and buffering verified torrent pieces for your TV…");
+}
+static void TorrentStopTvCasting(void) {
+    BOOL hadTvStream=(g_torrentTvStreamThread!=NULL)||g_torrentTvPlaybackActive;
+    if(g_torrentTvStreamThread) {
+        InterlockedExchange(&g_torrentTvStreamCancel,1);
+        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+    }
+    if(g_torrentTvPlaybackActive)ABM_TorrentDlna_StopPlayback();
+    g_torrentTvPlaybackActive=FALSE;
+    if(hadTvStream&&g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
+    TorrentSetLabel(g_torrentStatusLabel,L"TV playback stopped. Torrent downloading continues to the Windows download folder.");
 }
 static DWORD WINAPI TorrentStreamWorker(void *arg) {
     TorrentStreamRequest *r=(TorrentStreamRequest*)arg;
@@ -3162,6 +3268,7 @@ static DWORD WINAPI TorrentStreamWorker(void *arg) {
     return 0;
 }
 static void TorrentBeginStream(void) {
+    if(g_torrentTvPlaybackActive||g_torrentTvStreamThread)TorrentStopTvCasting();
     if(!g_torrentInitialized||!g_torrentTaskId||!g_torrentGetFile||!g_torrentStartHttpStream)return;
     if(g_torrentStreamThread){TorrentSetLabel(g_torrentStatusLabel,L"A stream is already preparing.");return;}
     int sel=(int)SendMessageW(g_torrentFileList,LB_GETCURSEL,0,0);
@@ -3207,7 +3314,7 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     }
     if(!ok){TorrentSetLabel(g_torrentStatusLabel,error[0]?error:L"Could not add this torrent source.");return;}
     if(g_torrentTaskId&&g_torrentTaskId!=id) {
-        TorrentStopPlayback();
+        TorrentStopTvCasting();TorrentStopPlayback();
         g_torrentRemove(g_torrentTaskId,FALSE);
     }
     g_torrentTaskId=id;g_torrentListedForTask=-1;g_torrentListedFileCount=0;g_torrentSelectedFile=-1;
@@ -3259,6 +3366,18 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,684,105,32,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST,140,684,260,180,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
+        SendMessageW(g_torrentTvCombo,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Cast to TV",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,415,684,115,32,hwnd,(HMENU)ID_TORRENT_CAST_TV,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"BUTTON",L"Stop TV",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,545,684,100,32,hwnd,(HMENU)ID_TORRENT_STOP_TV,NULL,NULL);
+        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        wchar_t downloadPath[PATH_CAP+128]=L"";
+        StringCchPrintfW(downloadPath,_countof(downloadPath),L"Permanent downloads: %s\\Torrent Downloads",g_torrentCacheBaseDir);
+        g_torrentDownloadPathLabel=CreateWindowW(L"STATIC",downloadPath,WS_CHILD|WS_VISIBLE,20,724,800,28,hwnd,NULL,NULL,NULL);
+        SendMessageW(g_torrentDownloadPathLabel,WM_SETFONT,(WPARAM)font,TRUE);
         SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         const struct {int id;const wchar_t *label;int x,w;} buttons[]={
             {ID_TORRENT_PAUSE,L"Pause / Resume",20,125},{ID_TORRENT_STREAM,L"Stream selected",155,135},
@@ -3267,6 +3386,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         };
         for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
         TorrentRefreshCacheStatus();
+        g_torrentTvKnownCount=-1;TorrentRefreshTvDevices();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
     case WM_COMMAND:
@@ -3276,9 +3396,15 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case ID_TORRENT_PAUSE:
                 if(g_torrentTaskId&&g_torrentGetTask){ABM_TorrentTaskInfo info={0};if(g_torrentGetTask(g_torrentTaskId,&info)){if(info.state==5)g_torrentResume(g_torrentTaskId);else g_torrentPause(g_torrentTaskId);TorrentRefreshStatus();}}return 0;
             case ID_TORRENT_STREAM:TorrentBeginStream();return 0;
+            case ID_TORRENT_FIND_TVS:
+                ABM_TorrentDlna_StartDiscovery();g_torrentTvKnownCount=-1;
+                TorrentSetLabel(g_torrentStatusLabel,L"Searching for Android/Google TVs with DLNA MediaRenderer support…");
+                TorrentRefreshTvDevices();return 0;
+            case ID_TORRENT_CAST_TV:TorrentBeginCastToTV();return 0;
+            case ID_TORRENT_STOP_TV:TorrentStopTvCasting();return 0;
             case ID_TORRENT_STOP:TorrentStopPlayback();TorrentSetLabel(g_torrentStatusLabel,L"Stream stopped.");return 0;
             case ID_TORRENT_REMOVE:
-                TorrentStopPlayback();
+                TorrentStopTvCasting();TorrentStopPlayback();
                 if(g_torrentTaskId&&g_torrentRemove)g_torrentRemove(g_torrentTaskId,FALSE);
                 g_torrentTaskId=0;g_torrentListedForTask=-1;g_torrentListedFileCount=0;
                 SendMessageW(g_torrentFileList,LB_RESETCONTENT,0,0);
@@ -3331,7 +3457,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 return 0;
             }
         }break;
-    case WM_TIMER:if(wp==1){TorrentRefreshStatus();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
+    case WM_TIMER:if(wp==1){TorrentRefreshStatus();TorrentRefreshTvDevices();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         KillTimer(hwnd,1);
@@ -3340,7 +3466,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
-        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;return 0;
+        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3349,7 +3475,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
+    RECT wr;GetWindowRect(owner,&wr);int w=860,h=810;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
@@ -3872,6 +3998,26 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     L"Stream failed — LibVLC could not continue reading the torrent source.");
                 break;
         }
+        return 0;
+    }
+    case WM_TORRENT_TV_READY: {
+        TorrentTvStreamRequest *req=(TorrentTvStreamRequest*)lp;
+        if(g_torrentTvStreamThread){CloseHandle(g_torrentTvStreamThread);g_torrentTvStreamThread=NULL;}
+        if(g_torrentTvStreamRequest==req)g_torrentTvStreamRequest=NULL;
+        BOOL cancelled=InterlockedCompareExchange(&g_torrentTvStreamCancel,0,0)!=0;
+        if(req&&req->ok&&!cancelled) {
+            if(ABM_TorrentDlna_PlayUrl(req->url)) {
+                g_torrentTvPlaybackActive=TRUE;
+                TorrentSetLabel(g_torrentStatusLabel,L"Casting the original torrent video to your TV. The complete file is also downloading to Windows Downloads\\ABM AV Player\\Torrent Downloads.");
+            } else {
+                if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+                TorrentSetLabel(g_torrentStatusLabel,L"The TV rejected the media URL or DLNA Play command. Check receiver compatibility and Windows Firewall.");
+            }
+        } else if(req&&!cancelled) {
+            if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+            TorrentSetLabel(g_torrentStatusLabel,req->error[0]?req->error:L"Could not prepare the TV stream.");
+        }
+        if(req)free(req);
         return 0;
     }
     case WM_TORRENT_STREAM_READY: {
@@ -4482,8 +4628,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;
             if(g_torrentStreamRequest){free(g_torrentStreamRequest);g_torrentStreamRequest=NULL;}
         }
+        if(g_torrentTvStreamThread) {
+            InterlockedExchange(&g_torrentTvStreamCancel,1);
+            if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+            WaitForSingleObject(g_torrentTvStreamThread,INFINITE);
+            CloseHandle(g_torrentTvStreamThread);g_torrentTvStreamThread=NULL;
+            if(g_torrentTvStreamRequest){free(g_torrentTvStreamRequest);g_torrentTvStreamRequest=NULL;}
+        }
         if(g_torrentInitThread){WaitForSingleObject(g_torrentInitThread,INFINITE);CloseHandle(g_torrentInitThread);g_torrentInitThread=NULL;}
         g_torrentInitPending=FALSE;
+        if(g_torrentTvPlaybackActive)ABM_TorrentDlna_StopPlayback();
+        ABM_TorrentDlna_StopDiscovery();
         if(g_torrentInitResult==1 && g_torrentShutdown)g_torrentShutdown();
         g_torrentInitialized=FALSE;
         if(g_torrentModule){
@@ -4493,7 +4648,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentGetFile=NULL;g_torrentSelectFile=NULL;g_torrentPause=NULL;
             g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
-            g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
+            g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
         ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
