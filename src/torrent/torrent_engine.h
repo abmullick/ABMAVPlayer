@@ -25,6 +25,10 @@ __declspec(dllexport) BOOL WINAPI ABM_Torrent_Pause(uint64_t task_id);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_Resume(uint64_t task_id);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_Remove(uint64_t task_id, BOOL delete_downloaded_data);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetRateLimits(int download_bytes_per_second, int upload_bytes_per_second);
+/* Persistent on-disk cache management. Quota is in bytes; default is 20 GiB. */
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_GetCacheInfo(uint64_t *used_bytes, uint64_t *limit_bytes);
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_SetCacheLimit(uint64_t limit_bytes, uint64_t *used_bytes);
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_ClearCache(uint64_t *freed_bytes, uint64_t *remaining_bytes);
 /* Verified-piece streaming. The server binds exclusively to 127.0.0.1 and
    returns a per-stream random bearer URL. */
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t task_id, int file_index, int64_t offset, int64_t length, int ahead_bytes);
