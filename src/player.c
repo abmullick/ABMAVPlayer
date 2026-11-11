@@ -3975,6 +3975,26 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return 0;
     }
+    case WM_TORRENT_TV_READY: {
+        TorrentTvStreamRequest *req=(TorrentTvStreamRequest*)lp;
+        if(g_torrentTvStreamThread){CloseHandle(g_torrentTvStreamThread);g_torrentTvStreamThread=NULL;}
+        if(g_torrentTvStreamRequest==req)g_torrentTvStreamRequest=NULL;
+        BOOL cancelled=InterlockedCompareExchange(&g_torrentTvStreamCancel,0,0)!=0;
+        if(req&&req->ok&&!cancelled) {
+            if(ABM_TorrentDlna_PlayUrl(req->url)) {
+                g_torrentTvPlaybackActive=TRUE;
+                TorrentSetLabel(g_torrentStatusLabel,L"Casting the original torrent video to your TV. The complete file is also downloading to Windows Downloads\\ABM AV Player\\Torrent Downloads.");
+            } else {
+                if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+                TorrentSetLabel(g_torrentStatusLabel,L"The TV rejected the media URL or DLNA Play command. Check receiver compatibility and Windows Firewall.");
+            }
+        } else if(req&&!cancelled) {
+            if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+            TorrentSetLabel(g_torrentStatusLabel,req->error[0]?req->error:L"Could not prepare the TV stream.");
+        }
+        if(req)free(req);
+        return 0;
+    }
     case WM_TORRENT_STREAM_READY: {
         TorrentStreamRequest *req=(TorrentStreamRequest*)lp;
         if(g_torrentStreamThread){CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;}
