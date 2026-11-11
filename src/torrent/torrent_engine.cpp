@@ -23,6 +23,7 @@
 #include <libtorrent/add_torrent_params.hpp>
 #include <libtorrent/error_code.hpp>
 #include <libtorrent/magnet_uri.hpp>
+#include <libtorrent/info_hash.hpp>
 #include <libtorrent/session.hpp>
 #include <libtorrent/settings_pack.hpp>
 #include <libtorrent/torrent_info.hpp>
@@ -57,6 +58,7 @@ struct Task {
     lt::torrent_handle handle;
     std::wstring name=L"Retrieving metadata...";
     std::wstring error;
+    fs::path cache_path;
     bool metadata_applied=false;
     int file_count=0;
     std::atomic<bool> removed{false};
@@ -68,7 +70,7 @@ public:
         if(session_) return true;
         if(!directory||!*directory) return false;
         try {
-            data_=fs::absolute(directory).lexically_normal();
+            data_=(fs::absolute(directory)/L"torrent-cache").lexically_normal();
             fs::create_directories(data_);
             lt::settings_pack s;
             s.set_str(lt::settings_pack::user_agent,"ABM-AV-Player/1.0");
@@ -103,7 +105,7 @@ public:
             lt::error_code ec;
             auto p=lt::parse_magnet_uri(ToUtf8(w),ec);
             if(ec){err=FromUtf8(ec.message());return false;}
-            p.save_path=data_.u8string();
+            p.save_path=(data_/HashFolder(p.info_hashes)).u8string();
             return Add(std::move(p),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
         catch(...){err=L"Unable to parse magnet URI.";return false;}
@@ -118,7 +120,7 @@ public:
             if(ec||!ti||!ti->is_valid()){err=ec?FromUtf8(ec.message()):L"Invalid torrent metadata.";return false;}
             lt::add_torrent_params atp;
             atp.ti=std::move(ti);
-            atp.save_path=data_.u8string();
+            atp.save_path=(data_/HashFolder(atp.ti->info_hashes())).u8string();
             return Add(std::move(atp),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
         catch(...){err=L"Unable to load torrent file.";return false;}
@@ -162,8 +164,39 @@ public:
         auto i=tasks_.find(id);if(i==tasks_.end())return false;
         auto ti=i->second->handle.torrent_file();
         if(!ti||index<0||index>=ti->files().num_files())return false;
+        const uint64_t fileBytes=static_cast<uint64_t>(ti->files().file_size(index));
+        const uint64_t existing=DirectoryBytes(i->second->cache_path);
+        const uint64_t additional=fileBytes>existing?fileBytes-existing:0;
+        if(!EnsureCacheCapacity(additional,i->second->cache_path)) {
+            i->second->error=L"Torrent cache quota reached. Increase the cache limit or clear inactive cached torrents.";
+            return false;
+        }
+        i->second->error.clear();
         std::vector<lt::download_priority_t> p((size_t)ti->files().num_files(),lt::dont_download);
         p[(size_t)index]=lt::default_priority;i->second->handle.prioritize_files(p);return true;
+    }
+    bool CacheInfo(uint64_t *used,uint64_t *limit) {
+        if(!used||!limit)return false;
+        std::lock_guard<std::mutex> g(m_);
+        *used=DirectoryBytes(data_);*limit=cache_limit_bytes_;return true;
+    }
+    bool SetCacheLimit(uint64_t limit,uint64_t *used) {
+        if(limit<1024ULL*1024*1024||limit>4096ULL*1024*1024*1024)return false;
+        std::lock_guard<std::mutex> g(m_);
+        cache_limit_bytes_=limit;
+        CleanupCacheToLimit();
+        if(used)*used=DirectoryBytes(data_);
+        return DirectoryBytes(data_)<=cache_limit_bytes_;
+    }
+    bool ClearCache(uint64_t *freed,uint64_t *remaining) {
+        std::lock_guard<std::mutex> g(m_);
+        const uint64_t before=DirectoryBytes(data_);
+        auto candidates=EvictableCacheFolders();
+        for(const auto &path:candidates){std::error_code ec;fs::remove_all(path,ec);}
+        const uint64_t after=DirectoryBytes(data_);
+        if(freed)*freed=before>after?before-after:0;
+        if(remaining)*remaining=after;
+        return true;
     }
     bool Pause(uint64_t id,bool pause) {
         std::lock_guard<std::mutex> g(m_);auto i=tasks_.find(id);
@@ -275,9 +308,9 @@ public:
         if(!task||task->removed.load()||!ti)return false;
         if(ti->files().symlink(index).size()!=0||ti->files().pad_file_at(index))return false;
         try {
-            const std::string fullUtf8=ti->files().file_path(index,data_.u8string());
+            const std::string fullUtf8=ti->files().file_path(index,task->cache_path.u8string());
             fs::path target=fs::weakly_canonical(fs::u8path(fullUtf8));
-            fs::path root=fs::weakly_canonical(data_);
+            fs::path root=fs::weakly_canonical(task->cache_path);
             auto ri=root.begin(),tiPath=target.begin();
             for(;ri!=root.end();++ri,++tiPath)
                 if(tiPath==target.end()||_wcsicmp(ri->c_str(),tiPath->c_str())!=0)return false;
@@ -501,12 +534,82 @@ private:
     bool Add(lt::add_torrent_params p,uint64_t *id,std::wstring &err) {
         std::lock_guard<std::mutex> g(m_);
         if(!session_){err=L"Torrent engine is not initialized.";return false;}
+        if(p.save_path.empty())p.save_path=(data_/HashFolder(p.info_hashes)).u8string();
+        fs::path taskCachePath=fs::absolute(fs::u8path(p.save_path)).lexically_normal();
+        std::error_code dirError;fs::create_directories(taskCachePath,dirError);
+        if(dirError){err=L"Could not create the torrent's cache folder.";return false;}
         if(p.ti) p.file_priorities.assign((size_t)p.ti->files().num_files(),lt::dont_download);
         lt::error_code ec;p.flags &= ~lt::torrent_flags::auto_managed;
         auto h=session_->add_torrent(std::move(p),ec);
         if(ec||!h.is_valid()){err=FromUtf8(ec.message());return false;}
-        auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);
+        auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);t->cache_path=std::move(taskCachePath);
         tasks_.emplace(t->id,t);*id=t->id;return true;
+    }
+    static std::wstring HashFolder(const lt::info_hash_t &hashes) {
+        const std::string bytes=hashes.get_best().to_string();
+        static const wchar_t hex[]=L"0123456789abcdef";
+        std::wstring out;out.reserve(bytes.size()*2);
+        for(unsigned char c:bytes){out.push_back(hex[c>>4]);out.push_back(hex[c&15]);}
+        return out.empty()?L"unknown":out;
+    }
+    static uint64_t DirectoryBytes(const fs::path &root) {
+        std::error_code ec;
+        if(!fs::exists(root,ec)||ec)return 0;
+        uint64_t total=0;
+        fs::recursive_directory_iterator it(root,fs::directory_options::skip_permission_denied,ec),end;
+        for(;it!=end;it.increment(ec)) {
+            if(ec){ec.clear();continue;}
+            auto st=it->symlink_status(ec);if(ec){ec.clear();continue;}
+            if(fs::is_regular_file(st)) {
+                const auto size=it->file_size(ec);
+                if(!ec&&UINT64_MAX-total>=size)total+=size;
+                ec.clear();
+            } else if(fs::is_symlink(st))it.disable_recursion_pending();
+        }
+        return total;
+    }
+    std::vector<fs::path> EvictableCacheFolders() const {
+        std::vector<std::pair<fs::file_time_type,fs::path>> ordered;
+        std::error_code ec;
+        if(!fs::exists(data_,ec)||ec)return {};
+        for(fs::directory_iterator it(data_,fs::directory_options::skip_permission_denied,ec),end;it!=end;it.increment(ec)) {
+            if(ec){ec.clear();continue;}
+            auto st=it->symlink_status(ec);if(ec){ec.clear();continue;}
+            if(!fs::is_directory(st)||fs::is_symlink(st))continue;
+            fs::path candidate=fs::weakly_canonical(it->path(),ec);if(ec){ec.clear();continue;}
+            bool active=false;
+            for(const auto &entry:tasks_) {
+                fs::path protectedPath=fs::weakly_canonical(entry.second->cache_path,ec);ec.clear();
+                if(candidate==protectedPath){active=true;break;}
+            }
+            if(active)continue;
+            auto modified=fs::last_write_time(candidate,ec);if(ec){ec.clear();continue;}
+            ordered.emplace_back(modified,candidate);
+        }
+        std::sort(ordered.begin(),ordered.end(),[](const auto &a,const auto &b){return a.first<b.first;});
+        std::vector<fs::path> result;for(auto &entry:ordered)result.push_back(entry.second);
+        return result;
+    }
+    bool EnsureCacheCapacity(uint64_t additional,const fs::path &protectedPath) {
+        uint64_t used=DirectoryBytes(data_);
+        if(additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional)return true;
+        auto candidates=EvictableCacheFolders();std::error_code ec;
+        for(const auto &path:candidates) {
+            fs::remove_all(path,ec);ec.clear();
+            used=DirectoryBytes(data_);
+            if(additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional)return true;
+        }
+        (void)protectedPath;
+        return additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional;
+    }
+    void CleanupCacheToLimit() {
+        uint64_t used=DirectoryBytes(data_);
+        if(used<=cache_limit_bytes_)return;
+        auto candidates=EvictableCacheFolders();std::error_code ec;
+        for(const auto &path:candidates) {
+            fs::remove_all(path,ec);ec.clear();
+            used=DirectoryBytes(data_);if(used<=cache_limit_bytes_)break;
+        }
     }
     void Monitor() {
         while(!stopping_) {
@@ -538,6 +641,7 @@ private:
     std::unique_ptr<lt::session> session_;
     std::map<uint64_t,std::shared_ptr<Task>> tasks_;
     fs::path data_;
+    uint64_t cache_limit_bytes_=20ULL*1024*1024*1024;
     std::thread worker_;
     std::atomic<bool> stopping_{false};
     std::mutex schedule_mutex_;
@@ -568,6 +672,9 @@ BOOL WINAPI ABM_Torrent_Pause(uint64_t id){try{return g_engine.Pause(id,true)?TR
 BOOL WINAPI ABM_Torrent_Resume(uint64_t id){try{return g_engine.Pause(id,false)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_Remove(uint64_t id,BOOL d){try{return g_engine.Remove(id,d!=FALSE)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_SetRateLimits(int d,int u){try{return g_engine.Limits(d,u)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_GetCacheInfo(uint64_t *used,uint64_t *limit){try{return g_engine.CacheInfo(used,limit)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_SetCacheLimit(uint64_t limit,uint64_t *used){try{return g_engine.SetCacheLimit(limit,used)?TRUE:FALSE;}catch(...){return FALSE;}}
+BOOL WINAPI ABM_Torrent_ClearCache(uint64_t *freed,uint64_t *remaining){try{return g_engine.ClearCache(freed,remaining)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_SetReadWindow(uint64_t id,int i,int64_t o,int64_t n,int a){try{return g_engine.SetReadWindow(id,i,o,n,a)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_WaitForRange(uint64_t id,int i,int64_t o,int64_t n,unsigned t){try{return g_engine.WaitForRange(id,i,o,n,t)?TRUE:FALSE;}catch(...){return FALSE;}}
 BOOL WINAPI ABM_Torrent_StartHttpStream(uint64_t id,int i,wchar_t *u,unsigned uc,wchar_t *e,unsigned ec){std::wstring err;bool ok=false;try{ok=g_engine.StartHttpStream(id,i,u,uc,err);}catch(...){err=L"Unexpected error while starting loopback stream.";}ErrorOut(e,ec,err);return ok?TRUE:FALSE;}
