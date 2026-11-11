@@ -172,7 +172,8 @@ private:
     bool Add(lt::add_torrent_params p,uint64_t *id,std::wstring &err) {
         std::lock_guard<std::mutex> g(m_);
         if(!session_){err=L"Torrent engine is not initialized.";return false;}
-        if(p.ti) p.file_priorities.assign((size_t)p.ti->files().num_files(),lt::dont_download);\n        lt::error_code ec;auto h=session_->add_torrent(std::move(p),ec);
+        if(p.ti) p.file_priorities.assign((size_t)p.ti->files().num_files(),lt::dont_download);
+        lt::error_code ec;auto h=session_->add_torrent(std::move(p),ec);
         if(ec||!h.is_valid()){err=FromUtf8(ec.message());return false;}
         auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);
         tasks_.emplace(t->id,t);*id=t->id;return true;
