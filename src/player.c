@@ -2654,11 +2654,45 @@ static void ShowEqualizer(void) {
 /* The optional torrent DLL is loaded only when the user explicitly opens
    Torrent Stream. Session initialization runs on a worker thread so DHT,
    tracker and peer setup can never block the Win32 UI thread. */
+/* Keep the player independent of libtorrent headers: resolve the complete
+   stable C ABI only after the user opens Torrent Stream. */
+typedef struct ABM_TorrentTaskInfo {
+    uint64_t task_id;
+    double progress;
+    int64_t total_bytes, downloaded_bytes, uploaded_bytes;
+    int download_rate, upload_rate, peer_count, state, has_metadata, file_count;
+    wchar_t name[512];
+    wchar_t error[512];
+} ABM_TorrentTaskInfo;
 typedef BOOL (WINAPI *ABM_TorrentInitializeFn)(const wchar_t *);
 typedef void (WINAPI *ABM_TorrentShutdownFn)(void);
+typedef BOOL (WINAPI *ABM_TorrentAddMagnetFn)(const wchar_t *,uint64_t *,wchar_t *,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentAddFileFn)(const wchar_t *,uint64_t *,wchar_t *,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentGetTaskFn)(uint64_t,ABM_TorrentTaskInfo *);
+typedef BOOL (WINAPI *ABM_TorrentGetFileFn)(uint64_t,int,wchar_t *,unsigned int,int64_t *);
+typedef BOOL (WINAPI *ABM_TorrentSelectFileFn)(uint64_t,int);
+typedef BOOL (WINAPI *ABM_TorrentTaskActionFn)(uint64_t);
+typedef BOOL (WINAPI *ABM_TorrentRemoveFn)(uint64_t,BOOL);
+typedef BOOL (WINAPI *ABM_TorrentSetRateLimitsFn)(int,int);
+typedef BOOL (WINAPI *ABM_TorrentSetReadWindowFn)(uint64_t,int,int64_t,int64_t,int);
+typedef BOOL (WINAPI *ABM_TorrentWaitForRangeFn)(uint64_t,int,int64_t,int64_t,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentStartHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+typedef void (WINAPI *ABM_TorrentStopHttpStreamFn)(void);
 static HMODULE g_torrentModule=NULL;
 static ABM_TorrentInitializeFn g_torrentInitialize=NULL;
 static ABM_TorrentShutdownFn g_torrentShutdown=NULL;
+static ABM_TorrentAddMagnetFn g_torrentAddMagnet=NULL;
+static ABM_TorrentAddFileFn g_torrentAddFile=NULL;
+static ABM_TorrentGetTaskFn g_torrentGetTask=NULL;
+static ABM_TorrentGetFileFn g_torrentGetFile=NULL;
+static ABM_TorrentSelectFileFn g_torrentSelectFile=NULL;
+static ABM_TorrentTaskActionFn g_torrentPause=NULL,g_torrentResume=NULL;
+static ABM_TorrentRemoveFn g_torrentRemove=NULL;
+static ABM_TorrentSetRateLimitsFn g_torrentSetRateLimits=NULL;
+static ABM_TorrentSetReadWindowFn g_torrentSetReadWindow=NULL;
+static ABM_TorrentWaitForRangeFn g_torrentWaitForRange=NULL;
+static ABM_TorrentStartHttpStreamFn g_torrentStartHttpStream=NULL;
+static ABM_TorrentStopHttpStreamFn g_torrentStopHttpStream=NULL;
 static HANDLE g_torrentInitThread=NULL;
 static volatile LONG g_torrentInitResult=0; /* 0=pending, 1=ready, -1=failed */
 static BOOL g_torrentInitPending=FALSE;
@@ -2685,11 +2719,33 @@ static BOOL LoadTorrentEngine(HWND owner) {
     }
     g_torrentInitialize=(ABM_TorrentInitializeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Initialize");
     g_torrentShutdown=(ABM_TorrentShutdownFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Shutdown");
-    if(!g_torrentInitialize || !g_torrentShutdown) {
-        MessageBoxW(owner,L"The torrent engine DLL is missing required exports. Rebuild the matching x64 runtime.",
+    g_torrentAddMagnet=(ABM_TorrentAddMagnetFn)GetProcAddress(g_torrentModule,"ABM_Torrent_AddMagnet");
+    g_torrentAddFile=(ABM_TorrentAddFileFn)GetProcAddress(g_torrentModule,"ABM_Torrent_AddFile");
+    g_torrentGetTask=(ABM_TorrentGetTaskFn)GetProcAddress(g_torrentModule,"ABM_Torrent_GetTask");
+    g_torrentGetFile=(ABM_TorrentGetFileFn)GetProcAddress(g_torrentModule,"ABM_Torrent_GetFile");
+    g_torrentSelectFile=(ABM_TorrentSelectFileFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SelectFile");
+    g_torrentPause=(ABM_TorrentTaskActionFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Pause");
+    g_torrentResume=(ABM_TorrentTaskActionFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Resume");
+    g_torrentRemove=(ABM_TorrentRemoveFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Remove");
+    g_torrentSetRateLimits=(ABM_TorrentSetRateLimitsFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetRateLimits");
+    g_torrentSetReadWindow=(ABM_TorrentSetReadWindowFn)GetProcAddress(g_torrentModule,"ABM_Torrent_SetReadWindow");
+    g_torrentWaitForRange=(ABM_TorrentWaitForRangeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_WaitForRange");
+    g_torrentStartHttpStream=(ABM_TorrentStartHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StartHttpStream");
+    g_torrentStopHttpStream=(ABM_TorrentStopHttpStreamFn)GetProcAddress(g_torrentModule,"ABM_Torrent_StopHttpStream");
+    if(!g_torrentInitialize || !g_torrentShutdown || !g_torrentAddMagnet ||
+       !g_torrentAddFile || !g_torrentGetTask || !g_torrentGetFile ||
+       !g_torrentSelectFile || !g_torrentPause || !g_torrentResume ||
+       !g_torrentRemove || !g_torrentSetRateLimits || !g_torrentSetReadWindow ||
+       !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStopHttpStream) {
+        MessageBoxW(owner,L"The torrent engine DLL is missing one or more required C ABI exports. Rebuild and install the matching Windows x64 runtime.",
                     L"Torrent Stream",MB_OK|MB_ICONERROR);
         FreeLibrary(g_torrentModule);g_torrentModule=NULL;
         g_torrentInitialize=NULL;g_torrentShutdown=NULL;
+        g_torrentAddMagnet=NULL;g_torrentAddFile=NULL;g_torrentGetTask=NULL;
+        g_torrentGetFile=NULL;g_torrentSelectFile=NULL;g_torrentPause=NULL;
+        g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
+        g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
+        g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
         return FALSE;
     }
     return TRUE;
@@ -3628,7 +3684,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentInitPending=FALSE;
         if(g_torrentInitResult==1 && g_torrentShutdown)g_torrentShutdown();
         g_torrentInitialized=FALSE;
-        if(g_torrentModule){FreeLibrary(g_torrentModule);g_torrentModule=NULL;g_torrentInitialize=NULL;g_torrentShutdown=NULL;}
+        if(g_torrentModule){
+            FreeLibrary(g_torrentModule);g_torrentModule=NULL;
+            g_torrentInitialize=NULL;g_torrentShutdown=NULL;
+            g_torrentAddMagnet=NULL;g_torrentAddFile=NULL;g_torrentGetTask=NULL;
+            g_torrentGetFile=NULL;g_torrentSelectFile=NULL;g_torrentPause=NULL;
+            g_torrentResume=NULL;g_torrentRemove=NULL;g_torrentSetRateLimits=NULL;
+            g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
+            g_torrentStartHttpStream=NULL;g_torrentStopHttpStream=NULL;
+        }
         ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}libvlc_media_player_stop(g_player);libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
