@@ -101,7 +101,7 @@ static wchar_t g_dataDir[PATH_CAP];
 static wchar_t g_torrentCacheBaseDir[PATH_CAP];
 static uint64_t g_torrentCacheQuotaGiB=20;
 static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
-static HWND g_settingsWindow=NULL;
+
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
@@ -3666,13 +3666,13 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   SettingsCheck(w,6209,L"Shuffle by default",g_shuffle,28,91,210);SettingsCheck(w,6210,L"Repeat current item",g_repeat,260,91,220);
   SettingsLabel(w,L"AUDIO  /  Processing",24,140,650);SettingsCheck(w,6211,L"ReplayGain normalisation",g_replayGain,28,176,250);SettingsCheck(w,6212,L"Dynamic range compressor",g_compressor,300,176,280);
   SettingsLabel(w,L"TORRENT & STORAGE  /  Cache location and quota",24,226,700);
-  SettingsLabel(w,L"Cache folder",28,264,115);SettingsEdit(w,6201,g_torrentCacheBaseDir,145,260,420);SettingsButton(w,6202,L"Browse…",580,258,105);
-  SettingsButton(w,6203,L"Open folder",580,294,105);SettingsLabel(w,L"Cache quota (GiB)",28,302,170);StringCchPrintfW(n,_countof(n),L"%llu",(unsigned long long)g_torrentCacheQuotaGiB);SettingsEdit(w,6204,n,190,298,85);
-  SettingsLabel(w,L"NETWORK  /  Torrent bandwidth (0 = unlimited)",24,354,650);
-  SettingsLabel(w,L"Download limit (KiB/s)",28,391,190);StringCchPrintfW(n,_countof(n),L"%d",g_torrentDownloadLimitKiB);SettingsEdit(w,6205,n,215,387,100);
-  SettingsLabel(w,L"Upload limit (KiB/s)",365,391,170);StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);SettingsEdit(w,6206,n,535,387,100);
-  SettingsLabel(w,L"UPDATES  /  Maintenance",24,445,650);SettingsButton(w,6215,L"Check for updates",28,480,160);SettingsLabel(w,L"Checks the latest published GitHub release.",205,483,440);
-  g_settingsStatus=CreateWindowW(L"STATIC",L"Settings are saved only when you choose Save settings.",WS_CHILD|WS_VISIBLE,28,540,680,42,w,NULL,NULL,NULL);if(g_settingsFont)SendMessageW(g_settingsStatus,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);
+  SettingsLabel(w,L"Cache parent folder (torrent-cache is created inside)",28,264,500);SettingsEdit(w,6201,g_torrentCacheBaseDir,28,286,537);SettingsButton(w,6202,L"Browse…",580,284,105);
+  SettingsButton(w,6203,L"Open folder",580,320,105);SettingsLabel(w,L"Cache quota (GiB)",28,328,170);StringCchPrintfW(n,_countof(n),L"%llu",(unsigned long long)g_torrentCacheQuotaGiB);SettingsEdit(w,6204,n,190,324,85);
+  SettingsLabel(w,L"NETWORK  /  Torrent bandwidth (0 = unlimited)",24,375,650);
+  SettingsLabel(w,L"Download limit (KiB/s)",28,412,190);StringCchPrintfW(n,_countof(n),L"%d",g_torrentDownloadLimitKiB);SettingsEdit(w,6205,n,215,408,100);
+  SettingsLabel(w,L"Upload limit (KiB/s)",365,412,170);StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);SettingsEdit(w,6206,n,535,408,100);
+  SettingsLabel(w,L"UPDATES  /  Maintenance",24,465,650);SettingsButton(w,6215,L"Check for updates",28,500,160);SettingsLabel(w,L"Checks the latest published GitHub release.",205,503,440);
+  g_settingsStatus=CreateWindowW(L"STATIC",L"Settings are saved only when you choose Save settings.",WS_CHILD|WS_VISIBLE,28,558,680,42,w,NULL,NULL,NULL);if(g_settingsFont)SendMessageW(g_settingsStatus,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);
   SettingsButton(w,6213,L"Save settings",470,610,120);SettingsButton(w,6214,L"Close",600,610,85);return 0;
  }
  case WM_CTLCOLORSTATIC:{HDC dc=(HDC)wp;SetTextColor(dc,SETTINGS_FG);SetBkColor(dc,SETTINGS_BG);return (LRESULT)g_settingsBrush;}
@@ -3685,7 +3685,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   case 6214:DestroyWindow(w);return 0;
   case 6215:ABM_CheckForUpdates(g_main,APP_VERSION);return 0;
  }break;
- case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);FillRect(dc,&r,g_settingsBrush);HPEN p=CreatePen(PS_SOLID,1,RGB(48,77,108)),old=(HPEN)SelectObject(dc,p);int ys[]={128,214,340,432};for(int i=0;i<4;i++){MoveToEx(dc,22,ys[i],NULL);LineTo(dc,710,ys[i]);}SelectObject(dc,old);DeleteObject(p);EndPaint(w,&ps);return 0;}
+ case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);FillRect(dc,&r,g_settingsBrush);HPEN p=CreatePen(PS_SOLID,1,RGB(48,77,108)),old=(HPEN)SelectObject(dc,p);int ys[]={128,214,365,452};for(int i=0;i<4;i++){MoveToEx(dc,22,ys[i],NULL);LineTo(dc,710,ys[i]);}SelectObject(dc,old);DeleteObject(p);EndPaint(w,&ps);return 0;}
  case WM_CLOSE:DestroyWindow(w);return 0;
  case WM_DESTROY:g_settingsWindow=NULL;g_settingsStatus=NULL;if(g_settingsFont)DeleteObject(g_settingsFont);g_settingsFont=NULL;if(g_settingsBrush)DeleteObject(g_settingsBrush);g_settingsBrush=NULL;if(g_settingsEditBrush)DeleteObject(g_settingsEditBrush);g_settingsEditBrush=NULL;return 0;
  }
@@ -3902,6 +3902,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentInitPending=FALSE;
         if(InterlockedCompareExchange(&g_torrentInitResult,0,0)==1) {
             g_torrentInitialized=TRUE;
+            {uint64_t used=0;uint64_t quota=g_torrentCacheQuotaGiB*1024ULL*1024ULL*1024ULL;if(g_torrentSetCacheLimit)g_torrentSetCacheLimit(quota,&used);if(g_torrentSetRateLimits){int d=g_torrentDownloadLimitKiB>INT_MAX/1024?INT_MAX:g_torrentDownloadLimitKiB*1024;int u=g_torrentUploadLimitKiB>INT_MAX/1024?INT_MAX:g_torrentUploadLimitKiB*1024;g_torrentSetRateLimits(d,u);}}
             SetStatus(L"Torrent engine ready");
             ShowTorrentWindow(hwnd);
         } else {
