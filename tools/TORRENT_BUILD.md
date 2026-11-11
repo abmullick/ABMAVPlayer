@@ -28,7 +28,7 @@ From the repository root:
 tools\build_torrent_engine.bat
 ```
 
-Output: `build\torrent-runtime\abm_torrent_engine.dll` plus the vcpkg runtime DLLs.
+Output: `build\torrent-runtime\abm_torrent_engine.dll` plus the vcpkg runtime DLLs. Installer staging keeps these dependencies in a separate `torrent-runtime` directory to avoid collisions with VLC/OpenSSL DLLs.
 
 ## API
 
