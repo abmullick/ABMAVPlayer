@@ -12,7 +12,21 @@ This guide covers the Windows desktop player and its separate Streaming Centre. 
 
 The playlist stores references to media files. Removing an item from the playlist does not delete the original file from disk.
 
-## 2. Playback and fullscreen
+## 2. Application settings
+
+Open **Settings** from the Command Centre. The dedicated dark settings window follows the player's navy/blue visual theme and groups the preferences that are currently supported by the application.
+
+- **General:** default volume, playback speed, shuffle and repeat.
+- **Audio:** ReplayGain normalisation and dynamic-range compressor preferences.
+- **Torrent & Storage:** torrent cache parent folder and cache quota. The engine creates a `torrent-cache` subfolder inside the selected location.
+- **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
+- **Updates:** manually check the latest published GitHub release.
+
+Choose **Browse** to select a different cache folder, then **Save settings** to persist changes. The first-run default is the current Windows user's Downloads known folder, followed by an `ABM AV Player` folder. Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy torrent cache retain their existing location rather than silently abandoning cached data.
+
+If the torrent engine is already running, changing its cache location takes effect after restarting ABM AV Player. Other supported settings are applied immediately where possible. The settings file is stored at `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences remain in `audio.ini`.
+
+## 3. Playback and fullscreen
 
 | Control | What it does |
 |---|---|
@@ -25,7 +39,7 @@ The playlist stores references to media files. Removing an item from the playlis
 
 In fullscreen, move the pointer to reveal the playback overlay. Drag the timeline to seek and use the overlay controls. Press **Esc** or **F11** to return to the windowed player.
 
-## 3. Playlist and recent media
+## 4. Playlist and recent media
 
 - **Add media:** Add more files to the current playlist.
 - **Remove:** Right-click a playlist entry to remove it from the list.
@@ -38,7 +52,7 @@ In fullscreen, move the pointer to reveal the playback overlay. Drag the timelin
 
 Recent items and playback preferences are stored in the current Windows user's application data folder.
 
-## 4. Audio, video and subtitles
+## 5. Audio, video and subtitles
 
 Right-click the video surface while media is playing to access available media actions:
 
@@ -53,7 +67,7 @@ Right-click the video surface while media is playing to access available media a
 
 The audio-track and subtitle menus show only streams exposed by the current media and VLC build.
 
-## 5. Advanced equalizer, now playing and visualizer
+## 6. Advanced equalizer, now playing and visualizer
 
 Open **Advanced equalizer** from the Command Centre or press **Ctrl+E**. The ABM 10-band graphic EQ provides these fixed profiles:
 
