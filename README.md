@@ -43,9 +43,9 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 
 Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
 
-### Torrent Stream — development foundation
+### Torrent Stream — development branch
 
-The Windows development branch includes the native libtorrent 2.1.2 engine, on-demand loading, verified-piece reads and an authenticated loopback HTTP Range source. The source waits for complete, disk-written pieces and serves only the selected file through a random-token URL bound to `127.0.0.1`. The player UI still does not yet create torrent tasks or hand this URL to LibVLC, so progressive playback is **not yet available in the published release**. It does not include a torrent search/catalogue. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for implementation status and limitations.
+The Windows development branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, and an initial local LibVLC progressive-playback handoff. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
