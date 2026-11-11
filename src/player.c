@@ -2726,7 +2726,7 @@ static int64_t g_torrentLastMediaTime=-1;
 static ULONGLONG g_torrentLastProgressTick=0;
 static ULONGLONG g_torrentBufferingSinceTick=0;
 static libvlc_event_manager_t *g_torrentPlayerEventManager=NULL;
-static libvlc_event_type_t g_torrentAttachedEvents[7];
+static enum libvlc_event_e g_torrentAttachedEvents[7];
 static int g_torrentAttachedEventCount=0;
 static HANDLE g_torrentStreamThread=NULL;
 typedef struct TorrentStreamRequest {
@@ -2899,7 +2899,7 @@ static BOOL TorrentAttachPlayerEvents(void) {
     if(!g_player)return FALSE;
     libvlc_event_manager_t *manager=libvlc_media_player_event_manager(g_player);
     if(!manager)return FALSE;
-    static const libvlc_event_type_t types[]={
+    static const enum libvlc_event_e types[]={
         libvlc_MediaPlayerBuffering,libvlc_MediaPlayerPlaying,
         libvlc_MediaPlayerPaused,libvlc_MediaPlayerStopped,
         libvlc_MediaPlayerEndReached,libvlc_MediaPlayerEncounteredError,
@@ -3538,7 +3538,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_TORRENT_PLAYER_EVENT: {
         if(!g_torrentPlaybackActive)return 0;
-        switch((libvlc_event_type_t)wp) {
+        switch((enum libvlc_event_e)wp) {
             case libvlc_MediaPlayerBuffering: {
                 int percent=(int)lp;
                 InterlockedExchange(&g_torrentBufferPercent,percent);
