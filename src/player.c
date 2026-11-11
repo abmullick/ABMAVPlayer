@@ -167,6 +167,7 @@ static COLORREF C_ACCENT = RGB(82,205,224);
 static COLORREF C_LINE = RGB(39,51,70);
 
 static void PlayIndex(int index);
+static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
 static void ApplyEqProfile(void);
 static void ShowEqualizer(void);
@@ -1907,6 +1908,7 @@ static void ApplyEqProfile(void) {
 }
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
+    if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
     DWORD attributes=GetFileAttributesW(g_playlist[index]);
     if(attributes==INVALID_FILE_ATTRIBUTES || (attributes&FILE_ATTRIBUTE_DIRECTORY)){
         wchar_t message[PATH_CAP+128];
@@ -3629,6 +3631,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_STOP,x,y)){
                 ULONGLONG stopStart=GetTickCount64();
                 FullscreenDiag("fullscreen-stop-begin",0);
+                if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
                 libvlc_media_player_stop(g_player);
                 FullscreenDiag("fullscreen-stop-call",GetTickCount64()-stopStart);
                 g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
@@ -3722,6 +3725,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_STOP,x,y)){
             ULONGLONG stopStart=GetTickCount64();
             FullscreenDiag("windowed-stop-begin",0);
+            if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
             libvlc_media_player_stop(g_player);
             FullscreenDiag("windowed-stop-call",GetTickCount64()-stopStart);
             g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
