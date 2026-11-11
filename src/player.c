@@ -29,6 +29,7 @@
 #include <ws2tcpip.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "uxtheme.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "ole32.lib")
 
