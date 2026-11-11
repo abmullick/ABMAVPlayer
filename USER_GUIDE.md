@@ -26,6 +26,30 @@ Choose **Browse** to select a different cache folder, then **Save settings** to 
 
 If the torrent engine is already running, changing its cache location takes effect after restarting ABM AV Player. Other supported settings are applied immediately where possible. The settings file is stored at `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences remain in `audio.ini`.
 
+## 2. Application settings
+
+Open **Settings** from the Command Centre. The dedicated window uses the player's dark navy/blue visual theme and groups the currently supported preferences.
+
+- **General:** volume (0–100), playback speed (0.5x–2.0x), shuffle and repeat.
+- **Audio:** ReplayGain normalisation and dynamic-range compressor.
+- **Torrent & Storage:** cache parent folder and quota (1–4096 GiB; default 20 GiB). The engine creates a `torrent-cache` subfolder inside the selected parent.
+- **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
+- **Updates:** manually check the latest public GitHub release.
+
+Choose **Browse** to select a cache parent folder, then **Save settings**. **Open folder** opens the selected parent in File Explorer.
+
+On a new installation, the cache is created under the Windows user's Downloads known folder:
+
+```text
+<Windows Downloads>\\ABM AV Player\\torrent-cache
+```
+
+Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy cache under `%APPDATA%\\ABMAVPlayer\\torrent-cache` retain that location unless the user chooses another.
+
+Changing the cache parent does not automatically move existing cache data. If Torrent Stream is already running, the active session continues using its original path; restart ABM AV Player to activate the new path. Keep the old folder if you want to preserve its cached pieces.
+
+Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences are also stored in `audio.ini`. For the full option reference and troubleshooting, see [Application Settings](SETTINGS.md).
+
 ## 3. Playback and fullscreen
 
 | Control | What it does |
