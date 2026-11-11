@@ -3146,6 +3146,7 @@ static void TorrentRefreshStatus(void) {
     } else if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
 }
 static void TorrentStopPlayback(void) {
+    BOOL hadLocalStream=(g_torrentStreamThread!=NULL)||g_torrentPlaybackActive;
     TorrentDetachPlayerEvents();
     if(g_torrentStreamThread) {
         InterlockedExchange(&g_torrentStreamCancel,1);
@@ -3155,7 +3156,7 @@ static void TorrentStopPlayback(void) {
         if(g_player)libvlc_media_player_stop(g_player);
         g_torrentPlaybackActive=FALSE;g_hasMedia=FALSE;ResetArtwork();
     }
-    if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
+    if(hadLocalStream&&g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
     if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_IDLE)
         TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
 }
@@ -3226,13 +3227,14 @@ static void TorrentBeginCastToTV(void) {
     TorrentSetLabel(g_torrentStatusLabel,L"Preparing a secure LAN stream and buffering verified torrent pieces for your TV…");
 }
 static void TorrentStopTvCasting(void) {
+    BOOL hadTvStream=(g_torrentTvStreamThread!=NULL)||g_torrentTvPlaybackActive;
     if(g_torrentTvStreamThread) {
         InterlockedExchange(&g_torrentTvStreamCancel,1);
         if(g_torrentStopHttpStream)g_torrentStopHttpStream();
     }
     if(g_torrentTvPlaybackActive)ABM_TorrentDlna_StopPlayback();
     g_torrentTvPlaybackActive=FALSE;
-    if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
+    if(hadTvStream&&g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
     TorrentSetLabel(g_torrentStatusLabel,L"TV playback stopped. Torrent downloading continues to the Windows download folder.");
 }
 static DWORD WINAPI TorrentStreamWorker(void *arg) {
@@ -3263,6 +3265,7 @@ static DWORD WINAPI TorrentStreamWorker(void *arg) {
     return 0;
 }
 static void TorrentBeginStream(void) {
+    if(g_torrentTvPlaybackActive||g_torrentTvStreamThread)TorrentStopTvCasting();
     if(!g_torrentInitialized||!g_torrentTaskId||!g_torrentGetFile||!g_torrentStartHttpStream)return;
     if(g_torrentStreamThread){TorrentSetLabel(g_torrentStatusLabel,L"A stream is already preparing.");return;}
     int sel=(int)SendMessageW(g_torrentFileList,LB_GETCURSEL,0,0);
@@ -3308,7 +3311,7 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     }
     if(!ok){TorrentSetLabel(g_torrentStatusLabel,error[0]?error:L"Could not add this torrent source.");return;}
     if(g_torrentTaskId&&g_torrentTaskId!=id) {
-        TorrentStopPlayback();
+        TorrentStopTvCasting();TorrentStopPlayback();
         g_torrentRemove(g_torrentTaskId,FALSE);
     }
     g_torrentTaskId=id;g_torrentListedForTask=-1;g_torrentListedFileCount=0;g_torrentSelectedFile=-1;
