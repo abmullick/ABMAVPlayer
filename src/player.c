@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <shlobj.h>
+#include <KnownFolders.h>
 #include <urlmon.h>
 #include <winhttp.h>
 #include <wincodec.h>
