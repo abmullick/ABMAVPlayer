@@ -12,7 +12,16 @@ This guide covers the Windows desktop player and its separate Streaming Centre. 
 
 The playlist stores references to media files. Removing an item from the playlist does not delete the original file from disk.
 
-## 2. Application settings
+## 2. Media & Streaming Hub
+
+Open **Media & Streaming Hub** from the Command Centre. It presents two large navigation cards that match the main player's dark navy/blue design:
+
+- **Streaming & TVs:** opens the separate Streaming Centre for provider websites, Google Cast/DLNA/DIAL TV discovery, TV app launching and supported casting workflows. You can also open it directly with **Ctrl+Shift+S**.
+- **Torrent Streaming:** opens the separate Torrent Stream manager to add a magnet URI or `.torrent` file, select a video, inspect peers and transfer rates, and start progressive playback. You can also open it directly with **Ctrl+Shift+T**. The torrent manager is a separate window; the actual video plays in the main LibVLC player.
+
+The two windows are separate from local playback and from each other's receiver/session state.
+
+## 3. Application settings
 
 Open **Settings** from the Command Centre. The dedicated dark settings window follows the player's navy/blue visual theme and groups the preferences that are currently supported by the application.
 
@@ -232,7 +241,7 @@ Users can also download the installer manually from [GitHub Releases](https://gi
 | Ctrl+E | Open Advanced equalizer |
 | Ctrl+Shift+H | Toggle shuffle |
 | Ctrl+R | Toggle repeat-current-track |
-| Ctrl+Shift+S | Open Streaming Centre |
+| Ctrl+Shift+S | Open Streaming Centre |\n| Ctrl+Shift+T | Open Torrent Stream manager |
 | F1 | Open main-player Help |
 | Ctrl+I | Open About |
 | Esc | Close the menu or leave fullscreen |
