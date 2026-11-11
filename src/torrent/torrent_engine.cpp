@@ -273,7 +273,7 @@ public:
             ti=std::move(metadata);
         }
         if(!task||task->removed.load()||!ti)return false;
-        if(ti->files().symlink(index).size()!=0)return false;
+        if(ti->files().symlink(index).size()!=0||ti->files().pad_file_at(index))return false;
         try {
             const std::string fullUtf8=ti->files().file_path(index,data_.u8string());
             fs::path target=fs::weakly_canonical(fs::u8path(fullUtf8));
@@ -298,15 +298,17 @@ public:
         {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end()){err=L"Torrent task no longer exists.";return false;}task=it->second;}
         auto ti=task->handle.torrent_file();
         if(!ti||index<0||index>=ti->files().num_files()){err=L"Torrent file metadata is not ready.";return false;}
-        if(ti->files().symlink(index).size()!=0){err=L"Symbolic-link entries cannot be streamed.";return false;}
+        if(ti->files().symlink(index).size()!=0||ti->files().pad_file_at(index)){err=L"Symbolic-link and padding entries cannot be streamed.";return false;}
         const int64_t size=ti->files().file_size(index);
         if(size<=0){err=L"Empty files cannot be streamed.";return false;}
-        if(BCryptGenRandom(nullptr,token_bytes_,sizeof(token_bytes_),BCRYPT_USE_SYSTEM_PREFERRED_RNG)<0){
+        unsigned char randomToken[32]{};
+        if(BCryptGenRandom(nullptr,randomToken,sizeof(randomToken),BCRYPT_USE_SYSTEM_PREFERRED_RNG)<0){
             err=L"Windows could not create a secure stream token.";return false;
         }
         static const wchar_t hex[]=L"0123456789abcdef";
         std::wstring token;token.reserve(64);
-        for(unsigned char b:token_bytes_){token.push_back(hex[b>>4]);token.push_back(hex[b&15]);}
+        for(unsigned char b:randomToken){token.push_back(hex[b>>4]);token.push_back(hex[b&15]);}
+        SecureZeroMemory(randomToken,sizeof(randomToken));
         SOCKET listener=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
         if(listener==INVALID_SOCKET){err=L"Could not create the loopback HTTP socket.";return false;}
         BOOL exclusive=TRUE;setsockopt(listener,SOL_SOCKET,SO_EXCLUSIVEADDRUSE,(const char*)&exclusive,sizeof(exclusive));
@@ -341,8 +343,9 @@ public:
         if(http_socket_!=INVALID_SOCKET)shutdown(http_socket_,SD_BOTH);
         if(http_accept_thread_.joinable())http_accept_thread_.join();
         if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
-        http_task_id_.store(0);http_file_index_=-1;http_file_size_=0;http_token_.clear();
-        SecureZeroMemory(token_bytes_,sizeof(token_bytes_));
+        http_task_id_.store(0);http_file_index_=-1;http_file_size_=0;
+        if(!http_token_.empty())SecureZeroMemory(http_token_.data(),http_token_.size()*sizeof(wchar_t));
+        http_token_.clear();
     }
 
 private:
@@ -548,7 +551,6 @@ private:
     int http_file_index_=-1;
     int64_t http_file_size_=0;
     std::wstring http_token_;
-    unsigned char token_bytes_[32]{};
     bool winsock_ready_=false;
     uint64_t next_=0;
 };
