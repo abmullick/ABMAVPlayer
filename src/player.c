@@ -3082,7 +3082,12 @@ static void TorrentBeginStream(void) {
         TorrentSetLabel(g_torrentStatusLabel,L"Could not read the selected file metadata.");return;
     }
     if(!g_torrentSelectFile(g_torrentTaskId,fileIndex)) {
-        TorrentSetLabel(g_torrentStatusLabel,L"Could not prioritize the selected file.");return;
+        ABM_TorrentTaskInfo cacheError={0};
+        if(g_torrentGetTask&&g_torrentGetTask(g_torrentTaskId,&cacheError)&&cacheError.error[0])
+            TorrentSetLabel(g_torrentStatusLabel,cacheError.error);
+        else
+            TorrentSetLabel(g_torrentStatusLabel,L"Could not prioritize the selected file.");
+        return;
     }
     g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;g_torrentLastProgressTick=0;g_torrentBufferingSinceTick=0;
     InterlockedExchange(&g_torrentBufferPercent,0);
