@@ -3570,7 +3570,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 break;
             case libvlc_MediaPlayerTimeChanged: {
                 int64_t mediaTime=(int64_t)(LONG_PTR)lp;
-                if(g_torrentLastMediaTime<0||mediaTime>g_torrentLastMediaTime) {
+                if(g_torrentLastMediaTime<0||mediaTime!=g_torrentLastMediaTime) {
                     g_torrentLastMediaTime=mediaTime;
                     g_torrentLastProgressTick=GetTickCount64();
                     TorrentSetBufferProgress(100);
