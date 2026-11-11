@@ -2757,6 +2757,7 @@ static TorrentStreamRequest *g_torrentStreamRequest=NULL;
 #define ID_TORRENT_REFRESH 5109
 #define ID_TORRENT_CACHE_LIMIT 5110
 #define ID_TORRENT_CLEAR_CACHE 5111
+#define ID_TORRENT_CACHE_APPLY 5112
 #define ID_TORRENT_DOWN_LIMIT 5110
 #define ID_TORRENT_UP_LIMIT 5111
 #define ID_TORRENT_APPLY_LIMITS 5112
@@ -2991,6 +2992,10 @@ static void TorrentRefreshCacheStatus(void) {
     StringCchPrintfW(line,_countof(line),L"Disk cache: %s used of %s  |  Location: %s\\torrent-cache",
         usedText,limitText,g_dataDir);
     TorrentSetLabel(g_torrentCacheInfoLabel,line);
+    if(g_torrentCacheLimitEdit&&GetFocus()!=g_torrentCacheLimitEdit) {
+        wchar_t quota[32];StringCchPrintfW(quota,_countof(quota),L"%llu",(unsigned long long)(limit/(1024ULL*1024ULL*1024ULL)));
+        SetWindowTextW(g_torrentCacheLimitEdit,quota);
+    }
 }
 static void TorrentRefreshStatus(void) {
     if(!g_torrentWindow||!g_torrentTaskId||!g_torrentGetTask)return;
@@ -3154,7 +3159,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"20",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,165,670,65,26,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
         SendMessageW(g_torrentCacheLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,245,668,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,245,668,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_APPLY,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,668,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3186,7 +3191,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 TorrentSetLabel(g_torrentStatusLabel,L"Task removed. Downloaded data was retained.");
                 return 0;
             case ID_TORRENT_REFRESH:TorrentRefreshStatus();TorrentRefreshCacheStatus();return 0;
-            case ID_TORRENT_CACHE_LIMIT: {
+            case ID_TORRENT_CACHE_APPLY: {
                 wchar_t value[32]=L"";GetWindowTextW(g_torrentCacheLimitEdit,value,(int)_countof(value));
                 wchar_t *end=NULL;unsigned long long gib=_wcstoui64(value,&end,10);
                 if(!value[0]||!end||*end||gib<1||gib>4096) {
