@@ -1,0 +1,46 @@
+name: Windows Torrent Engine
+
+on:
+  push:
+    branches:
+      - feature/windows-torrent-stream-phase1
+    paths:
+      - "src/torrent/**"
+      - "tools/build_torrent_engine.bat"
+      - "vcpkg.json"
+      - ".github/workflows/windows-torrent-engine.yml"
+  pull_request:
+    paths:
+      - "src/torrent/**"
+      - "tools/build_torrent_engine.bat"
+      - "vcpkg.json"
+      - ".github/workflows/windows-torrent-engine.yml"
+  workflow_dispatch:
+
+jobs:
+  build-x64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure vcpkg
+        shell: pwsh
+        run: |
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install pinned dependencies
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_ROOT\vcpkg.exe" install
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build torrent engine
+        shell: cmd
+        run: tools\build_torrent_engine.bat
+
+      - name: Upload engine artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: abm-torrent-engine-windows-x64
+          path: build/torrent-runtime/*.dll
+          if-no-files-found: error
