@@ -26,6 +26,18 @@ Download the installer, run it, and follow the setup instructions. The installer
 
 ## Features
 
+### Central application settings
+
+The Command Centre includes a dedicated **Settings** window styled to match the player's dark navy/blue interface. It centralises currently supported application preferences:
+
+- General playback defaults: volume, speed, shuffle and repeat.
+- Audio processing: ReplayGain and dynamic-range compressor.
+- Torrent storage: cache parent folder and 1–4096 GiB quota.
+- Torrent network: download and upload limits (0 = unlimited).
+- Maintenance: manual GitHub release update check.
+
+On a new installation, torrent cache data is stored under the Windows user's resolved Downloads folder in `ABM AV Player\\torrent-cache`. Redirected Windows Downloads locations are respected. Existing installations with a legacy cache retain that location. Cache-location changes made while the torrent engine is active take effect after an application restart.
+
 ### Streaming Centre — browser services and independent TV casting
 
 Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 window with its own navigation, receiver-selection and casting workflow.

@@ -22,12 +22,15 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <shlobj.h>
+#include <KnownFolders.h>
 #include <urlmon.h>
 #include <winhttp.h>
 #include <wincodec.h>
 #include <ws2tcpip.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "ole32.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -37,6 +40,20 @@
 #define APP_VERSION L"1.0.2"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
 #define ID_RENDERERS 1010
+#define ID_SETTINGS_CACHE_PATH 6201
+#define ID_SETTINGS_BROWSE 6202
+#define ID_SETTINGS_OPEN_CACHE 6203
+#define ID_SETTINGS_CACHE_QUOTA 6204
+#define ID_SETTINGS_DOWN_LIMIT 6205
+#define ID_SETTINGS_UP_LIMIT 6206
+#define ID_SETTINGS_VOLUME 6207
+#define ID_SETTINGS_RATE 6208
+#define ID_SETTINGS_SHUFFLE 6209
+#define ID_SETTINGS_REPEAT 6210
+#define ID_SETTINGS_REPLAY_GAIN 6211
+#define ID_SETTINGS_COMPRESSOR 6212
+#define ID_SETTINGS_APPLY 6213
+#define ID_SETTINGS_CANCEL 6214
 #define WM_RENDERERS_CHANGED (WM_APP + 10)
 #define WM_ARTWORK_READY (WM_APP + 11)
 #define WM_ARTWORK_DOWNLOAD_READY (WM_APP + 12)
@@ -82,6 +99,11 @@ static BOOL g_endHandled = FALSE;
 static wchar_t g_recent[MAX_RECENT][PATH_CAP];
 static int g_recentCount=0;
 static wchar_t g_dataDir[PATH_CAP];
+static wchar_t g_torrentCacheBaseDir[PATH_CAP];
+static wchar_t g_torrentActiveCacheBaseDir[PATH_CAP];
+static uint64_t g_torrentCacheQuotaGiB=20;
+static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
+
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static BOOL g_receiverLost=FALSE;
@@ -152,7 +174,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[17], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[18], R_FULLSCREEN;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
 static float g_eqPreamp=0.0f;
@@ -605,9 +627,9 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/17;
+    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/18;
     if(menuRowHeight<1)menuRowHeight=1;
-    for(int i=0;i<17;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
+    for(int i=0;i<18;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1264,21 +1286,21 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
         Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
-        const wchar_t *labels[17]={
+        const wchar_t *labels[18]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
             L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
-            L"Torrent Stream (initialize engine)"
+            L"Settings",L"Torrent Stream (initialize engine)"
         };
-        const wchar_t *shortcuts[17]={
+        const wchar_t *shortcuts[18]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L""
+            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L""
         };
-        const wchar_t *icons[17]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"BT"};
-        for(int i=0;i<17;i++) {
+        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"BT"};
+        for(int i=0;i<18;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==9)labels[9]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
@@ -1776,6 +1798,38 @@ static BOOL EnsureDataDirectory(void) {
     if(!CreateDirectoryW(g_dataDir,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
     return TRUE;
 }
+static BOOL EnsureTorrentCacheBaseDir(void) {
+    if(g_torrentCacheBaseDir[0]) {
+        if(!CreateDirectoryW(g_torrentCacheBaseDir,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
+        return TRUE;
+    }
+    wchar_t settingsPath[PATH_CAP],legacyCache[PATH_CAP];
+    if(g_dataDir[0]) {
+        StringCchPrintfW(settingsPath,_countof(settingsPath),L"%s\\settings.ini",g_dataDir);
+        GetPrivateProfileStringW(L"Torrent",L"CacheBaseDir",L"",g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),settingsPath);
+        if(g_torrentCacheBaseDir[0]) {
+            if(!CreateDirectoryW(g_torrentCacheBaseDir,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
+            return TRUE;
+        }
+        StringCchPrintfW(legacyCache,_countof(legacyCache),L"%s\\torrent-cache",g_dataDir);
+        DWORD legacy=GetFileAttributesW(legacyCache);
+        if(legacy!=INVALID_FILE_ATTRIBUTES&&(legacy&FILE_ATTRIBUTE_DIRECTORY)) {
+            wcsncpy_s(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),g_dataDir,_TRUNCATE);
+            return TRUE;
+        }
+    }
+    PWSTR downloads=NULL;
+    if(SUCCEEDED(SHGetKnownFolderPath(&FOLDERID_Downloads,KF_FLAG_CREATE,NULL,&downloads))&&downloads) {
+        StringCchPrintfW(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),L"%s\\ABM AV Player",downloads);
+        CoTaskMemFree(downloads);
+    } else {
+        wchar_t profile[PATH_CAP]={0};
+        if(FAILED(SHGetFolderPathW(NULL,CSIDL_PROFILE,NULL,SHGFP_TYPE_CURRENT,profile)))return FALSE;
+        StringCchPrintfW(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),L"%s\\Downloads\\ABM AV Player",profile);
+    }
+    if(!CreateDirectoryW(g_torrentCacheBaseDir,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
+    return TRUE;
+}
 static void SavePersistentState(void);
 static void PruneUnavailablePlaylistItems(void) {
     int write=0,removed=0;
@@ -1808,6 +1862,10 @@ static void SavePersistentState(void) {
     swprintf_s(value,32,L"%d",g_shuffle?1:0);WritePrivateProfileStringW(L"Player",L"Shuffle",value,path);
     swprintf_s(value,32,L"%d",g_repeat?1:0);WritePrivateProfileStringW(L"Player",L"Repeat",value,path);
     swprintf_s(value,32,L"%d",(int)(g_playbackRate*100.0f));WritePrivateProfileStringW(L"Player",L"RatePercent",value,path);
+    swprintf_s(value,32,L"%llu",(unsigned long long)g_torrentCacheQuotaGiB);WritePrivateProfileStringW(L"Torrent",L"CacheQuotaGiB",value,path);
+    swprintf_s(value,32,L"%d",g_torrentDownloadLimitKiB);WritePrivateProfileStringW(L"Torrent",L"DownloadLimitKiB",value,path);
+    swprintf_s(value,32,L"%d",g_torrentUploadLimitKiB);WritePrivateProfileStringW(L"Torrent",L"UploadLimitKiB",value,path);
+    WritePrivateProfileStringW(L"Torrent",L"CacheBaseDir",g_torrentCacheBaseDir,path);
 }
 static void LoadPersistentState(void) {
     if(!EnsureDataDirectory())return;
@@ -1816,6 +1874,13 @@ static void LoadPersistentState(void) {
     g_shuffle=GetPrivateProfileIntW(L"Player",L"Shuffle",0,path)!=0;
     g_repeat=GetPrivateProfileIntW(L"Player",L"Repeat",0,path)!=0;
     g_playbackRate=(float)GetPrivateProfileIntW(L"Player",L"RatePercent",100,path)/100.0f;
+    g_torrentCacheQuotaGiB=(uint64_t)GetPrivateProfileIntW(L"Torrent",L"CacheQuotaGiB",20,path);
+    if(g_torrentCacheQuotaGiB<1||g_torrentCacheQuotaGiB>4096)g_torrentCacheQuotaGiB=20;
+    g_torrentDownloadLimitKiB=GetPrivateProfileIntW(L"Torrent",L"DownloadLimitKiB",0,path);
+    g_torrentUploadLimitKiB=GetPrivateProfileIntW(L"Torrent",L"UploadLimitKiB",0,path);
+    if(g_torrentDownloadLimitKiB<0)g_torrentDownloadLimitKiB=0;if(g_torrentUploadLimitKiB<0)g_torrentUploadLimitKiB=0;
+    GetPrivateProfileStringW(L"Torrent",L"CacheBaseDir",L"",g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path);
+    EnsureTorrentCacheBaseDir();
     if(g_volume<0||g_volume>100)g_volume=70;
     if(g_playbackRate<0.5f||g_playbackRate>2.0f)g_playbackRate=1.0f;
     const wchar_t *files[2]={L"library.m3u",L"recent.m3u"};
@@ -2709,6 +2774,8 @@ static volatile LONG g_torrentInitResult=0; /* 0=pending, 1=ready, -1=failed */
 static BOOL g_torrentInitPending=FALSE;
 static BOOL g_torrentInitialized=FALSE;
 static void ShowTorrentWindow(HWND owner);
+static void ShowSettingsDialog(HWND owner);
+static BOOL EnsureTorrentCacheBaseDir(void);
 static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
@@ -2822,7 +2889,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
 
 static DWORD WINAPI TorrentInitializeWorker(void *parameter) {
     HWND owner=(HWND)parameter;
-    BOOL ok=g_torrentInitialize && g_torrentInitialize(g_dataDir);
+    BOOL ok=g_torrentInitialize && g_torrentInitialize(g_torrentActiveCacheBaseDir[0]?g_torrentActiveCacheBaseDir:(g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir));
     InterlockedExchange(&g_torrentInitResult,ok?1:-1);
     if(owner)PostMessageW(owner,WM_TORRENT_INIT_DONE,0,0);
     return 0;
@@ -2834,8 +2901,8 @@ static void StartTorrentEngine(HWND owner) {
         SetStatus(L"Torrent engine initialization is already in progress...");
         return;
     }
-    if(!EnsureDataDirectory()) {
-        MessageBoxW(owner,L"ABM AV Player could not create its application data directory.",
+    if(!EnsureDataDirectory() || !EnsureTorrentCacheBaseDir()) {
+        MessageBoxW(owner,L"ABM AV Player could not prepare its application data directory or torrent cache location.",
                     L"Torrent Stream",MB_OK|MB_ICONWARNING);
         return;
     }
@@ -2845,6 +2912,7 @@ static void StartTorrentEngine(HWND owner) {
     }
     InterlockedExchange(&g_torrentInitResult,0);
     g_torrentInitPending=TRUE;
+    wcsncpy_s(g_torrentActiveCacheBaseDir,_countof(g_torrentActiveCacheBaseDir),g_torrentCacheBaseDir,_TRUNCATE);
     g_torrentInitThread=CreateThread(NULL,0,TorrentInitializeWorker,owner,0,NULL);
     if(!g_torrentInitThread) {
         g_torrentInitPending=FALSE;
@@ -2990,7 +3058,7 @@ static void TorrentRefreshCacheStatus(void) {
     TorrentFormatBytes((int64_t)(used>INT64_MAX?INT64_MAX:used),usedText,_countof(usedText));
     TorrentFormatBytes((int64_t)(limit>INT64_MAX?INT64_MAX:limit),limitText,_countof(limitText));
     StringCchPrintfW(line,_countof(line),L"Disk cache: %s used of %s  |  Location: %s\\torrent-cache",
-        usedText,limitText,g_dataDir);
+        usedText,limitText,(g_torrentInitialized||g_torrentInitPending)?(g_torrentActiveCacheBaseDir[0]?g_torrentActiveCacheBaseDir:g_dataDir):(g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir));
     TorrentSetLabel(g_torrentCacheInfoLabel,line);
     if(g_torrentCacheLimitEdit&&GetFocus()!=g_torrentCacheLimitEdit) {
         wchar_t quota[32];StringCchPrintfW(quota,_countof(quota),L"%llu",(unsigned long long)(limit/(1024ULL*1024ULL*1024ULL)));
@@ -3535,6 +3603,109 @@ static void ShowAboutDialog(HWND owner) {
     EnableWindow(owner,TRUE); SetActiveWindow(owner);
 }
 
+
+#define SETTINGS_BG RGB(13,23,39)
+#define SETTINGS_FG RGB(226,236,248)
+static HFONT g_settingsFont;
+static HBRUSH g_settingsBrush,g_settingsEditBrush;
+static HWND g_settingsWindow,g_settingsStatus;
+static void SettingsLabel(HWND w,const wchar_t *t,int x,int y,int width) {
+ HWND h=CreateWindowW(L"STATIC",t,WS_CHILD|WS_VISIBLE,x,y,width,24,w,NULL,NULL,NULL);
+ if(h&&g_settingsFont)SendMessageW(h,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);
+}
+static HWND SettingsEdit(HWND w,int id,const wchar_t *t,int x,int y,int width) {
+ HWND h=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",t,WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,x,y,width,27,w,(HMENU)(INT_PTR)id,NULL,NULL);
+ if(h&&g_settingsFont)SendMessageW(h,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);return h;
+}
+static HWND SettingsButton(HWND w,int id,const wchar_t *t,int x,int y,int width) {
+ HWND h=CreateWindowW(L"BUTTON",t,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,x,y,width,30,w,(HMENU)(INT_PTR)id,NULL,NULL);
+ if(h&&g_settingsFont)SendMessageW(h,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);return h;
+}
+static HWND SettingsCheck(HWND w,int id,const wchar_t *t,int checked,int x,int y,int width) {
+ HWND h=CreateWindowW(L"BUTTON",t,WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,x,y,width,25,w,(HMENU)(INT_PTR)id,NULL,NULL);
+ if(h&&g_settingsFont)SendMessageW(h,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);
+ SendMessageW(h,BM_SETCHECK,checked?BST_CHECKED:BST_UNCHECKED,0);return h;
+}
+static void SettingsBrowse(HWND w) {
+ BROWSEINFOW bi={0};bi.hwndOwner=w;bi.lpszTitle=L"Select torrent cache folder";bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE;
+ PIDLIST_ABSOLUTE pid=SHBrowseForFolderW(&bi);if(!pid)return;
+ wchar_t path[PATH_CAP]={0};if(SHGetPathFromIDListW(pid,path))SetWindowTextW(GetDlgItem(w,6201),path);CoTaskMemFree(pid);
+}
+static void SettingsApply(HWND w) {
+ wchar_t path[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0};
+ GetWindowTextW(GetDlgItem(w,6201),path,_countof(path));GetWindowTextW(GetDlgItem(w,6204),q,_countof(q));
+ GetWindowTextW(GetDlgItem(w,6205),d,_countof(d));GetWindowTextW(GetDlgItem(w,6206),u,_countof(u));GetWindowTextW(GetDlgItem(w,6207),v,_countof(v));
+ wchar_t *qe,*de,*ue,*ve;unsigned long long quota=_wcstoui64(q,&qe,10),down=_wcstoui64(d,&de,10),up=_wcstoui64(u,&ue,10),volume=_wcstoui64(v,&ve,10);
+ if(!path[0]||!q[0]||*qe||quota<1||quota>4096||!d[0]||*de||down>(unsigned long long)INT_MAX/1024||!u[0]||*ue||up>(unsigned long long)INT_MAX/1024||!v[0]||*ve||volume>100) {
+  SetWindowTextW(g_settingsStatus,L"Invalid values. Quota 1–4096 GiB; bandwidth 0–2,097,151 KiB/s; volume 0–100.");return;
+ }
+ DWORD attr=GetFileAttributesW(path);
+ if(attr==INVALID_FILE_ATTRIBUTES) {if(!CreateDirectoryW(path,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS){SetWindowTextW(g_settingsStatus,L"Could not create the selected folder.");return;}}
+ else if(!(attr&FILE_ATTRIBUTE_DIRECTORY)){SetWindowTextW(g_settingsStatus,L"Cache location must be a folder.");return;}
+ BOOL changed=_wcsicmp(path,g_torrentCacheBaseDir)!=0;
+ if(changed&&(g_torrentInitialized||g_torrentInitPending)&&MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
+ wcsncpy_s(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path,_TRUNCATE);
+ g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
+ g_shuffle=SendMessageW(GetDlgItem(w,6209),BM_GETCHECK,0,0)==BST_CHECKED;
+ g_repeat=SendMessageW(GetDlgItem(w,6210),BM_GETCHECK,0,0)==BST_CHECKED;
+ g_replayGain=SendMessageW(GetDlgItem(w,6211),BM_GETCHECK,0,0)==BST_CHECKED;
+ g_compressor=SendMessageW(GetDlgItem(w,6212),BM_GETCHECK,0,0)==BST_CHECKED;
+ int ri=(int)SendMessageW(GetDlgItem(w,6208),CB_GETCURSEL,0,0);const float rates[7]={0.5f,0.75f,1.0f,1.25f,1.5f,1.75f,2.0f};if(ri<0||ri>6)ri=2;g_playbackRate=rates[ri];
+ if(g_player)libvlc_audio_set_volume(g_player,g_volume);if(g_hasMedia)libvlc_media_player_set_rate(g_player,g_playbackRate);
+ SavePersistentState();SaveAudioPreferences();ApplyEqProfile();
+ if(g_torrentInitialized){uint64_t used=0;if(g_torrentSetCacheLimit)g_torrentSetCacheLimit(quota*1024ULL*1024ULL*1024ULL,&used);if(g_torrentSetRateLimits)g_torrentSetRateLimits((int)(down*1024),(int)(up*1024));}
+ SetWindowTextW(g_settingsStatus,changed&&(g_torrentInitialized||g_torrentInitPending)?L"Saved. Restart the application to activate the new torrent cache location.":L"All settings saved successfully.");
+ InvalidateRect(g_main,NULL,FALSE);
+}
+static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
+ switch(msg) {
+ case WM_CREATE: {
+  g_settingsFont=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+  SettingsLabel(w,L"GENERAL  /  Playback defaults",24,18,650);
+  SettingsLabel(w,L"Volume (0–100)",28,54,160);wchar_t n[32];StringCchPrintfW(n,_countof(n),L"%d",g_volume);SettingsEdit(w,6207,n,190,50,85);
+  SettingsLabel(w,L"Playback speed",335,54,150);HWND cb=CreateWindowW(L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,480,50,125,170,w,(HMENU)6208,NULL,NULL);
+  const wchar_t *rates[]={L"0.5x",L"0.75x",L"1.0x",L"1.25x",L"1.5x",L"1.75x",L"2.0x"};const float rv[]={0.5f,0.75f,1,1.25f,1.5f,1.75f,2};int sel=2;
+  for(int i=0;i<7;i++){SendMessageW(cb,CB_ADDSTRING,0,(LPARAM)rates[i]);if(fabsf(g_playbackRate-rv[i])<0.01f)sel=i;}SendMessageW(cb,CB_SETCURSEL,sel,0);SendMessageW(cb,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);
+  SettingsCheck(w,6209,L"Shuffle by default",g_shuffle,28,91,210);SettingsCheck(w,6210,L"Repeat current item",g_repeat,260,91,220);
+  SettingsLabel(w,L"AUDIO  /  Processing",24,140,650);SettingsCheck(w,6211,L"ReplayGain normalisation",g_replayGain,28,176,250);SettingsCheck(w,6212,L"Dynamic range compressor",g_compressor,300,176,280);
+  SettingsLabel(w,L"TORRENT & STORAGE  /  Cache location and quota",24,226,700);
+  SettingsLabel(w,L"Cache parent folder (torrent-cache is created inside)",28,264,500);SettingsEdit(w,6201,g_torrentCacheBaseDir,28,286,537);SettingsButton(w,6202,L"Browse…",580,284,105);
+  SettingsButton(w,6203,L"Open folder",580,320,105);SettingsLabel(w,L"Cache quota (GiB)",28,328,170);StringCchPrintfW(n,_countof(n),L"%llu",(unsigned long long)g_torrentCacheQuotaGiB);SettingsEdit(w,6204,n,190,324,85);
+  SettingsLabel(w,L"NETWORK  /  Torrent bandwidth (0 = unlimited)",24,375,650);
+  SettingsLabel(w,L"Download limit (KiB/s)",28,412,190);StringCchPrintfW(n,_countof(n),L"%d",g_torrentDownloadLimitKiB);SettingsEdit(w,6205,n,215,408,100);
+  SettingsLabel(w,L"Upload limit (KiB/s)",365,412,170);StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);SettingsEdit(w,6206,n,535,408,100);
+  SettingsLabel(w,L"UPDATES  /  Maintenance",24,465,650);SettingsButton(w,6215,L"Check for updates",28,500,160);SettingsLabel(w,L"Checks the latest published GitHub release.",205,503,440);
+  g_settingsStatus=CreateWindowW(L"STATIC",L"Settings are saved only when you choose Save settings.",WS_CHILD|WS_VISIBLE,28,558,680,42,w,NULL,NULL,NULL);if(g_settingsFont)SendMessageW(g_settingsStatus,WM_SETFONT,(WPARAM)g_settingsFont,TRUE);
+  SettingsButton(w,6213,L"Save settings",470,610,120);SettingsButton(w,6214,L"Close",600,610,85);return 0;
+ }
+ case WM_CTLCOLORSTATIC:{HDC dc=(HDC)wp;SetTextColor(dc,SETTINGS_FG);SetBkColor(dc,SETTINGS_BG);return (LRESULT)g_settingsBrush;}
+ case WM_CTLCOLOREDIT:{HDC dc=(HDC)wp;SetTextColor(dc,SETTINGS_FG);SetBkColor(dc,RGB(25,39,57));return (LRESULT)g_settingsEditBrush;}
+ case WM_CTLCOLORBTN:{HDC dc=(HDC)wp;SetTextColor(dc,SETTINGS_FG);SetBkColor(dc,SETTINGS_BG);return (LRESULT)g_settingsBrush;}
+ case WM_COMMAND:switch(LOWORD(wp)){
+  case 6202:SettingsBrowse(w);return 0;
+  case 6203:{wchar_t p[PATH_CAP];GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
+  case 6213:SettingsApply(w);return 0;
+  case 6214:DestroyWindow(w);return 0;
+  case 6215:ABM_CheckForUpdates(g_main,APP_VERSION);return 0;
+ }break;
+ case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT r;GetClientRect(w,&r);FillRect(dc,&r,g_settingsBrush);HPEN p=CreatePen(PS_SOLID,1,RGB(48,77,108)),old=(HPEN)SelectObject(dc,p);int ys[]={128,214,365,452};for(int i=0;i<4;i++){MoveToEx(dc,22,ys[i],NULL);LineTo(dc,710,ys[i]);}SelectObject(dc,old);DeleteObject(p);EndPaint(w,&ps);return 0;}
+ case WM_CLOSE:DestroyWindow(w);return 0;
+ case WM_DESTROY:g_settingsWindow=NULL;g_settingsStatus=NULL;if(g_settingsFont)DeleteObject(g_settingsFont);g_settingsFont=NULL;if(g_settingsBrush)DeleteObject(g_settingsBrush);g_settingsBrush=NULL;if(g_settingsEditBrush)DeleteObject(g_settingsEditBrush);g_settingsEditBrush=NULL;return 0;
+ }
+ return DefWindowProcW(w,msg,wp,lp);
+}
+static void ShowSettingsDialog(HWND owner) {
+ if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
+ static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+ if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+ RECT wr={0,0,750,690};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
+ int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;g_settingsBrush=CreateSolidBrush(SETTINGS_BG);g_settingsEditBrush=CreateSolidBrush(RGB(25,39,57));
+ g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
+ if(!g_settingsWindow)return;BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+ {int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+ EnableWindow(owner,FALSE);ShowWindow(g_settingsWindow,SW_SHOW);UpdateWindow(g_settingsWindow);MSG m;while(IsWindow(g_settingsWindow)&&GetMessageW(&m,NULL,0,0)>0){if(!IsDialogMessageW(g_settingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}EnableWindow(owner,TRUE);SetActiveWindow(owner);
+}
+
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -3734,6 +3905,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentInitPending=FALSE;
         if(InterlockedCompareExchange(&g_torrentInitResult,0,0)==1) {
             g_torrentInitialized=TRUE;
+            {uint64_t used=0;uint64_t quota=g_torrentCacheQuotaGiB*1024ULL*1024ULL*1024ULL;if(g_torrentSetCacheLimit)g_torrentSetCacheLimit(quota,&used);if(g_torrentSetRateLimits){int d=g_torrentDownloadLimitKiB>INT_MAX/1024?INT_MAX:g_torrentDownloadLimitKiB*1024;int u=g_torrentUploadLimitKiB>INT_MAX/1024?INT_MAX:g_torrentUploadLimitKiB*1024;g_torrentSetRateLimits(d,u);}}
             SetStatus(L"Torrent engine ready");
             ShowTorrentWindow(hwnd);
         } else {
@@ -4025,7 +4197,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<17;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<18;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 PositionVideoWindow();
                 SyncRendererComboVisibility();
@@ -4045,7 +4217,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==13)ABM_CheckForUpdates(hwnd,APP_VERSION);
                 else if(mi==14)PostMessageW(hwnd,WM_CLOSE,0,0);
                 else if(mi==15)ShowAboutDialog(hwnd);
-                else if(mi==16)ShowTorrentWindow(hwnd);
+                else if(mi==16)ShowSettingsDialog(hwnd);
+                else if(mi==17)ShowTorrentWindow(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -4112,10 +4285,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+16)%17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+17)%18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=16;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
         if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
@@ -4165,7 +4338,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
-        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<16;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<18;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
