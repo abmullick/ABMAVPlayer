@@ -1,0 +1,5 @@
+{
+  "name": "abm-av-player",
+  "version-string": "1.0.2",
+  "dependencies": [ "libtorrent" ]
+}
