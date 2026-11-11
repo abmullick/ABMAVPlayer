@@ -29,11 +29,18 @@
 #include <ws2tcpip.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "uxtheme.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "ole32.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+#ifndef DWMWA_BORDER_COLOR
+#define DWMWA_BORDER_COLOR 34
+#endif
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
 #endif
 
 #define APP_NAME L"ABM AV Player"
@@ -621,15 +628,31 @@ static void UpdateLayout(HWND hwnd) {
     R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
     R_MENU_BUTTON=(RECT){w-244,16,w-156,72};
     R_DRAWER_BUTTON=(RECT){w-144,16,w-20,72};
-    R_MENU_PANEL=(RECT){w-376,74,w-20,74+690};
+    R_MENU_PANEL=(RECT){w-540,74,w-20,74+690};
     /* Keep the complete command menu inside the client area, including at the
        minimum supported window height. Rows share the remaining space evenly. */
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/18;
+    /* Two prominent launch cards lead the Command Centre: Streaming & TVs
+       and Torrent Stream. Remaining commands use a compact two-column grid. */
+    int menuMid=(R_MENU_PANEL.left+R_MENU_PANEL.right)/2;
+    R_MENU_ITEMS[11]=(RECT){R_MENU_PANEL.left+12,R_MENU_PANEL.top+54,menuMid-5,R_MENU_PANEL.top+154};
+    R_MENU_ITEMS[17]=(RECT){menuMid+5,R_MENU_PANEL.top+54,R_MENU_PANEL.right-12,R_MENU_PANEL.top+154};
+    int menuRowsTop=R_MENU_PANEL.top+166;
+    int menuRowsHeight=R_MENU_PANEL.bottom-menuRowsTop-12;
+    int menuRowHeight=menuRowsHeight/8;
     if(menuRowHeight<1)menuRowHeight=1;
-    for(int i=0;i<18;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
+    int menuRow=0;
+    for(int i=0;i<18;i++) {
+        if(i==11||i==17)continue;
+        int col=menuRow%2,row=menuRow/2;
+        int left=col?menuMid+5:R_MENU_PANEL.left+12;
+        int right=col?R_MENU_PANEL.right-12:menuMid-5;
+        int y=menuRowsTop+row*menuRowHeight;
+        R_MENU_ITEMS[i]=(RECT){left,y,right,y+menuRowHeight-3};
+        menuRow++;
+    }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1290,16 +1313,16 @@ static void DrawUI(HDC dc,RECT client) {
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
-            L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
-            L"Settings",L"Torrent Stream (initialize engine)"
+            L"Streaming & TVs",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
+            L"Settings",L"Torrent Stream"
         };
         const wchar_t *shortcuts[18]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L""
+            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L"Ctrl+Shift+T"
         };
-        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"BT"};
+        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"TV",L"?",L"↻",L"×",L"i",L"⚙",L"BT"};
         for(int i=0;i<18;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -1308,14 +1331,29 @@ static void DrawUI(HDC dc,RECT client) {
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             RECT row=item;InflateRect(&row,-1,-1);
-            if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
-            else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),10);
-            RECT glyph={item.left+9,item.top+5,item.left+39,item.bottom-5};
-            GradientRound(dc,glyph,hot?RGB(34,132,157):RGB(27,48,73),hot?RGB(75,82,166):RGB(42,53,91),8);
+            if(i==11||i==17) {
+                if(hot)GradientRound(dc,row,RGB(24,119,143),RGB(76,67,157),15);
+                else GradientRound(dc,row,i==11?RGB(19,55,78):RGB(28,43,68),i==11?RGB(35,48,91):RGB(66,43,87),15);
+                ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,15.0f,hot?RGB(112,205,231):RGB(65,105,143),1.1f);
+                RECT glyph={item.left+14,item.top+12,item.left+58,item.top+56};
+                GradientRound(dc,glyph,RGB(34,132,157),RGB(75,82,166),11);
+                Txt(dc,icons[i],glyph,RGB(250,253,255),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                RECT title={item.left+70,item.top+10,item.right-12,item.top+48};
+                Txt(dc,labels[i],title,RGB(250,253,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                RECT desc={item.left+16,item.top+60,item.right-12,item.top+80};
+                Txt(dc,i==11?L"Services  •  Discover TVs  •  Launch apps":L"Magnet links  •  Progressive video",desc,RGB(174,201,224),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                RECT shortcut={item.right-104,item.top+80,item.right-12,item.bottom-7};
+                Txt(dc,shortcuts[i],shortcut,RGB(143,190,218),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+                continue;
+            }
+            if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),9);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,9.0f,RGB(83,169,202),1.0f);}
+            else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),9);
+            RECT glyph={item.left+7,item.top+4,item.left+34,item.bottom-4};
+            GradientRound(dc,glyph,hot?RGB(34,132,157):RGB(27,48,73),hot?RGB(75,82,166):RGB(42,53,91),7);
             Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+49,item.top+2,item.right-104,item.bottom-2};
-            Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            RECT shortcut={item.right-100,item.top+2,item.right-10,item.bottom-2};
+            RECT label={item.left+41,item.top+2,item.right-78,item.bottom-2};
+            Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT shortcut={item.right-76,item.top+2,item.right-7,item.bottom-2};
             Txt(dc,shortcuts[i],shortcut,hot?RGB(201,231,248):RGB(144,171,198),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         }
     }
@@ -3197,9 +3235,16 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     TorrentSetLabel(g_torrentStatusLabel,L"Torrent added. Waiting for metadata…");
     TorrentRefreshStatus();
 }
+static HBRUSH g_torrentWindowBrush=NULL;
+static BOOL CALLBACK TorrentApplyDarkTheme(HWND child,LPARAM unused) {
+    (void)unused;
+    SetWindowTheme(child,L"DarkMode_Explorer",NULL);
+    return TRUE;
+}
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
+        if(!g_torrentWindowBrush)g_torrentWindowBrush=CreateSolidBrush(RGB(9,15,26));
         HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         HWND h=CreateWindowExW(0,L"STATIC",L"Add a magnet URI or open a local .torrent file. Only select content you are legally entitled to access.",WS_CHILD|WS_VISIBLE,20,16,760,36,hwnd,NULL,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3244,6 +3289,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
         for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        /* Apply the same dark-mode control theme as the main application.
+           WM_CTLCOLOR handlers below provide a consistent fallback background. */
+        EnumChildWindows(hwnd,TorrentApplyDarkTheme,0);
         TorrentRefreshCacheStatus();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
@@ -3310,6 +3358,19 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }break;
     case WM_TIMER:if(wp==1){TorrentRefreshStatus();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
+    case WM_ERASEBKGND: {
+        RECT rc;GetClientRect(hwnd,&rc);
+        FillRect((HDC)wp,&rc,g_torrentWindowBrush?g_torrentWindowBrush:(HBRUSH)(COLOR_WINDOW+1));
+        return 1;
+    }
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX: {
+        HDC dc=(HDC)wp;
+        SetTextColor(dc,RGB(226,236,248));
+        SetBkColor(dc,RGB(9,15,26));
+        return (LRESULT)(g_torrentWindowBrush?g_torrentWindowBrush:(HBRUSH)GetStockObject(DKGRAY_BRUSH));
+    }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         KillTimer(hwnd,1);
@@ -3318,7 +3379,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
-        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;return 0;
+        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;
+        if(g_torrentWindowBrush){DeleteObject(g_torrentWindowBrush);g_torrentWindowBrush=NULL;}
+        return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3330,7 +3393,11 @@ static void ShowTorrentWindow(HWND owner) {
     RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
-    if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
+    if(g_torrentWindow){
+        BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+        COLORREF caption=RGB(10,15,25),border=RGB(46,70,104);DwmSetWindowAttribute(g_torrentWindow,DWMWA_CAPTION_COLOR,&caption,sizeof(caption));DwmSetWindowAttribute(g_torrentWindow,DWMWA_BORDER_COLOR,&border,sizeof(border));
+        ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();
+    }
 }
 
 static HBITMAP g_aboutPortrait = NULL;
@@ -3440,6 +3507,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"\r\n"
             L"PLAYLISTS AND RECENT MEDIA\r\n"
             L"Add multiple files, double-click an item to play, and right-click a playlist row for item actions. Load Playlist and Save Playlist use M3U files. Recent media opens the recent-items list. Shuffle changes next-item order; Repeat current repeats the active item. The playlist supports up to 256 entries. Shuffle, repeat, playback speed and recent/playlist state are saved for your Windows user.\r\n"
+            L"\r\n"
+            L"COMMAND CENTRE — STREAMING & TVs AND TORRENT STREAM\r\n"
+            L"Open the Command Centre from the main player to access two large launch cards. Streaming & TVs opens the separate Streaming Centre for provider websites, Find TVs, TV app launching and supported casting. Torrent Stream opens its own separate manager window for magnet links, .torrent files, file selection, download controls and progressive playback. Torrent video is played by the main LibVLC player while the Torrent Stream window manages the source. Use Ctrl+Shift+S for Streaming & TVs or Ctrl+Shift+T for Torrent Stream. These windows remain separate from the main player's local playback and local TV output controls.\r\n"
             L"\r\n"
             L"APPLICATION SETTINGS\r\n"
             L"Open Settings from the Command Centre to configure the player in one dedicated window. General includes volume, playback speed, shuffle and repeat defaults. Audio includes ReplayGain normalisation and the dynamic-range compressor. Torrent & Storage lets you choose the cache parent folder and set a cache quota from 1 to 4096 GiB. The player creates a torrent-cache subfolder inside the selected parent. Network controls set torrent download and upload limits in KiB/s; enter 0 for unlimited. Updates provides a manual check for the latest public GitHub release. Choose Save settings to persist your changes.\r\n"
@@ -4304,6 +4374,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
+        if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
@@ -4594,8 +4665,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&darkTitle,sizeof(darkTitle));
 #ifndef DWMWA_WINDOW_CORNER_PREFERENCE
 #define DWMWA_WINDOW_CORNER_PREFERENCE 33
-#define DWMWA_BORDER_COLOR 34
-#define DWMWA_CAPTION_COLOR 35
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
 #endif
     { int corners=2; COLORREF border=RGB(46,70,104),caption=RGB(10,15,25); int backdrop=2;

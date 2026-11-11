@@ -14,20 +14,6 @@ The playlist stores references to media files. Removing an item from the playlis
 
 ## 2. Application settings
 
-Open **Settings** from the Command Centre. The dedicated dark settings window follows the player's navy/blue visual theme and groups the preferences that are currently supported by the application.
-
-- **General:** default volume, playback speed, shuffle and repeat.
-- **Audio:** ReplayGain normalisation and dynamic-range compressor preferences.
-- **Torrent & Storage:** torrent cache parent folder and cache quota. The engine creates a `torrent-cache` subfolder inside the selected location.
-- **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
-- **Updates:** manually check the latest published GitHub release.
-
-Choose **Browse** to select a different cache folder, then **Save settings** to persist changes. The first-run default is the current Windows user's Downloads known folder, followed by an `ABM AV Player` folder. Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy torrent cache retain their existing location rather than silently abandoning cached data.
-
-If the torrent engine is already running, changing its cache location takes effect after restarting ABM AV Player. Other supported settings are applied immediately where possible. The settings file is stored at `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences remain in `audio.ini`.
-
-## 2. Application settings
-
 Open **Settings** from the Command Centre. The dedicated window uses the player's dark navy/blue visual theme and groups the currently supported preferences.
 
 - **General:** volume (0–100), playback speed (0.5x–2.0x), shuffle and repeat.
@@ -49,6 +35,15 @@ Windows Known Folder resolution respects redirected Downloads locations. Existin
 Changing the cache parent does not automatically move existing cache data. If Torrent Stream is already running, the active session continues using its original path; restart ABM AV Player to activate the new path. Keep the old folder if you want to preserve its cached pieces.
 
 Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences are also stored in `audio.ini`. For the full option reference and troubleshooting, see [Application Settings](SETTINGS.md).
+
+## Command Centre navigation
+
+Open the Command Centre from the main player. Two prominent launch cards provide direct access to the separate media windows:
+
+- **Streaming & TVs** — opens the Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5, plus its independent Find TVs and supported TV app/casting controls. Shortcut: **Ctrl+Shift+S**.
+- **Torrent Stream** — opens the separate torrent manager for magnet links and local .torrent files. Add a source, wait for metadata, select a video and choose **Stream selected**. Shortcut: **Ctrl+Shift+T**.
+
+The Streaming Centre and Torrent Stream manager are separate windows; neither replaces the main player. Torrent video is played in the main LibVLC playback surface while the Torrent Stream window continues to manage the torrent task. The main player's local Playback Output selector and local casting path remain independent.
 
 ## 3. Playback and fullscreen
 

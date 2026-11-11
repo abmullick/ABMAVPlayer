@@ -25,6 +25,15 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
+## Main-window navigation
+
+The main player's Command Centre presents two prominent launch cards alongside the regular commands:
+
+- **Streaming & TVs** opens the separate Streaming Centre for streaming-service websites, TV discovery, app launching and supported casting. Shortcut: **Ctrl+Shift+S**.
+- **Torrent Stream** opens a separate torrent manager for magnet links, local .torrent files, download controls and progressive video streaming. Shortcut: **Ctrl+Shift+T**.
+
+The two windows remain independent of the main player's local playback and local TV-output controls. Torrent video playback is rendered by the main LibVLC player while the Torrent Stream window manages the torrent task.
+
 ## Features
 
 ### Central application settings
@@ -41,7 +50,7 @@ On a new installation, torrent cache data is stored under the Windows user's res
 
 ### Streaming Centre — browser services and independent TV casting
 
-Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 window with its own navigation, receiver-selection and casting workflow.
+Choose the large **Streaming & TVs** card in the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 window with its own navigation, receiver-selection and casting workflow.
 
 - Six provider launch cards: **YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5**. Each opens the provider's official website.
 - Sign in directly with your provider. ABM AV Player does not collect, proxy or store provider passwords.
@@ -58,7 +67,7 @@ Streaming Centre casting uses its own receiver selection and playback path. It d
 
 ### Torrent Stream — development branch
 
-The `main` branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, separate download/upload rate limits (KiB/s; 0 = unlimited), and local LibVLC progressive playback. Torrent pieces are persisted in per-info-hash folders under `torrent-cache`, with a configurable 20 GiB default cache quota (1–4096 GiB), usage reporting, preflight quota checks, oldest-inactive-folder cleanup and a Clear inactive cache control. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. Live playback monitoring distinguishes initial buffering, normal playback, buffering during playback, recovery after a six-second stall, pause, stop and failure, with a buffer progress bar when LibVLC reports cache percentage. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
+Choose the large **Torrent Stream** card in the Command Centre or press **Ctrl+Shift+T** to open its separate manager window. The main player remains the playback surface for torrent video. The `main` branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, separate download/upload rate limits (KiB/s; 0 = unlimited), and local LibVLC progressive playback. Torrent pieces are persisted in per-info-hash folders under `torrent-cache`, with a configurable 20 GiB default cache quota (1–4096 GiB), usage reporting, preflight quota checks, oldest-inactive-folder cleanup and a Clear inactive cache control. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. Live playback monitoring distinguishes initial buffering, normal playback, buffering during playback, recovery after a six-second stall, pause, stop and failure, with a buffer progress bar when LibVLC reports cache percentage. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
