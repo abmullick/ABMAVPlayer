@@ -1340,9 +1340,9 @@ static void DrawUI(HDC dc,RECT client) {
                 Txt(dc,icons[i],glyph,RGB(250,253,255),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
                 RECT title={item.left+70,item.top+10,item.right-12,item.top+48};
                 Txt(dc,labels[i],title,RGB(250,253,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                RECT desc={item.left+16,item.top+61,item.right-12,item.bottom-8};
-                Txt(dc,i==11?L"Streaming services  •  Find TVs  •  Launch apps":L"Magnet links  •  Progressive video playback",desc,RGB(174,201,224),g_smallFont,DT_LEFT|DT_VCENTER|DT_WORDBREAK|DT_END_ELLIPSIS);
-                RECT shortcut={item.right-104,item.bottom-25,item.right-12,item.bottom-7};
+                RECT desc={item.left+16,item.top+60,item.right-12,item.top+80};
+                Txt(dc,i==11?L"Services  •  Discover TVs  •  Launch apps":L"Magnet links  •  Progressive video",desc,RGB(174,201,224),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                RECT shortcut={item.right-104,item.top+80,item.right-12,item.bottom-7};
                 Txt(dc,shortcuts[i],shortcut,RGB(143,190,218),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
                 continue;
             }
