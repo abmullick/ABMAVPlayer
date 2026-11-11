@@ -1327,10 +1327,9 @@ static void DrawUI(HDC dc,RECT client) {
                     hot?RGB(111,208,222):(i==11?RGB(52,139,161):RGB(155,104,94)),1.2f);
             }else if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
             else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),10);
-            int glyphW=featured?42:30;
             RECT glyph={item.left+(featured?15:9),item.top+(featured?10:5),item.left+(featured?57:39),item.bottom-(featured?10:5)};
             GradientRound(dc,glyph,hot?RGB(34,132,157):(featured?(i==11?RGB(28,118,132):RGB(145,78,48)):RGB(27,48,73)),hot?RGB(75,82,166):(featured?RGB(42,53,91):RGB(42,53,91)),featured?11:8);
-            Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),featured?g_titleFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),featured?g_headingFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+(featured?70:49),item.top+(featured?7:2),item.right-104,item.bottom-(featured?7:2)};
             if(featured){
                 RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+4;
