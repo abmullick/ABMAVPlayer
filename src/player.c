@@ -174,7 +174,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[18], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_FULLSCREEN;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
 static float g_eqPreamp=0.0f;
@@ -627,9 +627,9 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/18;
+    int menuRowHeight=(R_MENU_PANEL.bottom-R_MENU_PANEL.top-60)/19;
     if(menuRowHeight<1)menuRowHeight=1;
-    for(int i=0;i<18;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
+    for(int i=0;i<19;i++)R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,R_MENU_PANEL.top+54+i*menuRowHeight,R_MENU_PANEL.right-10,R_MENU_PANEL.top+54+(i+1)*menuRowHeight-3};
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1286,21 +1286,21 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
         Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
-        const wchar_t *labels[18]={
+        const wchar_t *labels[19]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
             L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
-            L"Settings",L"Torrent Stream (initialize engine)"
+            L"Settings",L"Torrent Stream (initialize engine)",L"Media & Streaming Hub"
         };
-        const wchar_t *shortcuts[18]={
+        const wchar_t *shortcuts[19]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L""
+            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L"",L"Open hub"
         };
-        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"BT"};
-        for(int i=0;i<18;i++) {
+        const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"BT",L"GO"};
+        for(int i=0;i<19;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==9)labels[9]=g_repeat?L"Repeat current: On":L"Repeat current: Off";
@@ -2778,6 +2778,8 @@ static void ShowSettingsDialog(HWND owner);
 static BOOL EnsureTorrentCacheBaseDir(void);
 static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
+static HFONT g_torrentUiFont=NULL;
+static HBRUSH g_torrentUiBrush=NULL,g_torrentEditBrush=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
 static HWND g_torrentCacheLimitEdit=NULL,g_torrentCacheInfoLabel=NULL;
 static uint64_t g_torrentTaskId=0;
@@ -3200,14 +3202,16 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        g_torrentUiBrush=CreateSolidBrush(RGB(8,14,25));g_torrentEditBrush=CreateSolidBrush(RGB(22,37,56));
+        g_torrentUiFont=CreateFontW(-16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        HFONT font=g_torrentUiFont;
         HWND h=CreateWindowExW(0,L"STATIC",L"Add a magnet URI or open a local .torrent file. Only select content you are legally entitled to access.",WS_CHILD|WS_VISIBLE,20,16,760,36,hwnd,NULL,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
         SendMessageW(g_torrentMagnetEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Open .torrent",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,715,62,105,30,hwnd,(HMENU)ID_TORRENT_BROWSE,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Open .torrent",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,715,62,105,30,hwnd,(HMENU)ID_TORRENT_BROWSE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentInfoLabel=CreateWindowW(L"STATIC",L"No torrent loaded",WS_CHILD|WS_VISIBLE,20,108,800,42,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3226,15 +3230,15 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentUpLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,570,502,85,26,hwnd,(HMENU)ID_TORRENT_UP_LIMIT,NULL,NULL);
         SendMessageW(g_torrentUpLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"STATIC",L"Cache quota (GiB)",WS_CHILD|WS_VISIBLE,20,612,145,22,hwnd,NULL,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"20",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,165,608,65,26,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
         SendMessageW(g_torrentCacheLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,245,606,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_APPLY,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,245,606,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_APPLY,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3243,10 +3247,34 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             {ID_TORRENT_STOP,L"Stop stream",300,110},{ID_TORRENT_REMOVE,L"Remove task",420,110},
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
-        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
         TorrentRefreshCacheStatus();
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
+    case WM_ERASEBKGND: { RECT rc;GetClientRect(hwnd,&rc);FillRect((HDC)wp,&rc,g_torrentUiBrush);return 1; }
+    case WM_DRAWITEM: {
+        DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
+        if(d&&d->CtlType==ODT_BUTTON) {
+            BOOL hot=(d->itemState&ODS_SELECTED)!=0,disabled=(d->itemState&ODS_DISABLED)!=0;
+            COLORREF fill=disabled?RGB(25,34,47):(hot?RGB(27,91,119):RGB(20,48,72));
+            HBRUSH br=CreateSolidBrush(fill);FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);
+            HPEN pen=CreatePen(PS_SOLID,1,hot?RGB(91,202,224):RGB(52,105,142));
+            HGDIOBJ oldPen=SelectObject(d->hDC,pen),oldBrush=SelectObject(d->hDC,GetStockObject(HOLLOW_BRUSH));
+            RoundRect(d->hDC,d->rcItem.left+1,d->rcItem.top+1,d->rcItem.right-1,d->rcItem.bottom-1,9,9);
+            SelectObject(d->hDC,oldBrush);SelectObject(d->hDC,oldPen);DeleteObject(pen);
+            wchar_t label[128]=L"";GetWindowTextW(d->hwndItem,label,(int)_countof(label));
+            SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,disabled?RGB(120,135,151):RGB(233,245,253));
+            HFONT oldFont=(HFONT)SelectObject(d->hDC,g_torrentUiFont);
+            RECT text=d->rcItem;InflateRect(&text,-5,-2);
+            DrawTextW(d->hDC,label,-1,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            SelectObject(d->hDC,oldFont);return TRUE;
+        }
+        break;
+    }
+    case WM_CTLCOLORSTATIC: { HDC dc=(HDC)wp;SetTextColor(dc,RGB(218,231,243));SetBkColor(dc,RGB(8,14,25));return (LRESULT)g_torrentUiBrush; }
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX: { HDC dc=(HDC)wp;SetTextColor(dc,RGB(239,246,253));SetBkColor(dc,RGB(22,37,56));return (LRESULT)g_torrentEditBrush; }
+    case WM_CTLCOLORBTN: { HDC dc=(HDC)wp;SetTextColor(dc,RGB(232,242,251));SetBkColor(dc,RGB(22,45,67));return (LRESULT)g_torrentUiBrush; }
     case WM_COMMAND:
         switch(LOWORD(wp)) {
             case ID_TORRENT_ADD_MAGNET:TorrentAddSource(hwnd,FALSE);return 0;
@@ -3318,7 +3346,10 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
-        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;return 0;
+        g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;
+        if(g_torrentUiFont)DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;
+        if(g_torrentUiBrush)DeleteObject(g_torrentUiBrush);g_torrentUiBrush=NULL;
+        if(g_torrentEditBrush)DeleteObject(g_torrentEditBrush);g_torrentEditBrush=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3330,7 +3361,88 @@ static void ShowTorrentWindow(HWND owner) {
     RECT wr;GetWindowRect(owner,&wr);int w=860,h=730;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
-    if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
+    if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
+}
+
+
+#define ID_MEDIA_HUB_STREAMING 5301
+#define ID_MEDIA_HUB_TORRENT 5302
+static HWND g_mediaHubWindow=NULL;
+static HFONT g_mediaHubTitleFont=NULL,g_mediaHubBodyFont=NULL;
+static HBRUSH g_mediaHubBrush=NULL;
+static LRESULT CALLBACK MediaHubWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
+    case WM_CREATE: {
+        g_mediaHubBrush=CreateSolidBrush(RGB(8,14,25));
+        
+        g_mediaHubTitleFont=CreateFontW(-30,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        g_mediaHubBodyFont=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        HWND a=CreateWindowW(L"BUTTON",L"",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,28,142,410,270,hwnd,(HMENU)ID_MEDIA_HUB_STREAMING,GetModuleHandleW(NULL),NULL);
+        HWND b=CreateWindowW(L"BUTTON",L"",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,462,142,410,270,hwnd,(HMENU)ID_MEDIA_HUB_TORRENT,GetModuleHandleW(NULL),NULL);
+        (void)a;(void)b;return 0;
+    }
+    case WM_ERASEBKGND: { RECT rc;GetClientRect(hwnd,&rc);FillRect((HDC)wp,&rc,g_mediaHubBrush);return 1; }
+    case WM_DRAWITEM: {
+        DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
+        if(d&&(d->CtlID==ID_MEDIA_HUB_STREAMING||d->CtlID==ID_MEDIA_HUB_TORRENT)) {
+            BOOL hot=(d->itemState&ODS_SELECTED)!=0,stream=(d->CtlID==ID_MEDIA_HUB_STREAMING);
+            HBRUSH br=CreateSolidBrush(hot?RGB(25,64,91):RGB(16,29,47));
+            FillRect(d->hDC,&d->rcItem,br);DeleteObject(br);
+            HPEN pen=CreatePen(PS_SOLID,1,hot?RGB(75,185,220):RGB(48,83,117));
+            HGDIOBJ oldPen=SelectObject(d->hDC,pen),oldBrush=SelectObject(d->hDC,GetStockObject(HOLLOW_BRUSH));
+            RoundRect(d->hDC,d->rcItem.left+1,d->rcItem.top+1,d->rcItem.right-1,d->rcItem.bottom-1,22,22);
+            SelectObject(d->hDC,oldBrush);SelectObject(d->hDC,oldPen);DeleteObject(pen);
+            SetBkMode(d->hDC,TRANSPARENT);
+            RECT icon={d->rcItem.left+24,d->rcItem.top+24,d->rcItem.left+104,d->rcItem.top+104};
+            HBRUSH ib=CreateSolidBrush(stream?RGB(24,94,119):RGB(82,66,132));FillRect(d->hDC,&icon,ib);DeleteObject(ib);
+            HFONT old=(HFONT)SelectObject(d->hDC,g_mediaHubTitleFont);
+            SetTextColor(d->hDC,RGB(246,250,255));
+            RECT title={d->rcItem.left+24,d->rcItem.top+124,d->rcItem.right-20,d->rcItem.top+174};
+            DrawTextW(d->hDC,stream?L"Streaming & TVs":L"Torrent Streaming",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(d->hDC,g_mediaHubBodyFont);SetTextColor(d->hDC,RGB(171,193,215));
+            RECT body={d->rcItem.left+24,d->rcItem.top+180,d->rcItem.right-24,d->rcItem.bottom-48};
+            DrawTextW(d->hDC,stream?L"Open streaming services, discover Google TV and Android TV devices, launch TV apps and manage the Streaming Centre.":L"Add a magnet link or .torrent file, select a video, monitor peers and download progress, then play progressively in the main player.",-1,&body,DT_WORDBREAK|DT_TOP);
+            SelectObject(d->hDC,old);
+            SetTextColor(d->hDC,RGB(90,207,231));
+            RECT action={d->rcItem.left+24,d->rcItem.bottom-42,d->rcItem.right-24,d->rcItem.bottom-12};
+            DrawTextW(d->hDC,stream?L"OPEN STREAMING CENTRE   →":L"OPEN TORRENT WINDOW   →",-1,&action,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            return TRUE;
+        }
+        break;
+    }
+    case WM_COMMAND:
+        if(LOWORD(wp)==ID_MEDIA_HUB_STREAMING){DestroyWindow(hwnd);ABM_Streaming_Show(g_main);return 0;}
+        if(LOWORD(wp)==ID_MEDIA_HUB_TORRENT){DestroyWindow(hwnd);ShowTorrentWindow(g_main);return 0;}
+        break;
+    case WM_CTLCOLORSTATIC: {
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(229,239,249));SetBkColor(dc,RGB(8,14,25));return (LRESULT)g_mediaHubBrush;
+    }
+    case WM_PAINT: {
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
+        FillRect(dc,&rc,g_mediaHubBrush);SetBkMode(dc,TRANSPARENT);
+        HFONT old=(HFONT)SelectObject(dc,g_mediaHubTitleFont);SetTextColor(dc,RGB(244,249,255));
+        RECT title={28,24,rc.right-28,72};DrawTextW(dc,L"MEDIA & STREAMING",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,g_mediaHubBodyFont);SetTextColor(dc,RGB(151,176,201));
+        RECT sub={30,78,rc.right-28,112};DrawTextW(dc,L"Choose where you want to go. These experiences run independently from local media playback.",-1,&sub,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
+    }
+    case WM_CLOSE:DestroyWindow(hwnd);return 0;
+    case WM_DESTROY:
+        g_mediaHubWindow=NULL;
+        if(g_mediaHubTitleFont)DeleteObject(g_mediaHubTitleFont);g_mediaHubTitleFont=NULL;
+        if(g_mediaHubBodyFont)DeleteObject(g_mediaHubBodyFont);g_mediaHubBodyFont=NULL;
+        if(g_mediaHubBrush)DeleteObject(g_mediaHubBrush);g_mediaHubBrush=NULL;
+        return 0;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
+static void ShowMediaHub(HWND owner) {
+    if(g_mediaHubWindow&&IsWindow(g_mediaHubWindow)){ShowWindow(g_mediaHubWindow,SW_SHOWNORMAL);SetForegroundWindow(g_mediaHubWindow);return;}
+    static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=MediaHubWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerMediaHub";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    RECT o;GetWindowRect(owner,&o);int w=920,h=500,x=o.left+(o.right-o.left-w)/2,y=o.top+(o.bottom-o.top-h)/2;if(x<0)x=20;if(y<0)y=20;
+    g_mediaHubWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerMediaHub",L"ABM AV Player — Media & Streaming",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
+    if(g_mediaHubWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_mediaHubWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);DwmSetWindowAttribute(g_mediaHubWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_mediaHubWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_mediaHubWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));ShowWindow(g_mediaHubWindow,SW_SHOW);UpdateWindow(g_mediaHubWindow);}
 }
 
 static HBITMAP g_aboutPortrait = NULL;
@@ -3457,6 +3569,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"LOCAL PLAYBACK OUTPUT — FIND TVs / CAST TO TV\r\n"
             L"Open the Media / Settings drawer, expand Playback Output, choose Find TVs / Find network devices and wait for discovery. Select a receiver before playback or while a file is playing. Choose Local playback to return to the PC. This local-player output uses LibVLC renderer discovery; compatible Google Cast / Chromecast receivers and other renderers exposed by the installed VLC build may appear. A full 64-bit VLC runtime with renderer-discovery and Chromecast plugins is required for Google Cast. Keep the PC and TV on the same non-guest LAN and allow ABM AV Player/VLC through Windows Defender Firewall on Private networks. VPNs, guest Wi-Fi, router client isolation or blocked mDNS can prevent discovery. Android TV branding alone does not guarantee Google Cast support.\r\n"
             L"\r\n"
+            L"MEDIA & STREAMING NAVIGATION\r\n"
+            L"Open Media & Streaming Hub from the Command Centre to choose between two large navigation cards: Streaming & TVs opens the separate Streaming Centre for online services and TV discovery; Torrent Streaming opens the separate Torrent Stream manager for magnet links, .torrent files, file selection, download status and progressive playback. The hub and both windows use the ABM dark navy/blue visual language. Ctrl+Shift+S opens Streaming Centre directly; Ctrl+Shift+T opens the Torrent Stream window directly. Torrent video playback itself is handed to the main LibVLC player, while torrent management stays in its own window.\r\n"
+            L"\r\n"
             L"STREAMING CENTRE — ONLINE SERVICES AND TV CASTING\r\n"
             L"Open Streaming services from the Command Centre or press Ctrl+Shift+S. Choose YouTube, Netflix, Prime Video, JioHotstar, Sony LIV or ZEE5. These are the providers' official websites inside Microsoft Edge WebView2. Sign in on the provider's website; ABM AV Player does not collect or proxy passwords. The browser profile is stored locally under %LOCALAPPDATA%\\ABMAVPlayer\\WebView2, so supported sessions can persist.\r\n"
             L"The Streaming Centre has its own Find TVs device panel and Cast video action. It discovers Google Cast, DLNA/UPnP and DIAL receivers; it is separate from local-media playback and its receiver selection does not change the main player's output. Select a TV in the panel, then choose Cast video. YouTube video handoff uses a TV's Google Cast V2 or DIAL YouTube receiver; generic direct video URLs may be sent through a compatible Cast/DLNA route. Check TV apps probes Google Cast app IDs for YouTube (233637DE) and an experimental Prime Video receiver (17608BC8), plus DIAL application endpoints. The app selector also offers clearly labelled DIAL launch attempts for Netflix, SonyLIV and ZEE5 when the selected TV exposes DIAL, even if its GET status endpoint is unavailable; the TV may reject an unsupported app name. Launch app opens the selected TV app only and does not transfer a browser title or provider session. Netflix and Prime Video title handoff from the desktop browser is not supported. YouTube title handoff remains supported through Google Cast V2/DIAL. Protected, encrypted, segmented or otherwise non-direct streams are not extracted or relayed. Receiver compatibility varies.\r\n"
@@ -3473,7 +3588,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"\r\n"
             L"KEYBOARD SHORTCUTS\r\n"
             L"Ctrl+O  Open media     |     Ctrl+D  Find network devices\r\n"
-            L"Ctrl+Shift+C  Start local-player receiver discovery     |     Ctrl+Shift+S  Open Streaming Centre\r\n"
+            L"Ctrl+Shift+C  Start local-player receiver discovery     |     Ctrl+Shift+S  Open Streaming Centre     |     Ctrl+Shift+T  Open Torrent Stream\r\n"
             L"Space  Play/Pause     |     Left/Right  Seek 10 seconds     |     Home  Seek to beginning\r\n"
             L"N / P  Next/Previous item     |     + / -  Change playback speed     |     F11  Fullscreen\r\n"
             L"Ctrl+L  Load playlist     |     Ctrl+S  Save playlist     |     Ctrl+J  Recent media\r\n"
@@ -4201,7 +4316,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<18;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 PositionVideoWindow();
                 SyncRendererComboVisibility();
@@ -4223,6 +4338,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==15)ShowAboutDialog(hwnd);
                 else if(mi==16)ShowSettingsDialog(hwnd);
                 else if(mi==17)ShowTorrentWindow(hwnd);
+                else if(mi==18)ShowMediaHub(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -4289,10 +4405,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+17)%18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+18)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=17;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
         if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
@@ -4304,6 +4420,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
+        if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
@@ -4342,7 +4459,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
-        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<18;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();

@@ -10,7 +10,7 @@ GoCast's YouTube Lounge control relies on YouTube's receiver-side MDX/Lounge beh
 
 # Streaming Centre — User Guide and Technical Notes
 
-The ABM AV Player Streaming Centre is a separate Microsoft Edge WebView2-based browser window. It has its own navigation controls, service selector, TV discovery panel and streaming-cast playback path. Open it from the main Command Centre using **Streaming services** or **Ctrl+Shift+S**.
+The ABM AV Player Streaming Centre is a separate Microsoft Edge WebView2-based browser window. It has its own navigation controls, service selector, TV discovery panel and streaming-cast playback path. Open it from the **Streaming & TVs** card in the main player's **Media & Streaming Hub**, from the Command Centre's **Streaming services** command, or directly with **Ctrl+Shift+S**. The Hub also has a separate **Torrent Streaming** card; that opens the Torrent Stream manager and does not open or replace the Streaming Centre.
 
 ## 1. Supported streaming services
 

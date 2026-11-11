@@ -39,9 +39,13 @@ The Command Centre includes a dedicated **Settings** window styled to match the 
 
 On a new installation, torrent cache data is stored under the Windows user's resolved Downloads folder in `ABM AV Player\\torrent-cache`. Redirected Windows Downloads locations are respected. Existing installations with a legacy cache retain that location. Cache-location changes made while the torrent engine is active take effect after an application restart. Changing the location does not automatically move existing cache files; the previous folder is left intact. See [SETTINGS.md](SETTINGS.md) for the full behaviour and configuration reference.
 
+### Media & Streaming Hub — large navigation cards
+
+Open **Media & Streaming Hub** from the Command Centre to see two large, ABM-styled navigation cards. **Streaming & TVs** opens the separate Streaming Centre for provider websites, TV discovery, TV app launching and its independent casting workflow. **Torrent Streaming** opens the separate Torrent Stream manager for magnet/.torrent ingestion, file selection, download monitoring and progressive playback. Torrent video playback is handed to the main LibVLC player; torrent management remains in its own window. The Torrent Stream window is also available directly from the Command Centre and with **Ctrl+Shift+T**.
+
 ### Streaming Centre — browser services and independent TV casting
 
-Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 window with its own navigation, receiver-selection and casting workflow.
+Open **Streaming & TVs** in the Media & Streaming Hub, choose **Streaming services** from the Command Centre, or press **Ctrl+Shift+S**. The Streaming Centre is a separate Microsoft Edge WebView2 window with its own navigation, receiver-selection and casting workflow.
 
 - Six provider launch cards: **YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5**. Each opens the provider's official website.
 - Sign in directly with your provider. ABM AV Player does not collect, proxy or store provider passwords.
