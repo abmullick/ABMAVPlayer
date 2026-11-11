@@ -20,6 +20,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [User Guide](USER_GUIDE.md): Getting started, playback, playlists, audio processing, subtitles, casting, shortcuts and troubleshooting.
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
+- [Torrent Stream design](TORRENT_STREAM.md): planned magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
@@ -41,6 +42,10 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 - Netflix and Prime Video title casting is not supported from the desktop browser. **Launch app** opens the TV app separately; it does not transfer the desktop title or account session. **Refresh app status** queries the selected Cast receiver session or DIAL application state and reports running/not running (or query failure); it does not report movie playback state. **Stop TV** sends a Google Cast session `STOP` for Cast-launched apps or a DIAL application `DELETE` for DIAL-launched apps. The Cast path checks the running session ID and waits for receiver confirmation. DIAL does not expose playback state or pause/resume/seek controls. Use the TV remote or provider's official mobile app when no provider-supported sender session is available. DRM-protected, encrypted, segmented or non-direct browser streams are not extracted or relayed.
 
 Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
+
+### Torrent Stream — planned feature
+
+A dedicated Torrent Stream module is planned for a future Windows release. It will use libtorrent for user-supplied magnet links and `.torrent` files, allow the user to select a media file, prioritize playback-needed pieces, and feed verified cached data into the existing LibVLC engine. It will not include a torrent search/catalogue or facilitate access to copyrighted material. This feature is **not implemented or available in the current release**; see [TORRENT_STREAM.md](TORRENT_STREAM.md) for the proposed architecture and phased implementation.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
