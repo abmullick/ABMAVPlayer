@@ -2724,6 +2724,7 @@ static volatile LONG g_torrentBufferPercent=0;
 static BOOL g_torrentEverPlayed=FALSE;
 static int64_t g_torrentLastMediaTime=-1;
 static ULONGLONG g_torrentLastProgressTick=0;
+static ULONGLONG g_torrentBufferingSinceTick=0;
 static libvlc_event_manager_t *g_torrentPlayerEventManager=NULL;
 static libvlc_event_type_t g_torrentAttachedEvents[7];
 static int g_torrentAttachedEventCount=0;
@@ -2910,11 +2911,14 @@ static void TorrentDetachPlayerEvents(void) {
     g_torrentAttachedEventCount=0;
 }
 static void TorrentCheckPlaybackStall(void) {
-    if(!g_torrentPlaybackActive||!g_torrentPlayerEventManager||
-       InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_PLAYING||
-       !g_torrentLastProgressTick)return;
+    if(!g_torrentPlaybackActive||!g_torrentPlayerEventManager)return;
+    TorrentPlaybackState state=(TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0);
     ULONGLONG now=GetTickCount64();
-    if(now-g_torrentLastProgressTick>=6000) {
+    BOOL stalledPlaying=(state==TORRENT_PLAYBACK_PLAYING&&g_torrentLastProgressTick&&
+        now-g_torrentLastProgressTick>=6000);
+    BOOL stalledBuffering=(state==TORRENT_PLAYBACK_BUFFERING&&g_torrentBufferingSinceTick&&
+        now-g_torrentBufferingSinceTick>=6000);
+    if(stalledPlaying||stalledBuffering) {
         TorrentSetPlaybackState(TORRENT_PLAYBACK_RECOVERING,
             L"Recovering after a network interruption — waiting for verified torrent pieces…");
     }
@@ -3034,7 +3038,7 @@ static void TorrentBeginStream(void) {
     if(!g_torrentSelectFile(g_torrentTaskId,fileIndex)) {
         TorrentSetLabel(g_torrentStatusLabel,L"Could not prioritize the selected file.");return;
     }
-    g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;g_torrentLastProgressTick=0;
+    g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;g_torrentLastProgressTick=0;g_torrentBufferingSinceTick=0;
     InterlockedExchange(&g_torrentBufferPercent,0);
     TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
         L"Buffering before playback starts — collecting the initial verified pieces…");
@@ -3522,6 +3526,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(percent<100) {
                     wchar_t buffering[160];
                     if(g_torrentEverPlayed) {
+                        if(!g_torrentBufferingSinceTick)g_torrentBufferingSinceTick=GetTickCount64();
                         StringCchPrintfW(buffering,_countof(buffering),
                             L"Buffering during playback — waiting for verified pieces (%d%%)…",percent);
                         TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING,buffering);
@@ -3536,6 +3541,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case libvlc_MediaPlayerPlaying:
                 g_torrentEverPlayed=TRUE;
                 g_torrentLastProgressTick=GetTickCount64();
+                g_torrentBufferingSinceTick=0;
                 if(g_player)g_torrentLastMediaTime=libvlc_media_player_get_time(g_player);
                 TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
                 break;
@@ -3544,8 +3550,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_torrentLastMediaTime<0||mediaTime>g_torrentLastMediaTime) {
                     g_torrentLastMediaTime=mediaTime;
                     g_torrentLastProgressTick=GetTickCount64();
-                    if(g_torrentEverPlayed)
+                    if(g_torrentEverPlayed) {
+                        g_torrentBufferingSinceTick=0;
                         TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
+                    }
                 }
                 break;
             }
@@ -3592,7 +3600,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     if(result==0) {
                         g_torrentPlaybackActive=TRUE;g_hasMedia=TRUE;g_current=-1;
                         g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;
-                        g_torrentLastProgressTick=GetTickCount64();
+                        g_torrentLastProgressTick=GetTickCount64();g_torrentBufferingSinceTick=0;
                         TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
                             L"Buffering before playback starts — waiting for LibVLC to begin playback…");
                         if(!eventsAttached)
