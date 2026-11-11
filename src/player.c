@@ -3086,6 +3086,10 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
         g_torrentRemove(g_torrentTaskId,FALSE);
     }
     g_torrentTaskId=id;g_torrentListedForTask=-1;g_torrentListedFileCount=0;g_torrentSelectedFile=-1;
+    InterlockedExchange(&g_torrentPlaybackState,TORRENT_PLAYBACK_IDLE);
+    InterlockedExchange(&g_torrentBufferPercent,0);
+    g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;g_torrentLastProgressTick=0;g_torrentBufferingSinceTick=0;
+    TorrentSetBufferProgress(0);
     SendMessageW(g_torrentFileList,LB_RESETCONTENT,0,0);
     TorrentSetLabel(g_torrentStatusLabel,L"Torrent added. Waiting for metadata…");
     TorrentRefreshStatus();
