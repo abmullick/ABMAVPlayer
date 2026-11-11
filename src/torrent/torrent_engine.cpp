@@ -381,6 +381,10 @@ private:
         for(unsigned char c:v){if(c<'0'||c>'9')return false;unsigned d=c-'0';if(out>(UINT64_MAX-d)/10)return false;out=out*10+d;}
         return true;
     }
+    struct HttpClientWorker {
+        std::thread thread;
+        std::shared_ptr<std::atomic<bool>> done;
+    };
     void HttpAcceptLoop(SOCKET listener,const std::wstring &token,uint64_t id,int index,int64_t size) {
         while(!http_stop_.load()) {
             fd_set readSet;FD_ZERO(&readSet);FD_SET(listener,&readSet);
@@ -393,14 +397,31 @@ private:
             if(client==INVALID_SOCKET)continue;
             if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
             std::lock_guard<std::mutex> g(http_clients_mutex_);
+            for(auto it=http_clients_.begin();it!=http_clients_.end();) {
+                if(it->done&&it->done->load()) {
+                    if(it->thread.joinable())it->thread.join();
+                    it=http_clients_.erase(it);
+                } else ++it;
+            }
             if(http_clients_.size()>=4){closesocket(client);continue;}
             try {
-                http_clients_.emplace_back([this,client,token,id,index,size]{HandleHttpClient(client,token,id,index,size);});
-            } catch(...) { closesocket(client); }
+                auto done=std::make_shared<std::atomic<bool>>(false);
+                http_clients_.emplace_back();
+                HttpClientWorker &worker=http_clients_.back();
+                worker.done=done;
+                worker.thread=std::thread([this,client,token,id,index,size,done]{
+                    try { HandleHttpClient(client,token,id,index,size); }
+                    catch(...) { closesocket(client); }
+                    done->store(true);
+                });
+            } catch(...) {
+                if(!http_clients_.empty()&&!http_clients_.back().thread.joinable())http_clients_.pop_back();
+                closesocket(client);
+            }
         }
-        std::vector<std::thread> clients;
+        std::vector<HttpClientWorker> clients;
         {std::lock_guard<std::mutex> g(http_clients_mutex_);clients.swap(http_clients_);}
-        for(auto &t:clients)if(t.joinable())t.join();
+        for(auto &worker:clients)if(worker.thread.joinable())worker.thread.join();
     }
     void HandleHttpClient(SOCKET client,const std::wstring &token,uint64_t id,int index,int64_t size) {
         DWORD timeout=5000;setsockopt(client,SOL_SOCKET,SO_RCVTIMEO,(const char*)&timeout,sizeof(timeout));
@@ -518,7 +539,7 @@ private:
     std::atomic<bool> stopping_{false};
     std::mutex schedule_mutex_;
     std::mutex http_lifecycle_mutex_,http_clients_mutex_;
-    std::vector<std::thread> http_clients_;
+    std::vector<HttpClientWorker> http_clients_;
     std::thread http_accept_thread_;
     std::atomic<bool> http_stop_{true};
     std::atomic<uint64_t> wait_cancel_generation_{0};
