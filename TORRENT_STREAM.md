@@ -1,6 +1,6 @@
 # Torrent Stream — Design and Implementation Plan
 
-**Status:** Phase 2 engine loader committed on `feature/windows-torrent-stream-phase1`; optional DLL is loaded and initialized on demand from the Command Centre, but torrent task controls and progressive playback are not yet wired or included in a published Windows release  
+**Status:** Phase 2 backend pipeline committed on `feature/windows-torrent-stream-phase1`; verified-piece reads, piece-window scheduling and an authenticated loopback HTTP Range server are implemented in the native DLL. The app UI still does not create torrent tasks or hand the returned URL to LibVLC, and the feature is not in a published Windows release  
 **Target:** Windows 11 x64 desktop application  
 **Repository:** ABM AV Player  
 **Design principle:** Add an optional torrent-backed media source without changing or destabilising existing local playback, Streaming Centre, or TV-casting paths.
@@ -64,6 +64,21 @@ The first implementation should prefer a loopback HTTP source because it is easi
 
 If the chosen libtorrent version's time-critical API or file mapping differs, adapt to its pinned API rather than assuming API compatibility across releases.
 
+## 4A. Implemented verified-piece HTTP source (Phase 2 backend)
+
+The native DLL now exports these additional functions in `torrent_engine.h`:
+
+- `ABM_Torrent_SetReadWindow(task, file, offset, length, ahead_bytes)`: clears stale deadlines and prioritizes the requested file range plus a bounded look-ahead window.
+- `ABM_Torrent_WaitForRange(task, file, offset, length, timeout_ms)`: schedules an 8 MiB look-ahead and waits off the UI thread until every piece covering the requested range is fully present.
+- `ABM_Torrent_StartHttpStream(task, file, url, ...)`: selects the file and starts an authenticated local HTTP server; the returned URL contains a 256-bit random token.
+- `ABM_Torrent_StopHttpStream()`: closes the listener, cancels pending verified-range waits and joins client workers.
+
+The HTTP source binds to IPv4 loopback only (`127.0.0.1`), checks that the connecting peer is loopback, accepts only the exact token path, and supports GET, HEAD, and one `Range: bytes=start-end` range (including open-ended and suffix ranges). Responses use `206 Partial Content` and `Content-Range` when a range is requested. The source streams in bounded 256 KiB chunks. A chunk is read from the torrent cache only after libtorrent reports every piece covering that chunk as complete; libtorrent documents `have_piece()` as true only once the piece has been downloaded and written to disk. The engine never exposes a partially written piece as media bytes.
+
+The caller should wait for an initial startup buffer (for example, the first 8 MiB or the complete smaller file) on a worker thread before passing the URL to LibVLC. Later HTTP Range requests trigger fresh piece-window scheduling, supporting seek-driven reprioritization. A stalled range is bounded to 30 seconds per chunk; on timeout the connection closes rather than returning unverified bytes.
+
+**Not yet wired:** the Windows player does not yet call these new exports or pass the resulting URL to LibVLC. Magnet/.torrent task creation, file selection UI, startup-buffer progress UI and the LibVLC handoff are still the next integration step. No TV can fetch this loopback URL, and no LAN serving has been added.
+
 ## 5. TV casting
 
 Torrent playback and casting are separate concerns.
@@ -124,10 +139,11 @@ Do not add a guessed NuGet package or unpinned binary dependency. Do not claim t
 - Add unit/integration tests for malformed sources and safe paths.
 
 ### Phase 2 — progressive local playback
-- Implement verified-piece cache reads.
-- Add loopback-only HTTP source with Range support and per-session authentication.
-- Implement startup buffering, time-critical piece scheduling, seek reprioritization and stall recovery.
-- Connect the source to the existing LibVLC player without changing normal file playback.
+- [x] Implement verified-piece cache reads and reject unverified ranges.
+- [x] Add loopback-only HTTP source with Range support and per-session authentication.
+- [x] Implement bounded wait-for-range, time-critical piece scheduling and seek-range reprioritization.
+- [ ] Connect the source to the existing LibVLC player without changing normal file playback.
+- [ ] Exercise stall recovery and cancellation against real peers on Windows.
 
 ### Phase 3 — native UI and download manager
 - Add Torrent Stream UI, task list, file picker and controls.
@@ -156,4 +172,4 @@ The feature is not complete until all of the following pass on Windows 11 x64:
 - Existing local playback, Streaming Centre, TV discovery and local casting regressions are absent.
 - Installer works on a clean Windows test machine with all pinned runtime dependencies.
 
-**Current state:** The feature branch now contains a native libtorrent 2.1.2 engine DLL, a C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, a Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The application now exposes **Torrent Stream (initialize engine)** in the Command Centre. Selecting it loads `torrent-runtime\\abm_torrent_engine.dll`, resolves the initialization/shutdown exports, and initializes libtorrent on a worker thread. The engine is not loaded and no torrent network session is started during ordinary application startup. Shutdown waits for any in-flight initialization, shuts down a successfully initialized session, and unloads the DLL. This is a loader/lifecycle milestone only: magnet/.torrent ingestion from the UI, verified-piece reads, the loopback HTTP source, progressive LibVLC playback, task management UI, and TV delivery remain outstanding. The Windows x64 build and runtime still require validation on a real Windows machine.
+**Current state:** The feature branch now contains a native libtorrent 2.1.2 engine DLL, a C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, a Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The application exposes **Torrent Stream (initialize engine)** in the Command Centre. Selecting it loads `torrent-runtime\\abm_torrent_engine.dll` and initializes libtorrent on a worker thread; ordinary player startup does not start torrent networking. The DLL now also exports a verified-piece streaming pipeline: it maps selected-file offsets to torrent pieces, schedules the current read window with piece deadlines, checks `have_piece()` before reading from the on-disk cache, and serves GET/HEAD plus single HTTP byte ranges from a random-token URL bound only to `127.0.0.1`. The read API waits with a bounded timeout and can be cancelled during stream shutdown. File symlink entries and paths resolving outside the configured torrent data directory are rejected. The application UI still does not yet expose magnet/.torrent task creation or call the stream URL/LibVLC handoff APIs; that is the next UI integration step. No LAN listener or TV casting path is created. The Windows x64 build and runtime still require validation on a real Windows machine.
