@@ -184,15 +184,22 @@ private:
             {
                 std::lock_guard<std::mutex> g(m_);
                 for(auto &e:tasks_) {
-                    Task &t=*e.second;if(!t.handle.is_valid())continue;
-                    auto snapshot=t.handle.status();
-                    if(snapshot.errc)t.error=FromUtf8(snapshot.errc.message());
-                    if(t.metadata_applied)continue;
-                    auto ti=t.handle.torrent_file();if(!ti)continue;
-                    auto const &files=ti->files();
-                    std::vector<lt::download_priority_t> p((size_t)files.num_files(),lt::dont_download);
-                    t.handle.prioritize_files(p);
-                    t.file_count=files.num_files();t.name=FromUtf8(ti->name());t.metadata_applied=true;
+                    Task &t=*e.second;
+                    if(!t.handle.is_valid())continue;
+                    try {
+                        auto snapshot=t.handle.status();
+                        if(snapshot.errc)t.error=FromUtf8(snapshot.errc.message());
+                        if(t.metadata_applied)continue;
+                        auto ti=t.handle.torrent_file();if(!ti)continue;
+                        auto const &files=ti->files();
+                        std::vector<lt::download_priority_t> p((size_t)files.num_files(),lt::dont_download);
+                        t.handle.prioritize_files(p);
+                        t.file_count=files.num_files();t.name=FromUtf8(ti->name());t.metadata_applied=true;
+                    } catch(const std::exception &e) {
+                        t.error=FromUtf8(e.what());
+                    } catch(...) {
+                        t.error=L"Unexpected torrent engine error.";
+                    }
                 }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
