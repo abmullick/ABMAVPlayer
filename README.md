@@ -21,6 +21,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
 - [Torrent Stream design](TORRENT_STREAM.md): magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
+- [Application Settings guide](SETTINGS.md): playback/audio preferences, torrent cache location, quota, bandwidth limits and configuration files.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
