@@ -1,6 +1,6 @@
 # Torrent Stream — Design and Implementation Plan
 
-**Status:** Native Torrent Stream source manager, verified-piece loopback HTTP source, initial local LibVLC handoff, bandwidth limits, and live playback buffer/stall status are implemented on `main`. Windows x64 compilation, runtime behaviour and real-peer playback remain unverified; the feature is not in a published Windows release.  
+**Status:** The `feature/torrent-tv-casting-downloads` branch adds persistent Windows downloads, a separate private-LAN HTTP delivery mode, independent DLNA TV discovery/control and Torrent-window TV controls. Windows x64 compilation, real Android/Google TV playback, firewall behaviour and real-peer download/cast concurrency still require validation; this branch is not yet merged or released.  
 **Target:** Windows 11 x64 desktop application  
 **Repository:** ABM AV Player  
 **Design principle:** Add an optional torrent-backed media source without changing or destabilising existing local playback, Streaming Centre, or TV-casting paths.
@@ -19,10 +19,11 @@ The workflow:
 2. ABM retrieves metadata and lists files.
 3. User selects one media file.
 4. ABM checks available peers, file size, and estimated readiness.
-5. User chooses **Stream** or **Download**.
-6. For Stream, ABM prioritizes the pieces needed near the current playback position and starts LibVLC when a safe startup buffer is available.
-7. The user can pause/resume the torrent session, stop it, remove it, and control upload/download limits.
-8. When supported by the receiver, the completed/available media is offered to the existing TV-casting path.
+5. The selected file is downloaded to `<Windows Downloads>\\ABM AV Player\\Torrent Downloads\\<torrent-info-hash>\\` (or the configured cache parent if the user changed it). This is the permanent download location, not the evictable cache.
+6. For local Stream, ABM prioritizes verified pieces and starts LibVLC after a safe startup buffer.
+7. For **Find TVs → Cast to TV**, ABM starts a separate authenticated HTTP listener on the PC's private LAN interface, waits for an initial verified buffer, then sends that URL to the selected DLNA MediaRenderer.
+8. The TV fetches verified ranges directly and performs its own decoding; libtorrent continues downloading the complete selected file to the Windows folder while casting.
+9. **Stop TV** stops the receiver session and LAN listener only; it does not pause or delete the torrent download. The local-player and Streaming Centre casting sessions remain independent.
 
 No public torrent index, search engine, curated catalogue, or copyrighted-content directory is part of this feature.
 
@@ -73,20 +74,23 @@ The native DLL now exports these additional functions in `torrent_engine.h`:
 - `ABM_Torrent_StartHttpStream(task, file, url, ...)`: selects the file and starts an authenticated local HTTP server; the returned URL contains a 256-bit random token.
 - `ABM_Torrent_StopHttpStream()`: closes the listener, cancels pending verified-range waits and joins client workers.
 
-The HTTP source binds to IPv4 loopback only (`127.0.0.1`), checks that the connecting peer is loopback, accepts only the exact token path, and supports GET, HEAD, and one `Range: bytes=start-end` range (including open-ended and suffix ranges). Responses use `206 Partial Content` and `Content-Range` when a range is requested. The source streams in bounded 256 KiB chunks. A chunk is read from the torrent cache only after libtorrent reports every piece covering that chunk as complete; libtorrent documents `have_piece()` as true only once the piece has been downloaded and written to disk. The engine never exposes a partially written piece as media bytes.
+The local-playback HTTP source binds to IPv4 loopback only (`127.0.0.1`). A separate, opt-in TV source binds only to one detected private IPv4 interface, accepts clients only from the same private subnet, and uses its own unpredictable 256-bit token path. Both accept GET, HEAD and one `Range: bytes=start-end` range (including open-ended and suffix ranges). Responses use `206 Partial Content` and `Content-Range` when a range is requested. The source streams in bounded 256 KiB chunks. A chunk is read from the torrent cache only after libtorrent reports every piece covering that chunk as complete; libtorrent documents `have_piece()` as true only once the piece has been downloaded and written to disk. The engine never exposes a partially written piece as media bytes.
 
-The implemented Windows flow follows this sequence: add the magnet or torrent and wait for metadata; start the authenticated loopback source; wait for the first `min(file_size, 8 MiB)` verified bytes on a worker thread; then pass the URL to `libvlc_media_new_location`. Playback Stop, cancellation, natural end and LibVLC failure close the source. Later HTTP Range requests trigger fresh piece-window scheduling, supporting seek-driven reprioritization. A stalled range is bounded to 30 seconds per chunk; on timeout the connection closes rather than returning unverified bytes. The player subscribes to LibVLC buffering, playing, paused, stopped, end and error events, plus playback-time updates. It presents initial buffering, normal playback, in-playback buffering, recovery after six seconds without playback progress, paused, stopped and failed states. A native progress bar displays LibVLC's buffer percentage when available.
+The local Windows flow waits for the first `min(file_size, 8 MiB)` verified bytes and passes the loopback URL to `libvlc_media_new_location`. The TV flow starts the private-LAN listener, waits for the same initial verified buffer on a worker thread, then issues `SetAVTransportURI` and `Play` to the independently discovered DLNA receiver. Both paths read from the same libtorrent-managed file on disk. Playback Stop, cancellation, natural end and LibVLC failure close the source. Later HTTP Range requests trigger fresh piece-window scheduling, supporting seek-driven reprioritization. A stalled range is bounded to 30 seconds per chunk; on timeout the connection closes rather than returning unverified bytes. The player subscribes to LibVLC buffering, playing, paused, stopped, end and error events, plus playback-time updates. It presents initial buffering, normal playback, in-playback buffering, recovery after six seconds without playback progress, paused, stopped and failed states. A native progress bar displays LibVLC's buffer percentage when available.
 
 **Implemented:** the Windows player calls these exports, manages magnet/.torrent tasks and file selection, waits for the startup buffer off the UI thread, and hands the local source to LibVLC. Live buffer and stall states are surfaced in the Torrent Stream window and main player status. No TV can fetch this loopback URL, and no LAN serving has been added.
 
 ## 5. TV casting
 
-Torrent playback and casting are separate concerns.
+Torrent TV casting uses an independent DLNA/UPnP MediaRenderer discovery and control instance. It does not borrow or mutate the main player's renderer selection or Streaming Centre receiver state.
 
-- For a compatible DLNA renderer, expose only the local media source through the existing Streaming Centre/renderer pathway when the receiver can reach it. A loopback-only URL cannot be fetched by a TV; LAN serving would require a separate explicit, authenticated, firewall-aware mode and must not be enabled by default.
-- For Google Cast, the receiver must be able to fetch the media URL and support its container/codec. Use an appropriate Cast sender/receiver integration; do not assume that a local HTTP URL or arbitrary torrent URL is castable.
-- Do not change the existing local-player casting or Streaming Centre receiver-selection state.
-- If safe and reliable receiver delivery is not available, keep torrent playback local and explain why casting is unavailable.
+- **Find TVs** searches for UPnP `MediaRenderer` devices; the selector is local to the Torrent Stream window.
+- **Cast to TV** serves the selected torrent video over a temporary HTTP listener bound to a detected private IPv4 interface. The listener accepts only clients from that interface's subnet and requires the per-session random bearer token.
+- The receiver fetches the original container/codec through HTTP byte ranges and decodes it on the TV. The PC does not decode/re-encode the video in this direct-play path.
+- The torrent engine continues downloading the complete selected file to the persistent Windows `Torrent Downloads` folder while the TV reads verified pieces from that same file.
+- **Stop TV** sends UPnP AVTransport `Stop` and closes the temporary LAN listener. It does not stop the torrent task or delete downloaded data.
+- The LAN listener is created only after the user explicitly presses Cast to TV. Windows Firewall may need to allow ABM AV Player on the private network. No internet-facing listener or automatic firewall rule is created.
+- Direct play depends on the TV's DLNA implementation and its supported container/video/audio codecs. If the TV cannot decode the source, this initial implementation does not transcode it. Native Google Cast media-session support for arbitrary torrent files is not included; YouTube/DIAL handoff is not equivalent.
 
 ## 6. Required user controls
 
@@ -99,6 +103,7 @@ Torrent playback and casting are separate concerns.
 - Connection/peer count and download/upload rates.
 - [x] Playback buffer/readiness indicator with initial buffering, in-playback buffering, stall recovery and terminal states (runtime validation pending).
 - [x] Storage location and cache usage reporting.
+- [x] Separate permanent download folder, outside the evictable cache quota.
 - Per-task progress and error details.
 - Clear warning that BitTorrent may upload pieces to other peers.
 - Explicit control over seeding after the selected file is complete.
@@ -115,7 +120,7 @@ Torrent playback and casting are separate concerns.
 - [x] Configurable cache quota and cleanup of inactive per-torrent cache folders.
 - [x] Check available disk space before selecting a file for caching.
 - [ ] Add per-task/global limits.
-- Keep network listeners loopback-only by default. Any future LAN serving must require an explicit user action and clear security warning.
+- Keep local-playback listeners loopback-only. TV casting may create a separate private-LAN listener only after an explicit Cast to TV action; authenticate it with a random token, restrict it to the same private subnet, and close it on Stop TV/exit. Do not create an internet-facing listener or automatic firewall rule.
 
 ## 8. Build and dependency strategy
 
@@ -146,6 +151,9 @@ Do not add a guessed NuGet package or unpinned binary dependency. Do not claim t
 - [x] Implement bounded wait-for-range, time-critical piece scheduling and seek-range reprioritization.
 - [x] Connect the source to the existing LibVLC player without changing normal file playback (development-branch implementation; runtime validation pending).
 - [ ] Exercise stall recovery and cancellation against real peers on Windows.
+- [x] Add explicit private-LAN HTTP delivery for a selected TV receiver, with same-subnet filtering and per-stream authentication (runtime validation pending).
+- [x] Add independent Torrent-window DLNA discovery, Cast to TV and Stop TV controls (runtime validation pending).
+- [x] Persist the selected torrent file in the Windows `Torrent Downloads` folder while streaming from its verified pieces.
 
 ### Phase 3 — native UI and download manager
 - [x] Add an initial Torrent Stream window, magnet/.torrent ingestion, metadata file list, task status, pause/resume/remove and stream/stop controls (runtime validation pending).
@@ -157,9 +165,9 @@ Do not add a guessed NuGet package or unpinned binary dependency. Do not claim t
 - [ ] Add explicit seeding controls.
 
 ### Phase 4 — TV casting and release hardening
-- Evaluate receiver reachability and codec compatibility.
-- Implement only receiver paths that can securely fetch the media.
-- Test with Android TV and Google TV devices on real LANs.
+- [x] Add DLNA receiver discovery and direct-play delivery over an explicit private-LAN listener.
+- [ ] Validate receiver reachability and codec compatibility on Android TV and Google TV devices on real LANs.
+- [ ] Add native Google Cast media-session support only if a reliable arbitrary-media receiver path is available.
 - Validate firewall behaviour, shutdown, network loss, disk-full conditions, seek/stall cases, memory use, installer and upgrade/uninstall behaviour.
 
 ## 10. Acceptance criteria
@@ -178,4 +186,4 @@ The feature is not complete until all of the following pass on Windows 11 x64:
 - Existing local playback, Streaming Centre, TV discovery and local casting regressions are absent.
 - Installer works on a clean Windows test machine with all pinned runtime dependencies.
 
-**Current state:** `main` contains the native libtorrent 2.1.2 engine DLL, C ABI for magnet/.torrent ingestion and task control, vcpkg/CMake build integration, Windows x64 CI workflow, and installer staging into an isolated `torrent-runtime` folder. The Torrent Stream source manager supports magnet and local `.torrent` sources, metadata/file listing, task progress, pause/resume/remove, and separate download/upload rate limits (KiB/s; 0 = unlimited). Torrent data is stored persistently in a dedicated `torrent-cache` directory, partitioned by torrent info-hash so re-adding a source can reuse and recheck existing pieces. On a new installation, its parent defaults to the Windows Downloads known folder under `ABM AV Player`; redirected Downloads locations are respected. The cache parent and quota can be changed in the Command Centre's dedicated Settings window. Existing installations with a legacy cache retain their old location. Changing the cache parent does not move existing files and takes effect after restarting an already-running torrent engine. The cache has a persisted 20 GiB default quota (user-adjustable from 1 to 4096 GiB), disk-usage reporting, preflight quota checks before selecting a file, and oldest-inactive-torrent eviction; active task folders are protected. The UI offers explicit clearing of inactive cached torrents and reports the space freed. The verified-piece streaming pipeline schedules selected-file ranges, checks piece completion before reading, and serves authenticated GET/HEAD plus HTTP byte ranges from a random-token URL bound only to `127.0.0.1`. The UI waits for an initial verified buffer on a worker thread and hands the URL to LibVLC. LibVLC events drive a live status state machine for initial buffering, normal playback, buffering during playback, recovery after six seconds without media-time progress, pause, stop and failure; a progress bar shows the reported cache percentage. Remaining work includes per-task/global limits, explicit seeding controls, TV delivery and Windows runtime validation. Existing local playback, Streaming Centre and TV discovery/casting are not modified by the Torrent Stream feature. No LAN listener or TV casting path is created.
+**Current state on this feature branch:** The native libtorrent engine stores selected torrent files under the configured parent folder's `Torrent Downloads/<info-hash>` directory. This folder is separate from `torrent-cache` and is not removed by the inactive-cache cleanup or cache-quota setting. The same on-disk file is the source for both local LibVLC playback and the temporary TV HTTP server. The loopback server remains the local playback route. The new LAN route binds to a selected private IPv4 interface, applies same-subnet client filtering and requires a 256-bit random token. A separate Torrent DLNA controller discovers MediaRenderer devices and exposes Find TVs, Cast to TV and Stop TV controls in the Torrent window. The TV receives the original file and decodes it; no PC-side transcoding is implemented. The full selected file continues downloading while TV playback is active, and Stop TV does not stop or delete that download. Main-player casting and Streaming Centre retain their own receiver state. The feature branch has not yet been compiled with the Windows x64 toolchain or tested against real Android/Google TVs; do not treat it as release-ready until the CI and manual acceptance tests pass.
