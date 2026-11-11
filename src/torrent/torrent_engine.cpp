@@ -672,8 +672,10 @@ private:
                 {
                     std::lock_guard<std::mutex> g(m_);
                     std::error_code ec;
-                    for(const auto &entry:tasks_)
-                        fs::last_write_time(entry.second->cache_path,fs::file_time_type::clock::now(),ec),ec.clear();
+                    for(const auto &entry:tasks_) {
+                        fs::last_write_time(entry.second->cache_path,fs::file_time_type::clock::now(),ec);
+                        ec.clear();
+                    }
                 }
                 cache_used_bytes_.store(DirectoryBytes(data_));
                 lastCacheScan=now;
