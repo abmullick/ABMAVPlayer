@@ -39,9 +39,9 @@ if errorlevel 1 (
 if not exist build mkdir build
 
 echo [0/12] Building native libtorrent engine...
-call tools\\build_torrent_engine.bat
+call tools\build_torrent_engine.bat
 if errorlevel 1 goto build_failed
-copy /y build\\torrent-runtime\\*.dll build\\ >nul
+copy /y build\torrent-runtime\*.dll build\ >nul
 if errorlevel 1 goto build_failed
 
 echo [1/12] Compiling C playback engine...
