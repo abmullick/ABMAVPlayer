@@ -42,6 +42,7 @@
 #define WM_ARTWORK_DOWNLOAD_READY (WM_APP + 12)
 #define WM_TORRENT_INIT_DONE (WM_APP + 13)
 #define WM_TORRENT_STREAM_READY (WM_APP + 14)
+#define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -2708,6 +2709,24 @@ static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
 static BOOL g_torrentPlaybackActive=FALSE;
+typedef enum TorrentPlaybackState {
+    TORRENT_PLAYBACK_IDLE=0,
+    TORRENT_PLAYBACK_BUFFERING_START,
+    TORRENT_PLAYBACK_PLAYING,
+    TORRENT_PLAYBACK_BUFFERING,
+    TORRENT_PLAYBACK_RECOVERING,
+    TORRENT_PLAYBACK_PAUSED,
+    TORRENT_PLAYBACK_STOPPED,
+    TORRENT_PLAYBACK_FAILED
+} TorrentPlaybackState;
+static volatile LONG g_torrentPlaybackState=TORRENT_PLAYBACK_IDLE;
+static volatile LONG g_torrentBufferPercent=0;
+static BOOL g_torrentEverPlayed=FALSE;
+static int64_t g_torrentLastMediaTime=-1;
+static ULONGLONG g_torrentLastProgressTick=0;
+static libvlc_event_manager_t *g_torrentPlayerEventManager=NULL;
+static libvlc_event_type_t g_torrentAttachedEvents[7];
+static int g_torrentAttachedEventCount=0;
 static HANDLE g_torrentStreamThread=NULL;
 typedef struct TorrentStreamRequest {
     HWND owner;
@@ -2825,6 +2844,81 @@ static void StartTorrentEngine(HWND owner) {
 static void TorrentSetLabel(HWND hwnd,const wchar_t *value) {
     if(hwnd&&IsWindow(hwnd))SetWindowTextW(hwnd,value?value:L"");
 }
+static const wchar_t *TorrentPlaybackStateText(void) {
+    switch((TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0)) {
+        case TORRENT_PLAYBACK_BUFFERING_START:return L"Buffering before playback starts…";
+        case TORRENT_PLAYBACK_PLAYING:return L"Playing normally";
+        case TORRENT_PLAYBACK_BUFFERING:return L"Buffering during playback…";
+        case TORRENT_PLAYBACK_RECOVERING:return L"Recovering after a network interruption…";
+        case TORRENT_PLAYBACK_PAUSED:return L"Playback paused";
+        case TORRENT_PLAYBACK_STOPPED:return L"Stream stopped";
+        case TORRENT_PLAYBACK_FAILED:return L"Stream failed";
+        default:return NULL;
+    }
+}
+static void TorrentSetPlaybackState(TorrentPlaybackState state,const wchar_t *detail) {
+    InterlockedExchange(&g_torrentPlaybackState,(LONG)state);
+    const wchar_t *label=detail?detail:TorrentPlaybackStateText();
+    if(label) {
+        TorrentSetLabel(g_torrentStatusLabel,label);
+        SetStatus(label);
+    }
+}
+static void TorrentPlayerEvent(const libvlc_event_t *event,void *opaque) {
+    (void)opaque;
+    if(!event||!g_main)return;
+    LONG_PTR value=0;
+    if(event->type==libvlc_MediaPlayerBuffering) {
+        float percent=event->u.media_player_buffering.new_cache;
+        if(percent<0.0f)percent=0.0f;if(percent>100.0f)percent=100.0f;
+        value=(LONG_PTR)(percent+0.5f);
+    } else if(event->type==libvlc_MediaPlayerTimeChanged) {
+        value=(LONG_PTR)event->u.media_player_time_changed.new_time;
+    }
+    PostMessageW(g_main,WM_TORRENT_PLAYER_EVENT,(WPARAM)event->type,(LPARAM)value);
+}
+static BOOL TorrentAttachPlayerEvents(void) {
+    if(g_torrentPlayerEventManager)return TRUE;
+    if(!g_player)return FALSE;
+    libvlc_event_manager_t *manager=libvlc_media_player_event_manager(g_player);
+    if(!manager)return FALSE;
+    static const libvlc_event_type_t types[]={
+        libvlc_MediaPlayerBuffering,libvlc_MediaPlayerPlaying,
+        libvlc_MediaPlayerPaused,libvlc_MediaPlayerStopped,
+        libvlc_MediaPlayerEndReached,libvlc_MediaPlayerEncounteredError,
+        libvlc_MediaPlayerTimeChanged
+    };
+    g_torrentAttachedEventCount=0;
+    for(int i=0;i<(int)_countof(types);i++) {
+        if(libvlc_event_attach(manager,types[i],TorrentPlayerEvent,NULL)!=0) {
+            for(int j=0;j<g_torrentAttachedEventCount;j++)
+                libvlc_event_detach(manager,g_torrentAttachedEvents[j],TorrentPlayerEvent,NULL);
+            g_torrentAttachedEventCount=0;
+            return FALSE;
+        }
+        g_torrentAttachedEvents[g_torrentAttachedEventCount++]=types[i];
+    }
+    g_torrentPlayerEventManager=manager;
+    return TRUE;
+}
+static void TorrentDetachPlayerEvents(void) {
+    if(g_torrentPlayerEventManager) {
+        for(int i=0;i<g_torrentAttachedEventCount;i++)
+            libvlc_event_detach(g_torrentPlayerEventManager,g_torrentAttachedEvents[i],TorrentPlayerEvent,NULL);
+    }
+    g_torrentPlayerEventManager=NULL;
+    g_torrentAttachedEventCount=0;
+}
+static void TorrentCheckPlaybackStall(void) {
+    if(!g_torrentPlaybackActive||
+       InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_PLAYING||
+       !g_torrentLastProgressTick)return;
+    ULONGLONG now=GetTickCount64();
+    if(now-g_torrentLastProgressTick>=6000) {
+        TorrentSetPlaybackState(TORRENT_PLAYBACK_RECOVERING,
+            L"Recovering after a network interruption — waiting for verified torrent pieces…");
+    }
+}
 static void TorrentFormatBytes(int64_t bytes,wchar_t *out,size_t cap) {
     if(bytes<0)bytes=0;
     if(bytes>=1073741824LL)StringCchPrintfW(out,cap,L"%.2f GiB",(double)bytes/1073741824.0);
@@ -2876,8 +2970,11 @@ static void TorrentRefreshStatus(void) {
     else if(!info.has_metadata)TorrentSetLabel(g_torrentStatusLabel,L"Fetching torrent metadata…");
     else TorrentSetLabel(g_torrentStatusLabel,state);
     TorrentRefreshFiles();
+    const wchar_t *playbackText=TorrentPlaybackStateText();
+    if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
 }
 static void TorrentStopPlayback(void) {
+    TorrentDetachPlayerEvents();
     if(g_torrentStreamThread) {
         InterlockedExchange(&g_torrentStreamCancel,1);
         if(g_torrentStopHttpStream)g_torrentStopHttpStream();
@@ -2887,6 +2984,8 @@ static void TorrentStopPlayback(void) {
         g_torrentPlaybackActive=FALSE;g_hasMedia=FALSE;ResetArtwork();
     }
     if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
+    if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_IDLE)
+        TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
 }
 static DWORD WINAPI TorrentStreamWorker(void *arg) {
     TorrentStreamRequest *r=(TorrentStreamRequest*)arg;
@@ -2906,6 +3005,8 @@ static DWORD WINAPI TorrentStreamWorker(void *arg) {
         r->ok=g_torrentWaitForRange(r->task_id,r->file_index,0,initial,180000);
         if(!r->ok&&!r->error[0])StringCchCopyW(r->error,_countof(r->error),L"Timed out waiting for the initial verified playback buffer.");
     }
+    if(!r->ok && !InterlockedCompareExchange(&g_torrentStreamCancel,0,0))
+        InterlockedExchange(&g_torrentPlaybackState,TORRENT_PLAYBACK_FAILED);
     if(!PostMessageW(r->owner,WM_TORRENT_STREAM_READY,0,(LPARAM)r)) {
         if(g_torrentStopHttpStream)g_torrentStopHttpStream();
         if(g_torrentStreamRequest==r)g_torrentStreamRequest=NULL;
@@ -2926,7 +3027,10 @@ static void TorrentBeginStream(void) {
     if(!g_torrentSelectFile(g_torrentTaskId,fileIndex)) {
         TorrentSetLabel(g_torrentStatusLabel,L"Could not prioritize the selected file.");return;
     }
-    TorrentSetLabel(g_torrentStatusLabel,L"Starting secure local stream and buffering verified pieces…");
+    g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;g_torrentLastProgressTick=0;
+    InterlockedExchange(&g_torrentBufferPercent,0);
+    TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
+        L"Buffering before playback starts — collecting the initial verified pieces…");
     TorrentStreamRequest *req=(TorrentStreamRequest*)calloc(1,sizeof(*req));
     if(!req){TorrentSetLabel(g_torrentStatusLabel,L"Not enough memory to start streaming.");return;}
     req->owner=g_main;req->task_id=g_torrentTaskId;req->file_index=fileIndex;req->file_size=size;
@@ -3402,6 +3506,56 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetBkColor((HDC)wp,RGB(31,34,38));
         return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
+    case WM_TORRENT_PLAYER_EVENT: {
+        if(!g_torrentPlaybackActive)return 0;
+        switch((libvlc_event_type_t)wp) {
+            case libvlc_MediaPlayerBuffering: {
+                int percent=(int)lp;
+                InterlockedExchange(&g_torrentBufferPercent,percent);
+                if(percent<100) {
+                    if(g_torrentEverPlayed)
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING,
+                            L"Buffering during playback — waiting for more verified pieces…");
+                    else
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
+                            L"Buffering before playback starts…");
+                }
+                break;
+            }
+            case libvlc_MediaPlayerPlaying:
+                g_torrentEverPlayed=TRUE;
+                g_torrentLastProgressTick=GetTickCount64();
+                if(g_player)g_torrentLastMediaTime=libvlc_media_player_get_time(g_player);
+                TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
+                break;
+            case libvlc_MediaPlayerTimeChanged: {
+                int64_t mediaTime=(int64_t)(LONG_PTR)lp;
+                if(g_torrentLastMediaTime<0||mediaTime>g_torrentLastMediaTime) {
+                    g_torrentLastMediaTime=mediaTime;
+                    g_torrentLastProgressTick=GetTickCount64();
+                    if(g_torrentEverPlayed)
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
+                }
+                break;
+            }
+            case libvlc_MediaPlayerPaused:
+                TorrentSetPlaybackState(TORRENT_PLAYBACK_PAUSED,NULL);
+                break;
+            case libvlc_MediaPlayerStopped:
+            case libvlc_MediaPlayerEndReached:
+                g_torrentPlaybackActive=FALSE;
+                g_hasMedia=FALSE;
+                TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
+                break;
+            case libvlc_MediaPlayerEncounteredError:
+                g_torrentPlaybackActive=FALSE;
+                g_hasMedia=FALSE;
+                TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,
+                    L"Stream failed — LibVLC could not continue reading the torrent source.");
+                break;
+        }
+        return 0;
+    }
     case WM_TORRENT_STREAM_READY: {
         TorrentStreamRequest *req=(TorrentStreamRequest*)lp;
         if(g_torrentStreamThread){CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;}
@@ -3417,32 +3571,40 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     g_hasMedia=FALSE;g_current=-1;
                     libvlc_media_player_set_media(g_player,media);
                     BeginArtworkParse(media);
+                    BOOL eventsAttached=TorrentAttachPlayerEvents();
                     int result=libvlc_media_player_play(g_player);
                     libvlc_media_release(media);
                     if(result==0) {
                         g_torrentPlaybackActive=TRUE;g_hasMedia=TRUE;g_current=-1;
-                        SetStatus(L"Torrent stream playing locally through verified-piece buffering.");
-                        TorrentSetLabel(g_torrentStatusLabel,L"Playback started. Torrent peers may receive upload traffic while the task is active.");
+                        g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;
+                        g_torrentLastProgressTick=GetTickCount64();
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_BUFFERING_START,
+                            L"Buffering before playback starts — waiting for LibVLC to begin playback…");
+                        if(!eventsAttached)
+                            TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,
+                                L"Playback started, but live buffer monitoring could not attach to LibVLC events.");
                     } else {
+                        TorrentDetachPlayerEvents();
                         SetStatus(L"LibVLC could not start the torrent stream.");
                         TorrentSetLabel(g_torrentStatusLabel,L"LibVLC could not start playback.");
                         g_torrentPlaybackActive=FALSE;g_hasMedia=FALSE;g_current=-1;
+                        TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,NULL);
                         ResetArtwork();
                         g_torrentStopHttpStream();
                     }
                 } else {
-                    TorrentSetLabel(g_torrentStatusLabel,L"LibVLC rejected the local torrent stream URL.");
+                    TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — LibVLC rejected the local torrent stream URL.");
                     g_torrentStopHttpStream();
                 }
             } else {
-                TorrentSetLabel(g_torrentStatusLabel,L"Could not encode the local stream URL.");
+                TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — could not encode the local stream URL.");
                 g_torrentStopHttpStream();
             }
             free(url);
         } else if(req&&!cancelled) {
-            TorrentSetLabel(g_torrentStatusLabel,req->error[0]?req->error:L"Initial buffering failed.");
+            TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,req->error[0]?req->error:L"Stream failed — initial buffering failed.");
             g_torrentStopHttpStream();
-        } else if(!cancelled) TorrentSetLabel(g_torrentStatusLabel,L"Stream preparation failed.");
+        } else if(!cancelled) TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — stream preparation failed.");
         if(req)free(req);
         return 0;
     }
@@ -3477,6 +3639,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==TIMER_ID){
+        TorrentCheckPlaybackStall();
         if (g_fullscreen) {
             /* Do not depend on WM_MOUSEMOVE reaching a particular HWND.
                LibVLC owns the video child and the layered controls are a
@@ -3991,6 +4154,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
     case WM_DESTROY:
+        TorrentDetachPlayerEvents();
         if(g_torrentStreamThread) {
             InterlockedExchange(&g_torrentStreamCancel,1);
             if(g_torrentStopHttpStream)g_torrentStopHttpStream();
