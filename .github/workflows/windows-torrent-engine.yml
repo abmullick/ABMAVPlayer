@@ -3,6 +3,7 @@ name: Windows Torrent Engine
 on:
   push:
     branches:
+      - main
       - feature/windows-torrent-stream-phase1
     paths:
       - "src/torrent/**"
