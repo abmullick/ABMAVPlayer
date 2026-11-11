@@ -20,7 +20,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [User Guide](USER_GUIDE.md): Getting started, playback, playlists, audio processing, subtitles, casting, shortcuts and troubleshooting.
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
-- [Torrent Stream design](TORRENT_STREAM.md): planned magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
+- [Torrent Stream design](TORRENT_STREAM.md): magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 
@@ -45,7 +45,7 @@ Streaming Centre casting uses its own receiver selection and playback path. It d
 
 ### Torrent Stream — development branch
 
-The Windows development branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, and an initial local LibVLC progressive-playback handoff. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
+The Windows development branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, separate download/upload rate limits (KiB/s; 0 = unlimited), and an initial local LibVLC progressive-playback handoff. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
