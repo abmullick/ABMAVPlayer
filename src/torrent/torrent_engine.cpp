@@ -1,9 +1,18 @@
 #define WIN32_LEAN_AND_MEAN
-#include <winsock2.h>\n#include <windows.h>\n#include <bcrypt.h>
+#include <winsock2.h>
+#include <windows.h>
+#include <bcrypt.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <filesystem>\n#include <fstream>\n#include <sstream>\n#include <functional>\n#include <cctype>\n#include <limits>\n#include <cwctype>\n#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <functional>
+#include <cctype>
+#include <limits>
+#include <cwctype>
+#include <cstdio>
 #include <map>
 #include <memory>
 #include <mutex>
