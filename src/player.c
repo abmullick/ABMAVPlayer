@@ -2705,7 +2705,7 @@ static BOOL g_torrentInitialized=FALSE;
 static void ShowTorrentWindow(HWND owner);
 static volatile LONG g_torrentStreamCancel=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
-static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL;
+static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
 static BOOL g_torrentPlaybackActive=FALSE;
@@ -2857,8 +2857,18 @@ static const wchar_t *TorrentPlaybackStateText(void) {
         default:return NULL;
     }
 }
+static void TorrentSetBufferProgress(int percent) {
+    if(percent<0)percent=0;if(percent>100)percent=100;
+    if(g_torrentBufferBar&&IsWindow(g_torrentBufferBar))
+        SendMessageW(g_torrentBufferBar,PBM_SETPOS,(WPARAM)percent,0);
+}
 static void TorrentSetPlaybackState(TorrentPlaybackState state,const wchar_t *detail) {
     InterlockedExchange(&g_torrentPlaybackState,(LONG)state);
+    if(state==TORRENT_PLAYBACK_BUFFERING_START||state==TORRENT_PLAYBACK_BUFFERING)
+        TorrentSetBufferProgress((int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0));
+    else if(state==TORRENT_PLAYBACK_PLAYING)TorrentSetBufferProgress(100);
+    else if(state==TORRENT_PLAYBACK_RECOVERING||state==TORRENT_PLAYBACK_STOPPED||state==TORRENT_PLAYBACK_FAILED)
+        TorrentSetBufferProgress(0);
     const wchar_t *label=detail?detail:TorrentPlaybackStateText();
     if(label) {
         TorrentSetLabel(g_torrentStatusLabel,label);
@@ -3092,6 +3102,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,534,800,30,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentStatusLabel,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentBufferBar=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH,20,602,770,14,hwnd,NULL,NULL,NULL);
+        SendMessageW(g_torrentBufferBar,PBM_SETRANGE32,0,100);
+        SendMessageW(g_torrentBufferBar,PBM_SETPOS,0,0);
         h=CreateWindowW(L"STATIC",L"Download limit (KiB/s; 0 = unlimited)",WS_CHILD|WS_VISIBLE,20,568,220,22,hwnd,NULL,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentDownLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,245,565,85,26,hwnd,(HMENU)ID_TORRENT_DOWN_LIMIT,NULL,NULL);
@@ -3107,7 +3120,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             {ID_TORRENT_STOP,L"Stop stream",300,110},{ID_TORRENT_REMOVE,L"Remove task",420,110},
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
-        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,620,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,630,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
         SetTimer(hwnd,1,1000,NULL);return 0;
     }
     case WM_COMMAND:
@@ -3157,7 +3170,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            request; closing it after playback starts leaves playback running. */
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
-        g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;return 0;
+        g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -3523,6 +3536,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case libvlc_MediaPlayerBuffering: {
                 int percent=(int)lp;
                 InterlockedExchange(&g_torrentBufferPercent,percent);
+                TorrentSetBufferProgress(percent);
                 if(percent<100) {
                     wchar_t buffering[160];
                     if(g_torrentEverPlayed) {
@@ -3550,6 +3564,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_torrentLastMediaTime<0||mediaTime>g_torrentLastMediaTime) {
                     g_torrentLastMediaTime=mediaTime;
                     g_torrentLastProgressTick=GetTickCount64();
+                    TorrentSetBufferProgress(100);
                     if(g_torrentEverPlayed) {
                         g_torrentBufferingSinceTick=0;
                         TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
