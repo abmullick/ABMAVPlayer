@@ -3367,7 +3367,7 @@ static void TorrentPaint(HWND hwnd){
     const float w=(float)rc.right,h=(float)rc.bottom;
     const float m=22.0f,g=14.0f,headerH=94.0f;
     const float footerH=260.0f;
-    float contentTop=headerH+g;
+    float sourceTop=headerH+g,contentTop=sourceTop+56.0f;
     float contentBottom=h-footerH;
     if(contentBottom<contentTop+180.0f)contentBottom=contentTop+180.0f;
     float playbackY=contentBottom+g,networkY=playbackY+82.0f;
@@ -3381,6 +3381,10 @@ static void TorrentPaint(HWND hwnd){
     RECT r={22,18,62,58};ABM_D2D_Text(&g_torrentUi,L"A",r,RGB(255,255,255),2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){76,14,390,43};ABM_D2D_Text(&g_torrentUi,L"ABM AV PLAYER",r,RGB(244,249,255),2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){78,43,390,64};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM",r,RGB(108,193,190),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=(RECT){m,sourceTop,w-m,sourceTop+48.0f};
+    ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(13,30,47));
+    ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(29,60,77),1.0f);
+    r=(RECT){m+14,sourceTop+4,m+220,sourceTop+24};ABM_D2D_Text(&g_torrentUi,L\"ADD A SOURCE\",r,RGB(93,207,207),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){m,contentTop,w-m,contentBottom};
     ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,15,RGB(12,27,43));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,15,RGB(27,55,73),1.0f);
@@ -3403,7 +3407,11 @@ static void TorrentPaint(HWND hwnd){
     r=(RECT){m+14,networkY+2,m+220,networkY+23};ABM_D2D_Text(&g_torrentUi,L"NETWORK LIMITS",r,label,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){m+14,cacheY+2,m+220,cacheY+23};ABM_D2D_Text(&g_torrentUi,L"STORAGE & CACHE",r,label,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){m+14,tvY+2,m+220,tvY+23};ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,label,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Fill(&g_torrentUi,m+14,playbackY+27,w-m-14,playbackY+28,RGB(28,57,73));
+    /* Buffer progress: the hidden progress HWND remains the authoritative value. */
+    int progress=(int)SendMessageW(g_torrentBufferBar,PBM_GETPOS,0,0);
+    float barL=m+14,barT=playbackY+28,barR=w-m-14;
+    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,RGB(28,57,73));
+    if(progress>0)ABM_D2D_Round(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,RGB(49,180,160));
     ABM_D2D_End(&g_torrentUi);
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
