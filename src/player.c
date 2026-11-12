@@ -3414,6 +3414,40 @@ static void TorrentPaint(HWND hwnd){
     if(progress>0)ABM_D2D_Round(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,RGB(49,180,160));
     ABM_D2D_End(&g_torrentUi);
 }
+
+/* Button renderer copied from Streaming Centre's DrawDeviceButton palette,
+   radius, border, pressed/focus treatment and typography. */
+static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
+    HBRUSH brush=CreateSolidBrush(color);
+    HPEN pen=CreatePen(PS_SOLID,1,color);
+    HGDIOBJ oldBrush=SelectObject(dc,brush),oldPen=SelectObject(dc,pen);
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);
+    DeleteObject(brush);DeleteObject(pen);
+}
+static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color){
+    HFONT font=CreateFontW(-11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
+    DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    SelectObject(dc,old);DeleteObject(font);
+}
+static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
+    if(!item||!item->hwndItem)return;
+    HDC dc=item->hDC;RECT r=item->rcItem;
+    BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
+    BOOL focused=(item->itemState&ODS_FOCUS)!=0;
+    COLORREF fill=pressed?RGB(25,112,101):RGB(24,91,82);
+    COLORREF edge=RGB(65,190,165);
+    TorrentButtonRounded(dc,r,fill,9);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(99,225,205):edge);
+    HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
+    InflateRect(&r,-5,-2);
+    wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
+    TorrentButtonText(dc,caption,r,RGB(229,244,250));
+}
 static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
@@ -3424,6 +3458,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_SIZE: if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
+    
+    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} break; }
     
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
