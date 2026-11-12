@@ -1996,6 +1996,8 @@ static void ApplyEqProfile(void) {
     libvlc_media_player_set_equalizer(g_player,eq);
     libvlc_audio_equalizer_release(eq);
 }
+static BOOL g_torrentPlaybackActive=FALSE;
+static HANDLE g_torrentStreamThread=NULL;
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
     if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
@@ -2824,7 +2826,6 @@ typedef struct TorrentTvStreamRequest {
 static TorrentTvStreamRequest *g_torrentTvStreamRequest=NULL;
 static uint64_t g_torrentTaskId=0;
 static int g_torrentListedFileCount=0,g_torrentListedForTask=-1,g_torrentSelectedFile=-1;
-static BOOL g_torrentPlaybackActive=FALSE;
 typedef enum TorrentPlaybackState {
     TORRENT_PLAYBACK_IDLE=0,
     TORRENT_PLAYBACK_BUFFERING_START,
@@ -2844,7 +2845,6 @@ static ULONGLONG g_torrentBufferingSinceTick=0;
 static libvlc_event_manager_t *g_torrentPlayerEventManager=NULL;
 static libvlc_event_type_t g_torrentAttachedEvents[7];
 static int g_torrentAttachedEventCount=0;
-static HANDLE g_torrentStreamThread=NULL;
 typedef struct TorrentStreamRequest {
     HWND owner;
     uint64_t task_id;
