@@ -15,6 +15,8 @@ typedef struct ABM_D2D {
     void *body;
     void *smallFormat;
     void *heading;
+    void *brandMain;
+    void *brandSuffix;
     void *brush;
     HWND hwnd;
     BOOL clipActive;

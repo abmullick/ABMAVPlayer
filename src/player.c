@@ -37,7 +37,7 @@
 #endif
 
 #define APP_NAME L"ABM AV Player"
-#define APP_VERSION L"1.0.2"
+#define APP_VERSION L"1.0.3"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
 #define ID_RENDERERS 1010
 #define ID_SETTINGS_CACHE_PATH 6201
@@ -3427,12 +3427,23 @@ static void TorrentPaint(HWND hwnd){
     /* Cinematic branded masthead */
     ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,RGB(15,37,57),RGB(6,17,29));
     ABM_D2D_Fill(&g_torrentUi,0,0,w,2,RGB(34,111,122));
-    ABM_D2D_Round(&g_torrentUi,12,12,58,66,18,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,12,12,58,66,18,RGB(63,151,180),1.0f);
-    ABM_D2D_GradientRound(&g_torrentUi,18,18,52,60,12,RGB(34,164,160),RGB(43,112,126));
-    RECT r={18,18,52,60};ABM_D2D_Text(&g_torrentUi,L"A",r,RGB(255,255,255),2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    r=(RECT){70,13,390,45};ABM_D2D_Text(&g_torrentUi,L"ABM AV PLAYER",r,white,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    r=(RECT){72,45,430,65};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  /  PEER-TO-PEER MEDIA",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    /* Match the main player's signature ABM identity: luminous A/play
+       monogram, split ABM + AV PLAYER wordmark, gradient rule and tagline. */
+    ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,RGB(13,28,45));
+    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,RGB(63,151,180),1.0f);
+    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,RGB(28,157,157),RGB(52,119,126));
+    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,RGB(190,229,255),0.8f);
+    ABM_D2D_Line(&g_torrentUi,42,63,59,30,RGB(255,255,255),3.0f);
+    ABM_D2D_Line(&g_torrentUi,59,30,76,63,RGB(255,255,255),3.0f);
+    ABM_D2D_Line(&g_torrentUi,49,49,68,49,RGB(226,245,255),2.0f);
+    ABM_D2D_Line(&g_torrentUi,62,40,75,48,RGB(255,255,255),2.0f);
+    ABM_D2D_Line(&g_torrentUi,75,48,62,56,RGB(255,255,255),2.0f);
+    ABM_D2D_Line(&g_torrentUi,62,56,62,40,RGB(255,255,255),2.0f);
+
+    RECT r={116,8,420,49};ABM_D2D_Text(&g_torrentUi,L"ABM",r,RGB(247,250,255),3,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=(RECT){188,20,390,48};ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,RGB(132,205,194),4,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,RGB(54,177,168),RGB(112,190,157));
+    r=(RECT){116,60,510,83};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,RGB(157,177,201),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){w-244,23,w-22,57};ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(11,28,43));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(42,83,101),0.9f);
     ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,RGB(77,196,153));
@@ -3574,15 +3585,11 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
             TorrentDrawControlFrame(hwnd,dc);
             wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
             if(_wcsicmp(cls,L"ComboBox")==0){
-                /* Cover the themed Win32 arrow well, then paint exactly one
-                   ABM chevron in the same custom surface. */
-                RECT a={r.right-34,1,r.right-1,r.bottom-1};
-                HBRUSH fill=CreateSolidBrush(RGB(13,31,47));FillRect(dc,&a,fill);DeleteObject(fill);
-                HPEN p=CreatePen(PS_SOLID,1,RGB(79,190,176));HGDIOBJ old=SelectObject(dc,p);
-                int cy=(a.top+a.bottom)/2;
-                MoveToEx(dc,a.left+12,cy-2,NULL);LineTo(dc,a.left+17,cy+3);LineTo(dc,a.left+22,cy-2);
-                SelectObject(dc,old);DeleteObject(p);
-                HPEN edge=CreatePen(PS_SOLID,1,RGB(29,75,91));old=SelectObject(dc,edge);
+                /* Keep the native Win32 drop-button glyph as the sole arrow.
+                   The previous custom chevron was painted over the native
+                   button but did not suppress its themed glyph, producing
+                   two visible dropdown handles. */
+                HPEN edge=CreatePen(PS_SOLID,1,RGB(29,75,91));HGDIOBJ old=SelectObject(dc,edge);
                 HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
                 SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(edge);
             }

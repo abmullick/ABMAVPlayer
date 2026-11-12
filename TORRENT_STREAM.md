@@ -1,6 +1,6 @@
 # Torrent Stream — Design and Implementation Plan
 
-**Status:** The `feature/torrent-tv-casting-downloads` branch adds persistent Windows downloads, a separate private-LAN HTTP delivery mode, independent DLNA TV discovery/control and Torrent-window TV controls. Windows x64 compilation, real Android/Google TV playback, firewall behaviour and real-peer download/cast concurrency still require validation; this branch is not yet merged or released.  
+**Status:** The Torrent Stream implementation is included in the v1.0.3 release candidate. The Windows x64 build completed and the installer was created and installed for maintainer testing. The engine uses libtorrent 2.1.2, DHT/LSD bootstrap configuration, immediate tracker announce, verified-piece local playback, persistent downloads, and an isolated DLNA casting path. Peer availability, real receiver codec support, firewall behaviour and sustained playback/cast concurrency remain dependent on the test torrent and target network; outstanding acceptance tests are listed below.  
 **Target:** Windows 11 x64 desktop application  
 **Repository:** ABM AV Player  
 **Design principle:** Add an optional torrent-backed media source without changing or destabilising existing local playback, Streaming Centre, or TV-casting paths.
@@ -172,7 +172,7 @@ Do not add a guessed NuGet package or unpinned binary dependency. Do not claim t
 
 ## 10. Acceptance criteria
 
-The feature is not complete until all of the following pass on Windows 11 x64:
+The following acceptance tests define the remaining validation scope on Windows 11 x64:
 
 - A user-supplied valid magnet and a local `.torrent` file both load.
 - Metadata and selected-file listing are correct.
@@ -186,4 +186,4 @@ The feature is not complete until all of the following pass on Windows 11 x64:
 - Existing local playback, Streaming Centre, TV discovery and local casting regressions are absent.
 - Installer works on a clean Windows test machine with all pinned runtime dependencies.
 
-**Current state on this feature branch:** The native libtorrent engine stores selected torrent files under the configured parent folder's `Torrent Downloads/<info-hash>` directory. This folder is separate from `torrent-cache` and is not removed by the inactive-cache cleanup or cache-quota setting. The same on-disk file is the source for both local LibVLC playback and the temporary TV HTTP server. The loopback server remains the local playback route. The new LAN route binds to a selected private IPv4 interface, applies same-subnet client filtering and requires a 256-bit random token. A separate Torrent DLNA controller discovers MediaRenderer devices and exposes Find TVs, Cast to TV and Stop TV controls in the Torrent window. The TV receives the original file and decodes it; no PC-side transcoding is implemented. The full selected file continues downloading while TV playback is active, and Stop TV does not stop or delete that download. Main-player casting and Streaming Centre retain their own receiver state. The feature branch has not yet been compiled with the Windows x64 toolchain or tested against real Android/Google TVs; do not treat it as release-ready until the CI and manual acceptance tests pass.
+**Current state on this feature branch:** The native libtorrent engine stores selected torrent files under the configured parent folder's `Torrent Downloads/<info-hash>` directory. This folder is separate from `torrent-cache` and is not removed by the inactive-cache cleanup or cache-quota setting. The same on-disk file is the source for both local LibVLC playback and the temporary TV HTTP server. The loopback server remains the local playback route. The new LAN route binds to a selected private IPv4 interface, applies same-subnet client filtering and requires a 256-bit random token. A separate Torrent DLNA controller discovers MediaRenderer devices and exposes Find TVs, Cast to TV and Stop TV controls in the Torrent window. The TV receives the original file and decodes it; no PC-side transcoding is implemented. The full selected file continues downloading while TV playback is active, and Stop TV does not stop or delete that download. Main-player casting and Streaming Centre retain their own receiver state. The Windows x64 build and installer installation have been tested by the maintainer. This does not establish universal peer availability or compatibility with every Android/Google TV receiver. Complete the remaining real-swarm, receiver, firewall and sustained playback/cast acceptance tests on the target network.

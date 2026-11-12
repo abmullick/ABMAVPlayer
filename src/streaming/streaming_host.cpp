@@ -935,12 +935,38 @@ void PaintChrome(HWND hwnd){
     RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,RGBc(31,91,105));
     RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,RGBc(48,166,161));
 
-    RECT logo={22,13,62,53};Rounded(dc,logo,RGBc(31,143,145),12);
-    Text(dc,L"A",logo,RGBc(255,255,255),25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    RECT title={76,8,306,34};
-    Text(dc,L"ABM AV PLAYER",title,RGBc(244,249,255),18,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT sub={77,34,306,54};
-    Text(dc,L"STREAMING CENTRE",sub,RGBc(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    /* Use the same signature logo and split wordmark as the main player.
+       ABM is the large display face; AV PLAYER is deliberately smaller and
+       teal, with the same baseline/offset and palette as the main masthead. */
+    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,RGBc(13,28,45),22);
+    HPEN haloPen=CreatePen(PS_SOLID,1,RGBc(63,151,180));
+    HGDIOBJ oldLogoPen=SelectObject(dc,haloPen);
+    HGDIOBJ oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,logoHalo.left,logoHalo.top,logoHalo.right,logoHalo.bottom,22,22);
+    SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(haloPen);
+    RECT logo={28,14,94,80};Rounded(dc,logo,RGBc(28,157,157),17);
+    RECT logoInset={33,19,89,75};
+    HPEN insetPen=CreatePen(PS_SOLID,1,RGBc(190,229,255));oldLogoPen=SelectObject(dc,insetPen);
+    oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,logoInset.left,logoInset.top,logoInset.right,logoInset.bottom,14,14);
+    SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(insetPen);
+    HPEN markPen=CreatePen(PS_SOLID,3,RGBc(255,255,255));oldLogoPen=SelectObject(dc,markPen);
+    MoveToEx(dc,42,63,nullptr);LineTo(dc,59,30);LineTo(dc,76,63);
+    SelectObject(dc,oldLogoPen);DeleteObject(markPen);
+    HPEN crossPen=CreatePen(PS_SOLID,2,RGBc(226,245,255));oldLogoPen=SelectObject(dc,crossPen);
+    MoveToEx(dc,49,49,nullptr);LineTo(dc,68,49);
+    SelectObject(dc,oldLogoPen);DeleteObject(crossPen);
+    HPEN playPen=CreatePen(PS_SOLID,2,RGBc(255,255,255));oldLogoPen=SelectObject(dc,playPen);
+    MoveToEx(dc,62,40,nullptr);LineTo(dc,75,48);LineTo(dc,62,56);LineTo(dc,62,40);
+    SelectObject(dc,oldLogoPen);DeleteObject(playPen);
+
+    RECT brandMain={116,8,188,49};
+    Text(dc,L"ABM",brandMain,RGBc(247,250,255),30,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT brandSuffix={188,20,306,48};
+    Text(dc,L"AV  PLAYER",brandSuffix,RGBc(132,205,194),18,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,RGBc(54,177,168));
+    RECT sub={116,60,306,83};
+    Text(dc,L"STREAMING CENTRE",sub,RGBc(157,177,201),13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     g_helpRect=RECT{318,15,390,55};
     Rounded(dc,g_helpRect,g_hoverControl==5?RGBc(36,75,94):RGBc(20,42,60),9);

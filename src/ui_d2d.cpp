@@ -87,6 +87,7 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     ui->writeFactory = writeFactory;
 
     IDWriteTextFormat *body = nullptr, *smallFormat = nullptr, *heading = nullptr;
+    IDWriteTextFormat *brandMain = nullptr, *brandSuffix = nullptr;
     /* Segoe UI Variable gives the interface a contemporary Windows 11
        typographic voice; DirectWrite performs normal font fallback on older PCs. */
     /* A tighter typographic scale gives the interface a calmer, more
@@ -95,12 +96,16 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
        gaming UI. Segoe UI Variable falls back cleanly on older Windows builds. */
     if (!MakeFormat(writeFactory, L"Segoe UI Variable Text", 16.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
         !MakeFormat(writeFactory, L"Segoe UI Variable Text", 12.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 28.0f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading)) {
+        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 28.0f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
+        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 30.0f, DWRITE_FONT_WEIGHT_BOLD, &brandMain) ||
+        !MakeFormat(writeFactory, L"Segoe UI Variable Text", 18.0f, DWRITE_FONT_WEIGHT_MEDIUM, &brandSuffix)) {
         SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
+        SafeRelease(&brandMain); SafeRelease(&brandSuffix);
         ABM_D2D_Destroy(ui);
         return FALSE;
     }
     ui->body = body; ui->smallFormat = smallFormat; ui->heading = heading;
+    ui->brandMain = brandMain; ui->brandSuffix = brandSuffix;
     if (!EnsureTarget(ui)) { ABM_D2D_Destroy(ui); return FALSE; }
     return TRUE;
 }
@@ -216,7 +221,8 @@ extern "C" void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect,
                               COLORREF color, int style, UINT flags) {
     if (!ui || !EnsureTarget(ui) || !text || !text[0]) return;
     IDWriteTextFormat *format = static_cast<IDWriteTextFormat *>(
-        style == 1 ? ui->smallFormat : (style == 2 ? ui->heading : ui->body));
+        style == 1 ? ui->smallFormat : (style == 2 ? ui->heading :
+        (style == 3 ? ui->brandMain : (style == 4 ? ui->brandSuffix : ui->body))));
     DWRITE_TEXT_ALIGNMENT align = (flags & DT_CENTER) ? DWRITE_TEXT_ALIGNMENT_CENTER :
         ((flags & DT_RIGHT) ? DWRITE_TEXT_ALIGNMENT_TRAILING : DWRITE_TEXT_ALIGNMENT_LEADING);
     DWRITE_PARAGRAPH_ALIGNMENT valign = (flags & DT_VCENTER) ?
@@ -311,6 +317,8 @@ extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->body));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->smallFormat));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->heading));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->brandMain));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->brandSuffix));
     SafeRelease(reinterpret_cast<IDWriteFactory **>(&ui->writeFactory));
     SafeRelease(reinterpret_cast<ID2D1Factory **>(&ui->factory));
     ZeroMemory(ui, sizeof(*ui));

@@ -1,4 +1,6 @@
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <winsock2.h>
 #include <windows.h>
 #include <iphlpapi.h>
@@ -113,9 +115,8 @@ public:
             WSADATA wsa{};if(WSAStartup(MAKEWORD(2,2),&wsa)!=0)return false;
             winsock_ready_=true;
             session_=std::make_unique<lt::session>(s);
-            /* Explicit bootstrap probes supplement dht_bootstrap_nodes and
-               make the initial routing-table join less dependent on one DNS
-               result. Failures here are non-fatal; libtorrent keeps retrying. */
+            /* libtorrent 2.1 starts DHT from enable_dht plus the configured
+               bootstrap nodes. Explicit probes supplement dht_bootstrap_nodes. */
             try{
                 session_->add_dht_node({"router.bittorrent.com",6881});
                 session_->add_dht_node({"dht.transmissionbt.com",6881});
@@ -679,6 +680,19 @@ private:
         p.flags &= ~lt::torrent_flags::disable_lsd;
         auto h=session_->add_torrent(std::move(p),ec);
         if(ec||!h.is_valid()){err=FromUtf8(ec.message());return false;}
+        /* Do not leave a newly-added magnet/.torrent waiting for a long
+           automatic announce interval. Ask its supplied trackers immediately
+           and join the DHT swarm for public torrents. */
+        try { h.force_reannounce(); } catch(...) {}
+        try {
+            if(session_->is_dht_running()) h.force_dht_announce();
+            else {
+                /* Re-assert the supported libtorrent 2.1 DHT setting. */
+                lt::settings_pack dhtSettings;
+                dhtSettings.set_bool(lt::settings_pack::enable_dht,true);
+                session_->apply_settings(dhtSettings);
+            }
+        } catch(...) {}
         auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);t->cache_path=std::move(taskCachePath);
         tasks_.emplace(t->id,t);*id=t->id;return true;
     }
@@ -751,9 +765,28 @@ private:
     }
     void Monitor() {
         auto lastCacheScan=std::chrono::steady_clock::now();
+        auto lastDhtRetry=std::chrono::steady_clock::now()-std::chrono::seconds(10);
         while(!stopping_) {
             {
                 std::lock_guard<std::mutex> g(m_);
+                /* Keep DHT startup observable and self-healing. A session can
+                   be alive while its DHT subsystem remains stopped (for
+                   example after bootstrap/DNS startup trouble). Retry the
+                   service and bootstrap nodes without blocking torrent UI. */
+                const auto dhtNow=std::chrono::steady_clock::now();
+                if(session_ && !session_->is_dht_running() &&
+                   dhtNow-lastDhtRetry>=std::chrono::seconds(10)) {
+                    try {
+                        /* Re-apply enable_dht and retry bootstrap endpoints. */
+                        lt::settings_pack dhtSettings;
+                        dhtSettings.set_bool(lt::settings_pack::enable_dht,true);
+                        session_->apply_settings(dhtSettings);
+                        session_->add_dht_node({"router.bittorrent.com",6881});
+                        session_->add_dht_node({"dht.transmissionbt.com",6881});
+                        session_->add_dht_node({"router.utorrent.com",6881});
+                    } catch(...) {}
+                    lastDhtRetry=dhtNow;
+                }
                 for(auto &e:tasks_) {
                     Task &t=*e.second;
                     if(!t.handle.is_valid())continue;
