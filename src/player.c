@@ -3332,46 +3332,46 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
 }
 
 static void TorrentLayout(HWND hwnd) {
-    RECT rc;GetClientRect(hwnd,&rc);int w=rc.right,h=rc.bottom,m=22,inner=w-44;
-    int contentBottom=h-320;
-    if(contentBottom<270)contentBottom=270;
-    int playbackY=contentBottom+8,networkY=playbackY+82,cacheY=networkY+60,tvY=cacheY+60;
+    RECT rc={0};GetClientRect(hwnd,&rc);
+    const int w=rc.right,h=rc.bottom,m=22,inner=w-2*m;
+    int contentBottom=h-320;if(contentBottom<270)contentBottom=270;
+    const int playbackY=contentBottom+8,networkY=playbackY+82,cacheY=networkY+60,tvY=cacheY+60;
     MoveWindow(g_torrentMagnetEdit,m+12,108,inner-252,32,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,108,104,32,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,108,104,32,TRUE);
     MoveWindow(g_torrentInfoLabel,m+12,168,inner-24,22,TRUE);
-    MoveWindow(g_torrentFileList,m+12,194,inner-24,contentBottom-202,TRUE);
-    MoveWindow(g_torrentStatusLabel,m+12,playbackY+8,inner-24,20,TRUE);
-    MoveWindow(g_torrentBufferBar,m+12,playbackY+31,inner-24,7,TRUE);
+    MoveWindow(g_torrentFileList,m+12,194,inner-24,max(40,contentBottom-202),TRUE);
+    MoveWindow(g_torrentStatusLabel,m+12,playbackY+7,inner-24,18,TRUE);
+    MoveWindow(g_torrentBufferBar,m+12,playbackY+28,inner-24,6,TRUE);
     int aw=(inner-48)/5,x=m+12;
-    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+43,aw,32,TRUE);x+=aw+12;}
-    int half=inner/2;
-    MoveWindow(g_torrentDownLabel,m+12,networkY+16,112,20,TRUE);
-    MoveWindow(g_torrentDownLimitEdit,m+126,networkY+10,76,30,TRUE);
-    MoveWindow(g_torrentUpLabel,m+half,networkY+16,96,20,TRUE);
-    MoveWindow(g_torrentUpLimitEdit,m+half+100,networkY+10,76,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-124,networkY+10,112,30,TRUE);
-    MoveWindow(g_torrentCacheLabel,m+12,cacheY+16,116,20,TRUE);
-    MoveWindow(g_torrentCacheLimitEdit,m+132,cacheY+10,62,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+204,cacheY+10,104,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+320,cacheY+10,144,30,TRUE);
-    MoveWindow(g_torrentCacheInfoLabel,m+476,cacheY+13,inner-488,24,TRUE);
-    MoveWindow(g_torrentTvButtons[0],m+12,tvY+12,116,34,TRUE);
-    MoveWindow(g_torrentTvCombo,m+140,tvY+12,inner-414,34,TRUE);
-    MoveWindow(g_torrentTvButtons[1],w-m-254,tvY+12,118,34,TRUE);
-    MoveWindow(g_torrentTvButtons[2],w-m-124,tvY+12,112,34,TRUE);
-    MoveWindow(g_torrentDownloadPathLabel,m+12,tvY+51,inner-24,22,TRUE);
+    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+40,aw,30,TRUE);x+=aw+12;}
+    const int half=inner/2;
+    MoveWindow(g_torrentDownLabel,m+12,networkY+3,112,20,TRUE);
+    MoveWindow(g_torrentDownLimitEdit,m+126,networkY+27,76,26,TRUE);
+    MoveWindow(g_torrentUpLabel,m+half,networkY+3,96,20,TRUE);
+    MoveWindow(g_torrentUpLimitEdit,m+half+100,networkY+27,76,26,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-124,networkY+27,112,26,TRUE);
+    MoveWindow(g_torrentCacheLabel,m+12,cacheY+3,116,20,TRUE);
+    MoveWindow(g_torrentCacheLimitEdit,m+132,cacheY+27,62,26,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+204,cacheY+27,104,26,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+320,cacheY+27,144,26,TRUE);
+    MoveWindow(g_torrentCacheInfoLabel,m+476,cacheY+29,max(80,inner-488),22,TRUE);
+    MoveWindow(g_torrentTvButtons[0],m+12,tvY+28,116,32,TRUE);
+    MoveWindow(g_torrentTvCombo,m+140,tvY+28,max(120,inner-414),32,TRUE);
+    MoveWindow(g_torrentTvButtons[1],w-m-254,tvY+28,118,32,TRUE);
+    MoveWindow(g_torrentTvButtons[2],w-m-124,tvY+28,112,32,TRUE);
+    MoveWindow(g_torrentDownloadPathLabel,m+12,tvY+68,inner-24,22,TRUE);
 }
 static void TorrentPaint(HWND hwnd){
     RECT rc={0};GetClientRect(hwnd,&rc);
     const float w=(float)rc.right,h=(float)rc.bottom;
     const float m=22.0f,g=14.0f,headerH=94.0f;
-    const float footerH=260.0f;
+    const float footerH=320.0f;
     float sourceTop=headerH+g,contentTop=sourceTop+56.0f;
     float contentBottom=h-footerH;
     if(contentBottom<contentTop+180.0f)contentBottom=contentTop+180.0f;
     float playbackY=contentBottom+g,networkY=playbackY+82.0f;
-    float cacheY=networkY+66.0f,tvY=cacheY+66.0f;
+    float cacheY=networkY+60.0f,tvY=cacheY+60.0f;
     ABM_D2D_Begin(&g_torrentUi,RGB(7,12,21));
     /* ABM's shared Direct2D visual language: layered surfaces, restrained
        gradients, hairline borders and the same typography as the main player. */
@@ -3435,12 +3435,15 @@ static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color)
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
     HDC dc=item->hDC;RECT r=item->rcItem;
+    /* Fill the owner's rectangular erase area before drawing rounded corners. */
+    HBRUSH background=CreateSolidBrush(RGB(13,30,47));
+    FillRect(dc,&r,background);DeleteObject(background);
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
     COLORREF fill=pressed?RGB(25,112,101):RGB(24,91,82);
-    COLORREF edge=RGB(65,190,165);
+    COLORREF edge=focused?RGB(99,225,205):RGB(65,190,165);
     TorrentButtonRounded(dc,r,fill,9);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(99,225,205):edge);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,edge);
     HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
