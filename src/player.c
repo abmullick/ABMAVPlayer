@@ -3427,12 +3427,23 @@ static void TorrentPaint(HWND hwnd){
     /* Cinematic branded masthead */
     ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,RGB(15,37,57),RGB(6,17,29));
     ABM_D2D_Fill(&g_torrentUi,0,0,w,2,RGB(34,111,122));
-    ABM_D2D_Round(&g_torrentUi,12,12,58,66,18,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,12,12,58,66,18,RGB(63,151,180),1.0f);
-    ABM_D2D_GradientRound(&g_torrentUi,18,18,52,60,12,RGB(34,164,160),RGB(43,112,126));
-    RECT r={18,18,52,60};ABM_D2D_Text(&g_torrentUi,L"A",r,RGB(255,255,255),2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    r=(RECT){70,13,390,45};ABM_D2D_Text(&g_torrentUi,L"ABM AV PLAYER",r,white,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    r=(RECT){72,45,430,65};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  /  PEER-TO-PEER MEDIA",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    /* Match the main player's signature ABM identity: luminous A/play
+       monogram, split ABM + AV PLAYER wordmark, gradient rule and tagline. */
+    ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,RGB(13,28,45));
+    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,RGB(63,151,180),1.0f);
+    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,RGB(28,157,157),RGB(52,119,126));
+    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,RGB(190,229,255),0.8f);
+    ABM_D2D_Line(&g_torrentUi,42,63,59,30,RGB(255,255,255),3.0f);
+    ABM_D2D_Line(&g_torrentUi,59,30,76,63,RGB(255,255,255),3.0f);
+    ABM_D2D_Line(&g_torrentUi,49,49,68,49,RGB(226,245,255),2.0f);
+    ABM_D2D_Line(&g_torrentUi,62,40,75,48,RGB(255,255,255),2.0f);
+    ABM_D2D_Line(&g_torrentUi,75,48,62,56,RGB(255,255,255),2.0f);
+    ABM_D2D_Line(&g_torrentUi,62,56,62,40,RGB(255,255,255),2.0f);
+
+    RECT r={116,8,420,49};ABM_D2D_Text(&g_torrentUi,L"ABM",r,RGB(247,250,255),2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=(RECT){188,20,390,48};ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,RGB(132,205,194),0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Fill(&g_torrentUi,116,52,354,54,RGB(54,177,168));
+    r=(RECT){116,60,510,83};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,RGB(157,177,201),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){w-244,23,w-22,57};ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(11,28,43));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(42,83,101),0.9f);
     ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,RGB(77,196,153));
