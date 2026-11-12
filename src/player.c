@@ -3402,13 +3402,13 @@ static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(co
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
     HDC dc=item->hDC;RECT r=item->rcItem;
-    BOOL primary=(item->CtlID==ID_TORRENT_STREAM||item->CtlID==ID_TORRENT_CAST_TV||item->CtlID==ID_TORRENT_ADD_MAGNET);
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
-    COLORREF fill=primary?(pressed?RGB(25,112,101):RGB(24,91,82)):
-        (pressed?RGB(35,75,94):RGB(20,42,60));
-    COLORREF edge=primary?RGB(65,190,165):RGB(48,91,113);
-    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,1,fill);
+    /* One shared ABM teal button treatment for every Torrent action. */
+    COLORREF fill=pressed?RGB(25,112,101):RGB(24,91,82);
+    COLORREF edge=RGB(65,190,165);
+    HBRUSH brush=CreateSolidBrush(fill);
+    HPEN pen=CreatePen(PS_SOLID,1,fill);
     HGDIOBJ ob=SelectObject(dc,brush),op=SelectObject(dc,pen);
     RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(brush);DeleteObject(pen);
@@ -3418,12 +3418,15 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
     InflateRect(&r,-5,-2);
     SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(229,244,250));
-    HFONT font=CreateFontW(-11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    HFONT font=CreateFontW(-11,0,0,0,600,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
+        DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HGDIOBJ old=font?SelectObject(dc,font):NULL;
-    wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
+    wchar_t caption[128]={0};
+    GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
     DrawTextW(dc,caption,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    if(old)SelectObject(dc,old);if(font)DeleteObject(font);
+    if(old)SelectObject(dc,old);
+    if(font)DeleteObject(font);
 }
 static void TorrentDrawListItem(const DRAWITEMSTRUCT *dis) {
     if(!dis||dis->CtlType!=ODT_LISTBOX||dis->itemID==(UINT)-1)return;
