@@ -3420,8 +3420,8 @@ static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_PAINT: TorrentPaint(hwnd);return 0;
-    case WM_SIZE: TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
+    case WM_SIZE: if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
     
@@ -3441,6 +3441,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CREATE: {
         g_torrentUiFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
+        if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
         g_torrentUiReady=TRUE;
         HWND h=CreateWindowExW(0,L"STATIC",L"Magnet URI or local .torrent file",WS_CHILD|WS_VISIBLE,20,76,760,20,hwnd,NULL,NULL,NULL);
         g_torrentSourceHint=h;ShowWindow(h,SW_HIDE);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3587,6 +3589,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
         g_torrentUiReady=FALSE;
+        ABM_D2D_Destroy(&g_torrentUi);
         if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
