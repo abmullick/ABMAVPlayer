@@ -3175,12 +3175,12 @@ static void TorrentRefreshStatus(void) {
     if(playbackState==TORRENT_PLAYBACK_BUFFERING_START||playbackState==TORRENT_PLAYBACK_BUFFERING) {
         wchar_t buffering[768];
         StringCchPrintfW(buffering,_countof(buffering),
-            L"%s (%ld%%)  |  Trackers %d/%d verified, %d failures  |  DHT announce %s  |  Known peers %d  |  Candidates %d  |  Connections %d  |  Seeds %d",
-            playbackState==TORRENT_PLAYBACK_BUFFERING_START?L"Buffering before playback starts…":L"Buffering during playback…",
+            L"%s (%ld%%)  |  Trackers %d/%d  Fail %d  |  DHT %s  |  Known %d  |  Connecting %d  |  Connected %d",
+            playbackState==TORRENT_PLAYBACK_BUFFERING_START?L"Buffering…":L"Buffering…",
             InterlockedCompareExchange(&g_torrentBufferPercent,0,0),
             info.tracker_verified,info.tracker_count,info.tracker_failures,
-            info.announcing_to_dht?L"on":L"off",info.known_peers,info.connect_candidates,
-            info.connections,info.seeds);
+            info.announcing_to_dht?L"ON":L"OFF",info.known_peers,info.connect_candidates,
+            info.connections);
         if(info.tracker_diagnostic[0]){
             StringCchCatW(buffering,_countof(buffering),L"  |  Tracker response: ");
             StringCchCatW(buffering,_countof(buffering),info.tracker_diagnostic);
