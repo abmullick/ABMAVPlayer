@@ -3499,14 +3499,21 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         };
         for(size_t i=0;i<_countof(buttons);i++){g_torrentActionButtons[i]=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,568,125,40,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(g_torrentActionButtons[i],WM_SETFONT,(WPARAM)font,TRUE);}
         for(HWND child=GetWindow(hwnd,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)) { TorrentApplyDarkControl(child);SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE); }
-        /* Keep native controls only as hidden state/command stores. */
-        ShowWindow(g_torrentFileList,SW_HIDE);
-        ShowWindow(g_torrentBufferBar,SW_HIDE);
+        /* Keep all interactive child controls visible until their Direct2D
+           canvas replacements are wired. Never hide the command buttons. */
+        ShowWindow(g_torrentFileList,SW_SHOW);
+        ShowWindow(g_torrentBufferBar,SW_SHOW);
         { const int ids[]={ID_TORRENT_ADD_MAGNET,ID_TORRENT_BROWSE,ID_TORRENT_APPLY_LIMITS,
             ID_TORRENT_CACHE_APPLY,ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,
             ID_TORRENT_CAST_TV,ID_TORRENT_STOP_TV,ID_TORRENT_PAUSE,ID_TORRENT_STREAM,
             ID_TORRENT_STOP,ID_TORRENT_REMOVE,ID_TORRENT_REFRESH};
-          for(int i=0;i<(int)_countof(ids);i++){HWND button=GetDlgItem(hwnd,ids[i]);if(button)ShowWindow(button,SW_HIDE);} }
+          for(int i=0;i<(int)_countof(ids);i++){
+              HWND button=GetDlgItem(hwnd,ids[i]);if(button){
+                  LONG_PTR style=GetWindowLongPtrW(button,GWL_STYLE);
+                  SetWindowLongPtrW(button,GWL_STYLE,style&~BS_OWNERDRAW);
+                  ShowWindow(button,SW_SHOW);
+              }
+          } }
         TorrentLayout(hwnd);
         TorrentRefreshCacheStatus();
         g_torrentTvKnownCount=-1;TorrentRefreshTvDevices();
