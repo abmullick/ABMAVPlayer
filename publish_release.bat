@@ -12,8 +12,10 @@ if not "%VERSION%"=="1.0.3" goto invalid_version
 if not exist "dist\ABM-AV-Player-Setup.exe" goto missing_installer
 if not exist "RELEASE_NOTES.md" goto missing_notes
 
-rem Verify the installer contains the same application version before upload.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='dist\ABM-AV-Player-Setup.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.3') { Write-Host 'ERROR: Installer does not contain About version 1.0.3.'; if ($s -match 'Version 1\.0\.[0-9]+') { Write-Host ('Found: ' + $Matches[0]) }; exit 1 }"
+rem Inno Setup compresses the application payload, so do not search the
+rem installer bytes for the About string. Verify the installer PE version
+rem resource, which is stamped by VersionInfoVersion/ProductVersion in the ISS.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne '1.0.3' -and $v.FileVersion -notlike '1.0.3*') { Write-Host 'ERROR: Installer PE version resource is not 1.0.3. Rebuild with the updated installer script.'; exit 1 }"
 if errorlevel 1 goto wrong_installer_version
 
 where gh >nul 2>nul
@@ -56,8 +58,8 @@ endlocal
 exit /b 1
 
 :wrong_installer_version
-echo ERROR: Refusing to publish an installer that does not identify itself as v1.0.3.
-echo Rebuild with build_installer.bat and verify About shows Version 1.0.3.
+echo ERROR: Installer PE version resource does not identify v1.0.3.
+echo Rebuild using the updated installer/ABMAVPlayer.iss, then verify About shows Version 1.0.3.
 endlocal
 exit /b 1
 
