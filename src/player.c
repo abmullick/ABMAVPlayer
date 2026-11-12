@@ -3080,6 +3080,15 @@ static void TorrentFormatBytes(int64_t bytes,wchar_t *out,size_t cap) {
     else if(bytes>=1024LL)StringCchPrintfW(out,cap,L"%.1f KiB",(double)bytes/1024.0);
     else StringCchPrintfW(out,cap,L"%lld B",(long long)bytes);
 }
+static BOOL TorrentIsPlayableVideo(const wchar_t *path){
+    if(!path)return FALSE;
+    const wchar_t *dot=wcsrchr(path,L'.');if(!dot)return FALSE;
+    return !_wcsicmp(dot,L".mp4")||!_wcsicmp(dot,L".mkv")||!_wcsicmp(dot,L".avi")||
+        !_wcsicmp(dot,L".mov")||!_wcsicmp(dot,L".wmv")||!_wcsicmp(dot,L".webm")||
+        !_wcsicmp(dot,L".m4v")||!_wcsicmp(dot,L".mpg")||!_wcsicmp(dot,L".mpeg")||
+        !_wcsicmp(dot,L".ts")||!_wcsicmp(dot,L".m2ts")||!_wcsicmp(dot,L".ogv")||
+        !_wcsicmp(dot,L".3gp");
+}
 static void TorrentRefreshFiles(void) {
     if(!g_torrentWindow||!g_torrentTaskId||!g_torrentGetTask||!g_torrentGetFile)return;
     ABM_TorrentTaskInfo info={0};
@@ -3088,6 +3097,7 @@ static void TorrentRefreshFiles(void) {
     if(g_torrentListedForTask==(int)(g_torrentTaskId&0x7fffffff))return;
     SendMessageW(g_torrentFileList,LB_RESETCONTENT,0,0);
     g_torrentListedFileCount=0;g_torrentSelectedFile=-1;
+    int preferredRow=-1;int64_t preferredSize=-1;int row=0;
     for(int i=0;i<info.file_count;i++) {
         wchar_t path[1024]=L"",sizeText[64]=L"",line[1200]=L"";
         int64_t size=0;
@@ -3095,11 +3105,19 @@ static void TorrentRefreshFiles(void) {
         TorrentFormatBytes(size,sizeText,_countof(sizeText));
         StringCchPrintfW(line,_countof(line),L"%s   (%s)",path,sizeText);
         LRESULT item=SendMessageW(g_torrentFileList,LB_ADDSTRING,0,(LPARAM)line);
-        if(item!=LB_ERR&&item!=LB_ERRSPACE)SendMessageW(g_torrentFileList,LB_SETITEMDATA,(WPARAM)item,(LPARAM)i);
-        g_torrentListedFileCount++;
+        if(item!=LB_ERR&&item!=LB_ERRSPACE){
+            SendMessageW(g_torrentFileList,LB_SETITEMDATA,(WPARAM)item,(LPARAM)i);
+            if(TorrentIsPlayableVideo(path)&&size>preferredSize){preferredRow=(int)item;preferredSize=size;}
+        }
+        g_torrentListedFileCount++;row++;
     }
     g_torrentListedForTask=(int)(g_torrentTaskId&0x7fffffff);
-    if(g_torrentListedFileCount>0)SendMessageW(g_torrentFileList,LB_SETCURSEL,0,0);
+    if(g_torrentListedFileCount>0){
+        int initial=preferredRow>=0?preferredRow:0;
+        SendMessageW(g_torrentFileList,LB_SETCURSEL,(WPARAM)initial,0);
+        if(preferredRow>=0)TorrentSetLabel(g_torrentStatusLabel,L"Video selected automatically. Press Play / Stream to begin buffering.");
+        else TorrentSetLabel(g_torrentStatusLabel,L"No video file detected. Select a supported media file manually.");
+    }
 }
 static void TorrentRefreshCacheStatus(void) {
     if(!g_torrentInitialized||!g_torrentGetCacheInfo||!g_torrentCacheInfoLabel)return;
@@ -3282,6 +3300,9 @@ static void TorrentBeginStream(void) {
     wchar_t path[1024]=L"";int64_t size=0;
     if(!g_torrentGetFile(g_torrentTaskId,fileIndex,path,(unsigned)_countof(path),&size)||size<=0) {
         TorrentSetLabel(g_torrentStatusLabel,L"Could not read the selected file metadata.");return;
+    }
+    if(!TorrentIsPlayableVideo(path)){
+        TorrentSetLabel(g_torrentStatusLabel,L"That file is not a supported video. Select the .mp4/.mkv movie file, not subtitles or artwork.");return;
     }
     if(!g_torrentSelectFile(g_torrentTaskId,fileIndex)) {
         ABM_TorrentTaskInfo cacheError={0};
@@ -3584,7 +3605,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentDownloadPathLabel,WM_SETFONT,(WPARAM)font,TRUE);
         SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         const struct {int id;const wchar_t *label;} buttons[]={
-            {ID_TORRENT_PAUSE,L"Pause / Resume"},{ID_TORRENT_STREAM,L"Stream selected"},
+            {ID_TORRENT_PAUSE,L"Pause / Resume"},{ID_TORRENT_STREAM,L"Play / Stream"},
             {ID_TORRENT_STOP,L"Stop stream"},{ID_TORRENT_REMOVE,L"Remove task"},{ID_TORRENT_REFRESH,L"Refresh"}
         };
         for(size_t i=0;i<_countof(buttons);i++){g_torrentActionButtons[i]=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,568,125,40,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(g_torrentActionButtons[i],WM_SETFONT,(WPARAM)font,TRUE);}
