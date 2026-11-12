@@ -3384,7 +3384,7 @@ static void TorrentPaint(HWND hwnd){
     r=(RECT){m,sourceTop,w-m,sourceTop+48.0f};
     ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(13,30,47));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(29,60,77),1.0f);
-    r=(RECT){m+14,sourceTop+4,m+220,sourceTop+24};ABM_D2D_Text(&g_torrentUi,L\"ADD A SOURCE\",r,RGB(93,207,207),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=(RECT){m+14,sourceTop+4,m+220,sourceTop+24};ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,RGB(93,207,207),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){m,contentTop,w-m,contentBottom};
     ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,15,RGB(12,27,43));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,15,RGB(27,55,73),1.0f);
@@ -3418,57 +3418,13 @@ static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
-static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
-    if(!item||!item->hwndItem)return;
-    HDC dc=item->hDC;RECT r=item->rcItem;
-    BOOL pressed=(item->itemState&ODS_SELECTED)!=0,focused=(item->itemState&ODS_FOCUS)!=0;
-    COLORREF fill=pressed?RGB(25,112,101):RGB(24,91,82);
-    COLORREF edge=focused?RGB(99,225,205):RGB(65,190,165);
-    TorrentRounded(dc,r,fill,9);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,edge);HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
-    InflateRect(&r,-5,-2);wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-    TorrentText(dc,caption,r,RGB(229,244,250),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-}
-static void TorrentDrawListItem(const DRAWITEMSTRUCT *dis) {
-    if(!dis||dis->CtlType!=ODT_LISTBOX||dis->itemID==(UINT)-1)return;
-    wchar_t label[1024]={0};SendMessageW(dis->hwndItem,LB_GETTEXT,dis->itemID,(LPARAM)label);
-    BOOL selected=(dis->itemState&ODS_SELECTED)!=0;RECT rc=dis->rcItem;
-    HBRUSH brush=CreateSolidBrush(selected?RGB(29,91,103):RGB(15,31,47));FillRect(dis->hDC,&rc,brush);DeleteObject(brush);
-    RECT text=rc;InflateRect(&text,-10,0);SetBkMode(dis->hDC,TRANSPARENT);
-    SetTextColor(dis->hDC,selected?RGB(245,255,255):RGB(207,225,237));
-    DrawTextW(dis->hDC,label,-1,&text,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-}
-static void TorrentHandleCanvasClick(HWND hwnd,int x,int y){
-    const int ids[]={ID_TORRENT_ADD_MAGNET,ID_TORRENT_BROWSE,ID_TORRENT_APPLY_LIMITS,
-        ID_TORRENT_CACHE_APPLY,ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,
-        ID_TORRENT_CAST_TV,ID_TORRENT_STOP_TV,ID_TORRENT_PAUSE,ID_TORRENT_STREAM,
-        ID_TORRENT_STOP,ID_TORRENT_REMOVE,ID_TORRENT_REFRESH};
-    for(int i=0;i<(int)_countof(ids);i++){
-        HWND button=GetDlgItem(hwnd,ids[i]);if(!button)continue;
-        RECT r={0};GetWindowRect(button,&r);MapWindowPoints(HWND_DESKTOP,hwnd,(POINT*)&r,2);
-        if(x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom){
-            SendMessageW(hwnd,WM_COMMAND,MAKEWPARAM(ids[i],BN_CLICKED),(LPARAM)button);return;
-        }
-    }
-    if(g_torrentFileList){
-        RECT r={0};GetWindowRect(g_torrentFileList,&r);MapWindowPoints(HWND_DESKTOP,hwnd,(POINT*)&r,2);
-        if(x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom){
-            int row=(y-r.top-5)/30;if(row>=0&&row<(int)SendMessageW(g_torrentFileList,LB_GETCOUNT,0,0)){
-                SendMessageW(g_torrentFileList,LB_SETCURSEL,(WPARAM)row,0);
-                SendMessageW(hwnd,WM_COMMAND,MAKEWPARAM(ID_TORRENT_FILES,LBN_SELCHANGE),(LPARAM)g_torrentFileList);
-                InvalidateRect(hwnd,NULL,FALSE);
-            }
-        }
-    }
-}
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_PAINT: TorrentPaint(hwnd);return 0;
     case WM_SIZE: TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
-    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp;if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;}if(dis&&dis->CtlType==ODT_LISTBOX){TorrentDrawListItem(dis);return TRUE;}break; }
+    
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
         return (LRESULT)g_torrentSurfaceBrush;
