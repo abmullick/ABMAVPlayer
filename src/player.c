@@ -3546,7 +3546,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
           for(int i=0;i<(int)_countof(ids);i++){
               HWND button=GetDlgItem(hwnd,ids[i]);if(button){
                   LONG_PTR style=GetWindowLongPtrW(button,GWL_STYLE);
-                  SetWindowLongPtrW(button,GWL_STYLE,style&~BS_OWNERDRAW);
+                  SetWindowLongPtrW(button,GWL_STYLE,style|BS_OWNERDRAW);
                   ShowWindow(button,SW_SHOW);
               }
           } }
