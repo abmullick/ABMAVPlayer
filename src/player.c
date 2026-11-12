@@ -3414,7 +3414,6 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE: TorrentLayout(hwnd);if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,LOWORD(lp),HIWORD(lp));InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_ERASEBKGND: return 1;
-    case WM_DRAWITEM: { RECT rc;GetClientRect(hwnd,&rc);if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(10,17,29));FillRect((HDC)wp,&rc,g_torrentSurfaceBrush);return 1; }
     case WM_DRAWITEM: TorrentDrawButton((const DRAWITEMSTRUCT*)lp);return TRUE;
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
@@ -3470,14 +3469,14 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
-        h=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,20,684,105,32,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentTvButtons[0]=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,684,130,38,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
+        SendMessageW(g_torrentTvButtons[0],WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST,140,684,260,180,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
         SendMessageW(g_torrentTvCombo,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Cast to TV",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,415,684,115,32,hwnd,(HMENU)ID_TORRENT_CAST_TV,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Stop TV",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,545,684,100,32,hwnd,(HMENU)ID_TORRENT_STOP_TV,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentTvButtons[1]=CreateWindowW(L"BUTTON",L"Cast to TV",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,415,684,130,38,hwnd,(HMENU)ID_TORRENT_CAST_TV,NULL,NULL);
+        SendMessageW(g_torrentTvButtons[1],WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentTvButtons[2]=CreateWindowW(L"BUTTON",L"Stop TV",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,545,684,136,38,hwnd,(HMENU)ID_TORRENT_STOP_TV,NULL,NULL);
+        SendMessageW(g_torrentTvButtons[2],WM_SETFONT,(WPARAM)font,TRUE);
         wchar_t downloadPath[PATH_CAP+128]=L"";
         StringCchPrintfW(downloadPath,_countof(downloadPath),L"Permanent downloads: %s\\Torrent Downloads",g_torrentCacheBaseDir);
         g_torrentDownloadPathLabel=CreateWindowW(L"STATIC",downloadPath,WS_CHILD|WS_VISIBLE,20,724,800,28,hwnd,NULL,NULL,NULL);
@@ -3489,6 +3488,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         };
         for(size_t i=0;i<_countof(buttons);i++){g_torrentActionButtons[i]=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,568,125,40,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(g_torrentActionButtons[i],WM_SETFONT,(WPARAM)font,TRUE);}
         for(HWND child=GetWindow(hwnd,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)) { TorrentApplyDarkControl(child);SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE); }
+        TorrentLayout(hwnd);
         TorrentRefreshCacheStatus();
         g_torrentTvKnownCount=-1;TorrentRefreshTvDevices();
         SetTimer(hwnd,1,1000,NULL);return 0;
@@ -3569,6 +3569,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            request; closing it after playback starts leaves playback running. */
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
+        if(g_torrentUiReady){ABM_D2D_Destroy(&g_torrentUi);g_torrentUiReady=FALSE;}
         if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
