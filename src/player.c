@@ -3439,7 +3439,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentMagnetEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Open .torrent",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,715,62,105,30,hwnd,(HMENU)ID_TORRENT_BROWSE,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Open .torrent",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,715,62,105,30,hwnd,(HMENU)ID_TORRENT_BROWSE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentInfoLabel=CreateWindowW(L"STATIC",L"No torrent loaded",WS_CHILD|WS_VISIBLE,20,108,800,42,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3458,15 +3458,15 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentUpLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentUpLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,570,502,85,26,hwnd,(HMENU)ID_TORRENT_UP_LIMIT,NULL,NULL);
         SendMessageW(g_torrentUpLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"STATIC",L"CACHE QUOTA GiB",WS_CHILD|WS_VISIBLE,20,612,130,22,hwnd,NULL,NULL,NULL);
         g_torrentCacheLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"20",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,165,608,65,26,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
         SendMessageW(g_torrentCacheLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,245,606,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_APPLY,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,245,606,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_APPLY,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
         g_torrentTvButtons[0]=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,684,130,38,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
@@ -3581,7 +3581,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(10,17,29));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);int w=860,h=810;
+    RECT wr;GetWindowRect(owner,&wr);int w=1080,h=920;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
