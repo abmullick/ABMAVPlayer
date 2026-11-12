@@ -3432,7 +3432,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
         return (LRESULT)g_torrentSurfaceBrush;
     case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(204,226,238));SetBkMode(dc,TRANSPARENT);
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(204,226,238));SetBkMode(dc,TRANSPARENT);SetBkColor(dc,RGB(12,29,45));
         return (LRESULT)GetStockObject(HOLLOW_BRUSH);
     }
     case WM_CTLCOLOREDIT:
@@ -3455,7 +3455,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentInfoLabel=CreateWindowW(L"STATIC",L"No torrent loaded",WS_CHILD|WS_VISIBLE,20,108,800,42,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentFileList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,20,158,800,300,hwnd,(HMENU)ID_TORRENT_FILES,NULL,NULL);
+        g_torrentFileList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,20,158,800,300,hwnd,(HMENU)ID_TORRENT_FILES,NULL,NULL);
         SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);SendMessageW(g_torrentFileList,LB_SETITEMHEIGHT,0,26);
         g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,466,800,28,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentStatusLabel,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3468,7 +3468,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentDownLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"STATIC",L"UPLOAD KiB/s",WS_CHILD|WS_VISIBLE,350,505,120,22,hwnd,NULL,NULL,NULL);
         g_torrentUpLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentUpLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,570,502,85,26,hwnd,(HMENU)ID_TORRENT_UP_LIMIT,NULL,NULL);
+        g_torrentUpLimitEdit=CreateWindowExW(0,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,570,502,85,26,hwnd,(HMENU)ID_TORRENT_UP_LIMIT,NULL,NULL);
         SendMessageW(g_torrentUpLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
