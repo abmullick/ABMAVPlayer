@@ -7,6 +7,9 @@
 AppId={{B4D81E1A-2D7C-4F4E-9D0A-AB10A4B1C026}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+VersionInfoVersion=1.0.3.0
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoDescription={#MyAppName} Installer
 AppPublisher={#MyAppPublisher}
 AppCopyright=Copyright (C) 2026 Abhisek Basu Mullick. All rights reserved.
 DefaultDirName={autopf}\ABM AV Player
