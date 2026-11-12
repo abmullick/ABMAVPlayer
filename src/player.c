@@ -3436,6 +3436,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_PAINT: { PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);else {RECT rc;GetClientRect(hwnd,&rc);FillRect(dc,&rc,(HBRUSH)GetStockObject(BLACK_BRUSH));}EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE: TorrentLayout(hwnd);if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,LOWORD(lp),HIWORD(lp));InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp;if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;}if(dis&&dis->CtlType==ODT_LISTBOX){TorrentDrawListItem(dis);return TRUE;}break; }
     case WM_CTLCOLORDLG:
@@ -3493,7 +3494,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
         g_torrentTvButtons[0]=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,684,130,38,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
         SendMessageW(g_torrentTvButtons[0],WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,140,684,260,180,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
+        g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST,140,684,260,180,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
         SendMessageW(g_torrentTvCombo,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentTvButtons[1]=CreateWindowW(L"BUTTON",L"Cast to TV",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,415,684,130,38,hwnd,(HMENU)ID_TORRENT_CAST_TV,NULL,NULL);
         SendMessageW(g_torrentTvButtons[1],WM_SETFONT,(WPARAM)font,TRUE);
