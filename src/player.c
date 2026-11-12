@@ -3436,8 +3436,9 @@ static void TorrentPaint(HWND hwnd){
     r=(RECT){m+14,playbackY+2,m+250,playbackY+21};ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int progress=(int)SendMessageW(g_torrentBufferBar,PBM_GETPOS,0,0);
     float barL=m+14,barT=playbackY+28,barR=w-m-14;
-    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,RGB(31,58,75));
-    if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,RGB(40,151,147),RGB(87,210,177));
+    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,RGB(25,48,65));
+    ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,RGB(49,75,91));
+    if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,RGB(40,151,147),RGB(102,230,190));
 
     /* Matched utility cards */
     r=(RECT){m,networkY,w-m,networkY+60};
@@ -3473,24 +3474,41 @@ static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color)
     DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     SelectObject(dc,old);DeleteObject(font);
 }
+static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
+    return RGB((GetRValue(a)*(maxT-t)+GetRValue(b)*t)/maxT,
+               (GetGValue(a)*(maxT-t)+GetGValue(b)*t)/maxT,
+               (GetBValue(a)*(maxT-t)+GetBValue(b)*t)/maxT);
+}
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
     HDC dc=item->hDC;RECT r=item->rcItem;
-    /* Fill the owner's rectangular erase area before drawing rounded corners. */
-    HBRUSH background=CreateSolidBrush(RGB(13,30,47));
-    FillRect(dc,&r,background);DeleteObject(background);
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
+    BOOL hot=(item->itemState&ODS_HOTLIGHT)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
-    COLORREF fill=pressed?RGB(25,112,101):RGB(24,91,82);
-    COLORREF edge=focused?RGB(99,225,205):RGB(65,190,165);
-    TorrentButtonRounded(dc,r,fill,9);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,edge);
+    HBRUSH background=CreateSolidBrush(RGB(10,23,37));
+    FillRect(dc,&r,background);DeleteObject(background);
+    RECT face=r;InflateRect(&face,-1,-1);
+    HRGN clip=CreateRoundRectRgn(face.left,face.top,face.right,face.bottom,14,14);
+    int saved=SaveDC(dc);SelectClipRgn(dc,clip);
+    COLORREF top=pressed?RGB(19,91,86):(hot?RGB(34,135,124):RGB(28,112,105));
+    COLORREF bottom=pressed?RGB(12,65,66):(hot?RGB(20,103,101):RGB(13,72,78));
+    for(int y=face.top;y<face.bottom;y++){
+        RECT stripe={face.left,y,face.right,y+1};
+        HBRUSH line=CreateSolidBrush(TorrentBlend(top,bottom,y-face.top,max(1,face.bottom-face.top-1)));
+        FillRect(dc,&stripe,line);DeleteObject(line);
+    }
+    RestoreDC(dc,saved);DeleteObject(clip);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(139,238,220):(hot?RGB(105,218,196):RGB(67,165,157)));
     HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
+    RoundRect(dc,face.left,face.top,face.right,face.bottom,14,14);
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
-    InflateRect(&r,-5,-2);
+    /* Fine top highlight gives the button a glass-like edge without a white rim. */
+    HPEN hi=CreatePen(PS_SOLID,1,RGB(92,180,174));oldPen=SelectObject(dc,hi);
+    MoveToEx(dc,face.left+9,face.top+1,NULL);LineTo(dc,face.right-9,face.top+1);
+    SelectObject(dc,oldPen);DeleteObject(hi);
+    InflateRect(&r,-7,-2);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-    TorrentButtonText(dc,caption,r,RGB(229,244,250));
+    TorrentButtonText(dc,caption,r,RGB(242,250,253));
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
@@ -3632,7 +3650,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         /* Keep all interactive child controls visible until their Direct2D
            canvas replacements are wired. Never hide the command buttons. */
         ShowWindow(g_torrentFileList,SW_SHOW);
-        ShowWindow(g_torrentBufferBar,SW_SHOW);
+        ShowWindow(g_torrentBufferBar,SW_HIDE); /* replaced by the Direct2D progress rail */
         { const int ids[]={ID_TORRENT_ADD_MAGNET,ID_TORRENT_BROWSE,ID_TORRENT_APPLY_LIMITS,
             ID_TORRENT_CACHE_APPLY,ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,
             ID_TORRENT_CAST_TV,ID_TORRENT_STOP_TV,ID_TORRENT_PAUSE,ID_TORRENT_STREAM,
