@@ -88,10 +88,20 @@ public:
             lt::settings_pack s;
             s.set_str(lt::settings_pack::user_agent,"ABM-AV-Player/1.0");
             s.set_str(lt::settings_pack::listen_interfaces,"0.0.0.0:0");
+            /* Use several independent bootstrap routers. Relying on a single
+               default hostname can leave DHT effectively offline on networks
+               where that DNS name or endpoint is unreachable. */
+            s.set_str(lt::settings_pack::dht_bootstrap_nodes,
+                "dht.libtorrent.org:25401,router.bittorrent.com:6881,"
+                "dht.transmissionbt.com:6881,router.bt.ouinet.work:6881");
             s.set_bool(lt::settings_pack::enable_dht,true);
             s.set_bool(lt::settings_pack::enable_lsd,true);
             s.set_bool(lt::settings_pack::enable_upnp,true);
             s.set_bool(lt::settings_pack::enable_natpmp,true);
+            s.set_bool(lt::settings_pack::enable_outgoing_tcp,true);
+            s.set_bool(lt::settings_pack::enable_outgoing_utp,true);
+            s.set_int(lt::settings_pack::connection_speed,50);
+            s.set_int(lt::settings_pack::connections_limit,200);
             WSADATA wsa{};if(WSAStartup(MAKEWORD(2,2),&wsa)!=0)return false;
             winsock_ready_=true;
             session_=std::make_unique<lt::session>(s);
