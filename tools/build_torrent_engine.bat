@@ -8,6 +8,9 @@ if "%VCPKG_ROOT%"=="" (
   exit /b 1
 )
 if not exist "%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" exit /b 1
+echo Ensuring manifest dependencies are installed, including libtorrent WebTorrent support...
+"%VCPKG_ROOT%\vcpkg.exe" install --triplet x64-windows
+if errorlevel 1 exit /b 1
 if not exist "%ROOT%\vcpkg_installed\x64-windows\include\libtorrent\session.hpp" (
   echo Run from the repository root: "%VCPKG_ROOT%\vcpkg.exe" install
   exit /b 1
