@@ -3396,39 +3396,51 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *dis) {
     HDC dc=dis->hDC;RECT rc=dis->rcItem;
     BOOL primary=(dis->CtlID==ID_TORRENT_STREAM||dis->CtlID==ID_TORRENT_CAST_TV||dis->CtlID==ID_TORRENT_ADD_MAGNET);
     BOOL danger=(dis->CtlID==ID_TORRENT_STOP||dis->CtlID==ID_TORRENT_STOP_TV||dis->CtlID==ID_TORRENT_REMOVE);
-    BOOL pressed=(dis->itemState&ODS_SELECTED)!=0,disabled=(dis->itemState&ODS_DISABLED)!=0;
-    COLORREF fill=primary?RGB(24,116,111):(danger?RGB(65,43,51):RGB(31,42,58));
-    if(pressed)fill=primary?RGB(18,91,88):(danger?RGB(82,48,58):RGB(42,57,76));
-    if(disabled)fill=RGB(35,39,48);
-    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,1,primary?RGB(53,190,171):RGB(57,75,96));
-    HGDIOBJ oldB=SelectObject(dc,brush),oldP=SelectObject(dc,pen);
-    RoundRect(dc,rc.left,rc.top,rc.right,rc.bottom,10,10);
-    SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(pen);
-    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,disabled?RGB(126,135,149):RGB(238,244,250));
+    BOOL pressed=(dis->itemState&ODS_SELECTED)!=0,focused=(dis->itemState&ODS_FOCUS)!=0;
+    COLORREF fill=primary?(pressed?RGB(25,112,101):RGB(24,91,82)):
+        danger?(pressed?RGB(150,55,34):RGB(100,43,32)):
+        (pressed?RGB(35,75,94):RGB(20,42,60));
+    COLORREF edge=focused?RGB(99,225,205):(primary?RGB(65,190,165):(danger?RGB(220,119,83):RGB(48,91,113)));
+    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,1,fill);
+    HGDIOBJ ob=SelectObject(dc,brush),op=SelectObject(dc,pen);
+    RoundRect(dc,rc.left,rc.top,rc.right,rc.bottom,9,9);
+    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(brush);DeleteObject(pen);
+    pen=CreatePen(PS_SOLID,focused?2:1,edge);op=SelectObject(dc,pen);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,rc.left,rc.top,rc.right,rc.bottom,9,9);
+    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+    InflateRect(&rc,-5,-2);
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(dis->itemState&ODS_DISABLED)?RGB(126,150,164):RGB(229,244,250));
     HFONT font=(HFONT)SendMessageW(dis->hwndItem,WM_GETFONT,0,0);HGDIOBJ oldF=font?SelectObject(dc,font):NULL;
-    RECT text=rc;
     wchar_t label[128]={0};GetWindowTextW(dis->hwndItem,label,(int)_countof(label));
-    DrawTextW(dc,label,-1,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    DrawTextW(dc,label,-1,&rc,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(oldF)SelectObject(dc,oldF);
+}
+static void TorrentDrawListItem(const DRAWITEMSTRUCT *dis) {
+    if(!dis||dis->CtlType!=ODT_LISTBOX||dis->itemID==(UINT)-1)return;
+    wchar_t label[1024]={0};SendMessageW(dis->hwndItem,LB_GETTEXT,dis->itemID,(LPARAM)label);
+    BOOL selected=(dis->itemState&ODS_SELECTED)!=0;RECT rc=dis->rcItem;
+    HBRUSH brush=CreateSolidBrush(selected?RGB(29,91,103):RGB(15,31,47));FillRect(dis->hDC,&rc,brush);DeleteObject(brush);
+    RECT text=rc;InflateRect(&text,-10,0);SetBkMode(dis->hDC,TRANSPARENT);
+    SetTextColor(dis->hDC,selected?RGB(245,255,255):RGB(207,225,237));
+    DrawTextW(dis->hDC,label,-1,&text,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_PAINT: { PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);else {RECT rc;GetClientRect(hwnd,&rc);FillRect(dc,&rc,(HBRUSH)GetStockObject(BLACK_BRUSH));}EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE: TorrentLayout(hwnd);if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,LOWORD(lp),HIWORD(lp));InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_ERASEBKGND: return 1;
-    case WM_DRAWITEM: TorrentDrawButton((const DRAWITEMSTRUCT*)lp);return TRUE;
+    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp;if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;}if(dis&&dis->CtlType==ODT_LISTBOX){TorrentDrawListItem(dis);return TRUE;}break; }
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
         return (LRESULT)g_torrentSurfaceBrush;
     case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(224,229,239));SetBkMode(dc,TRANSPARENT);
-        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
-        return (LRESULT)g_torrentSurfaceBrush;
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(204,226,238));SetBkMode(dc,TRANSPARENT);
+        return (LRESULT)GetStockObject(HOLLOW_BRUSH);
     }
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(240,243,249));SetBkColor(dc,RGB(31,36,48));
-        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(RGB(31,36,48));
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(239,247,252));SetBkColor(dc,RGB(15,31,47));
+        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(RGB(15,31,47));
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CREATE: {
@@ -3445,8 +3457,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentInfoLabel=CreateWindowW(L"STATIC",L"No torrent loaded",WS_CHILD|WS_VISIBLE,20,108,800,42,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentFileList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,20,158,800,300,hwnd,(HMENU)ID_TORRENT_FILES,NULL,NULL);
-        SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentFileList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,20,158,800,300,hwnd,(HMENU)ID_TORRENT_FILES,NULL,NULL);
+        SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);SendMessageW(g_torrentFileList,LB_SETITEMHEIGHT,0,26);
         g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,466,800,28,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentStatusLabel,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentBufferBar=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,20,540,770,14,hwnd,NULL,NULL,NULL);
