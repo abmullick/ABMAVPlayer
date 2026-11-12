@@ -3333,7 +3333,7 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
 
 static void TorrentLayout(HWND hwnd) {
     RECT rc; GetClientRect(hwnd,&rc); int w=rc.right,h=rc.bottom,m=24,inner=w-48;
-    int actionY=h-286,networkY=h-204,tvY=h-122;
+    int actionY=h-310,networkY=h-230,tvY=h-110;
     if(actionY<480)actionY=480;
     MoveWindow(g_torrentSourceHint,m,66,inner,28,TRUE);
     MoveWindow(g_torrentMagnetEdit,m,104,inner-250,40,TRUE);
@@ -3365,7 +3365,7 @@ static void TorrentLayout(HWND hwnd) {
 static void TorrentPaint(HWND hwnd) {
     if(!g_torrentUiReady)return;
     RECT rc;GetClientRect(hwnd,&rc);int w=rc.right,h=rc.bottom,m=24;
-    int actionY=h-286,networkY=h-204,tvY=h-122;if(actionY<480)actionY=480;
+    int actionY=h-310,networkY=h-230,tvY=h-110;if(actionY<456)actionY=456;
     ABM_D2D_Begin(&g_torrentUi,RGB(7,13,23));
     ABM_D2D_GradientRound(&g_torrentUi,0,0,(float)w,92,0,RGB(9,20,35),RGB(12,31,46));
     ABM_D2D_Text(&g_torrentUi,L"ABM  /  TORRENT STREAM",(RECT){m,14,w-m,48},RGB(244,248,255),2,DT_SINGLELINE|DT_VCENTER);
