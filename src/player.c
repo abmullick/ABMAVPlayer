@@ -3607,7 +3607,7 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
                 int cx=arrow.left+arrowW/2,cy=(arrow.top+arrow.bottom)/2-1;
                 MoveToEx(dc,cx-5,cy-2,NULL);LineTo(dc,cx,cy+3);LineTo(dc,cx+5,cy-2);
                 SelectObject(dc,op);DeleteObject(chevron);
-                HPEN border=CreatePen(PS_SOLID,1,focus?RGB(91,205,188):RGB(35,82,101));
+                HPEN border=CreatePen(PS_SOLID,1,(GetFocus()==hwnd)?RGB(91,205,188):RGB(35,82,101));
                 op=SelectObject(dc,border);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
                 RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
                 SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
