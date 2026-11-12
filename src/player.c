@@ -3137,6 +3137,7 @@ static void TorrentRefreshStatus(void) {
     TorrentSetLabel(g_torrentInfoLabel,status);
     if(info.error[0])TorrentSetLabel(g_torrentStatusLabel,info.error);
     else if(!info.has_metadata)TorrentSetLabel(g_torrentStatusLabel,L"Fetching torrent metadata…");
+    else if(info.file_count>0&&info.total_bytes==0)TorrentSetLabel(g_torrentStatusLabel,L"Torrent metadata loaded. Select a file above, then choose Stream selected; files are not downloaded until selected.");
     else TorrentSetLabel(g_torrentStatusLabel,state);
     TorrentRefreshFiles();
     TorrentPlaybackState playbackState=(TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0);
@@ -3456,6 +3457,25 @@ static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
 
+static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
+    if(!d)return;
+    HDC dc=d->hDC;RECT r=d->rcItem;
+    COLORREF bg=(d->itemState&ODS_SELECTED)?RGB(25,70,83):RGB(10,23,37);
+    HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
+    wchar_t line[1200]=L"";
+    if(d->itemID!=(UINT)-1)SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
+    SetBkMode(dc,TRANSPARENT);
+    SetTextColor(dc,(d->itemState&ODS_SELECTED)?RGB(245,255,255):RGB(190,213,227));
+    RECT tx=r;tx.left+=12;tx.right-=10;
+    HFONT f=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    HGDIOBJ old=SelectObject(dc,f);
+    DrawTextW(dc,line,-1,&tx,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    SelectObject(dc,old);DeleteObject(f);
+    if(d->itemState&ODS_FOCUS){HPEN pen=CreatePen(PS_SOLID,1,RGB(65,190,165));old=SelectObject(dc,pen);
+        HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));Rectangle(dc,r.left+1,r.top+1,r.right-1,r.bottom-1);
+        SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(pen);}
+}
 static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
     if(!d||!d->hwndItem)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
@@ -3491,7 +3511,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
     
-    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} break; }
+    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
     case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=34;return TRUE;} break; }
     
     case WM_CTLCOLORDLG:
