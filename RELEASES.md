@@ -48,3 +48,8 @@ The updater requires GitHub to provide a SHA-256 digest for the installer asset.
 ## v1.0.3 installer version guard
 
 The v1.0.3 packaging scripts verify the compiled executable and staged payload by checking the About-version string embedded in the EXE. The publishing script repeats this check against `dist\ABM-AV-Player-Setup.exe` and refuses to upload an installer that still identifies itself as v1.0.2. If the About dialog shows an old version, do not publish; rebuild from the merged `main` source with `build_installer.bat`.
+
+
+### Installer version verification correction
+
+Inno Setup compresses the installed application payload inside the setup executable. The release publisher must not search the compressed setup bytes for the application's About string. The installer script stamps `VersionInfoVersion=1.0.3.0` and `VersionInfoProductVersion=1.0.3`; `publish_release.bat` verifies those PE version resources through Windows FileVersionInfo. The build script separately verifies the uncompressed application executable before staging.
