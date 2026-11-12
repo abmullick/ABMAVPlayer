@@ -37,7 +37,7 @@
 #endif
 
 #define APP_NAME L"ABM AV Player"
-#define APP_VERSION L"1.0.2"
+#define APP_VERSION L"1.0.3"
 #define OWNER_TEXT L"Product Owner: Abhisek Basu Mullick  |  © 2026 Abhisek Basu Mullick. All rights reserved."
 #define ID_RENDERERS 1010
 #define ID_SETTINGS_CACHE_PATH 6201
