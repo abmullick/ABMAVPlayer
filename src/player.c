@@ -3550,16 +3550,8 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
         if(dc){
             RECT r={0};GetClientRect(hwnd,&r);
             TorrentDrawControlFrame(hwnd,dc);
-            /* Replace the combo's native square arrow well with a quiet custom chevron. */
-            wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
-            if(_wcsicmp(cls,L"ComboBox")==0){
-                RECT a={r.right-32,2,r.right-2,r.bottom-2};
-                HBRUSH b=CreateSolidBrush(RGB(13,31,47));FillRect(dc,&a,b);DeleteObject(b);
-                HPEN p=CreatePen(PS_SOLID,1,RGB(79,190,176));HGDIOBJ old=SelectObject(dc,p);
-                int cy=(a.top+a.bottom)/2;
-                MoveToEx(dc,a.left+10,cy-2,NULL);LineTo(dc,a.left+15,cy+3);LineTo(dc,a.left+20,cy-2);
-                SelectObject(dc,old);DeleteObject(p);
-            }
+            /* The owner-draw combo edit item (TorrentDrawTvCombo) owns the
+               single chevron. Do not paint another arrow from this subclass. */
             ReleaseDC(hwnd,dc);
         }
         return z;
