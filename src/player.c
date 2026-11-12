@@ -3549,7 +3549,6 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
         HDC dc=GetDC(hwnd);
         if(dc){
             RECT r={0};GetClientRect(hwnd,&r);
-            if(GetClassNameW(hwnd,(wchar_t[32]){0},32)){ /* keep the edit's native caret/text untouched */ }
             TorrentDrawControlFrame(hwnd,dc);
             /* Replace the combo's native square arrow well with a quiet custom chevron. */
             wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
