@@ -168,15 +168,15 @@ public:
         auto i=tasks_.find(id);if(i==tasks_.end())return false;
         auto ti=i->second->handle.torrent_file();
         if(!ti||index<0||index>=ti->layout().num_files())return false;
-        CopyText(path,cap,FromUtf8(ti->layout().file_path(index)));
-        *size=ti->layout().file_size(index);return true;
+        CopyText(path,cap,FromUtf8(ti->layout().file_path(lt::file_index_t(index))));
+        *size=ti->layout().file_size(lt::file_index_t(index));return true;
     }
     bool Select(uint64_t id,int index) {
         std::lock_guard<std::mutex> g(m_);
         auto i=tasks_.find(id);if(i==tasks_.end())return false;
         auto ti=i->second->handle.torrent_file();
         if(!ti||index<0||index>=ti->layout().num_files())return false;
-        const uint64_t fileBytes=static_cast<uint64_t>(ti->layout().file_size(index));
+        const uint64_t fileBytes=static_cast<uint64_t>(ti->layout().file_size(lt::file_index_t(index)));
         const uint64_t existing=DirectoryBytes(i->second->cache_path);
         const uint64_t additional=fileBytes>existing?fileBytes-existing:0;
         ULARGE_INTEGER freeAvailable{},totalBytes{},totalFree{};
@@ -254,11 +254,11 @@ public:
         if(task->removed.load())return false;
         auto ti=task->handle.torrent_file();
         if(!ti||index<0||index>=ti->layout().num_files())return false;
-        const int64_t size=ti->layout().file_size(index);
+        const int64_t size=ti->layout().file_size(lt::file_index_t(index));
         if(offset<0||length<=0||offset>=size)return false;
         if(ahead<0)ahead=0;if(ahead>64*1024*1024)ahead=64*1024*1024;
         const int pieceLen=ti->piece_length();if(pieceLen<=0)return false;
-        const int64_t fileStart=ti->layout().file_offset(index);
+        const int64_t fileStart=ti->layout().file_offset(lt::file_index_t(index));
         const int64_t firstGlobal=fileStart+offset;
         const int64_t requestedEnd=std::min<int64_t>(size,offset+std::min<int64_t>(length,size-offset));
         const int64_t windowEnd=requestedEnd+std::min<int64_t>(size-requestedEnd,ahead);
@@ -284,12 +284,12 @@ public:
         if(task->removed.load())return false;
         auto ti=task->handle.torrent_file();
         if(!ti||index<0||index>=ti->layout().num_files())return false;
-        const int64_t size=ti->layout().file_size(index);
+        const int64_t size=ti->layout().file_size(lt::file_index_t(index));
         if(offset<0||length<0||offset>size||length>size-offset)return false;
         if(taskOut)*taskOut=task;if(infoOut)*infoOut=ti;
         if(length==0)return true;
         const int pieceLen=ti->piece_length();if(pieceLen<=0)return false;
-        const int64_t start=ti->layout().file_offset(index)+offset;
+        const int64_t start=ti->layout().file_offset(lt::file_index_t(index))+offset;
         const int64_t end=start+length-1;
         const int first=static_cast<int>(start/pieceLen);
         const int last=static_cast<int>(end/pieceLen);
@@ -329,15 +329,15 @@ public:
             if(!task||task->removed.load())return false;
             auto metadata=task->handle.torrent_file();
             if(!metadata||index<0||index>=metadata->layout().num_files())return false;
-            const int64_t size=metadata->layout().file_size(index);
+            const int64_t size=metadata->layout().file_size(lt::file_index_t(index));
             if(offset<0||offset>size||static_cast<int64_t>(count)>size-offset)return false;
             if(!WaitForRange(id,index,offset,static_cast<int64_t>(count),timeout,cancel))return false;
             ti=std::move(metadata);
         }
         if(!task||task->removed.load()||!ti)return false;
-        if(ti->layout().symlink(index).size()!=0||ti->layout().pad_file_at(index))return false;
+        if(ti->layout().symlink(lt::file_index_t(index)).size()!=0||ti->layout().pad_file_at(lt::file_index_t(index)))return false;
         try {
-            const std::string fullUtf8=ti->layout().file_path(index,task->cache_path.u8string());
+            const std::string fullUtf8=ti->layout().file_path(lt::file_index_t(index),task->cache_path.u8string());
             fs::path target=fs::weakly_canonical(fs::u8path(fullUtf8));
             fs::path root=fs::weakly_canonical(task->cache_path);
             auto ri=root.begin(),tiPath=target.begin();
@@ -366,8 +366,8 @@ public:
         {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end()){err=L"Torrent task no longer exists.";return false;}task=it->second;}
         auto ti=task->handle.torrent_file();
         if(!ti||index<0||index>=ti->layout().num_files()){err=L"Torrent file metadata is not ready.";return false;}
-        if(ti->layout().symlink(index).size()!=0||ti->layout().pad_file_at(index)){err=L"Symbolic-link and padding entries cannot be streamed.";return false;}
-        const int64_t size=ti->layout().file_size(index);
+        if(ti->layout().symlink(lt::file_index_t(index)).size()!=0||ti->layout().pad_file_at(lt::file_index_t(index))){err=L"Symbolic-link and padding entries cannot be streamed.";return false;}
+        const int64_t size=ti->layout().file_size(lt::file_index_t(index));
         if(size<=0){err=L"Empty files cannot be streamed.";return false;}
         unsigned char randomToken[32]{};
         if(BCryptGenRandom(nullptr,randomToken,sizeof(randomToken),BCRYPT_USE_SYSTEM_PREFERRED_RNG)<0){
@@ -593,7 +593,7 @@ private:
             partial=true;
         }
         const uint64_t length=end-start+1;
-        std::string mime=MimeType([&](){std::shared_ptr<Task> t;{std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it!=tasks_.end())t=it->second;}if(!t)return std::wstring();auto ti=t->handle.torrent_file();if(!ti||index>=ti->layout().num_files())return std::wstring();return FromUtf8(ti->layout().file_path(index));}());
+        std::string mime=MimeType([&](){std::shared_ptr<Task> t;{std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it!=tasks_.end())t=it->second;}if(!t)return std::wstring();auto ti=t->handle.torrent_file();if(!ti||index>=ti->layout().num_files())return std::wstring();return FromUtf8(ti->layout().file_path(lt::file_index_t(index)));}());
         std::string header="HTTP/1.1 "+std::string(partial?"206 Partial Content":"200 OK")+"\r\n";
         header+="Connection: close\r\nAccept-Ranges: bytes\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n";
         header+="Content-Type: "+mime+"\r\nContent-Length: "+std::to_string(length)+"\r\n";
