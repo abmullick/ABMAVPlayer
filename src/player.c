@@ -3433,8 +3433,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CREATE: {
         g_torrentUiFont=CreateFontW(-18,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
-        HWND h=CreateWindowExW(0,L"STATIC",L"Add a magnet URI or open a local .torrent file. Only select content you are legally entitled to access.",WS_CHILD|WS_VISIBLE,20,16,760,36,hwnd,NULL,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentUiReady=ABM_D2D_Init(&g_torrentUi,hwnd);
+        HWND h=CreateWindowExW(0,L"STATIC",L"Add a magnet URI or open a local .torrent file. Only select content you are legally entitled to access.",WS_CHILD|WS_VISIBLE,20,66,760,28,hwnd,NULL,NULL,NULL);
+        g_torrentSourceHint=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
         SendMessageW(g_torrentMagnetEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
@@ -3450,18 +3451,18 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentBufferBar=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,20,540,770,14,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentBufferBar,PBM_SETRANGE32,0,100);
         SendMessageW(g_torrentBufferBar,PBM_SETPOS,0,0);
-        h=CreateWindowW(L"STATIC",L"Download limit (KiB/s; 0 = unlimited)",WS_CHILD|WS_VISIBLE,20,505,220,22,hwnd,NULL,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"STATIC",L"DOWNLOAD KiB/s",WS_CHILD|WS_VISIBLE,20,505,130,22,hwnd,NULL,NULL,NULL);
+        g_torrentDownLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentDownLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,245,502,85,26,hwnd,(HMENU)ID_TORRENT_DOWN_LIMIT,NULL,NULL);
         SendMessageW(g_torrentDownLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"STATIC",L"Upload limit (KiB/s; 0 = unlimited)",WS_CHILD|WS_VISIBLE,350,505,215,22,hwnd,NULL,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"STATIC",L"UPLOAD KiB/s",WS_CHILD|WS_VISIBLE,350,505,120,22,hwnd,NULL,NULL,NULL);
+        g_torrentUpLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentUpLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"0",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,570,502,85,26,hwnd,(HMENU)ID_TORRENT_UP_LIMIT,NULL,NULL);
         SendMessageW(g_torrentUpLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"STATIC",L"Cache quota (GiB)",WS_CHILD|WS_VISIBLE,20,612,145,22,hwnd,NULL,NULL,NULL);
-        SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        h=CreateWindowW(L"STATIC",L"CACHE QUOTA GiB",WS_CHILD|WS_VISIBLE,20,612,130,22,hwnd,NULL,NULL,NULL);
+        g_torrentCacheLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheLimitEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"20",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_AUTOHSCROLL,165,608,65,26,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
         SendMessageW(g_torrentCacheLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Apply quota",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,245,606,105,30,hwnd,(HMENU)ID_TORRENT_CACHE_APPLY,NULL,NULL);
@@ -3482,12 +3483,11 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentDownloadPathLabel=CreateWindowW(L"STATIC",downloadPath,WS_CHILD|WS_VISIBLE,20,724,800,28,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentDownloadPathLabel,WM_SETFONT,(WPARAM)font,TRUE);
         SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
-        const struct {int id;const wchar_t *label;int x,w;} buttons[]={
-            {ID_TORRENT_PAUSE,L"Pause / Resume",20,125},{ID_TORRENT_STREAM,L"Stream selected",155,135},
-            {ID_TORRENT_STOP,L"Stop stream",300,110},{ID_TORRENT_REMOVE,L"Remove task",420,110},
-            {ID_TORRENT_REFRESH,L"Refresh",540,90}
+        const struct {int id;const wchar_t *label;} buttons[]={
+            {ID_TORRENT_PAUSE,L"Pause / Resume"},{ID_TORRENT_STREAM,L"Stream selected"},
+            {ID_TORRENT_STOP,L"Stop stream"},{ID_TORRENT_REMOVE,L"Remove task"},{ID_TORRENT_REFRESH,L"Refresh"}
         };
-        for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        for(size_t i=0;i<_countof(buttons);i++){g_torrentActionButtons[i]=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,568,125,40,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(g_torrentActionButtons[i],WM_SETFONT,(WPARAM)font,TRUE);}
         for(HWND child=GetWindow(hwnd,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)) { TorrentApplyDarkControl(child);SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE); }
         TorrentRefreshCacheStatus();
         g_torrentTvKnownCount=-1;TorrentRefreshTvDevices();
