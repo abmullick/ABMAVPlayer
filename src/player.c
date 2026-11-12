@@ -3339,8 +3339,8 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentMagnetEdit,m,98,inner-248,34,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-236,98,112,34,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,98,116,34,TRUE);
-    MoveWindow(g_torrentInfoLabel,m,140,inner,26,TRUE);
-    MoveWindow(g_torrentFileList,m,170,inner,actionY-188,TRUE);
+    MoveWindow(g_torrentInfoLabel,m,166,inner,22,TRUE);
+    MoveWindow(g_torrentFileList,m,192,inner,actionY-214,TRUE);
     MoveWindow(g_torrentStatusLabel,m,actionY-36,inner,22,TRUE);
     MoveWindow(g_torrentBufferBar,m,actionY-10,inner,7,TRUE);
     int half=inner/2;
@@ -3436,7 +3436,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         g_torrentUiReady=ABM_D2D_Init(&g_torrentUi,hwnd);
         HWND h=CreateWindowExW(0,L"STATIC",L"Magnet URI or local .torrent file",WS_CHILD|WS_VISIBLE,20,76,760,20,hwnd,NULL,NULL,NULL);
-        g_torrentSourceHint=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentSourceHint=h;ShowWindow(h,SW_HIDE);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
         SendMessageW(g_torrentMagnetEdit,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
