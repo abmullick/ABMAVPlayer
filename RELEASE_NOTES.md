@@ -1,29 +1,39 @@
-# ABM AV Player v1.0.2
-
-> Release candidate documentation. Publish this version only after the Windows build, installer and receiver workflows have been validated.
+# ABM AV Player v1.0.3
 
 ## What's new
-- Added a dedicated dark-themed Settings window to centralise playback, audio, torrent storage, bandwidth and update preferences. New installations use the Windows Downloads known folder for torrent cache data; existing legacy cache locations are retained. See [SETTINGS.md](SETTINGS.md) for configuration and restart behaviour.
-- Expanded Streaming Centre TV application selection with explicit DIAL launch attempts for Netflix, SonyLIV and ZEE5 when a selected TV exposes a DIAL endpoint but does not provide a readable application status resource.
-- Added app-level status refresh for Google Cast V2 receiver applications, alongside DIAL application-state queries.
-- Added Google Cast V2 application stop handling using the receiver's active application session and STOP command.
+
+- Added Torrent Stream as a separate peer-to-peer media window for user-supplied magnet links and local `.torrent` files.
+- Added torrent metadata and file listing, per-task progress, peer/connection and transfer-rate diagnostics, pause/resume, removal, and selected-file downloading.
+- Added progressive local playback through LibVLC using verified torrent pieces and an authenticated loopback HTTP Range source.
+- Added persistent selected-file downloads under the configured Windows `Torrent Downloads` folder, separate from the evictable cache.
+- Added Torrent Stream TV discovery and independent DLNA casting. Casting serves the same file that libtorrent continues downloading; **Stop TV** stops the receiver/listener without deleting the download.
+- Added configurable cache quota, usage reporting, inactive-cache cleanup, and separate download/upload rate limits.
 
 ## Improvements
-- Clarified the distinction between launching a TV app and handing off a browser playback session.
-- Improved Streaming Centre guidance for app discovery, manual DIAL launch attempts, status refresh and stopping receiver apps.
-- Kept Streaming Centre receiver selection and playback separate from the main player's local media and local-casting workflows.
+
+- Enabled DHT/LSD with multiple bootstrap routers and periodic bootstrap retry when DHT is not running.
+- Request an immediate tracker announce when a torrent task is added; request a DHT announce when DHT is available.
+- Preserved separation between Torrent Stream, the main player's local playback/casting, and Streaming Centre receiver state.
+- Updated Torrent Stream and Streaming Centre mastheads to follow the main player's split ABM / AV PLAYER brand treatment.
+- Removed the extra custom-painted arrow from the Torrent Stream TV selector, retaining the native Win32 dropdown arrow.
 
 ## Fixes
-- Implemented the missing Google Cast V2 application-status query entry point required by the Streaming Centre linker.
-- Corrected the source/installer version alignment and release documentation.
 
-## Limitations
-- Netflix and Prime Video desktop-browser title handoff is not implemented. App launch does not transfer a browser title, DRM session or provider credentials.
-- Manual DIAL launch entries are attempts only; a TV may reject an application resource name that it does not support.
-- App running/stopped status is not movie playback status. Playback pause/resume/seek requires a provider-supported sender session.
-- Physical TV compatibility and playback must be verified on the target receiver.
+- Corrected libtorrent 2.1.2 DHT API compatibility by using the supported `enable_dht` session setting rather than the unavailable `session::start_dht()` method.
+- Guarded `WIN32_LEAN_AND_MEAN` to avoid macro redefinition when supplied by the build configuration.
+- Added dedicated DirectWrite font formats for the ABM and AV PLAYER wordmark elements in the Torrent Stream header.
+
+## Validation and limitations
+
+- Windows x64 build completed and the installer was created and installed for maintainer testing.
+- Torrent peer discovery depends on the source torrent having reachable peers and on trackers/DHT being reachable from the user's network. A DHT status of ON does not guarantee peers for every torrent.
+- DLNA direct play depends on the receiver's supported containers and codecs. This release does not add PC-side transcoding or arbitrary-media Google Cast sender support.
+- Netflix and Prime Video desktop-browser title handoff is not implemented. Launching a TV app does not transfer a browser title, DRM session or provider credentials.
+- Physical receiver compatibility, firewall behaviour and sustained torrent playback/casting should be validated on the target network.
 
 ## Requirements
+
 - Windows 11 x64
 - Microsoft Edge WebView2 Evergreen Runtime
 - 64-bit LibVLC SDK/runtime and required plugins
+- Windows x64 build dependencies, including the manifest-pinned libtorrent 2.1.2 package
