@@ -1,4 +1,6 @@
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <winsock2.h>
 #include <windows.h>
 #include <iphlpapi.h>
@@ -113,14 +115,8 @@ public:
             WSADATA wsa{};if(WSAStartup(MAKEWORD(2,2),&wsa)!=0)return false;
             winsock_ready_=true;
             session_=std::make_unique<lt::session>(s);
-            /* enable_dht is a session setting, but explicitly start the DHT
-               service as well. This avoids reporting DHT OFF indefinitely on
-               builds/configurations where the session is created before the
-               DHT subsystem has been started. */
-            try { session_->start_dht(); } catch(...) {}
-            /* Explicit bootstrap probes supplement dht_bootstrap_nodes and
-               make the initial routing-table join less dependent on one DNS
-               result. Failures here are non-fatal; Monitor retries startup. */
+            /* libtorrent 2.1 starts DHT from enable_dht plus the configured
+               bootstrap nodes. Explicit probes supplement dht_bootstrap_nodes. */
             try{
                 session_->add_dht_node({"router.bittorrent.com",6881});
                 session_->add_dht_node({"dht.transmissionbt.com",6881});
@@ -690,7 +686,12 @@ private:
         try { h.force_reannounce(); } catch(...) {}
         try {
             if(session_->is_dht_running()) h.force_dht_announce();
-            else session_->start_dht();
+            else {
+                /* Re-assert the supported libtorrent 2.1 DHT setting. */
+                lt::settings_pack dhtSettings;
+                dhtSettings.set_bool(lt::settings_pack::enable_dht,true);
+                session_->apply_settings(dhtSettings);
+            }
         } catch(...) {}
         auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);t->cache_path=std::move(taskCachePath);
         tasks_.emplace(t->id,t);*id=t->id;return true;
@@ -776,7 +777,10 @@ private:
                 if(session_ && !session_->is_dht_running() &&
                    dhtNow-lastDhtRetry>=std::chrono::seconds(10)) {
                     try {
-                        session_->start_dht();
+                        /* Re-apply enable_dht and retry bootstrap endpoints. */
+                        lt::settings_pack dhtSettings;
+                        dhtSettings.set_bool(lt::settings_pack::enable_dht,true);
+                        session_->apply_settings(dhtSettings);
                         session_->add_dht_node({"router.bittorrent.com",6881});
                         session_->add_dht_node({"dht.transmissionbt.com",6881});
                         session_->add_dht_node({"router.utorrent.com",6881});
