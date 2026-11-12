@@ -3411,7 +3411,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *dis) {
 }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
+    case WM_PAINT: { PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);else {RECT rc;GetClientRect(hwnd,&rc);FillRect(dc,&rc,(HBRUSH)GetStockObject(BLACK_BRUSH));}EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE: TorrentLayout(hwnd);if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,LOWORD(lp),HIWORD(lp));InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_ERASEBKGND: return 1;
     case WM_DRAWITEM: TorrentDrawButton((const DRAWITEMSTRUCT*)lp);return TRUE;
