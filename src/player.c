@@ -3383,10 +3383,10 @@ static void TorrentLayout(HWND hwnd) {
        dedicated rows for playback, network, cache and TV casting. */
     const int headerH=94,sourceTop=headerH+14,sourceH=66;
     const int contentTop=sourceTop+sourceH+12;
-    int contentBottom=h-390;
+    int contentBottom=h-410;
     if(contentBottom<contentTop+100)contentBottom=contentTop+100;
-    const int playbackY=contentBottom+12,networkY=playbackY+104;
-    const int cacheY=networkY+72,tvY=cacheY+72;
+    const int playbackY=contentBottom+12,networkY=playbackY+112;
+    const int cacheY=networkY+84,tvY=cacheY+84;
     MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-254,36,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,sourceTop+24,104,40,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,sourceTop+24,104,40,TRUE);
@@ -3429,12 +3429,12 @@ static void TorrentLayout(HWND hwnd) {
 static void TorrentPaint(HWND hwnd){
     RECT rc={0};GetClientRect(hwnd,&rc);
     const float w=(float)rc.right,h=(float)rc.bottom;
-    const float m=22.0f,headerH=94.0f,sourceTop=108.0f,sourceH=64.0f;
+    const float m=22.0f,headerH=94.0f,sourceTop=108.0f,sourceH=66.0f;
     const float contentTop=sourceTop+sourceH+12.0f;
-    float contentBottom=h-390.0f;
+    float contentBottom=h-410.0f;
     if(contentBottom<contentTop+100.0f)contentBottom=contentTop+100.0f;
-    float playbackY=contentBottom+12.0f,networkY=playbackY+104.0f;
-    float cacheY=networkY+72.0f,tvY=cacheY+72.0f;
+    float playbackY=contentBottom+12.0f,networkY=playbackY+112.0f;
+    float cacheY=networkY+84.0f,tvY=cacheY+84.0f;
     const COLORREF bg=RGB(6,11,19),edge=RGB(38,69,88);
     const COLORREF muted=RGB(143,168,190),accent=RGB(83,195,184),white=RGB(241,247,253);
     ABM_D2D_Begin(&g_torrentUi,bg);
