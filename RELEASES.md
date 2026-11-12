@@ -43,3 +43,8 @@ The script creates tag `v1.0.3`, publishes a GitHub Release against `main`, and 
 The updater retrieves release metadata from the official GitHub API and downloads the installer from GitHub's release asset hosting over HTTPS. It asks before installing and Windows displays the normal elevation prompt. It does not silently install updates.
 
 The updater requires GitHub to provide a SHA-256 digest for the installer asset. It fails closed if the digest is missing or does not match; the downloaded installer is never launched after a failed integrity check. The digest is obtained from the GitHub Releases API over HTTPS and checked locally before execution. This verifies that the downloaded bytes match the asset digest GitHub reports; it does not independently authenticate the publisher in the way an Authenticode signature would. Windows SmartScreen or antivirus products may still show warnings for an unsigned installer. Users should install only releases published by the official `abmullick/ABMAVPlayer` repository.
+
+
+## v1.0.3 installer version guard
+
+The v1.0.3 packaging scripts verify the compiled executable and staged payload by checking the About-version string embedded in the EXE. The publishing script repeats this check against `dist\ABM-AV-Player-Setup.exe` and refuses to upload an installer that still identifies itself as v1.0.2. If the About dialog shows an old version, do not publish; rebuild from the merged `main` source with `build_installer.bat`.
