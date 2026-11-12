@@ -3570,8 +3570,20 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
         if(dc){
             RECT r={0};GetClientRect(hwnd,&r);
             TorrentDrawControlFrame(hwnd,dc);
-            /* The owner-draw combo edit item (TorrentDrawTvCombo) owns the
-               single chevron. Do not paint another arrow from this subclass. */
+            wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
+            if(_wcsicmp(cls,L"ComboBox")==0){
+                /* Cover the themed Win32 arrow well, then paint exactly one
+                   ABM chevron in the same custom surface. */
+                RECT a={r.right-34,1,r.right-1,r.bottom-1};
+                HBRUSH fill=CreateSolidBrush(RGB(13,31,47));FillRect(dc,&a,fill);DeleteObject(fill);
+                HPEN p=CreatePen(PS_SOLID,1,RGB(79,190,176));HGDIOBJ old=SelectObject(dc,p);
+                int cy=(a.top+a.bottom)/2;
+                MoveToEx(dc,a.left+12,cy-2,NULL);LineTo(dc,a.left+17,cy+3);LineTo(dc,a.left+22,cy-2);
+                SelectObject(dc,old);DeleteObject(p);
+                HPEN edge=CreatePen(PS_SOLID,1,RGB(29,75,91));old=SelectObject(dc,edge);
+                HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
+                SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(edge);
+            }
             ReleaseDC(hwnd,dc);
         }
         return z;
@@ -3638,12 +3650,10 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
         HGDIOBJ old=SelectObject(dc,f);DrawTextW(dc,name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         SelectObject(dc,old);DeleteObject(f);
     }
-    /* Custom chevron and inset border for the closed selector. */
+    /* The combo's native drop button is covered and redrawn once by the
+       control subclass after default painting. The edit item draws no arrow. */
     if(d->itemState&ODS_COMBOBOXEDIT){
-        HPEN pen=CreatePen(PS_SOLID,1,RGB(65,190,165));HGDIOBJ old=SelectObject(dc,pen);
-        MoveToEx(dc,r.right-25,r.top+(r.bottom-r.top)/2-2,NULL);LineTo(dc,r.right-20,r.top+(r.bottom-r.top)/2+3);
-        LineTo(dc,r.right-15,r.top+(r.bottom-r.top)/2-2);SelectObject(dc,old);DeleteObject(pen);
-        HPEN border=CreatePen(PS_SOLID,1,RGB(29,75,91));old=SelectObject(dc,border);
+        HPEN border=CreatePen(PS_SOLID,1,RGB(29,75,91));HGDIOBJ old=SelectObject(dc,border);
         HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right,r.bottom,10,10);
         SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(border);
     }
