@@ -758,7 +758,7 @@ private:
                             for(const char *url:fallback){
                                 bool found=false;
                                 for(const auto &entry:existing)if(entry.url==url){found=true;break;}
-                                if(!found)t.handle.add_tracker(url,0);
+                                if(!found){lt::announce_entry tracker(url);tracker.tier=0;t.handle.add_tracker(tracker);}
                             }
                             t.fallback_trackers_added=true;
                             try{t.handle.force_reannounce();}catch(...){}
