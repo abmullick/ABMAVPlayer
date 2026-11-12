@@ -163,6 +163,8 @@ public:
         out->connections=s.num_connections;out->seeds=s.num_seeds;
         out->announcing_to_dht=s.announcing_to_dht?1:0;
         out->announcing_to_trackers=s.announcing_to_trackers?1:0;
+        out->dht_running=(session_&&session_->is_dht_running())?1:0;
+        { auto ti=i->second->handle.torrent_file();out->is_private=(ti&&ti->priv())?1:0; }
         out->has_metadata=s.has_metadata?1:0; out->file_count=i->second->file_count;
         CopyText(out->name,_countof(out->name),i->second->name);
         CopyText(out->error,_countof(out->error),i->second->error);
@@ -654,7 +656,12 @@ private:
         std::error_code dirError;fs::create_directories(taskCachePath,dirError);
         if(dirError){err=L"Could not create the torrent's cache folder.";return false;}
         if(p.ti) p.file_priorities.assign((size_t)p.ti->layout().num_files(),lt::dont_download);
-        lt::error_code ec;p.flags &= ~lt::torrent_flags::auto_managed;
+        lt::error_code ec;
+        p.flags &= ~lt::torrent_flags::auto_managed;
+        /* Public torrents participate in DHT/LSD by default. Explicitly clear
+           per-torrent disable flags: imported .torrent metadata may carry them. */
+        p.flags &= ~lt::torrent_flags::disable_dht;
+        p.flags &= ~lt::torrent_flags::disable_lsd;
         auto h=session_->add_torrent(std::move(p),ec);
         if(ec||!h.is_valid()){err=FromUtf8(ec.message());return false;}
         auto t=std::make_shared<Task>();t->id=++next_;t->handle=std::move(h);t->cache_path=std::move(taskCachePath);
@@ -762,6 +769,7 @@ private:
                             }
                             t.fallback_trackers_added=true;
                             try{t.handle.force_reannounce();}catch(...){}
+                            try{if(session_&&session_->is_dht_running())t.handle.force_dht_announce();}catch(...){}
                         }
                     } catch(const std::exception &e) {
                         t.error=FromUtf8(e.what());
