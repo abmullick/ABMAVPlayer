@@ -3574,15 +3574,11 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
             TorrentDrawControlFrame(hwnd,dc);
             wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
             if(_wcsicmp(cls,L"ComboBox")==0){
-                /* Cover the themed Win32 arrow well, then paint exactly one
-                   ABM chevron in the same custom surface. */
-                RECT a={r.right-34,1,r.right-1,r.bottom-1};
-                HBRUSH fill=CreateSolidBrush(RGB(13,31,47));FillRect(dc,&a,fill);DeleteObject(fill);
-                HPEN p=CreatePen(PS_SOLID,1,RGB(79,190,176));HGDIOBJ old=SelectObject(dc,p);
-                int cy=(a.top+a.bottom)/2;
-                MoveToEx(dc,a.left+12,cy-2,NULL);LineTo(dc,a.left+17,cy+3);LineTo(dc,a.left+22,cy-2);
-                SelectObject(dc,old);DeleteObject(p);
-                HPEN edge=CreatePen(PS_SOLID,1,RGB(29,75,91));old=SelectObject(dc,edge);
+                /* Keep the native Win32 drop-button glyph as the sole arrow.
+                   The previous custom chevron was painted over the native
+                   button but did not suppress its themed glyph, producing
+                   two visible dropdown handles. */
+                HPEN edge=CreatePen(PS_SOLID,1,RGB(29,75,91));HGDIOBJ old=SelectObject(dc,edge);
                 HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
                 SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(edge);
             }
