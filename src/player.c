@@ -3345,7 +3345,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *dis) {
     SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(pen);
     SetBkMode(dc,TRANSPARENT);SetTextColor(dc,disabled?RGB(126,135,149):RGB(238,244,250));
     HFONT font=(HFONT)SendMessageW(dis->hwndItem,WM_GETFONT,0,0);HGDIOBJ oldF=font?SelectObject(dc,font):NULL;
-    RECT text=rc;DrawTextW(dc,(const wchar_t*)dis->hwndItem?L"":L"",0,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT text=rc;
     wchar_t label[128]={0};GetWindowTextW(dis->hwndItem,label,(int)_countof(label));
     DrawTextW(dc,label,-1,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(oldF)SelectObject(dc,oldF);
