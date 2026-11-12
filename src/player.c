@@ -3405,17 +3405,26 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentDownLimitEdit,m+126,networkY+30,90,30,TRUE);
     MoveWindow(g_torrentUpLabel,m+half,networkY+4,96,18,TRUE);
     MoveWindow(g_torrentUpLimitEdit,m+half+100,networkY+30,90,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-124,networkY+27,112,40,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-132,networkY+27,120,40,TRUE);
     MoveWindow(g_torrentCacheLabel,m+14,cacheY+4,116,18,TRUE);
     MoveWindow(g_torrentCacheLimitEdit,m+132,cacheY+30,72,30,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+214,cacheY+27,112,40,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+338,cacheY+27,164,40,TRUE);
-    MoveWindow(g_torrentCacheInfoLabel,m+514,cacheY+30,max(80,inner-526),22,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+338,cacheY+27,140,40,TRUE);
+    MoveWindow(g_torrentCacheInfoLabel,m+492,cacheY+30,max(80,inner-504),22,TRUE);
     MoveWindow(g_torrentTvButtons[0],m+14,tvY+28,126,40,TRUE);
     MoveWindow(g_torrentTvCombo,m+152,tvY+28,max(120,inner-436),40,TRUE);
     MoveWindow(g_torrentTvButtons[1],w-m-254,tvY+28,118,40,TRUE);
     MoveWindow(g_torrentTvButtons[2],w-m-124,tvY+28,112,40,TRUE);
-    MoveWindow(g_torrentDownloadPathLabel,m+14,tvY+76,inner-28,20,TRUE);
+    MoveWindow(g_torrentDownloadPathLabel,m+14,tvY+72,inner-28,22,TRUE);
+    /* Keep interactive buttons above overlapping static labels after relayout. */
+    const int buttonIds[]={ID_TORRENT_APPLY_LIMITS,ID_TORRENT_CACHE_APPLY,
+        ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,ID_TORRENT_CAST_TV,
+        ID_TORRENT_STOP_TV,ID_TORRENT_PAUSE,ID_TORRENT_STREAM,
+        ID_TORRENT_STOP,ID_TORRENT_REMOVE,ID_TORRENT_REFRESH};
+    for(int i=0;i<(int)_countof(buttonIds);++i){
+        HWND b=GetDlgItem(hwnd,buttonIds[i]);
+        if(b)SetWindowPos(b,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    }
 }
 static void TorrentPaint(HWND hwnd){
     RECT rc={0};GetClientRect(hwnd,&rc);
@@ -3480,11 +3489,11 @@ static void TorrentPaint(HWND hwnd){
     if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,RGB(40,151,147),RGB(102,230,190));
 
     /* Matched utility cards */
-    r=(RECT){m,networkY,w-m,networkY+72};
+    r=(RECT){m,networkY,w-m,networkY+76};
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
     r=(RECT){m+14,networkY+2,m+220,networkY+22};ABM_D2D_Text(&g_torrentUi,L"NETWORK LIMITS",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    r=(RECT){m,cacheY,w-m,cacheY+72};
+    r=(RECT){m,cacheY,w-m,cacheY+76};
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
     r=(RECT){m+14,cacheY+2,m+220,cacheY+22};ABM_D2D_Text(&g_torrentUi,L"STORAGE & CACHE",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
