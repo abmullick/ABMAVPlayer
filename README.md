@@ -9,7 +9,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 [**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)
 
-**Next source version (not yet published):** [ABM AV Player v1.0.2 (upcoming)](https://github.com/abmullick/ABMAVPlayer/releases/tag/v1.0.2) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+**Next release:** ABM AV Player v1.0.3 (pending publication after installer rebuild) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
 
 Download the installer, run it, and follow the setup instructions. The installer is provided through GitHub Releases. See [RELEASES.md](RELEASES.md) for release and update information.
 
@@ -56,9 +56,15 @@ Open **Streaming services** from the Command Centre or press **Ctrl+Shift+S**. T
 
 Streaming Centre casting uses its own receiver selection and playback path. It does not replace the main player's local media, current playback or local casting selection. See [STREAMING.md](STREAMING.md) for details and limitations.
 
-### Torrent Stream — development branch
+### Torrent Stream — downloads, progressive playback and TV casting
 
-The `main` branch includes the native libtorrent 2.1.2 engine, on-demand loading, a dedicated Torrent Stream window, magnet and local `.torrent` ingestion, metadata/file listing, task progress and peer/rate status, pause/resume/remove controls, separate download/upload rate limits (KiB/s; 0 = unlimited), and local LibVLC progressive playback. Torrent pieces are persisted in per-info-hash folders under `torrent-cache`, with a configurable 20 GiB default cache quota (1–4096 GiB), usage reporting, preflight quota checks, oldest-inactive-folder cleanup and a Clear inactive cache control. Playback waits for an initial verified-piece buffer and reads through an authenticated HTTP Range source bound only to `127.0.0.1`. Live playback monitoring distinguishes initial buffering, normal playback, buffering during playback, recovery after a six-second stall, pause, stop and failure, with a buffer progress bar when LibVLC reports cache percentage. The torrent window is separate from Streaming Centre and does not change existing TV discovery or casting. This work has **not yet been compiled and runtime-tested on Windows**, and is not included in a published release. No torrent search/catalogue is included. See [TORRENT_STREAM.md](TORRENT_STREAM.md) for remaining work and limitations.
+Torrent Stream is a separate window for user-supplied magnet links and local `.torrent` files. It uses the pinned libtorrent 2.1.2 engine, retrieves metadata, lists files, reports peer and transfer status, and lets the user select a file for persistent download and progressive LibVLC playback. The engine enables DHT and LSD, configures multiple DHT bootstrap routers, retries bootstrap when DHT is not running, and requests an immediate tracker announce when a task is added. Peer availability still depends on the torrent, reachable trackers/DHT nodes, network policy and firewall.
+
+Selected files are stored under the configured Windows `Torrent Downloads` directory, separately from the evictable `torrent-cache`. Local playback reads only verified pieces through an authenticated loopback HTTP Range source and schedules pieces around the playback position. The cache has a configurable 20 GiB default quota (1–4096 GiB), usage reporting, preflight disk-space checks, inactive-cache cleanup and a Clear inactive cache control. Download and upload limits are independently configurable (KiB/s; 0 = unlimited).
+
+Torrent Stream has its own TV discovery and DLNA casting controls. When the user explicitly selects **Cast to TV**, the player serves the same persistent download over a temporary authenticated private-LAN HTTP listener. The TV decodes the original media; PC-side transcoding is not included. **Stop TV** stops the receiver and temporary listener without deleting or pausing the torrent task. Main-player casting and Streaming Centre receiver selection remain independent.
+
+The v1.0.3 source update has been built into a Windows installer and installed for maintainer testing. Real-world peer availability, receiver/codec compatibility and network/firewall behaviour remain environment-dependent; see [TORRENT_STREAM.md](TORRENT_STREAM.md) for implementation details and outstanding acceptance tests. No torrent search/catalogue is included.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
