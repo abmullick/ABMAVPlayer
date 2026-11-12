@@ -3326,10 +3326,29 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     TorrentSetLabel(g_torrentStatusLabel,L"Torrent added. Waiting for metadata…");
     TorrentRefreshStatus();
 }
+static HBRUSH g_torrentSurfaceBrush=NULL;
+static HBRUSH g_torrentControlBrush=NULL;
+static HFONT g_torrentUiFont=NULL;
+static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_CTLCOLORDLG:
+        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
+        return (LRESULT)g_torrentSurfaceBrush;
+    case WM_CTLCOLORSTATIC: {
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(224,229,239));SetBkMode(dc,TRANSPARENT);
+        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
+        return (LRESULT)g_torrentSurfaceBrush;
+    }
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX: {
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(240,243,249));SetBkColor(dc,RGB(31,36,48));
+        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(RGB(31,36,48));
+        return (LRESULT)g_torrentControlBrush;
+    }
     case WM_CREATE: {
-        HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        g_torrentUiFont=CreateFontW(-18,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         HWND h=CreateWindowExW(0,L"STATIC",L"Add a magnet URI or open a local .torrent file. Only select content you are legally entitled to access.",WS_CHILD|WS_VISIBLE,20,16,760,36,hwnd,NULL,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
@@ -3385,6 +3404,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             {ID_TORRENT_REFRESH,L"Refresh",540,90}
         };
         for(size_t i=0;i<_countof(buttons);i++){h=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,buttons[i].x,568,buttons[i].w,34,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);}
+        for(HWND child=GetWindow(hwnd,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)) { TorrentApplyDarkControl(child);SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE); }
         TorrentRefreshCacheStatus();
         g_torrentTvKnownCount=-1;TorrentRefreshTvDevices();
         SetTimer(hwnd,1,1000,NULL);return 0;
@@ -3465,6 +3485,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            request; closing it after playback starts leaves playback running. */
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
+        if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
     }
