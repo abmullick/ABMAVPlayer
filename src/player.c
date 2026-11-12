@@ -3455,6 +3455,35 @@ static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
+
+static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
+    if(!d||!d->hwndItem)return;
+    HDC dc=d->hDC;RECT r=d->rcItem;
+    COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?RGB(13,30,47):RGB(10,24,38);
+    HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
+    if(d->itemID!=(UINT)-1){
+        if(d->itemState&ODS_SELECTED){
+            HBRUSH sb=CreateSolidBrush(RGB(25,70,83));RECT sr=r;InflateRect(&sr,-2,-1);
+            FillRect(dc,&sr,sb);DeleteObject(sb);
+        }
+        wchar_t name[256]=L"";SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)name);
+        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(d->itemState&ODS_SELECTED)?RGB(245,255,255):RGB(190,213,227));
+        RECT tr=r;tr.left+=13;tr.right-=36;
+        HFONT f=CreateFontW(-14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        HGDIOBJ old=SelectObject(dc,f);DrawTextW(dc,name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        SelectObject(dc,old);DeleteObject(f);
+    }
+    /* Custom chevron and inset border for the closed selector. */
+    if(d->itemState&ODS_COMBOBOXEDIT){
+        HPEN pen=CreatePen(PS_SOLID,1,RGB(65,190,165));HGDIOBJ old=SelectObject(dc,pen);
+        MoveToEx(dc,r.right-25,r.top+(r.bottom-r.top)/2-2,NULL);LineTo(dc,r.right-20,r.top+(r.bottom-r.top)/2+3);
+        LineTo(dc,r.right-15,r.top+(r.bottom-r.top)/2-2);SelectObject(dc,old);DeleteObject(pen);
+        HPEN border=CreatePen(PS_SOLID,1,RGB(29,75,91));old=SelectObject(dc,border);
+        HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right,r.bottom,10,10);
+        SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(border);
+    }
+}
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
@@ -3462,7 +3491,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
     
-    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} break; }
+    case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} break; }
+    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=34;return TRUE;} break; }
     
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
@@ -3522,7 +3552,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
         g_torrentTvButtons[0]=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,684,130,38,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
         SendMessageW(g_torrentTvButtons[0],WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST,140,684,260,180,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
+        g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,140,684,260,220,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
         SendMessageW(g_torrentTvCombo,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentTvButtons[1]=CreateWindowW(L"BUTTON",L"Cast to TV",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,415,684,130,38,hwnd,(HMENU)ID_TORRENT_CAST_TV,NULL,NULL);
         SendMessageW(g_torrentTvButtons[1],WM_SETFONT,(WPARAM)font,TRUE);
