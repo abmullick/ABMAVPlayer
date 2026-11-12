@@ -32,6 +32,7 @@
 #include <libtorrent/settings_pack.hpp>
 #include <libtorrent/torrent_info.hpp>
 #include <libtorrent/torrent_status.hpp>
+#include <libtorrent/announce_entry.hpp>
 #include "torrent_engine.h"
 namespace lt=libtorrent;
 namespace fs=std::filesystem;
@@ -64,6 +65,7 @@ struct Task {
     std::wstring error;
     fs::path cache_path;
     bool metadata_applied=false;
+    bool fallback_trackers_added=false;
     int file_count=0;
     std::atomic<bool> removed{false};
 };
@@ -157,9 +159,30 @@ public:
         out->task_id=id; out->progress=s.progress; out->total_bytes=s.total_wanted;
         out->downloaded_bytes=s.total_wanted_done; out->uploaded_bytes=s.total_upload;
         out->download_rate=s.download_rate; out->upload_rate=s.upload_rate; out->peer_count=s.num_peers;
+        out->known_peers=s.list_peers;out->connect_candidates=s.connect_candidates;
+        out->connections=s.num_connections;out->seeds=s.num_seeds;
+        out->announcing_to_dht=s.announcing_to_dht?1:0;
+        out->announcing_to_trackers=s.announcing_to_trackers?1:0;
         out->has_metadata=s.has_metadata?1:0; out->file_count=i->second->file_count;
         CopyText(out->name,_countof(out->name),i->second->name);
         CopyText(out->error,_countof(out->error),i->second->error);
+        try {
+            const auto trackers=i->second->handle.trackers();
+            out->tracker_count=(int)trackers.size();
+            std::wstring trackerDiag;
+            for(const auto &tr:trackers){
+                if(tr.verified)out->tracker_verified++;
+                for(const auto &endpoint:tr.endpoints)for(const auto &ih:endpoint.info_hashes){
+                    out->tracker_failures+=(int)ih.fails;
+                    if(!ih.last_error && !ih.message.empty() && trackerDiag.empty())
+                        trackerDiag=FromUtf8(ih.message);
+                    else if(ih.last_error && trackerDiag.empty())
+                        trackerDiag=FromUtf8(ih.last_error.message());
+                }
+            }
+            CopyText(out->tracker_diagnostic,_countof(out->tracker_diagnostic),trackerDiag);
+        } catch(...) { }
+
         if(!i->second->error.empty())out->state=ABM_TORRENT_ERROR;
         else if(s.flags & lt::torrent_flags::paused)out->state=ABM_TORRENT_PAUSED;
         else switch(s.state){
@@ -721,6 +744,25 @@ private:
                         std::vector<lt::download_priority_t> p((size_t)files.num_files(),lt::dont_download);
                         t.handle.prioritize_files(p);
                         t.file_count=files.num_files();t.name=FromUtf8(ti->name());t.metadata_applied=true;
+                        /* Public torrents often ship with stale or WebRTC-only trackers.
+                           Add a small maintained UDP fallback set for conventional peers.
+                           Never inject public trackers into a private torrent. */
+                        if(!t.fallback_trackers_added && !ti->priv()){
+                            static const char *fallback[]={
+                                "udp://open.demonii.com:1337/announce",
+                                "udp://tracker.opentrackr.org:1337/announce",
+                                "udp://open.stealth.si:80/announce",
+                                "udp://tracker.torrent.eu.org:451/announce"
+                            };
+                            auto existing=t.handle.trackers();
+                            for(const char *url:fallback){
+                                bool found=false;
+                                for(const auto &entry:existing)if(entry.url==url){found=true;break;}
+                                if(!found)t.handle.add_tracker(url,0);
+                            }
+                            t.fallback_trackers_added=true;
+                            try{t.handle.force_reannounce();}catch(...){}
+                        }
                     } catch(const std::exception &e) {
                         t.error=FromUtf8(e.what());
                     } catch(...) {
