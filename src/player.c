@@ -3515,15 +3515,90 @@ static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
 
+/* Clip legacy child HWNDs to rounded geometry and paint their chrome ourselves.
+   Native EDIT/LISTBOX/COMBOBOX still own input, selection, accessibility and IME. */
+static void TorrentShapeControl(HWND hwnd){
+    if(!hwnd||!IsWindow(hwnd))return;
+    RECT r={0};GetClientRect(hwnd,&r);
+    int w=r.right-r.left,h=r.bottom-r.top;
+    if(w<2||h<2)return;
+    HRGN region=CreateRoundRectRgn(0,0,w+1,h+1,14,14);
+    if(region)SetWindowRgn(hwnd,region,TRUE);
+}
+static void TorrentDrawControlFrame(HWND hwnd,HDC dc){
+    RECT r={0};GetClientRect(hwnd,&r);
+    if(r.right<=2||r.bottom<=2)return;
+    BOOL focus=GetFocus()==hwnd;
+    BOOL hot=FALSE;POINT pt;GetCursorPos(&pt);ScreenToClient(hwnd,&pt);
+    hot=PtInRect(&r,pt);
+    COLORREF edge=focus?RGB(91,205,188):(hot?RGB(57,133,139):RGB(35,70,88));
+    HPEN pen=CreatePen(PS_SOLID,focus?2:1,edge);
+    HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
+    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+}
+static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,
+                                                   UINT_PTR id,DWORD_PTR ref){
+    (void)id;(void)ref;
+    if(msg==WM_NCDESTROY){RemoveWindowSubclass(hwnd,TorrentPremiumControlProc,1);return DefSubclassProc(hwnd,msg,wp,lp);}
+    if(msg==WM_SIZE){LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);TorrentShapeControl(hwnd);return z;}
+    if(msg==WM_NCPAINT)return 0;
+    if(msg==WM_ERASEBKGND)return DefSubclassProc(hwnd,msg,wp,lp);
+    if(msg==WM_PAINT){
+        LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);
+        HDC dc=GetDC(hwnd);
+        if(dc){
+            RECT r={0};GetClientRect(hwnd,&r);
+            if(GetClassNameW(hwnd,(wchar_t[32]){0},32)){ /* keep the edit's native caret/text untouched */ }
+            TorrentDrawControlFrame(hwnd,dc);
+            /* Replace the combo's native square arrow well with a quiet custom chevron. */
+            wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
+            if(_wcsicmp(cls,L"ComboBox")==0){
+                RECT a={r.right-32,2,r.right-2,r.bottom-2};
+                HBRUSH b=CreateSolidBrush(RGB(13,31,47));FillRect(dc,&a,b);DeleteObject(b);
+                HPEN p=CreatePen(PS_SOLID,1,RGB(79,190,176));HGDIOBJ old=SelectObject(dc,p);
+                int cy=(a.top+a.bottom)/2;
+                MoveToEx(dc,a.left+10,cy-2,NULL);LineTo(dc,a.left+15,cy+3);LineTo(dc,a.left+20,cy-2);
+                SelectObject(dc,old);DeleteObject(p);
+            }
+            ReleaseDC(hwnd,dc);
+        }
+        return z;
+    }
+    if(msg==WM_SETFOCUS||msg==WM_KILLFOCUS||msg==WM_MOUSEMOVE||msg==WM_MOUSELEAVE){
+        LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);InvalidateRect(hwnd,NULL,FALSE);return z;
+    }
+    return DefSubclassProc(hwnd,msg,wp,lp);
+}
+static void TorrentPremiumizeControl(HWND hwnd){
+    if(!hwnd)return;
+    LONG_PTR style=GetWindowLongPtrW(hwnd,GWL_STYLE);
+    SetWindowLongPtrW(hwnd,GWL_STYLE,style&~(WS_BORDER|WS_DLGFRAME));
+    LONG_PTR ex=GetWindowLongPtrW(hwnd,GWL_EXSTYLE);
+    SetWindowLongPtrW(hwnd,GWL_EXSTYLE,ex&~WS_EX_CLIENTEDGE);
+    SetWindowSubclass(hwnd,TorrentPremiumControlProc,1,0);
+    TorrentShapeControl(hwnd);
+    InvalidateRect(hwnd,NULL,TRUE);
+}
+
 static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
     if(!d)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
-    COLORREF bg=(d->itemState&ODS_SELECTED)?RGB(25,70,83):RGB(10,23,37);
+    COLORREF bg=(d->itemState&ODS_SELECTED)?RGB(20,75,83):((d->itemID&1)?RGB(12,28,44):RGB(10,24,39));
     HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
+    if(d->itemState&ODS_SELECTED){
+        RECT pill=r;InflateRect(&pill,-3,-2);
+        HBRUSH sb=CreateSolidBrush(RGB(20,68,79));HPEN sp=CreatePen(PS_SOLID,1,RGB(49,132,139));
+        HGDIOBJ ob=SelectObject(dc,sb),op=SelectObject(dc,sp);
+        RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,10,10);
+        SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(sb);DeleteObject(sp);
+        RECT marker={r.left+5,r.top+6,r.left+8,r.bottom-6};
+        HBRUSH mb=CreateSolidBrush(RGB(93,218,190));FillRect(dc,&marker,mb);DeleteObject(mb);
+    }
     wchar_t line[1200]=L"";
     if(d->itemID!=(UINT)-1)SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
     SetBkMode(dc,TRANSPARENT);
-    SetTextColor(dc,(d->itemState&ODS_SELECTED)?RGB(245,255,255):RGB(190,213,227));
+    SetTextColor(dc,(d->itemState&ODS_SELECTED)?RGB(247,253,255):RGB(178,201,218));
     RECT tx=r;tx.left+=12;tx.right-=10;
     HFONT f=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
@@ -3646,7 +3721,16 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             {ID_TORRENT_STOP,L"Stop stream"},{ID_TORRENT_REMOVE,L"Remove task"},{ID_TORRENT_REFRESH,L"Refresh"}
         };
         for(size_t i=0;i<_countof(buttons);i++){g_torrentActionButtons[i]=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,568,125,40,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(g_torrentActionButtons[i],WM_SETFONT,(WPARAM)font,TRUE);}
-        for(HWND child=GetWindow(hwnd,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)) { TorrentApplyDarkControl(child);SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE); }
+        for(HWND child=GetWindow(hwnd,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)) {
+            TorrentApplyDarkControl(child);SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE);
+        }
+        /* Premium surfaces for editable fields, the TV selector and the file library. */
+        TorrentPremiumizeControl(g_torrentMagnetEdit);
+        TorrentPremiumizeControl(g_torrentDownLimitEdit);
+        TorrentPremiumizeControl(g_torrentUpLimitEdit);
+        TorrentPremiumizeControl(g_torrentCacheLimitEdit);
+        TorrentPremiumizeControl(g_torrentTvCombo);
+        TorrentPremiumizeControl(g_torrentFileList);
         /* Keep all interactive child controls visible until their Direct2D
            canvas replacements are wired. Never hide the command buttons. */
         ShowWindow(g_torrentFileList,SW_SHOW);
