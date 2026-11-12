@@ -3399,29 +3399,31 @@ static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
-static void TorrentDrawButton(const DRAWITEMSTRUCT *dis) {
-    if(!dis||dis->CtlType!=ODT_BUTTON)return;
-    HDC dc=dis->hDC;RECT rc=dis->rcItem;
-    BOOL primary=(dis->CtlID==ID_TORRENT_STREAM||dis->CtlID==ID_TORRENT_CAST_TV||dis->CtlID==ID_TORRENT_ADD_MAGNET);
-    BOOL danger=(dis->CtlID==ID_TORRENT_STOP||dis->CtlID==ID_TORRENT_STOP_TV||dis->CtlID==ID_TORRENT_REMOVE);
-    BOOL pressed=(dis->itemState&ODS_SELECTED)!=0,focused=(dis->itemState&ODS_FOCUS)!=0;
+static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
+    if(!item||!item->hwndItem)return;
+    HDC dc=item->hDC;RECT r=item->rcItem;
+    BOOL primary=(item->CtlID==ID_TORRENT_STREAM||item->CtlID==ID_TORRENT_CAST_TV||item->CtlID==ID_TORRENT_ADD_MAGNET);
+    BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
+    BOOL focused=(item->itemState&ODS_FOCUS)!=0;
     COLORREF fill=primary?(pressed?RGB(25,112,101):RGB(24,91,82)):
-        danger?(pressed?RGB(150,55,34):RGB(100,43,32)):
         (pressed?RGB(35,75,94):RGB(20,42,60));
-    COLORREF edge=focused?RGB(99,225,205):(primary?RGB(65,190,165):(danger?RGB(220,119,83):RGB(48,91,113)));
+    COLORREF edge=primary?RGB(65,190,165):RGB(48,91,113);
     HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,1,fill);
     HGDIOBJ ob=SelectObject(dc,brush),op=SelectObject(dc,pen);
-    RoundRect(dc,rc.left,rc.top,rc.right,rc.bottom,9,9);
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(brush);DeleteObject(pen);
-    pen=CreatePen(PS_SOLID,focused?2:1,edge);op=SelectObject(dc,pen);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,rc.left,rc.top,rc.right,rc.bottom,9,9);
+    pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(99,225,205):edge);
+    op=SelectObject(dc,pen);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
-    InflateRect(&rc,-5,-2);
-    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(dis->itemState&ODS_DISABLED)?RGB(126,150,164):RGB(229,244,250));
-    HFONT font=(HFONT)SendMessageW(dis->hwndItem,WM_GETFONT,0,0);HGDIOBJ oldF=font?SelectObject(dc,font):NULL;
-    wchar_t label[128]={0};GetWindowTextW(dis->hwndItem,label,(int)_countof(label));
-    DrawTextW(dc,label,-1,&rc,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    if(oldF)SelectObject(dc,oldF);
+    InflateRect(&r,-5,-2);
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(229,244,250));
+    HFONT font=CreateFontW(-11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    HGDIOBJ old=font?SelectObject(dc,font):NULL;
+    wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
+    DrawTextW(dc,caption,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    if(old)SelectObject(dc,old);if(font)DeleteObject(font);
 }
 static void TorrentDrawListItem(const DRAWITEMSTRUCT *dis) {
     if(!dis||dis->CtlType!=ODT_LISTBOX||dis->itemID==(UINT)-1)return;
