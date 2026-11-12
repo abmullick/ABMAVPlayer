@@ -3394,8 +3394,12 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),TRUE);
     MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,TRUE);
     MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,TRUE);
-    int aw=(inner-48)/5,x=m+12;
-    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+55,aw,40,TRUE);x+=aw+12;}
+    /* Playback actions use a compact fixed width, like Streaming Centre
+       controls; do not stretch them to consume the entire window. */
+    const int actionW=132,actionH=36,actionGap=12;
+    int actionTotal=actionW*5+actionGap*4;
+    int x=m+(inner-actionTotal)/2;
+    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+57,actionW,actionH,TRUE);x+=actionW+actionGap;}
     const int half=inner/2;
     MoveWindow(g_torrentDownLabel,m+14,networkY+4,112,18,TRUE);
     MoveWindow(g_torrentDownLimitEdit,m+126,networkY+30,90,30,TRUE);
@@ -3587,13 +3591,26 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
             TorrentDrawControlFrame(hwnd,dc);
             wchar_t cls[32]=L"";GetClassNameW(hwnd,cls,_countof(cls));
             if(_wcsicmp(cls,L"ComboBox")==0){
-                /* Keep the native Win32 drop-button glyph as the sole arrow.
-                   The previous custom chevron was painted over the native
-                   button but did not suppress its themed glyph, producing
-                   two visible dropdown handles. */
-                HPEN edge=CreatePen(PS_SOLID,1,RGB(29,75,91));HGDIOBJ old=SelectObject(dc,edge);
-                HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
-                SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(edge);
+                /* Fully replace the themed Win32 drop-button chrome. The native
+                   combo remains responsible for input, keyboard and popup list,
+                   but its grey arrow surface/glyph is covered by our own navy
+                   rounded segment and teal chevron. */
+                const int arrowW=34;
+                RECT arrow={r.right-arrowW,r.top+1,r.right-1,r.bottom-1};
+                HBRUSH fill=CreateSolidBrush(RGB(17,48,65));
+                HPEN edge=CreatePen(PS_SOLID,1,RGB(43,105,119));
+                HGDIOBJ ob=SelectObject(dc,fill),op=SelectObject(dc,edge);
+                RoundRect(dc,arrow.left,arrow.top,arrow.right,arrow.bottom,10,10);
+                SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(fill);DeleteObject(edge);
+                HPEN chevron=CreatePen(PS_SOLID,2,RGB(116,220,204));
+                op=SelectObject(dc,chevron);
+                int cx=arrow.left+arrowW/2,cy=(arrow.top+arrow.bottom)/2-1;
+                MoveToEx(dc,cx-5,cy-2,NULL);LineTo(dc,cx,cy+3);LineTo(dc,cx+5,cy-2);
+                SelectObject(dc,op);DeleteObject(chevron);
+                HPEN border=CreatePen(PS_SOLID,1,focus?RGB(91,205,188):RGB(35,82,101));
+                op=SelectObject(dc,border);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+                RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
+                SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
             }
             ReleaseDC(hwnd,dc);
         }
