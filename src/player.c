@@ -1303,15 +1303,15 @@ static void DrawUI(HDC dc,RECT client) {
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
             L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
-            L"Settings",L"Torrent Stream (initialize engine)"
+            L"Settings",L"Torrent Stream"
         };
         const wchar_t *shortcuts[18]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L""
+            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L"Ctrl+Shift+T"
         };
-        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"BT"};
+        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"TOR"};
         for(int i=0;i<18;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -3468,8 +3468,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
         return (LRESULT)g_torrentSurfaceBrush;
     case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(204,226,238));SetBkMode(dc,TRANSPARENT);SetBkColor(dc,RGB(12,29,45));
-        return (LRESULT)GetStockObject(HOLLOW_BRUSH);
+        HDC dc=(HDC)wp;SetTextColor(dc,RGB(204,226,238));SetBkMode(dc,OPAQUE);SetBkColor(dc,RGB(12,27,43));
+        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(RGB(12,27,43));
+        return (LRESULT)g_torrentControlBrush;
     }
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX: {
@@ -3646,11 +3647,11 @@ static void ShowTorrentWindow(HWND owner) {
     if(!g_torrentInitialized){StartTorrentEngine(owner);return;}
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(10,17,29));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(10,17,29));wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr;GetWindowRect(owner,&wr);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int w=maxW<1080?maxW:1080,h=maxH<900?maxH:900;if(w<760)w=760;if(h<620)h=620;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
-    if(g_torrentWindow){BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
+    if(g_torrentWindow){HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
 }
 
 static HBITMAP g_aboutPortrait = NULL;
@@ -4644,6 +4645,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
+        if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
