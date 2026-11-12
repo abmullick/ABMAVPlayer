@@ -10,6 +10,10 @@ typedef struct ABM_TorrentTaskInfo {
     double progress;
     int64_t total_bytes, downloaded_bytes, uploaded_bytes;
     int download_rate, upload_rate, peer_count, state, has_metadata, file_count;
+    int known_peers, connect_candidates, connections, seeds;
+    int tracker_count, tracker_verified, tracker_failures;
+    int announcing_to_dht, announcing_to_trackers;
+    wchar_t tracker_diagnostic[512];
     wchar_t name[ABM_TORRENT_TEXT_CAP];
     wchar_t error[ABM_TORRENT_TEXT_CAP];
 } ABM_TorrentTaskInfo;
