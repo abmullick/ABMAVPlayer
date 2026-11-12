@@ -2756,6 +2756,10 @@ typedef struct ABM_TorrentTaskInfo {
     double progress;
     int64_t total_bytes, downloaded_bytes, uploaded_bytes;
     int download_rate, upload_rate, peer_count, state, has_metadata, file_count;
+    int known_peers, connect_candidates, connections, seeds;
+    int tracker_count, tracker_verified, tracker_failures;
+    int announcing_to_dht, announcing_to_trackers;
+    wchar_t tracker_diagnostic[512];
     wchar_t name[512];
     wchar_t error[512];
 } ABM_TorrentTaskInfo;
@@ -3138,7 +3142,7 @@ static void TorrentRefreshStatus(void) {
     if(!g_torrentWindow||!g_torrentTaskId||!g_torrentGetTask)return;
     ABM_TorrentTaskInfo info={0};
     if(!g_torrentGetTask(g_torrentTaskId,&info))return;
-    wchar_t down[64],up[64],total[64],status[1024];
+    wchar_t down[64],up[64],total[64],status[1024],diagnostic[512];
     TorrentFormatBytes(info.downloaded_bytes,down,_countof(down));
     TorrentFormatBytes(info.total_bytes,total,_countof(total));
     TorrentFormatBytes(info.uploaded_bytes,up,_countof(up));
@@ -3152,11 +3156,19 @@ static void TorrentRefreshStatus(void) {
     StringCchPrintfW(status,_countof(status),L"%s  |  %.1f%%  |  %s / %s  |  ↓ %.1f KiB/s  ↑ %.1f KiB/s  |  Peers: %d  |  Uploaded: %s",
         info.name,info.progress*100.0,down,total,(double)info.download_rate/1024.0,
         (double)info.upload_rate/1024.0,info.peer_count,up);
+    StringCchPrintfW(diagnostic,_countof(diagnostic),
+        L"Trackers %d (%d verified, %d failures)  |  DHT %s  |  Tracker announce %s  |  Known peers %d  |  Connecting %d  |  Connections %d  |  Seeds %d%s%s",
+        info.tracker_count,info.tracker_verified,info.tracker_failures,
+        info.announcing_to_dht?L"enabled":L"off",
+        info.announcing_to_trackers?L"enabled":L"off",
+        info.known_peers,info.connect_candidates,info.connections,info.seeds,
+        info.tracker_diagnostic[0]?L"  |  Last tracker response: ":L"",
+        info.tracker_diagnostic);
     TorrentSetLabel(g_torrentInfoLabel,status);
     if(info.error[0])TorrentSetLabel(g_torrentStatusLabel,info.error);
     else if(!info.has_metadata)TorrentSetLabel(g_torrentStatusLabel,L"Fetching torrent metadata…");
-    else if(info.file_count>0&&info.total_bytes==0)TorrentSetLabel(g_torrentStatusLabel,L"Torrent metadata loaded. Select a file above, then choose Stream selected; files are not downloaded until selected.");
-    else TorrentSetLabel(g_torrentStatusLabel,state);
+    else if(info.file_count>0&&info.total_bytes==0)TorrentSetLabel(g_torrentStatusLabel,L"Torrent metadata loaded. Select a video file to begin downloading.");
+    else TorrentSetLabel(g_torrentStatusLabel,diagnostic);
     TorrentRefreshFiles();
     TorrentPlaybackState playbackState=(TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0);
     const wchar_t *playbackText=TorrentPlaybackStateText();
