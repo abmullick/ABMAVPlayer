@@ -98,6 +98,12 @@ public:
                 "dht.transmissionbt.com:6881,router.bt.ouinet.work:6881");
             s.set_bool(lt::settings_pack::enable_dht,true);
             s.set_bool(lt::settings_pack::enable_lsd,true);
+            /* Do not wait for every tracker in a tier to fail before trying
+               alternatives. This is important for torrents carrying stale
+               tracker lists. DHT remains active alongside tracker announces. */
+            s.set_bool(lt::settings_pack::announce_to_all_trackers,true);
+            s.set_bool(lt::settings_pack::announce_to_all_tiers,true);
+            s.set_bool(lt::settings_pack::use_dht_as_fallback,false);
             s.set_bool(lt::settings_pack::enable_upnp,true);
             s.set_bool(lt::settings_pack::enable_natpmp,true);
             s.set_bool(lt::settings_pack::enable_outgoing_tcp,true);
@@ -107,6 +113,14 @@ public:
             WSADATA wsa{};if(WSAStartup(MAKEWORD(2,2),&wsa)!=0)return false;
             winsock_ready_=true;
             session_=std::make_unique<lt::session>(s);
+            /* Explicit bootstrap probes supplement dht_bootstrap_nodes and
+               make the initial routing-table join less dependent on one DNS
+               result. Failures here are non-fatal; libtorrent keeps retrying. */
+            try{
+                session_->add_dht_node({"router.bittorrent.com",6881});
+                session_->add_dht_node({"dht.transmissionbt.com",6881});
+                session_->add_dht_node({"router.utorrent.com",6881});
+            }catch(...){}
             stopping_=false;
             worker_=std::thread([this]{Monitor();});
             return true;
@@ -658,6 +672,7 @@ private:
         if(p.ti) p.file_priorities.assign((size_t)p.ti->layout().num_files(),lt::dont_download);
         lt::error_code ec;
         p.flags &= ~lt::torrent_flags::auto_managed;
+        p.flags &= ~lt::torrent_flags::paused;
         /* Public torrents participate in DHT/LSD by default. Explicitly clear
            per-torrent disable flags: imported .torrent metadata may carry them. */
         p.flags &= ~lt::torrent_flags::disable_dht;
