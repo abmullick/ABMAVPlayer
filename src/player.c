@@ -3529,20 +3529,23 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     RECT face=r;InflateRect(&face,-1,-1);
     HRGN clip=CreateRoundRectRgn(face.left,face.top,face.right,face.bottom,14,14);
     int saved=SaveDC(dc);SelectClipRgn(dc,clip);
-    COLORREF top=pressed?RGB(19,91,86):(hot?RGB(34,135,124):RGB(28,112,105));
-    COLORREF bottom=pressed?RGB(12,65,66):(hot?RGB(20,103,101):RGB(13,72,78));
+    /* Match the main player's Add media button: restrained deep-teal
+       gradient at rest, with a brighter mint-teal flash only while pressed.
+       Returning to the base palette on mouse-up avoids a sticky hover tint. */
+    COLORREF top=pressed?RGB(42,157,148):RGB(22,48,52);
+    COLORREF bottom=pressed?RGB(76,174,151):RGB(39,75,72);
     for(int y=face.top;y<face.bottom;y++){
         RECT stripe={face.left,y,face.right,y+1};
         HBRUSH line=CreateSolidBrush(TorrentBlend(top,bottom,y-face.top,max(1,face.bottom-face.top-1)));
         FillRect(dc,&stripe,line);DeleteObject(line);
     }
     RestoreDC(dc,saved);DeleteObject(clip);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(139,238,220):(hot?RGB(105,218,196):RGB(67,165,157)));
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(139,238,220):(pressed?RGB(126,205,185):RGB(66,112,105)));
     HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,face.left,face.top,face.right,face.bottom,14,14);
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
     /* Fine top highlight gives the button a glass-like edge without a white rim. */
-    HPEN hi=CreatePen(PS_SOLID,1,RGB(92,180,174));oldPen=SelectObject(dc,hi);
+    HPEN hi=CreatePen(PS_SOLID,1,pressed?RGB(190,238,224):RGB(66,112,105));oldPen=SelectObject(dc,hi);
     MoveToEx(dc,face.left+9,face.top+1,NULL);LineTo(dc,face.right-9,face.top+1);
     SelectObject(dc,oldPen);DeleteObject(hi);
     InflateRect(&r,-7,-2);
