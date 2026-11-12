@@ -3173,10 +3173,18 @@ static void TorrentRefreshStatus(void) {
     TorrentPlaybackState playbackState=(TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0);
     const wchar_t *playbackText=TorrentPlaybackStateText();
     if(playbackState==TORRENT_PLAYBACK_BUFFERING_START||playbackState==TORRENT_PLAYBACK_BUFFERING) {
-        wchar_t buffering[160];
-        StringCchPrintfW(buffering,_countof(buffering),L"%s  (%ld%%)",
+        wchar_t buffering[768];
+        StringCchPrintfW(buffering,_countof(buffering),
+            L"%s (%ld%%)  |  Trackers %d/%d verified, %d failures  |  DHT announce %s  |  Known peers %d  |  Candidates %d  |  Connections %d  |  Seeds %d",
             playbackState==TORRENT_PLAYBACK_BUFFERING_START?L"Buffering before playback starts…":L"Buffering during playback…",
-            InterlockedCompareExchange(&g_torrentBufferPercent,0,0));
+            InterlockedCompareExchange(&g_torrentBufferPercent,0,0),
+            info.tracker_verified,info.tracker_count,info.tracker_failures,
+            info.announcing_to_dht?L"on":L"off",info.known_peers,info.connect_candidates,
+            info.connections,info.seeds);
+        if(info.tracker_diagnostic[0]){
+            StringCchCatW(buffering,_countof(buffering),L"  |  Tracker response: ");
+            StringCchCatW(buffering,_countof(buffering),info.tracker_diagnostic);
+        }
         TorrentSetLabel(g_torrentStatusLabel,buffering);
     } else if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
 }
