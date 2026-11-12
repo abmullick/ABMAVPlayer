@@ -3362,38 +3362,39 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentTvButtons[2],w-m-124,tvY+12,112,34,TRUE);
     MoveWindow(g_torrentDownloadPathLabel,m+12,tvY+51,inner-24,22,TRUE);
 }
-static void TorrentPaint(HWND hwnd) {
-    if(!g_torrentUiReady)return;
-    RECT rc;GetClientRect(hwnd,&rc);int w=rc.right,h=rc.bottom,m=22,inner=w-44;
-    int contentBottom=h-320;if(contentBottom<270)contentBottom=270;
+static void TorrentFillRect(HDC dc,RECT r,COLORREF color){HBRUSH b=CreateSolidBrush(color);FillRect(dc,&r,b);DeleteObject(b);}
+static void TorrentRounded(HDC dc,RECT r,COLORREF color,int radius){HBRUSH b=CreateSolidBrush(color);HPEN p=CreatePen(PS_SOLID,1,color);HGDIOBJ ob=SelectObject(dc,b),op=SelectObject(dc,p);RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(b);DeleteObject(p);}
+static HFONT TorrentFont(int height,int weight){return CreateFontW(-height,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");}
+static void TorrentText(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weight,UINT flags){HFONT f=TorrentFont(height,weight);HGDIOBJ old=SelectObject(dc,f);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);DeleteObject(f);}
+static void TorrentPaint(HWND hwnd){
+    PAINTSTRUCT ps={0};HDC paint=BeginPaint(hwnd,&ps);RECT rc={0};GetClientRect(hwnd,&rc);
+    int w=rc.right,h=rc.bottom,m=22,contentBottom=h-320;if(contentBottom<270)contentBottom=270;
     int playbackY=contentBottom+8,networkY=playbackY+82,cacheY=networkY+60,tvY=cacheY+60;
-    ABM_D2D_Begin(&g_torrentUi,RGB(7,12,21));
-    ABM_D2D_GradientRound(&g_torrentUi,0,0,(float)w,78,0,RGB(13,27,45),RGB(5,10,19));
-    ABM_D2D_Text(&g_torrentUi,L"ABM",(RECT){m,10,m+68,43},RGB(247,250,255),2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM",(RECT){m+68,14,m+300,42},RGB(132,205,194),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_torrentUi,L"YOUR MEDIA  ·  YOUR DOWNLOADS  ·  YOUR TV",(RECT){m+2,48,w-m,68},RGB(157,177,201),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Fill(&g_torrentUi,0,76,(float)w,78,RGB(39,61,83));
-    /* The torrent workspace now follows the same card language and spacing
-       as the main player and Streaming Centre instead of generic control bands. */
-    ABM_D2D_Round(&g_torrentUi,m,86,w-m,152,15,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,m,86,w-m,152,15,RGB(48,91,125),1);
-    ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",(RECT){m+14,88,m+190,106},RGB(91,224,218),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_torrentUi,m,158,w-m,contentBottom,16,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,m,158,w-m,contentBottom,16,RGB(48,91,125),1);
-    ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",(RECT){m+14,160,m+240,184},RGB(91,224,218),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_torrentUi,m,playbackY,w-m,playbackY+78,14,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,m,playbackY,w-m,playbackY+78,14,RGB(48,91,125),1);
-    ABM_D2D_Text(&g_torrentUi,L"PLAYBACK",(RECT){m+14,playbackY+3,m+150,playbackY+23},RGB(91,224,218),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_torrentUi,m,networkY,w-m,networkY+54,13,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,m,networkY,w-m,networkY+54,13,RGB(48,91,125),1);
-    ABM_D2D_Text(&g_torrentUi,L"NETWORK",(RECT){m+14,networkY+2,m+115,networkY+20},RGB(91,224,218),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_torrentUi,m,cacheY,w-m,cacheY+54,13,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,m,cacheY,w-m,cacheY+54,13,RGB(48,91,125),1);
-    ABM_D2D_Text(&g_torrentUi,L"STORAGE & CACHE",(RECT){m+14,cacheY+2,m+180,cacheY+20},RGB(91,224,218),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_torrentUi,m,tvY,w-m,h-12,13,RGB(13,29,46));
-    ABM_D2D_StrokeRound(&g_torrentUi,m,tvY,w-m,h-12,13,RGB(48,91,125),1);
-    ABM_D2D_Text(&g_torrentUi,L"CAST TO TV",(RECT){m+14,tvY+2,m+130,tvY+20},RGB(91,224,218),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_End(&g_torrentUi);
+    HDC dc=CreateCompatibleDC(paint);HBITMAP bm=CreateCompatibleBitmap(paint,w,h);HGDIOBJ old=bm?SelectObject(dc,bm):NULL;
+    if(!dc||!bm||!old){if(bm)DeleteObject(bm);if(dc)DeleteDC(dc);dc=paint;bm=NULL;old=NULL;}
+    TorrentFillRect(dc,rc,RGB(7,12,21));
+    RECT top={0,0,w,260};TorrentFillRect(dc,top,RGB(11,24,39));
+    RECT glow={0,0,w,2};TorrentFillRect(dc,glow,RGB(31,91,105));
+    RECT logo={22,13,62,53};TorrentRounded(dc,logo,RGB(31,143,145),12);
+    TorrentText(dc,L"A",logo,RGB(255,255,255),25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT title={76,8,360,34};TorrentText(dc,L"ABM AV PLAYER",title,RGB(244,249,255),18,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT sub={77,34,390,54};TorrentText(dc,L"TORRENT STREAM",sub,RGB(108,193,190),10,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT accent={0,257,w,260};TorrentFillRect(dc,accent,RGB(48,166,161));
+    RECT source={m,78,w-m,150};TorrentRounded(dc,source,RGB(12,29,45),14);
+    RECT sourceLine={m+16,155,w-m-16,156};TorrentFillRect(dc,sourceLine,RGB(38,112,119));
+    RECT content={m,164,w-m,contentBottom};TorrentRounded(dc,content,RGB(12,29,45),14);
+    RECT playback={m,playbackY,w-m,playbackY+78};TorrentRounded(dc,playback,RGB(12,29,45),14);
+    RECT network={m,networkY,w-m,networkY+54};TorrentRounded(dc,network,RGB(12,29,45),13);
+    RECT cache={m,cacheY,w-m,cacheY+54};TorrentRounded(dc,cache,RGB(12,29,45),13);
+    RECT tv={m,tvY,w-m,h-12};TorrentRounded(dc,tv,RGB(12,29,45),13);
+    RECT label={m+14,80,m+190,102};TorrentText(dc,L"ADD A SOURCE",label,RGB(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    label=(RECT){m+14,166,m+240,188};TorrentText(dc,L"TORRENT CONTENT",label,RGB(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    label=(RECT){m+14,playbackY+2,m+150,playbackY+22};TorrentText(dc,L"PLAYBACK",label,RGB(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    label=(RECT){m+14,networkY+1,m+150,networkY+21};TorrentText(dc,L"NETWORK LIMITS",label,RGB(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    label=(RECT){m+14,cacheY+1,m+190,cacheY+21};TorrentText(dc,L"STORAGE & CACHE",label,RGB(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    label=(RECT){m+14,tvY+1,m+150,tvY+21};TorrentText(dc,L"CAST TO TV",label,RGB(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    if(bm){BitBlt(paint,0,0,w,h,dc,0,0,SRCCOPY);SelectObject(dc,old);DeleteObject(bm);DeleteDC(dc);}
+    EndPaint(hwnd,&ps);
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
@@ -3402,31 +3403,14 @@ static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(co
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
     HDC dc=item->hDC;RECT r=item->rcItem;
-    BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
-    BOOL focused=(item->itemState&ODS_FOCUS)!=0;
-    /* One shared ABM teal button treatment for every Torrent action. */
+    BOOL pressed=(item->itemState&ODS_SELECTED)!=0,focused=(item->itemState&ODS_FOCUS)!=0;
     COLORREF fill=pressed?RGB(25,112,101):RGB(24,91,82);
-    COLORREF edge=RGB(65,190,165);
-    HBRUSH brush=CreateSolidBrush(fill);
-    HPEN pen=CreatePen(PS_SOLID,1,fill);
-    HGDIOBJ ob=SelectObject(dc,brush),op=SelectObject(dc,pen);
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
-    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(brush);DeleteObject(pen);
-    pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(99,225,205):edge);
-    op=SelectObject(dc,pen);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
-    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
-    InflateRect(&r,-5,-2);
-    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(229,244,250));
-    HFONT font=CreateFontW(-11,0,0,0,600,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-        DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HGDIOBJ old=font?SelectObject(dc,font):NULL;
-    wchar_t caption[128]={0};
-    GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-    DrawTextW(dc,caption,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    if(old)SelectObject(dc,old);
-    if(font)DeleteObject(font);
+    COLORREF edge=focused?RGB(99,225,205):RGB(65,190,165);
+    TorrentRounded(dc,r,fill,9);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,edge);HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+    InflateRect(&r,-5,-2);wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
+    TorrentText(dc,caption,r,RGB(229,244,250),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
 static void TorrentDrawListItem(const DRAWITEMSTRUCT *dis) {
     if(!dis||dis->CtlType!=ODT_LISTBOX||dis->itemID==(UINT)-1)return;
@@ -3439,8 +3423,8 @@ static void TorrentDrawListItem(const DRAWITEMSTRUCT *dis) {
 }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_PAINT: { PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);else {RECT rc;GetClientRect(hwnd,&rc);FillRect(dc,&rc,(HBRUSH)GetStockObject(BLACK_BRUSH));}EndPaint(hwnd,&ps);return 0; }
-    case WM_SIZE: TorrentLayout(hwnd);if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,LOWORD(lp),HIWORD(lp));InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_PAINT: TorrentPaint(hwnd);return 0;
+    case WM_SIZE: TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=620;return 0; }
     case WM_ERASEBKGND: return 1;
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp;if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;}if(dis&&dis->CtlType==ODT_LISTBOX){TorrentDrawListItem(dis);return TRUE;}break; }
@@ -3460,7 +3444,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CREATE: {
         g_torrentUiFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
-        g_torrentUiReady=ABM_D2D_Init(&g_torrentUi,hwnd);
+        g_torrentUiReady=TRUE;
         HWND h=CreateWindowExW(0,L"STATIC",L"Magnet URI or local .torrent file",WS_CHILD|WS_VISIBLE,20,76,760,20,hwnd,NULL,NULL,NULL);
         g_torrentSourceHint=h;ShowWindow(h,SW_HIDE);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
@@ -3597,7 +3581,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            request; closing it after playback starts leaves playback running. */
         if(g_torrentStreamThread&&!g_torrentPlaybackActive)TorrentStopPlayback();
         g_torrentWindow=NULL;g_torrentMagnetEdit=NULL;g_torrentFileList=NULL;
-        if(g_torrentUiReady){ABM_D2D_Destroy(&g_torrentUi);g_torrentUiReady=FALSE;}
+        g_torrentUiReady=FALSE;
         if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
