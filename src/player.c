@@ -3330,8 +3330,30 @@ static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
 static HFONT g_torrentUiFont=NULL;
 static void TorrentApplyDarkControl(HWND control) { if(control)SetWindowTheme(control,L"DarkMode_Explorer",NULL); }
+static void TorrentDrawButton(const DRAWITEMSTRUCT *dis) {
+    if(!dis||dis->CtlType!=ODT_BUTTON)return;
+    HDC dc=dis->hDC;RECT rc=dis->rcItem;
+    BOOL primary=(dis->CtlID==ID_TORRENT_STREAM||dis->CtlID==ID_TORRENT_CAST_TV||dis->CtlID==ID_TORRENT_ADD_MAGNET);
+    BOOL danger=(dis->CtlID==ID_TORRENT_STOP||dis->CtlID==ID_TORRENT_STOP_TV||dis->CtlID==ID_TORRENT_REMOVE);
+    BOOL pressed=(dis->itemState&ODS_SELECTED)!=0,disabled=(dis->itemState&ODS_DISABLED)!=0;
+    COLORREF fill=primary?RGB(24,116,111):(danger?RGB(65,43,51):RGB(31,42,58));
+    if(pressed)fill=primary?RGB(18,91,88):(danger?RGB(82,48,58):RGB(42,57,76));
+    if(disabled)fill=RGB(35,39,48);
+    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,1,primary?RGB(53,190,171):RGB(57,75,96));
+    HGDIOBJ oldB=SelectObject(dc,brush),oldP=SelectObject(dc,pen);
+    RoundRect(dc,rc.left,rc.top,rc.right,rc.bottom,10,10);
+    SelectObject(dc,oldB);SelectObject(dc,oldP);DeleteObject(brush);DeleteObject(pen);
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,disabled?RGB(126,135,149):RGB(238,244,250));
+    HFONT font=(HFONT)SendMessageW(dis->hwndItem,WM_GETFONT,0,0);HGDIOBJ oldF=font?SelectObject(dc,font):NULL;
+    RECT text=rc;DrawTextW(dc,(const wchar_t*)dis->hwndItem?L"":L"",0,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    wchar_t label[128]={0};GetWindowTextW(dis->hwndItem,label,(int)_countof(label));
+    DrawTextW(dc,label,-1,&text,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(oldF)SelectObject(dc,oldF);
+}
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_ERASEBKGND: { RECT rc;GetClientRect(hwnd,&rc);if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(10,17,29));FillRect((HDC)wp,&rc,g_torrentSurfaceBrush);return 1; }
+    case WM_DRAWITEM: TorrentDrawButton((const DRAWITEMSTRUCT*)lp);return TRUE;
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
         return (LRESULT)g_torrentSurfaceBrush;
@@ -3353,7 +3375,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
         SendMessageW(g_torrentMagnetEdit,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
+        h=CreateWindowW(L"BUTTON",L"Add magnet",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,600,62,105,30,hwnd,(HMENU)ID_TORRENT_ADD_MAGNET,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Open .torrent",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,715,62,105,30,hwnd,(HMENU)ID_TORRENT_BROWSE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
@@ -3495,7 +3517,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(!g_torrentInitialized){StartTorrentEngine(owner);return;}
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(10,17,29));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr;GetWindowRect(owner,&wr);int w=860,h=810;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,x,y,w,h,owner,NULL,inst,NULL);
