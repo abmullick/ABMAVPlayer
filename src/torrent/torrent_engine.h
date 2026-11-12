@@ -13,6 +13,7 @@ typedef struct ABM_TorrentTaskInfo {
     int known_peers, connect_candidates, connections, seeds;
     int tracker_count, tracker_verified, tracker_failures;
     int announcing_to_dht, announcing_to_trackers;
+    int dht_running, is_private;
     wchar_t tracker_diagnostic[512];
     wchar_t name[ABM_TORRENT_TEXT_CAP];
     wchar_t error[ABM_TORRENT_TEXT_CAP];
