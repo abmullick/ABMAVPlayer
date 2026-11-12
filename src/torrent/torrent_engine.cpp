@@ -26,6 +26,7 @@
 #include <libtorrent/add_torrent_params.hpp>
 #include <libtorrent/error_code.hpp>
 #include <libtorrent/magnet_uri.hpp>
+#include <libtorrent/load_torrent.hpp>
 #include <libtorrent/info_hash.hpp>
 #include <libtorrent/session.hpp>
 #include <libtorrent/settings_pack.hpp>
@@ -128,10 +129,10 @@ public:
             fs::path p=fs::canonical(fs::path(path));
             if(!fs::is_regular_file(p)||fs::file_size(p)>16*1024*1024){err=L"Torrent file is missing or exceeds the 16 MiB metadata limit.";return false;}
             lt::error_code ec;
-            auto ti=std::make_shared<lt::torrent_info>(p.u8string(),ec);
-            if(ec||!ti||!ti->is_valid()){err=ec?FromUtf8(ec.message()):L"Invalid torrent metadata.";return false;}
-            lt::add_torrent_params atp;
-            atp.ti=std::move(ti);
+            lt::load_torrent_limits limits;
+            limits.max_buffer_size=16*1024*1024;
+            auto atp=lt::load_torrent_file(p.u8string(),ec,limits);
+            if(ec||!atp.ti||!atp.ti->is_valid()){err=ec?FromUtf8(ec.message()):L"Invalid torrent metadata.";return false;}
             atp.save_path=(downloads_/HashFolder(atp.ti->info_hashes())).u8string();
             return Add(std::move(atp),id,err);
         } catch(const std::exception &e){err=FromUtf8(e.what());return false;}
@@ -557,7 +558,7 @@ private:
         std::istringstream lines(request);
         std::string method,path,version;lines>>method>>path>>version;
         if((method!="GET"&&method!="HEAD")||version.rfind("HTTP/1.",0)!=0){respond(405,"Method Not Allowed","Allow: GET, HEAD\r\n");closesocket(client);return;}
-        const std::string expected="/stream/"+std::string(token.begin(),token.end());
+        const std::string expected="/stream/"+ToUtf8(token);
         if(path!=expected){respond(404,"Not Found");closesocket(client);return;}
         std::string rangeHeader;
         std::string line;std::getline(lines,line);
