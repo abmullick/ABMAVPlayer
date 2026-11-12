@@ -50,6 +50,19 @@ Changing the cache parent does not automatically move existing cache data. If To
 
 Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences are also stored in `audio.ini`. For the full option reference and troubleshooting, see [Application Settings](SETTINGS.md).
 
+## Torrent Stream — add, download and play a torrent
+
+Open **Torrent Stream** from the main player's navigation. Torrent Stream runs in its own window and does not replace the main player's local playback or the Streaming Centre.
+
+1. Paste a magnet URI into **Add a source** and choose **Add magnet**, or choose **Open .torrent** to load a local torrent file.
+2. Wait for metadata to load. The file list shows the files contained in the torrent.
+3. Select the media file you want. The selected file is downloaded to the persistent **Torrent Downloads** folder; it is separate from the quota-managed cache.
+4. Use **Play / Stream** for progressive local playback. The player waits for verified pieces and reads media through a loopback-only source. Pause/resume and Stop control the torrent playback task.
+5. Watch the task line for progress, downloaded bytes, rates and peer count. The network diagnostics report tracker and DHT state, known peers and active connections. DHT being ON does not guarantee that a torrent has reachable peers; the torrent must have an active swarm and your network must allow tracker/DHT/peer traffic.
+6. Use **Find TVs** to discover DLNA MediaRenderer devices, select a receiver, then choose **Cast to TV**. The TV fetches the selected file over a temporary authenticated private-LAN connection while the torrent continues downloading to disk. **Stop TV** stops the receiver and temporary LAN listener; it does not delete the downloaded file or stop the torrent task.
+
+Torrent TV playback is direct play: the TV must support the source container and codecs. The player does not transcode the video on the PC. Windows Firewall may ask to allow ABM AV Player on a private network. Do not use torrent sources unless you have the right to access and download their content. See [Torrent Stream technical notes](TORRENT_STREAM.md) for cache behaviour, network diagnostics and limitations.
+
 ## 3. Playback and fullscreen
 
 | Control | What it does |
