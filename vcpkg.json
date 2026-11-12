@@ -3,7 +3,12 @@
   "version-string": "1.0.2",
   "builtin-baseline": "927f62e4b8838bd7e441e9c45103a16ffd75007e",
   "dependencies": [
-    "libtorrent[webtorrent]"
+    {
+      "name": "libtorrent",
+      "features": [
+        "webtorrent"
+      ]
+    }
   ],
   "overrides": [
     {
