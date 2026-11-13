@@ -18,6 +18,15 @@ The application contains only the public P-256 verification key. The matching pr
 
 The initial private key for this repository's embedded public key is supplied separately to the maintainer. Keep multiple encrypted offline backups. If it is lost or compromised, a new public key must be shipped in an application update.
 
+Before issuing customer keys, encrypt the supplied PEM key with a strong passphrase:
+
+```bat
+py -m pip install cryptography
+py tools\\licensing\\protect_private_key.py --input ABMAVPlayer-licensing-private.pem --output ABMAVPlayer-licensing-private-encrypted.pem
+```
+
+Store the encrypted copy in at least two secure offline locations. The key generator prompts for the passphrase when an encrypted PEM is supplied. Do not upload either file to GitHub or include it in a release asset.
+
 ## Generate a customer key
 
 1. Ask the customer to open ABM AV Player's activation window and choose **Copy device ID**.
