@@ -150,6 +150,7 @@ static BOOL g_overlayPlaying = FALSE;
 static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
 static RECT R_ROW[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
+static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT;
 static RECT R_SEARCH, R_TAB_QUEUE, R_TAB_LIBRARY, R_FILTER_ALL, R_FILTER_AUDIO, R_FILTER_VIDEO, R_GROUP;
 static wchar_t g_searchText[128]=L"";
 static BOOL g_searchFocused=FALSE;
@@ -644,6 +645,21 @@ static void UpdateLayout(HWND hwnd) {
         menuY+=rowH;
     }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
+    /* Home dashboard actions occupy the right-hand hero column. Keep their
+       geometry derived from the video stage so they follow window resizing. */
+    {
+        int hw=R_VIDEO.right-R_VIDEO.left, hh=R_VIDEO.bottom-R_VIDEO.top;
+        int cardW=(hw*20/100); if(cardW>224)cardW=224; if(cardW<154)cardW=154;
+        int cardH=76, gap=14;
+        int x=R_VIDEO.left+hw*58/100, y=R_VIDEO.top+hh*34/100;
+        int maxRight=R_VIDEO.right-24;
+        if(x+cardW*2+gap>maxRight)x=maxRight-cardW*2-gap;
+        if(x<R_VIDEO.left+hw*48/100)x=R_VIDEO.left+hw*48/100;
+        R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
+        R_HOME_STREAM=(RECT){x+cardW+gap,y,x+cardW*2+gap,y+cardH};
+        R_HOME_TORRENT=(RECT){x,y+cardH+gap,x+cardW,y+cardH*2+gap};
+        R_HOME_RECENT=(RECT){x+cardW+gap,y+cardH+gap,x+cardW*2+gap,y+cardH*2+gap};
+    }
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
         R_SEEK=(RECT){82,h-112,w-310,h-108};
@@ -924,41 +940,34 @@ static void DrawUI(HDC dc,RECT client) {
         RECT hint={leftX,topY+237,leftX+textW,topY+263};
         Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,RGB(112,195,179),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-        /* Abstract, layered album sleeves create a distinctive visual anchor.
-           The cards are decorative only; playback remains on the real controls. */
-        int cardW=areaW>900?190:150, cardH=cardW;
-        int stackX=R_VIDEO.right-areaW/5-cardW;
-        int stackY=cy-cardH/2-8;
-        int drift=(int)(4.0*sin((double)g_visualPulse*0.045));
-        RECT backCard={stackX+52,stackY-25+drift,stackX+52+cardW,stackY-25+drift+cardH};
-        GradientRound(dc,backCard,RGB(34,62,75),RGB(25,104,96),22);
-        RECT backInset={backCard.left+12,backCard.top+12,backCard.right-12,backCard.bottom-12};
-        ABM_D2D_StrokeRound(&g_ui,(float)backInset.left,(float)backInset.top,(float)backInset.right,(float)backInset.bottom,16.0f,RGB(130,183,164),1.0f);
-        RECT frontCard={stackX,stackY,stackX+cardW,stackY+cardH};
-        RECT cardShadow=frontCard;OffsetRect(&cardShadow,0,10);
-        RoundBox(dc,cardShadow,RGB(3,7,16),23);
-        GradientRound(dc,frontCard,RGB(24,132,126),RGB(55,91,100),22);
-        RECT inner={frontCard.left+12,frontCard.top+12,frontCard.right-12,frontCard.bottom-12};
-        ABM_D2D_StrokeRound(&g_ui,(float)inner.left,(float)inner.top,(float)inner.right,(float)inner.bottom,16.0f,RGB(171,218,199),0.8f);
-        int icx=(frontCard.left+frontCard.right)/2, icy=(frontCard.top+frontCard.bottom)/2;
-        int ring=(int)(42.0+3.0*sin((double)g_visualPulse*0.06));
-        RECT vinyl={icx-ring,icy-ring,icx+ring,icy+ring};
-        ABM_D2D_StrokeRound(&g_ui,(float)vinyl.left,(float)vinyl.top,(float)vinyl.right,(float)vinyl.bottom,(float)ring,RGB(211,235,224),1.6f);
-        RECT vinyl2={icx-23,icy-23,icx+23,icy+23};
-        ABM_D2D_StrokeRound(&g_ui,(float)vinyl2.left,(float)vinyl2.top,(float)vinyl2.right,(float)vinyl2.bottom,23.0f,RGB(184,218,204),1.0f);
-        RECT vinylDot={icx-5,icy-5,icx+5,icy+5};
-        RoundBox(dc,vinylDot,RGB(240,247,255),5);
-        int bars=19, gap=5, barW=4;
-        int total=bars*barW+(bars-1)*gap;
-        int base=frontCard.bottom+30;
-        for(int i=0;i<bars;i++) {
-            double wave=0.18+0.82*(0.5+0.5*sin((double)g_visualPulse*0.11+i*0.58));
-            int bh=5+(int)(wave*24.0);
-            RECT bar={icx-total/2+i*(barW+gap),base-bh,icx-total/2+i*(barW+gap)+barW,base};
-            RoundBox(dc,bar,Blend(RGB(44,164,151),RGB(117,195,151),i*100/(bars-1)),2);
+        /* Action-led home dashboard: four real destinations replace the
+           decorative album stack. Each card has a generous hit target and
+           remains visible only while the player is idle. */
+        {
+            RECT cards[4]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT};
+            const wchar_t *titles[4]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Recent media"};
+            const wchar_t *subs[4]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Continue where you left off"};
+            const wchar_t *glyphs[4]={L"+",L"TV",L"↗",L"↶"};
+            POINT mouse={0,0}; BOOL haveMouse=GetCursorPos(&mouse)&&ScreenToClient(g_main,&mouse);
+            for(int i=0;i<4;i++) {
+                BOOL hot=haveMouse&&Inside(cards[i],mouse.x,mouse.y);
+                COLORREF base=(i==0)?RGB(20,91,88):RGB(16,31,46);
+                COLORREF edge=hot?RGB(104,201,184):((i==0)?RGB(68,154,143):RGB(51,79,101));
+                RECT shadow=cards[i];OffsetRect(&shadow,0,5);RoundBox(dc,shadow,RGB(3,8,14),13);
+                if(i==0)GradientRound(dc,cards[i],hot?RGB(37,153,139):RGB(25,119,112),RGB(24,75,82),13);
+                else GradientRound(dc,cards[i],hot?RGB(29,58,76):RGB(20,37,53),RGB(13,25,39),13);
+                ABM_D2D_StrokeRound(&g_ui,(float)cards[i].left,(float)cards[i].top,(float)cards[i].right,(float)cards[i].bottom,13.0f,edge,hot?1.35f:0.85f);
+                RECT icon={cards[i].left+12,cards[i].top+13,cards[i].left+48,cards[i].bottom-13};
+                RoundBox(dc,icon,(i==0)?RGB(39,157,143):RGB(29,56,71),9);
+                Txt(dc,glyphs[i],icon,RGB(226,247,245),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                RECT title={cards[i].left+58,cards[i].top+10,cards[i].right-8,cards[i].top+39};
+                RECT sub={cards[i].left+58,cards[i].top+38,cards[i].right-8,cards[i].bottom-8};
+                Txt(dc,titles[i],title,RGB(244,249,255),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,subs[i],sub,RGB(158,181,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
+            RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+16,R_HOME_RECENT.right,R_HOME_RECENT.bottom+40};
+            Txt(dc,L"LOCAL LIBRARY   •   STREAMING   •   TORRENT",foot,RGB(119,169,169),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
-        RECT caption={stackX-30,base+9,stackX+cardW+85,base+34};
-        Txt(dc,L"MUSIC  •  CINEMA  •  YOU",caption,RGB(132,171,165),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     RECT fs=R_FULLSCREEN;
     RoundBox(dc,fs,RGB(20,29,42),8);
@@ -5207,6 +5216,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateRect(hwnd,&dirty,FALSE);
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&!g_hasMedia&&!g_drawerOpen) {
+            if(Inside(R_HOME_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
+            if(Inside(R_HOME_STREAM,x,y)){ABM_Streaming_Show(hwnd);ReleaseCapture();return 0;}
+            if(Inside(R_HOME_TORRENT,x,y)){ShowTorrentWindow(hwnd);ReleaseCapture();return 0;}
+            if(Inside(R_HOME_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
+        }
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<18;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
