@@ -116,7 +116,7 @@ bool CreatePrivateUpdatePath(wchar_t *directory,size_t directoryCount,wchar_t *i
     return SUCCEEDED(StringCchPrintfW(installer,installerCount,L"%s\\%s",directory,kInstallerName));
 }
 void ExplainFailure(HWND owner,const wchar_t *message) {
-    MessageBoxW(owner,message,L"ABM AV Player — Updates",MB_OK|MB_ICONWARNING);
+    ABM_ShowMessageBox(owner,message,L"ABM AV Player — Updates",MB_OK|MB_ICONWARNING);
 }
 }
 
@@ -148,7 +148,7 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
     if(!gotTag||!tag[0]){ExplainFailure(owner,L"GitHub returned release information in an unexpected format.");return false;}
     if(!VersionNewer(tag,currentVersion)){
         wchar_t msg[256];StringCchPrintfW(msg,_countof(msg),L"You are using the latest version (%s).",currentVersion);
-        MessageBoxW(owner,msg,L"ABM AV Player — Updates",MB_OK|MB_ICONINFORMATION);return true;
+        ABM_ShowMessageBox(owner,msg,L"ABM AV Player — Updates",MB_OK|MB_ICONINFORMATION);return true;
     }
     if(wcsncmp(assetUrl,L"https://github.com/",19)!=0&&wcsncmp(assetUrl,L"https://objects.githubusercontent.com/",38)!=0){
         ExplainFailure(owner,L"A newer release was found, but its official Windows installer asset is missing. Please visit the GitHub Releases page.");return false;
@@ -156,7 +156,7 @@ bool ABM_CheckForUpdates(HWND owner,const wchar_t *currentVersion) {
     wchar_t prompt[1600];StringCchPrintfW(prompt,_countof(prompt),
         L"A newer version of ABM AV Player is available.\n\nInstalled: %s\nAvailable: %s\n\n%s\n\nDownload and install this update now?",
         currentVersion,tag,notes[0]?notes:L"Release notes were not provided.");
-    if(MessageBoxW(owner,prompt,L"ABM AV Player — Update available",MB_YESNO|MB_ICONINFORMATION)!=IDYES)return true;
+    if(ABM_ShowMessageBox(owner,prompt,L"ABM AV Player — Update available",MB_YESNO|MB_ICONINFORMATION)!=IDYES)return true;
 
     if(!IsHexDigest(assetDigest)){
         ExplainFailure(owner,L"This release does not publish a SHA-256 asset digest. For your protection, automatic installation has been blocked. Please download the installer manually from the official GitHub Releases page.");return false;
