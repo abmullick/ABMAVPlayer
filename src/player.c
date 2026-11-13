@@ -3477,6 +3477,9 @@ static BOOL TorrentRegisterSliderClass(HINSTANCE instance){
 static void TorrentLayout(HWND hwnd) {
     RECT rc={0};GetClientRect(hwnd,&rc);
     const int w=rc.right,h=rc.bottom,m=22,inner=w-2*m;
+    /* Ignore minimized/intermediate zero-sized WM_SIZE notifications. The
+       next restored/maximized size will perform a complete layout pass. */
+    if(w<700||h<600)return;
     /* Larger 40px action targets match the Streaming Centre's receiver controls.
        The taller window keeps the content library spacious while preserving
        dedicated rows for playback, network, cache and TV casting. */
@@ -3601,11 +3604,9 @@ static void TorrentPaint(HWND hwnd){
     r=(RECT){m,networkY,w-m,networkY+76};
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
-    ABM_D2D_Fill(&g_torrentUi,m+14,networkY+7,m+54,networkY+9,accent);
     r=(RECT){m,cacheY,w-m,cacheY+76};
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
-    ABM_D2D_Fill(&g_torrentUi,m+14,cacheY+7,m+54,cacheY+9,accent);
 
     /* Receiver dock */
     r=(RECT){m,tvY,w-m,h-12};
