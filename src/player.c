@@ -100,6 +100,8 @@ static BOOL g_endHandled = FALSE;
 #define MAX_RECENT 12
 static wchar_t g_recent[MAX_RECENT][PATH_CAP];
 static int g_recentCount=0;
+static HWND g_recentPopupWindow=NULL;
+static int g_recentPopupHover=-1;
 static wchar_t g_dataDir[PATH_CAP];
 static wchar_t g_torrentCacheBaseDir[PATH_CAP];
 static wchar_t g_torrentDownloadDir[PATH_CAP];
@@ -1979,26 +1981,115 @@ static void LoadPersistentState(void) {
         if(which)g_recentCount=count;else g_playlistCount=count;
     }
     PruneUnavailablePlaylistItems();
+    /* Recent history is a list of playable local files, not a stale log. */
+    {
+        int write=0;
+        for(int read=0;read<g_recentCount;read++) {
+            DWORD attrs=GetFileAttributesW(g_recent[read]);
+            if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY))continue;
+            BOOL duplicate=FALSE;
+            for(int j=0;j<write;j++)if(!_wcsicmp(g_recent[j],g_recent[read])){duplicate=TRUE;break;}
+            if(duplicate)continue;
+            if(write!=read)wcsncpy_s(g_recent[write],PATH_CAP,g_recent[read],_TRUNCATE);
+            write++;
+        }
+        if(write!=g_recentCount){g_recentCount=write;SavePersistentState();}
+    }
     if(g_playlistCount)g_selected=0;
     g_libraryReady=TRUE;
 }
+static void RecentPlayIndex(HWND owner,int index) {
+    if(index<0||index>=g_recentCount)return;
+    wchar_t path[PATH_CAP];wcsncpy_s(path,PATH_CAP,g_recent[index],_TRUNCATE);
+    if(g_recentPopupWindow&&IsWindow(g_recentPopupWindow))DestroyWindow(g_recentPopupWindow);
+    int found=-1;
+    for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],path)){found=i;break;}
+    if(found<0&&g_playlistCount<MAX_PLAYLIST){found=g_playlistCount++;wcsncpy_s(g_playlist[found],PATH_CAP,path,_TRUNCATE);}
+    if(found>=0){g_selected=found;SavePersistentState();PlayIndex(found);}
+    if(IsWindow(owner))InvalidateRect(owner,NULL,FALSE);
+}
+static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
+    case WM_ERASEBKGND:return 1;
+    case WM_MOUSEMOVE: {
+        TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
+        POINT p={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
+        int row=(p.y-68)/42;
+        int count=g_recentCount;
+        if(row<0||row>=count||p.y<68)row=-1;
+        if(row!=g_recentPopupHover){g_recentPopupHover=row;InvalidateRect(hwnd,NULL,FALSE);}
+        return 0;
+    }
+    case WM_MOUSELEAVE:g_recentPopupHover=-1;InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_LBUTTONUP: {
+        int row=(GET_Y_LPARAM(lp)-68)/42;
+        if(GET_Y_LPARAM(lp)>=68&&row>=0&&row<g_recentCount) {
+            HWND owner=(HWND)GetWindowLongPtrW(hwnd,GWLP_USERDATA);
+            RecentPlayIndex(owner,row);
+        } else DestroyWindow(hwnd);
+        return 0;
+    }
+    case WM_KEYDOWN:
+        if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;}
+        if(wp==VK_DOWN||wp==VK_UP) {
+            if(g_recentCount){if(g_recentPopupHover<0)g_recentPopupHover=0;else g_recentPopupHover=(g_recentPopupHover+(wp==VK_DOWN?1:g_recentCount-1))%g_recentCount;InvalidateRect(hwnd,NULL,FALSE);}
+            return 0;
+        }
+        if(wp==VK_RETURN&&g_recentPopupHover>=0){HWND owner=(HWND)GetWindowLongPtrW(hwnd,GWLP_USERDATA);RecentPlayIndex(owner,g_recentPopupHover);return 0;}
+        break;
+    case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){DestroyWindow(hwnd);return 0;}break;
+    case WM_PAINT: {
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
+        HBRUSH bg=CreateSolidBrush(RGB(10,17,28));FillRect(dc,&rc,bg);DeleteObject(bg);
+        HPEN border=CreatePen(PS_SOLID,1,RGB(54,91,112));HGDIOBJ op=SelectObject(dc,border);
+        HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,0,0,rc.right,rc.bottom,18,18);
+        SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
+        RECT head={1,1,rc.right-1,62};HBRUSH hb=CreateSolidBrush(RGB(16,39,54));FillRect(dc,&head,hb);DeleteObject(hb);
+        SetBkMode(dc,TRANSPARENT);
+        HFONT title=CreateFontW(-21,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        HFONT meta=CreateFontW(-12,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HFONT body=CreateFontW(-14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,RGB(242,248,255));
+        RECT tr={20,10,rc.right-18,36};DrawTextW(dc,L"Recently played",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,meta);SetTextColor(dc,RGB(139,180,194));
+        wchar_t countText[64];StringCchPrintfW(countText,_countof(countText),L"%d LOCAL FILE%s  ·  SELECT TO PLAY",g_recentCount,g_recentCount==1?L"":L"S");
+        RECT mr={21,36,rc.right-18,56};DrawTextW(dc,countText,-1,&mr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        for(int i=0;i<g_recentCount;i++) {
+            int top=68+i*42;RECT row={10,top,rc.right-10,top+38};
+            if(i==g_recentPopupHover){HBRUSH hot=CreateSolidBrush(RGB(24,66,76));FillRect(dc,&row,hot);DeleteObject(hot);}
+            else if((i&1)==0){HBRUSH stripe=CreateSolidBrush(RGB(13,24,37));FillRect(dc,&row,stripe);DeleteObject(stripe);}
+            RECT num={20,top+2,48,top+36};SelectObject(dc,body);SetTextColor(dc,RGB(91,191,177));
+            wchar_t n[12];StringCchPrintfW(n,_countof(n),L"%02d",i+1);DrawTextW(dc,n,-1,&num,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            const wchar_t *leaf=wcsrchr(g_recent[i],L'\\');if(!leaf)leaf=wcsrchr(g_recent[i],L'/');leaf=leaf?leaf+1:g_recent[i];
+            RECT name={54,top+2,rc.right-22,top+36};SetTextColor(dc,RGB(225,237,247));DrawTextW(dc,leaf,-1,&name,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        }
+        SelectObject(dc,old);DeleteObject(title);DeleteObject(meta);DeleteObject(body);EndPaint(hwnd,&ps);return 0;
+    }
+    case WM_NCDESTROY:g_recentPopupWindow=NULL;g_recentPopupHover=-1;break;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
 static void ShowRecentMenu(HWND hwnd,int x,int y) {
     if(!g_recentCount){MessageBoxW(hwnd,L"No recently played media yet.",APP_NAME,MB_OK|MB_ICONINFORMATION);return;}
-    HMENU menu=CreatePopupMenu();if(!menu)return;
-    for(int i=0;i<g_recentCount;i++){
-        wchar_t label[PATH_CAP+16];wchar_t *name=wcsrchr(g_recent[i],L'\\');name=name?name+1:g_recent[i];
-        swprintf_s(label,PATH_CAP+16,L"%d. %s",i+1,name);
-        AppendMenuW(menu,MF_STRING,24000+i,label);
+    if(g_recentPopupWindow&&IsWindow(g_recentPopupWindow)){DestroyWindow(g_recentPopupWindow);return;}
+    static BOOL registered=FALSE;
+    HINSTANCE inst=GetModuleHandleW(NULL);
+    if(!registered){
+        WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=RecentPopupWndProc;wc.hInstance=inst;
+        wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerRecentPopup";
+        if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;
     }
     POINT pt={x,y};ClientToScreen(hwnd,&pt);
-    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,pt.x,pt.y,0,hwnd,NULL);
-    DestroyMenu(menu);
-    if(cmd>=24000&&cmd<24000+g_recentCount){
-        const wchar_t *path=g_recent[cmd-24000];int found=-1;
-        for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],path)){found=i;break;}
-        if(found<0&&g_playlistCount<MAX_PLAYLIST){found=g_playlistCount++;wcsncpy_s(g_playlist[found],PATH_CAP,path,_TRUNCATE);}
-        if(found>=0){SavePersistentState();PlayIndex(found);}
-    }
+    int width=520,height=68+g_recentCount*42+10;
+    RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
+    if(pt.x+width>work.right)pt.x=work.right-width;
+    if(pt.y+height>work.bottom)pt.y=work.bottom-height;
+    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+    HWND popup=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerRecentPopup",L"Recently played",
+        WS_POPUP,pt.x,pt.y,width,height,hwnd,NULL,inst,NULL);
+    if(!popup)return;
+    SetWindowLongPtrW(popup,GWLP_USERDATA,(LONG_PTR)hwnd);g_recentPopupWindow=popup;
+    g_recentPopupHover=-1;ShowWindow(popup,SW_SHOWNOACTIVATE);SetForegroundWindow(popup);SetFocus(popup);InvalidateRect(popup,NULL,TRUE);
 }
 static void AddRecent(const wchar_t *path) {
     for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],path)){for(int j=i;j>0;j--)wcsncpy_s(g_recent[j],PATH_CAP,g_recent[j-1],_TRUNCATE);wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();return;}
@@ -5331,7 +5422,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
-        if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
+        if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ScreenToClient(hwnd,&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
         if(wp==VK_F1){ShowHelpDialog(hwnd);return 0;}
         if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
         if(wp==VK_ESCAPE&&g_drawerOpen){g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);return 0;}
