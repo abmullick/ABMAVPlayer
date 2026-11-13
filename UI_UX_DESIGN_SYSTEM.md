@@ -456,3 +456,35 @@ Do not mark this cleanup complete until the Windows build and the above runtime 
 
 - [x] Align Streaming Centre's shared chrome to the central theme tokens.
 - [ ] Complete Windows build, visual comparison and regression validation.
+
+
+## Step 11 — Accessibility and keyboard usability
+
+**Implementation commits:**
+- `d179d150d83a4c9d97ca31292950caf873edbfae` — branded modal keyboard focus
+- `c3862f0df8931a17947435ca8998c0113697137d` — Streaming Centre tab stops
+
+### Implemented
+
+- Branded modal dialogs now maintain an explicit focused-button index. Tab and Left/Right move focus between Yes/No actions; Enter and Space activate the focused action; Escape retains its safe cancel/No behaviour.
+- The initially focused dialog action matches the configured default button, including default-No confirmations.
+- Dialog buttons draw a high-contrast focus outline using the shared `ABM_UI_COLOR_FOCUS` token, distinct from the normal/default button treatment.
+- Added `WS_TABSTOP` to all seven owner-drawn action buttons in the Streaming Centre device panel (Refresh devices, Use selected TV, Check TV apps, Launch app, Refresh app status, Stop TV and Close). Their existing owner-drawn focus treatment already uses a high-contrast teal outline.
+- Existing custom action menus retain Up/Down/Enter/Escape keyboard navigation; this pass does not replace their interaction model.
+
+### Windows validation checklist
+
+1. Open a Yes/No dialog with default No. Use Tab/Left/Right, verify the visible focus outline, activate each choice with Enter and Space, and verify Escape returns No.
+2. Open an OK-only dialog and verify Enter, Space and Escape retain expected behaviour.
+3. Open the Streaming Centre device panel and use Tab/Shift+Tab through all seven action buttons and the receiver/app lists; verify disabled controls are skipped and focus is always visible.
+4. Operate Refresh, Select TV, Check TV apps, Launch, Refresh app status, Stop TV and Close using keyboard only.
+5. Verify keyboard focus is not stolen from WebView2 while browsing provider pages; confirm Escape/F11 and existing browser shortcuts still behave as documented.
+6. Check text legibility and focus contrast at 100%, 125%, 150% and 200% display scaling, including high-contrast Windows mode.
+7. Regression-test mouse interaction and the default-No safety of destructive confirmations.
+
+**Known remaining work:** this is a targeted accessibility pass, not a full WCAG/Windows accessibility certification. The main player's custom canvas controls and several auxiliary windows still need a complete keyboard/focus and screen-reader audit. Tooltips, UI Automation names/roles for custom-drawn canvas controls, high-contrast theme adaptation and a published shortcut reference remain follow-up items.
+
+- [x] Add visible keyboard focus and full keyboard activation to branded modal buttons.
+- [x] Make Streaming Centre action buttons reachable in the tab order.
+- [ ] Complete full application keyboard, screen-reader and high-contrast audit.
+- [ ] Build and validate with Windows MSVC and runtime keyboard-only testing.
