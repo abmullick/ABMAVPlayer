@@ -313,6 +313,7 @@ A focused visual alignment pass brings the Equalizer, About and Help Centre clos
 - Aligned About and Help Centre surfaces, header accents, borders and text colours with the shared palette.
 - Preserved the Equalizer's 10-band gain calculations, preamp range, five preset curves, audio processing calls, preference persistence, mouse interaction and keyboard close behaviour.
 - Preserved About portrait loading, creator/contact/attribution content and Help guide content, navigation, scrolling and shortcuts.
+- Inspected the updater: it uses standard Windows message boxes for release notes, confirmation and errors rather than a dedicated custom window. Those prompts and all release/download/SHA-256/UAC flows were left unchanged.
 - No playback, streaming, casting, torrent, WebView2 or updater implementation was changed.
 
 ### Step 7 validation status
