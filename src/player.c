@@ -3533,55 +3533,32 @@ static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
                (GetBValue(a)*(maxT-t)+GetBValue(b)*t)/maxT);
 }
 static void TorrentDrawButtonIcon(HDC dc,int id,RECT r,COLORREF color){
-    int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
-    HPEN pen=CreatePen(PS_SOLID,2,color);HGDIOBJ oldPen=SelectObject(dc,pen);
-    HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    SetBkMode(dc,TRANSPARENT);
+    /* Use Windows' Segoe MDL2 Assets vector glyphs for crisp, consistent
+       Fluent-style icons at every DPI. This avoids hand-drawn, clipped
+       geometry and keeps the visual language consistent with the rest of ABM. */
+    wchar_t glyph=0;
     switch(id){
-    case ID_TORRENT_PAUSE: /* torrent download pause */
-        Rectangle(dc,cx-8,cy-9,cx-3,cy+9);Rectangle(dc,cx+3,cy-9,cx+8,cy+9);break;
-    case ID_TORRENT_STREAM: { /* local stream play */
-        HGDIOBJ old=SelectObject(dc,GetStockObject(WHITE_BRUSH));
-        POINT pts[3]={{cx-6,cy-10},{cx+9,cy},{cx-6,cy+10}};
-        Polygon(dc,pts,3);SelectObject(dc,old);break;
+    case ID_TORRENT_PAUSE: glyph=0xE769; break;             /* Pause */
+    case ID_TORRENT_STREAM: glyph=0xE768; break;            /* Play */
+    case ID_TORRENT_STOP: glyph=0xE71A; break;              /* Stop */
+    case ID_TORRENT_REMOVE: case ID_TORRENT_CLEAR_CACHE: glyph=0xE74D; break; /* Delete */
+    case ID_TORRENT_REFRESH: glyph=0xE72C; break;           /* Refresh */
+    case ID_TORRENT_FIND_TVS: glyph=0xE721; break;          /* Search */
+    case ID_TORRENT_CAST_TV: glyph=0xE7F4; break;            /* Display */
+    case ID_TORRENT_STOP_TV: glyph=0xE7F4; break;            /* Display */
+    case ID_TORRENT_APPLY_LIMITS: case ID_TORRENT_CACHE_APPLY: glyph=0xE73E; break; /* Check */
+    case ID_TORRENT_ADD_MAGNET: glyph=0xE8D7; break;         /* Add */
+    case ID_TORRENT_BROWSE: glyph=0xE8B7; break;             /* Folder */
+    default: glyph=0xE710; break;                            /* Add */
     }
-    case ID_TORRENT_STOP:
-        Rectangle(dc,cx-8,cy-8,cx+8,cy+8);break;
-    case ID_TORRENT_REMOVE: case ID_TORRENT_CLEAR_CACHE: /* delete */
-        MoveToEx(dc,cx-9,cy-7,NULL);LineTo(dc,cx+9,cy-7);
-        MoveToEx(dc,cx-5,cy-10,NULL);LineTo(dc,cx+5,cy-10);
-        MoveToEx(dc,cx-7,cy-5,NULL);LineTo(dc,cx-5,cy+9);LineTo(dc,cx+5,cy+9);LineTo(dc,cx+7,cy-5);
-        MoveToEx(dc,cx-2,cy-3,NULL);LineTo(dc,cx-2,cy+6);
-        MoveToEx(dc,cx+2,cy-3,NULL);LineTo(dc,cx+2,cy+6);break;
-    case ID_TORRENT_REFRESH:
-        Arc(dc,cx-9,cy-9,cx+9,cy+9, cx+8,cy-4,cx+2,cy-9);
-        MoveToEx(dc,cx+2,cy-9,NULL);LineTo(dc,cx+9,cy-9);LineTo(dc,cx+8,cy-2);break;
-    case ID_TORRENT_FIND_TVS: case ID_TORRENT_CAST_TV: case ID_TORRENT_STOP_TV:
-        RoundRect(dc,cx-11,cy-8,cx+11,cy+6,3,3);
-        MoveToEx(dc,cx,cy+6,NULL);LineTo(dc,cx,cy+10);
-        MoveToEx(dc,cx-6,cy+10,NULL);LineTo(dc,cx+6,cy+10);
-        if(id==ID_TORRENT_FIND_TVS){
-            Ellipse(dc,cx+3,cy-13,cx+12,cy-4);
-            MoveToEx(dc,cx+10,cy-5,NULL);LineTo(dc,cx+14,cy-1);
-        } else if(id==ID_TORRENT_CAST_TV){
-            MoveToEx(dc,cx-5,cy-3,NULL);LineTo(dc,cx-1,cy-3);
-            MoveToEx(dc,cx+2,cy-3,NULL);LineTo(dc,cx+6,cy-3);
-        } else {
-            Rectangle(dc,cx-4,cy-3,cx+4,cy+3);
-        }
-        break;
-    case ID_TORRENT_APPLY_LIMITS: case ID_TORRENT_CACHE_APPLY:
-        MoveToEx(dc,cx-8,cy,NULL);LineTo(dc,cx-2,cy+6);LineTo(dc,cx+9,cy-7);break;
-    case ID_TORRENT_ADD_MAGNET:
-        Arc(dc,cx-8,cy-9,cx+8,cy+9,cx+8,cy-4,cx+8,cy+4);
-        MoveToEx(dc,cx+8,cy-5,NULL);LineTo(dc,cx+8,cy-10);
-        MoveToEx(dc,cx+8,cy+5,NULL);LineTo(dc,cx+8,cy+10);break;
-    case ID_TORRENT_BROWSE:
-        MoveToEx(dc,cx-11,cy-5,NULL);LineTo(dc,cx-3,cy-5);LineTo(dc,cx,cy-1);
-        LineTo(dc,cx+11,cy-1);LineTo(dc,cx+9,cy+9);LineTo(dc,cx-11,cy+9);LineTo(dc,cx-11,cy-5);break;
-    default: break;
-    }
-    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
+    HFONT font=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
+        L"Segoe MDL2 Assets");
+    HGDIOBJ old=SelectObject(dc,font);
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
+    wchar_t text[2]={glyph,0};
+    DrawTextW(dc,text,1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    SelectObject(dc,old);DeleteObject(font);
 }
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
@@ -3615,11 +3592,12 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     SelectObject(dc,oldPen);DeleteObject(hi);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
     int id=GetDlgCtrlID(item->hwndItem);
-    /* Use a narrow, consistent icon slot so compact utility buttons retain
-       their complete captions. Text is centred in the remaining area. */
-    RECT iconRect={r.left+5,r.top+7,r.left+25,r.bottom-7};
-    TorrentDrawButtonIcon(dc,id,iconRect,RGB(218,246,241));
-    RECT textRect={r.left+27,r.top+2,r.right-5,r.bottom-2};
+    /* A 28px icon rail gives the Fluent glyph breathing room. Keep the
+       button face colour identical across the app; icon colour is a restrained
+       mint accent rather than introducing a rainbow of button backgrounds. */
+    RECT iconRect={r.left+3,r.top+2,r.left+31,r.bottom-2};
+    TorrentDrawButtonIcon(dc,id,iconRect,RGB(142,226,211));
+    RECT textRect={r.left+31,r.top+2,r.right-5,r.bottom-2};
     TorrentButtonText(dc,caption,textRect,RGB(242,250,253));
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
