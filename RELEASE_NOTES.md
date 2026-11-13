@@ -1,3 +1,11 @@
+# ABM AV Player v1.0.5 (licensing feature)
+
+- Added a 10-day full-feature trial that begins on first launch.
+- Added offline, device-bound perpetual licence activation using ECDSA P-256 signatures.
+- Added protected local trial-state persistence and clock-rollback detection.
+- Added publisher key-generation and private-key protection utilities.
+- Existing playback, Streaming Centre, torrent and casting engines are unchanged.
+
 # ABM AV Player v1.0.4
 
 ## What's new
