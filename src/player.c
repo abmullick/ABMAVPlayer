@@ -156,6 +156,7 @@ static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, 
 static RECT R_ROW[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
 static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT;
+static int g_homeCardMotion[4]={0,0,0,0};
 static RECT R_SEARCH, R_TAB_QUEUE, R_TAB_LIBRARY, R_FILTER_ALL, R_FILTER_AUDIO, R_FILTER_VIDEO, R_GROUP;
 static wchar_t g_searchText[128]=L"";
 static BOOL g_searchFocused=FALSE;
@@ -1080,15 +1081,15 @@ static void DrawUI(HDC dc,RECT client) {
             const wchar_t *glyphs[4]={L"+",L"TV",L"↗",L"↶"};
             POINT mouse={0,0}; BOOL haveMouse=GetCursorPos(&mouse)&&ScreenToClient(g_main,&mouse);
             for(int i=0;i<4;i++) {
-                BOOL hot=haveMouse&&Inside(cards[i],mouse.x,mouse.y);
-                COLORREF base=(i==0)?RGB(20,91,88):RGB(16,31,46);
-                COLORREF edge=hot?RGB(104,201,184):((i==0)?RGB(68,154,143):RGB(51,79,101));
-                RECT shadow=cards[i];OffsetRect(&shadow,0,5);RoundBox(dc,shadow,RGB(3,8,14),13);
-                if(i==0)GradientRound(dc,cards[i],hot?RGB(37,153,139):RGB(25,119,112),RGB(24,75,82),13);
-                else GradientRound(dc,cards[i],hot?RGB(29,58,76):RGB(20,37,53),RGB(13,25,39),13);
-                ABM_D2D_StrokeRound(&g_ui,(float)cards[i].left,(float)cards[i].top,(float)cards[i].right,(float)cards[i].bottom,13.0f,edge,hot?1.35f:0.85f);
-                RECT icon={cards[i].left+12,cards[i].top+13,cards[i].left+48,cards[i].bottom-13};
-                RoundBox(dc,icon,(i==0)?RGB(39,157,143):RGB(29,56,71),9);
+                int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
+                RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
+                COLORREF edge=Blend((i==0)?RGB(68,154,143):RGB(51,79,101),RGB(104,201,184),motion);
+                RECT shadow=card;OffsetRect(&shadow,0,5);RoundBox(dc,shadow,RGB(3,8,14),13);
+                if(i==0)GradientRound(dc,card,Blend(RGB(25,119,112),RGB(37,153,139),motion),RGB(24,75,82),13);
+                else GradientRound(dc,card,Blend(RGB(20,37,53),RGB(29,58,76),motion),RGB(13,25,39),13);
+                ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,edge,0.85f+(float)motion*0.005f);
+                RECT icon={card.left+12,card.top+13,card.left+48,card.bottom-13};
+                RoundBox(dc,icon,Blend((i==0)?RGB(39,157,143):RGB(29,56,71),RGB(44,171,154),motion),9);
                 Txt(dc,glyphs[i],icon,RGB(226,247,245),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
                 RECT title={cards[i].left+58,cards[i].top+10,cards[i].right-8,cards[i].top+39};
                 RECT sub={cards[i].left+58,cards[i].top+38,cards[i].right-8,cards[i].bottom-8};
@@ -5265,6 +5266,23 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(g_repeat)PlayIndex(g_current);
             else if(g_playlistCount>1)PlayIndex(GetNextPlaylistIndex());
             else {g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);}
+        }
+        /* Lightweight 30 Hz hover easing for idle dashboard cards.
+           This is paint-only: no video child movement, decoding or I/O. */
+        if(!g_hasMedia&&!g_drawerOpen&&!g_menuOpen&&!g_fullscreen) {
+            POINT homeMouse={-1,-1};BOOL haveHomeMouse=GetCursorPos(&homeMouse)&&ScreenToClient(hwnd,&homeMouse);
+            RECT homeCards[4]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT};
+            BOOL changed=FALSE;
+            for(int ci=0;ci<4;ci++) {
+                int target=haveHomeMouse&&Inside(homeCards[ci],homeMouse.x,homeMouse.y)?100:0;
+                int before=g_homeCardMotion[ci];
+                g_homeCardMotion[ci]=EaseToward(before,target,34);
+                if(before!=g_homeCardMotion[ci])changed=TRUE;
+            }
+            if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+        } else {
+            BOOL changed=FALSE;for(int ci=0;ci<4;ci++){int before=g_homeCardMotion[ci];g_homeCardMotion[ci]=EaseToward(before,0,40);if(before!=g_homeCardMotion[ci])changed=TRUE;}
+            if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
         if (g_artworkLoaded && g_artworkFade < 100) {
