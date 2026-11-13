@@ -1860,8 +1860,9 @@ static BOOL EnsureTorrentDownloadDir(void) {
         if(!EnsureTorrentCacheBaseDir())return FALSE;
         if(FAILED(StringCchPrintfW(g_torrentDownloadDir,_countof(g_torrentDownloadDir),L"%s\\Torrent Downloads",g_torrentCacheBaseDir)))return FALSE;
     }
-    int result=SHCreateDirectoryExW(NULL,g_torrentDownloadDir,NULL);
-    return result==ERROR_SUCCESS||result==ERROR_ALREADY_EXISTS||result==ERROR_FILE_EXISTS;
+    SHCreateDirectoryExW(NULL,g_torrentDownloadDir,NULL);
+    DWORD attrs=GetFileAttributesW(g_torrentDownloadDir);
+    return attrs!=INVALID_FILE_ATTRIBUTES&&(attrs&FILE_ATTRIBUTE_DIRECTORY)!=0;
 }
 static void SavePersistentState(void);
 static void PruneUnavailablePlaylistItems(void) {
@@ -4029,7 +4030,10 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case ID_TORRENT_CAST_TV:TorrentBeginCastToTV();return 0;
             case ID_TORRENT_STOP_TV:TorrentStopTvCasting();return 0;
             case ID_TORRENT_OPEN_DOWNLOADS:
-                if(EnsureTorrentDownloadDir())ShellExecuteW(hwnd,L"open",g_torrentDownloadDir,NULL,NULL,SW_SHOWNORMAL);
+                if(EnsureTorrentDownloadDir()) {
+                    const wchar_t *active=(g_torrentInitialized&&g_torrentActiveDownloadDir[0])?g_torrentActiveDownloadDir:g_torrentDownloadDir;
+                    ShellExecuteW(hwnd,L"open",active,NULL,NULL,SW_SHOWNORMAL);
+                }
                 else MessageBoxW(hwnd,L"Could not open the configured permanent downloads folder.",L"Torrent Downloads",MB_OK|MB_ICONWARNING);
                 return 0;
             case ID_TORRENT_STOP:TorrentStopPlayback();TorrentSetLabel(g_torrentStatusLabel,L"Stream stopped.");return 0;
