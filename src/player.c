@@ -239,7 +239,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     }
     return DefWindowProcW(w,m,wp,lp);
 }
-static int ABM_ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) {
+static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) {
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
     ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;
@@ -255,6 +255,67 @@ static int ABM_ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *
     ShowWindow(w,SW_SHOW);UpdateWindow(w);SetForegroundWindow(w);SetFocus(w);
     MSG msg;while(!d.done&&IsWindow(w)){BOOL got=GetMessageW(&msg,NULL,0,0);if(got<=0)break;if(!IsDialogMessageW(w,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}
     if(IsWindow(w))DestroyWindow(w);if(ownerWasEnabled){EnableWindow(owner,TRUE);SetActiveWindow(owner);}return d.result;
+}
+
+
+typedef struct ABMMenuItem { int command; const wchar_t *label; BOOL enabled; BOOL heading; } ABMMenuItem;
+typedef struct ABMMenuState { HWND owner; const ABMMenuItem *items; int count; int hover; int result; BOOL done; } ABMMenuState;
+static ABMMenuState *g_abmActiveMenu=NULL;
+static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
+    ABMMenuState *d=(ABMMenuState*)GetWindowLongPtrW(w,GWLP_USERDATA);
+    switch(m) {
+    case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
+    case WM_ERASEBKGND:return 1;
+    case WM_MOUSEMOVE: {
+        TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,w,0};TrackMouseEvent(&t);
+        int row=(GET_Y_LPARAM(lp)-54)/36;if(row<0||row>=d->count||d->items[row].heading||!d->items[row].enabled)row=-1;
+        if(row!=d->hover){d->hover=row;InvalidateRect(w,NULL,FALSE);}return 0;
+    }
+    case WM_MOUSELEAVE:d->hover=-1;InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_LBUTTONUP: {
+        int row=(GET_Y_LPARAM(lp)-54)/36;
+        if(row>=0&&row<d->count&&!d->items[row].heading&&d->items[row].enabled){d->result=d->items[row].command;d->done=TRUE;DestroyWindow(w);}return 0;
+    }
+    case WM_KEYDOWN:
+        if(wp==VK_ESCAPE){d->done=TRUE;DestroyWindow(w);return 0;}
+        if(wp==VK_DOWN||wp==VK_UP){
+            int step=wp==VK_DOWN?1:-1;int i=d->hover;
+            for(int n=0;n<d->count;n++){i=(i+step+d->count)%d->count;if(!d->items[i].heading&&d->items[i].enabled){d->hover=i;break;}}
+            InvalidateRect(w,NULL,FALSE);return 0;
+        }
+        if(wp==VK_RETURN&&d->hover>=0){d->result=d->items[d->hover].command;d->done=TRUE;DestroyWindow(w);return 0;}
+        break;
+    case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){d->done=TRUE;DestroyWindow(w);return 0;}break;
+    case WM_PAINT:{
+        PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
+        HBRUSH bg=CreateSolidBrush(RGB(9,16,27));FillRect(dc,&rc,bg);DeleteObject(bg);
+        HBRUSH head=CreateSolidBrush(RGB(15,37,51));RECT hr={0,0,rc.right,48};FillRect(dc,&hr,head);DeleteObject(head);
+        SetBkMode(dc,TRANSPARENT);HFONT title=CreateFontW(-17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        HFONT body=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,RGB(243,249,255));RECT tr={18,7,rc.right-14,42};DrawTextW(dc,L"ABM  /  ACTIONS",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        for(int i=0;i<d->count;i++){
+            int top=54+i*36;RECT row={8,top,rc.right-8,top+33};const ABMMenuItem *it=&d->items[i];
+            if(it->heading){SelectObject(dc,body);SetTextColor(dc,RGB(89,185,174));RECT t={18,top+1,rc.right-12,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);continue;}
+            if(i==d->hover){HBRUSH hot=CreateSolidBrush(RGB(24,66,76));FillRect(dc,&row,hot);DeleteObject(hot);}
+            SelectObject(dc,body);SetTextColor(dc,it->enabled?RGB(226,238,249):RGB(91,108,128));RECT t={20,top+1,rc.right-14,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        }
+        SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
+    }
+    case WM_NCDESTROY:if(g_abmActiveMenu==d)g_abmActiveMenu=NULL;break;
+    }
+    return DefWindowProcW(w,m,wp,lp);
+}
+static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int count) {
+    if(!items||count<=0)return 0;static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMMenuProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerActionMenu";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return 0;registered=TRUE;}
+    ABMMenuState d={owner,items,count,-1,0,FALSE};POINT pt={x,y};ClientToScreen(owner,&pt);
+    int width=360,height=54+count*36+8;RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
+    if(pt.x+width>work.right)pt.x=work.right-width;if(pt.y+height>work.bottom)pt.y=work.bottom-height;
+    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+    HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerActionMenu",L"",WS_POPUP|WS_BORDER,pt.x,pt.y,width,height,owner,NULL,inst,&d);
+    if(!w)return 0;g_abmActiveMenu=&d;ShowWindow(w,SW_SHOW);SetForegroundWindow(w);SetFocus(w);InvalidateRect(w,NULL,TRUE);
+    MSG msg;while(!d.done&&IsWindow(w)){BOOL got=GetMessageW(&msg,NULL,0,0);if(got<=0)break;if(!IsDialogMessageW(w,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}
+    if(IsWindow(w))DestroyWindow(w);return d.result;
 }
 
 static void PlayIndex(int index);
