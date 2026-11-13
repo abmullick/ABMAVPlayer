@@ -225,6 +225,23 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
 }
 
+void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
+    HFONT font=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
+        L"Segoe MDL2 Assets");
+    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
+    wchar_t s[2]={glyph,0};DrawTextW(dc,s,1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    SelectObject(dc,old);DeleteObject(font);
+}
+wchar_t DeviceButtonGlyph(HWND button){
+    if(button==g_deviceRefresh||button==g_deviceAppStatus)return 0xE72C; /* Refresh */
+    if(button==g_deviceSelect)return 0xE73E; /* Confirm */
+    if(button==g_deviceApps)return 0xE71D; /* Apps */
+    if(button==g_deviceLaunch)return 0xE768; /* Launch */
+    if(button==g_deviceAppStop)return 0xE71A; /* Stop */
+    if(button==g_deviceClose)return 0xE711; /* Close */
+    return 0xE710;
+}
 void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool primary){
     if(!item||!item->hwndItem)return;
     HDC dc=item->hDC;RECT r=item->rcItem;
@@ -241,8 +258,10 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
-    InflateRect(&r,-5,-2);
-    Text(dc,caption,r,RGBc(229,244,250),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
+    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),RGBc(145,229,213),17);
+    RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
+    Text(dc,caption,label,RGBc(229,244,250),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     if(!item||item->itemID==(UINT)-1)return;
@@ -1021,7 +1040,7 @@ void PaintChrome(HWND hwnd){
     g_homeRect=RECT{navStart+3*(navW+navGap),navY,navStart+4*navW+3*navGap,navY+navH};
     g_fullscreenRect=RECT{navStart+4*(navW+navGap),navY,navStart+5*navW+4*navGap,navY+navH};
     const RECT navButtons[5]={g_backRect,g_forwardRect,g_reloadRect,g_homeRect,g_fullscreenRect};
-    const wchar_t *glyphs[5]={L"‹",L"›",L"↻",L"⌂",L"⛶"};
+    const wchar_t glyphs[5]={0xE72B,0xE72A,0xE72C,0xE80F,0xE740};
     const wchar_t *labels[5]={L"Back",L"Forward",L"Reload",L"Home",L"Fullscreen"};
     for(int i=0;i<5;i++){
         COLORREF fill=(g_hoverControl==i)?RGBc(43,91,113):(i==4?RGBc(31,103,111):RGBc(24,52,73));
@@ -1033,7 +1052,7 @@ void PaintChrome(HWND hwnd){
         RoundRect(dc,navButtons[i].left,navButtons[i].top,navButtons[i].right,navButtons[i].bottom,12,12);
         SelectObject(dc,oldNavBrush);SelectObject(dc,oldNavPen);DeleteObject(navPen);
         RECT glyph=navButtons[i];glyph.top+=1;glyph.bottom-=19;
-        Text(dc,glyphs[i],glyph,RGBc(239,248,255),i==4?23:25,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        DrawFluentGlyph(dc,glyph,glyphs[i],RGBc(239,248,255),22);
         RECT label=navButtons[i];label.top=navButtons[i].bottom-21;label.bottom-=3;
         Text(dc,labels[i],label,RGBc(204,226,238),10,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT underline={navButtons[i].left+18,navButtons[i].bottom-2,navButtons[i].right-18,navButtons[i].bottom};
