@@ -638,9 +638,10 @@ static void UpdateLayout(HWND hwnd) {
     if(menuUnit<1)menuUnit=1;
     int menuY=R_MENU_PANEL.top+54;
     for(int i=0;i<18;i++){
-        int weight=(i==11||i==17)?2:1;
+        /* Streaming Centre and Torrent Stream are both two-line featured
+           destinations. About remains a normal compact final menu command. */
+        int weight=(i==11||i==12)?2:1;
         int rowH=menuUnit*weight;
-        if(i==17)rowH=R_MENU_PANEL.bottom-6-menuY;
         R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,menuY,R_MENU_PANEL.right-10,menuY+rowH-3};
         menuY+=rowH;
     }
