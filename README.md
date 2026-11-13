@@ -9,7 +9,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 [**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)
 
-**Next release:** ABM AV Player v1.0.3 (pending publication after installer rebuild) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+**Next release:** ABM AV Player v1.0.3 (pending publication after installer rebuild) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
 
 Download the installer, run it, and follow the setup instructions. The installer is provided through GitHub Releases. See [RELEASES.md](RELEASES.md) for release and update information.
 
@@ -25,6 +25,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 - [UI/UX design system](UI_UX_DESIGN_SYSTEM.md): UI audit, shared visual tokens, component standards and staged adoption plan.
+- [Final UI QA checklist](UI_QA_CHECKLIST.md): Windows build, DPI, keyboard/accessibility, visual, playback, casting, torrent, performance and installer validation.
 
 ## Features
 
