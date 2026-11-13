@@ -28,7 +28,7 @@ def main() -> int:
     if not re.fullmatch(r"[0-9a-f]{64}", device_id):
         ap.error("--device-id must be exactly 64 hexadecimal characters")
     key_bytes = Path(args.private_key).read_bytes()
-    password = getpass.getpass("Private-key passphrase (press Enter if unencrypted): ") or None
+    password = getpass.getpass("Private-key passphrase: ") if b"ENCRYPTED" in key_bytes else None
     try:
         private_key = serialization.load_pem_private_key(key_bytes, password=password)
     except (TypeError, ValueError) as exc:
