@@ -273,3 +273,31 @@ A focused native-chrome refinement makes the service chooser read as a distinct 
 - [ ] Verify all six provider cards at the minimum supported width and a maximized window.
 - [ ] Verify hover/active states and provider navigation for every card.
 - [ ] Verify Find TVs panel, Cast video and fullscreen after the chrome change.
+
+
+## Step 6 — Settings UI refinement
+
+**Implementation branch:** `feature/settings-ui-step6`
+
+The Settings window now consumes the shared UI design tokens for its core visual components.
+
+- Replaced the Settings window's independently defined palette with aliases to the shared background, surface, input, text, accent and border tokens.
+- Refined section cards with consistent card radius, restrained borders and a small teal section marker.
+- Standardised edit-field frames against the shared input and border colours.
+- Simplified button treatment to a restrained solid teal primary action and raised-surface secondary action.
+- Aligned checkbox sizing, fill, outline and checkmark colours with the shared control tokens.
+- Kept native EDIT controls for familiar Windows text selection, keyboard editing and clipboard behaviour.
+- Preserved every existing setting, control ID, coordinate/hit target, Save/Close action, validation rule, persistence call, restart warning and update-check action.
+- No playback, audio processing, torrent storage/network, local casting, Streaming Centre, WebView2 or updater behaviour was changed.
+
+### Step 6 validation status
+
+- [x] Settings palette now consumes shared design tokens.
+- [x] Section cards, edit frames, buttons and checkboxes use the common visual vocabulary.
+- [x] Existing setting IDs, values, actions and persistence paths retained.
+- [ ] Windows MSVC build and runtime visual validation required.
+- [ ] Verify edit focus, keyboard navigation, text selection, dropdown interaction and Save/Close.
+- [ ] Verify all sections and controls at 100%, 125%, 150% and 200% display scaling.
+- [ ] Verify storage restart warning, invalid-value messages, update check and settings persistence.
+
+This is a focused visual refinement. The current Settings window remains a single-page layout; category navigation and a fully responsive reflow are not introduced in this step.

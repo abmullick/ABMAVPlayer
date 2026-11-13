@@ -4457,13 +4457,15 @@ static void ShowAboutDialog(HWND owner) {
 }
 
 
-#define SETTINGS_BG RGB(10,20,34)
-#define SETTINGS_PANEL RGB(15,31,48)
-#define SETTINGS_PANEL_ALT RGB(18,37,55)
-#define SETTINGS_FG RGB(226,238,250)
-#define SETTINGS_MUTED RGB(151,176,201)
-#define SETTINGS_ACCENT RGB(54,177,168)
-#define SETTINGS_BORDER RGB(40,75,96)
+/* Settings consumes the shared ABM design tokens; keep this window
+   visually aligned with the main player and Torrent workspace. */
+#define SETTINGS_BG ABM_UI_COLOR_BACKGROUND
+#define SETTINGS_PANEL ABM_UI_COLOR_SURFACE_BLUE
+#define SETTINGS_PANEL_ALT ABM_UI_COLOR_SURFACE_RAISED
+#define SETTINGS_FG ABM_UI_COLOR_TEXT_SECONDARY
+#define SETTINGS_MUTED ABM_UI_COLOR_TEXT_MUTED
+#define SETTINGS_ACCENT ABM_UI_COLOR_ACCENT
+#define SETTINGS_BORDER ABM_UI_COLOR_BORDER
 static ABM_D2D g_settingsUi;
 static BOOL g_settingsUiReady=FALSE;
 static HBRUSH g_settingsEditBrush;
@@ -4481,27 +4483,53 @@ static void SettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF co
  RECT rc={l,t,r,b};ABM_D2D_Text(&g_settingsUi,text,rc,color,style,flags);
 }
 static void SettingsSection(int top,const wchar_t *title,const wchar_t *description,int bottom) {
- ABM_D2D_Round(&g_settingsUi,20.0f,(float)top,800.0f,(float)bottom,14.0f,SETTINGS_PANEL);
- ABM_D2D_StrokeRound(&g_settingsUi,20.0f,(float)top,800.0f,(float)bottom,14.0f,SETTINGS_BORDER,1.0f);
- SettingsText(title,40,top+12,520,top+36,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
- if(description&&description[0])SettingsText(description,520,top+12,780,top+36,SETTINGS_MUTED,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+ /* Consistent card surface, restrained edge and a short teal section marker. */
+ ABM_D2D_Round(&g_settingsUi,20.0f,(float)top,800.0f,(float)bottom,
+               (float)ABM_UI_RADIUS_CARD,SETTINGS_PANEL);
+ ABM_D2D_StrokeRound(&g_settingsUi,20.5f,(float)top+0.5f,799.5f,(float)bottom-0.5f,
+                     (float)ABM_UI_RADIUS_CARD,SETTINGS_BORDER,0.8f);
+ ABM_D2D_Round(&g_settingsUi,30.0f,(float)top+13.0f,33.0f,(float)top+34.0f,
+               1.5f,ABM_UI_COLOR_ACCENT_BRIGHT);
+ SettingsText(title,42,top+12,510,top+36,SETTINGS_ACCENT,1,
+              DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+ if(description&&description[0])
+  SettingsText(description,510,top+12,780,top+36,SETTINGS_MUTED,1,
+               DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 static void SettingsEditFrame(int l,int t,int r,int b) {
- ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,7.0f,RGB(11,25,40));
- ABM_D2D_StrokeRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,7.0f,RGB(57,111,130),1.0f);
+ ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
+               (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_INPUT);
+ ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
+                     (float)r-0.5f,(float)b-0.5f,
+                     (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_BORDER_STRONG,0.9f);
 }
 static void SettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary) {
- COLORREF a=primary?RGB(30,132,125):RGB(22,48,65);
- COLORREF z=primary?RGB(43,164,145):RGB(27,67,78);
- ABM_D2D_GradientRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,8.0f,a,z);
- ABM_D2D_StrokeRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,8.0f,primary?RGB(76,194,174):RGB(53,111,127),1.0f);
- SettingsText(label,l+8,t+1,r-8,b-1,RGB(242,249,255),1,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+ COLORREF fill=primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
+ COLORREF edge=primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
+ ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
+               (float)ABM_UI_RADIUS_BUTTON,fill);
+ ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
+                     (float)r-0.5f,(float)b-0.5f,
+                     (float)ABM_UI_RADIUS_BUTTON,edge,0.9f);
+ SettingsText(label,l+8,t+1,r-8,b-1,ABM_UI_COLOR_TEXT,1,
+              DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 static void SettingsCheckDraw(int l,int t,const wchar_t *label,BOOL checked) {
- ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)(l+17),(float)(t+17),4.0f,checked?RGB(32,143,132):RGB(12,27,42));
- ABM_D2D_StrokeRound(&g_settingsUi,(float)l,(float)t,(float)(l+17),(float)(t+17),4.0f,checked?RGB(75,194,173):RGB(83,116,137),1.0f);
- if(checked){ABM_D2D_Line(&g_settingsUi,(float)(l+4),(float)(t+9),(float)(l+7),(float)(t+12),RGB(255,255,255),1.8f);ABM_D2D_Line(&g_settingsUi,(float)(l+7),(float)(t+12),(float)(l+13),(float)(t+5),RGB(255,255,255),1.8f);}
- SettingsText(label,l+25,t-3,l+310,t+21,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+ ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)(l+18),(float)(t+18),
+               (float)ABM_UI_RADIUS_CONTROL,
+               checked?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_INPUT);
+ ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
+                     (float)(l+17.5f),(float)(t+17.5f),
+                     (float)ABM_UI_RADIUS_CONTROL,
+                     checked?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG,0.9f);
+ if(checked){
+  ABM_D2D_Line(&g_settingsUi,(float)(l+4),(float)(t+9),
+               (float)(l+7),(float)(t+12),ABM_UI_COLOR_TEXT,1.8f);
+  ABM_D2D_Line(&g_settingsUi,(float)(l+7),(float)(t+12),
+               (float)(l+14),(float)(t+5),ABM_UI_COLOR_TEXT,1.8f);
+ }
+ SettingsText(label,l+26,t-3,l+310,t+21,SETTINGS_FG,0,
+              DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 static void SettingsBrowse(HWND w) {
  BROWSEINFOW bi={0};bi.hwndOwner=w;bi.lpszTitle=L"Select torrent cache parent folder";bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE;
@@ -4565,7 +4593,13 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
  case WM_ERASEBKGND:return 1;
- case WM_CTLCOLOREDIT:{HDC dc=(HDC)wp;SetTextColor(dc,SETTINGS_FG);SetBkColor(dc,RGB(11,25,40));return (LRESULT)g_settingsEditBrush;}
+ case WM_CTLCOLOREDIT:{
+  HDC dc=(HDC)wp;
+  SetTextColor(dc,ABM_UI_COLOR_TEXT);
+  SetBkColor(dc,ABM_UI_COLOR_INPUT);
+  SetBkMode(dc,OPAQUE);
+  return (LRESULT)g_settingsEditBrush;
+ }
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   if(SettingsPoint(x,y,565,155,704,190)){g_settingsRateOpen=!g_settingsRateOpen;InvalidateRect(w,NULL,FALSE);return 0;}
