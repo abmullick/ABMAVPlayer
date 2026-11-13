@@ -302,6 +302,33 @@ The Settings window now consumes the shared UI design tokens for its core visual
 
 This is a focused visual refinement. The current Settings window remains a single-page layout; category navigation and a fully responsive reflow are not introduced in this step.
 
+
+
+## Step 8 — Home dashboard
+
+**Implementation commit:** `b5e6853aab1070cc8c0b48b569c406890ddc90ac`
+
+The idle home stage now uses an action-led dashboard rather than a decorative-only album-sleeve illustration.
+
+- Added four interactive destinations: **Open media**, **Streaming Centre**, **Torrent Stream**, and **Recent media**.
+- Each card has a clear title, supporting description, consistent dark surface, restrained teal treatment, hover feedback and a generous click target.
+- Card geometry is derived from the video-stage dimensions and recalculated with the main-window layout, rather than relying on fixed screen coordinates.
+- The dashboard cards appear only when no local media is active and the media drawer is closed; the existing now-playing/artwork/visualizer experience remains intact.
+- Actions route to the existing file picker, Streaming Centre, Torrent Stream window and recent-media menu. No new playback, torrent, streaming, discovery or casting implementation was introduced.
+- Existing transport dock, command menu, media drawer, fullscreen controls and keyboard shortcuts remain unchanged.
+
+**Windows validation checklist**
+
+1. Launch with no media and activate all four dashboard cards.
+2. Verify Open media opens the existing file picker; Streaming Centre and Torrent Stream open their existing windows; Recent media shows the existing recent-items menu.
+3. Resize the main window through supported sizes and confirm cards remain inside the video stage without colliding with the hero copy or fullscreen control.
+4. Add and play media; confirm the dashboard cards disappear and the existing artwork/now-playing view is unchanged.
+5. Open the media drawer and command menu; confirm their hit targets and rendering remain unaffected.
+6. Check 100%, 125%, 150% and 200% Windows display scaling.
+
+- [x] Add interactive home destinations using existing application actions.
+- [x] Keep the idle dashboard separate from active playback presentation.
+- [ ] Build with the Windows MSVC toolchain and perform runtime visual/regression checks.
 ## Step 7 — Auxiliary windows
 
 **Implementation branch:** `feature/auxiliary-windows-step7`
