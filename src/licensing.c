@@ -189,6 +189,8 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         break;
     case WM_CLOSE:d->done=TRUE;d->allowed=FALSE;DestroyWindow(w);return 0;
     case WM_ERASEBKGND:return 1;
+    case WM_CTLCOLORSTATIC:{HDC dc=(HDC)wp;SetTextColor(dc,RGB(226,238,250));SetBkMode(dc,TRANSPARENT);return (LRESULT)GetStockObject(NULL_BRUSH);}
+    case WM_CTLCOLOREDIT:{static HBRUSH editBrush=NULL;HDC dc=(HDC)wp;if(!editBrush)editBrush=CreateSolidBrush(RGB(11,25,40));SetTextColor(dc,RGB(247,250,255));SetBkColor(dc,RGB(11,25,40));return (LRESULT)editBrush;}
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);HBRUSH bg=CreateSolidBrush(RGB(9,15,25));
         FillRect(dc,&rc,bg);DeleteObject(bg);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(240,247,255));EndPaint(w,&ps);return 0;}
