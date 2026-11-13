@@ -378,3 +378,28 @@ A focused visual alignment pass brings the Equalizer, About and Help Centre clos
 - A UI step is not complete until its affected popup/dialog paths have been checked for accidental native fallbacks.
 
 **Audit baseline (current source inventory):** `src/player.c` still contains native `MessageBoxW`, context-menu `CreatePopupMenu` / `TrackPopupMenu`, common file dialogs and `SHBrowseForFolderW`; `src/updater.cpp` contains three native `MessageBoxW` calls. The custom recent-media popup is the first replacement, not completion of the audit. Track remaining replacements as explicit work items and do not claim the application is free of native popups until a source-wide audit and Windows runtime validation confirm it.
+
+
+## Native popup and dialog cleanup — implementation pass
+
+**Implementation status:** Source changes committed to `main`; Windows build and runtime validation are still required.
+
+- Added a reusable ABM-styled modal dialog surface and routed player-owned `MessageBoxW` call sites through it. It supports OK and Yes/No results, warning/error/attention accents, wrapped long text, Escape cancellation and the original default-No behaviour for destructive confirmations.
+- Exposed the same dialog entry point to `updater.cpp`; updater release, error and confirmation messages now use the ABM dialog rather than native MessageBox UI.
+- Replaced both player-owned `CreatePopupMenu` / `TrackPopupMenu` implementations: playback options and playlist actions now use a custom ABM action menu. Playback actions and LibVLC command IDs are retained; long menus are constrained to the work area and support mouse-wheel and keyboard scrolling/navigation.
+- Recent-media empty-state now uses the branded dialog; the recent-media list itself uses the custom ABM popup implemented earlier.
+- Replaced the legacy `SHBrowseForFolderW` torrent settings folder browser with the modern Windows `IFileOpenDialog` folder-selection interface.
+- Native Windows file open/save pickers (`GetOpenFileNameW` / `GetSaveFileNameW`) remain intentionally native for now; they are system file-selection workflows, not application-owned popup menus or message boxes.
+- Source audit of `src/player.c` and `src/updater.cpp`: no direct native `MessageBoxW`, `CreatePopupMenu` or `TrackPopupMenu` call sites remain. Streaming host source was also checked for these legacy APIs.
+
+**Windows validation still required:**
+
+1. Build with the project's Windows MSVC toolchain; verify the COM folder picker symbols/linkage (`uuid.lib`) and C/C++ linkage for `ABM_ShowMessageBox`.
+2. Exercise every Yes/No confirmation, including destructive actions with default No; verify Escape cancels and Enter follows the configured default.
+3. Test very long error text, popup placement at all screen edges, keyboard and mouse selection, and long playback menus with scrolling.
+4. Test torrent cache/download folder selection and cancellation.
+5. Run the updater check, update-available confirmation and error paths.
+6. Regression-test playlist, audio tracks, subtitles, playback speed, EQ presets, ReplayGain, compressor, shuffle and repeat.
+7. Verify 100%, 125%, 150% and 200% DPI scaling and multi-monitor positioning.
+
+Do not mark this cleanup complete until the Windows build and the above runtime checks pass.
