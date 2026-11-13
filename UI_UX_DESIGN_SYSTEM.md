@@ -224,3 +224,28 @@ The main playback surface has received a focused visual refinement.
 - [ ] Verify at supported window sizes and 100%, 125%, 150% and 200% display scaling.
 
 The fullscreen overlay's existing input forwarding and media control routing were intentionally left unchanged in this focused pass; validate the fullscreen transition and controls as part of the regression checklist.
+
+
+## Step 4 — Streaming Centre
+
+**Implementation commit:** `795c67612a37b65cd62a139da7a67e4f69627f00`
+
+A focused native-chrome refinement makes the service chooser read as a distinct section while keeping the WebView2 viewport and TV panel geometry intact.
+
+- Added a clear `YOUR STREAMING SERVICES` section label and a short official-site/sign-in hint above the provider cards.
+- Added a subtle divider to separate browser navigation from service selection.
+- Rebalanced the six provider cards to a shorter, consistent height; adjusted logo scale, service-label baseline and active underline to fit the new card geometry.
+- Kept all six provider URLs, service indices, click rectangles, hover state and active-service selection logic unchanged.
+- Kept the 260px native-chrome reservation and WebView2 bounds unchanged.
+- Left Find TVs panel controls, receiver discovery, app launch/stop, Cast video, WebView2 profile, navigation, fullscreen and process recovery untouched.
+- Retained the existing GDI rendering path for this window; no broad renderer conversion was attempted.
+
+### Step 4 validation status
+
+- [x] Source updated on `main`.
+- [x] Provider names, URLs, ordering and click hit rectangles retained.
+- [x] WebView2 viewport reservation and receiver-panel implementation retained.
+- [ ] Windows build and runtime visual validation still required.
+- [ ] Verify all six provider cards at the minimum supported width and a maximized window.
+- [ ] Verify hover/active states and provider navigation for every card.
+- [ ] Verify Find TVs panel, Cast video and fullscreen after the chrome change.
