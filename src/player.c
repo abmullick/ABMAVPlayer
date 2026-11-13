@@ -3388,12 +3388,12 @@ static HWND g_torrentSliders[3]={0};
 static int g_torrentSliderValues[3]={0,0,20};
 static const wchar_t *g_torrentSliderClass=L"ABMTorrentPremiumSlider";
 static int TorrentSliderToValue(int kind,int pos){
-    if(kind==2)return 1+(int)((long long)(pos-1)*4095/999);
+    if(kind==2){if(pos<=0)return 1;return 1+(int)((long long)pos*pos*4095LL/(1000LL*1000LL));}
     if(pos<=0)return 0;
     return 64+(int)((long long)(pos-1)*(pos-1)*2097087LL/(999LL*999LL));
 }
 static int TorrentSliderToPos(int kind,int value){
-    if(kind==2)return 1+(int)((long long)(value-1)*999/4095);
+    if(kind==2){int lo=0,hi=1000;while(lo<hi){int mid=(lo+hi)/2;if(TorrentSliderToValue(kind,mid)<value)lo=mid+1;else hi=mid;}return lo;}
     if(value<=0)return 0;
     int lo=1,hi=1000;
     while(lo<hi){int mid=(lo+hi)/2;if(TorrentSliderToValue(kind,mid)<value)lo=mid+1;else hi=mid;}
