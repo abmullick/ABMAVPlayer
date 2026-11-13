@@ -226,7 +226,9 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
 }
 
 void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
-    HFONT font=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+    /* Match Torrent Stream's premium icon treatment exactly: crisp Segoe
+       MDL2 vector glyphs, normal weight, 17px, transparent background. */
+    HFONT font=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
         L"Segoe MDL2 Assets");
     HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
@@ -989,13 +991,13 @@ void PaintChrome(HWND hwnd){
 
     g_helpRect=RECT{318,15,390,55};
     Rounded(dc,g_helpRect,g_hoverControl==5?RGBc(36,75,94):RGBc(20,42,60),9);
-    DrawFluentGlyph(dc,RECT{g_helpRect.left+7,g_helpRect.top+2,g_helpRect.left+29,g_helpRect.bottom-2},0xE897,RGBc(145,229,213),16);
-    RECT helpLabel={g_helpRect.left+27,g_helpRect.top,g_helpRect.right-4,g_helpRect.bottom};
+    DrawFluentGlyph(dc,RECT{g_helpRect.left+3,g_helpRect.top+2,g_helpRect.left+31,g_helpRect.bottom-2},0xE897,RGBc(142,226,211),17);
+    RECT helpLabel={g_helpRect.left+29,g_helpRect.top,g_helpRect.right-4,g_helpRect.bottom};
     Text(dc,L"Help",helpLabel,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     g_aboutRect=RECT{398,15,470,55};
     Rounded(dc,g_aboutRect,g_hoverControl==6?RGBc(36,75,94):RGBc(20,42,60),9);
-    DrawFluentGlyph(dc,RECT{g_aboutRect.left+7,g_aboutRect.top+2,g_aboutRect.left+29,g_aboutRect.bottom-2},0xE946,RGBc(145,229,213),16);
-    RECT aboutLabel={g_aboutRect.left+27,g_aboutRect.top,g_aboutRect.right-4,g_aboutRect.bottom};
+    DrawFluentGlyph(dc,RECT{g_aboutRect.left+3,g_aboutRect.top+2,g_aboutRect.left+31,g_aboutRect.bottom-2},0xE946,RGBc(142,226,211),17);
+    RECT aboutLabel={g_aboutRect.left+29,g_aboutRect.top,g_aboutRect.right-4,g_aboutRect.bottom};
     Text(dc,L"About",aboutLabel,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castRect=RECT{482,15,612,55};
@@ -1011,8 +1013,8 @@ void PaintChrome(HWND hwnd){
     HGDIOBJ oldCastBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castRect.left,g_castRect.top,g_castRect.right,g_castRect.bottom,10,10);
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
-    DrawFluentGlyph(dc,RECT{g_castRect.left+9,g_castRect.top+2,g_castRect.left+33,g_castRect.bottom-2},0xE7F4,RGBc(145,229,213),17);
-    RECT findTvLabel={g_castRect.left+30,g_castRect.top,g_castRect.right-5,g_castRect.bottom};
+    DrawFluentGlyph(dc,RECT{g_castRect.left+3,g_castRect.top+2,g_castRect.left+31,g_castRect.bottom-2},0xE721,RGBc(142,226,211),17);
+    RECT findTvLabel={g_castRect.left+29,g_castRect.top,g_castRect.right-5,g_castRect.bottom};
     Text(dc,L"Find TVs",findTvLabel,receiverReady?RGBc(255,255,255):RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castVideoRect=RECT{620,15,730,55};
@@ -1022,7 +1024,7 @@ void PaintChrome(HWND hwnd){
     HGDIOBJ oldVideoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castVideoRect.left,g_castVideoRect.top,g_castVideoRect.right,g_castVideoRect.bottom,10,10);
     SelectObject(dc,oldVideoBrush);SelectObject(dc,oldVideoPen);DeleteObject(videoPen);
-    DrawFluentGlyph(dc,RECT{g_castVideoRect.left+8,g_castVideoRect.top+2,g_castVideoRect.left+32,g_castVideoRect.bottom-2},0xE768,RGBc(226,255,241),17);
+    DrawFluentGlyph(dc,RECT{g_castVideoRect.left+3,g_castVideoRect.top+2,g_castVideoRect.left+31,g_castVideoRect.bottom-2},0xE768,RGBc(142,226,211),17);
     RECT castVideoLabel={g_castVideoRect.left+29,g_castVideoRect.top,g_castVideoRect.right-5,g_castVideoRect.bottom};
     Text(dc,L"Cast video",castVideoLabel,RGBc(226,255,241),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
@@ -1033,14 +1035,14 @@ void PaintChrome(HWND hwnd){
     HGDIOBJ oldStopBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_stopTvRect.left,g_stopTvRect.top,g_stopTvRect.right,g_stopTvRect.bottom,10,10);
     SelectObject(dc,oldStopBrush);SelectObject(dc,oldStopPen);DeleteObject(stopPen);
-    DrawFluentGlyph(dc,RECT{g_stopTvRect.left+8,g_stopTvRect.top+2,g_stopTvRect.left+32,g_stopTvRect.bottom-2},0xE71A,RGBc(255,210,196),17);
+    DrawFluentGlyph(dc,RECT{g_stopTvRect.left+3,g_stopTvRect.top+2,g_stopTvRect.left+31,g_stopTvRect.bottom-2},0xE71A,RGBc(255,210,196),17);
     RECT stopTvLabel={g_stopTvRect.left+29,g_stopTvRect.top,g_stopTvRect.right-5,g_stopTvRect.bottom};
     Text(dc,L"Stop TV",stopTvLabel,RGBc(255,239,232),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
     Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
-    DrawFluentGlyph(dc,RECT{g_externalRect.left+10,g_externalRect.top+2,g_externalRect.left+34,g_externalRect.bottom-2},0xE774,RGBc(145,229,213),17);
-    RECT externalLabel={g_externalRect.left+31,g_externalRect.top,g_externalRect.right-6,g_externalRect.bottom};
+    DrawFluentGlyph(dc,RECT{g_externalRect.left+3,g_externalRect.top+2,g_externalRect.left+31,g_externalRect.bottom-2},0xE774,RGBc(142,226,211),17);
+    RECT externalLabel={g_externalRect.left+29,g_externalRect.top,g_externalRect.right-6,g_externalRect.bottom};
     Text(dc,L"Open in browser",externalLabel,RGBc(183,235,229),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     /* Dedicated second-row toolbar: larger targets with both icon and readable label. */
