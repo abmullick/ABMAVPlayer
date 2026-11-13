@@ -488,3 +488,35 @@ Do not mark this cleanup complete until the Windows build and the above runtime 
 - [x] Make Streaming Centre action buttons reachable in the tab order.
 - [ ] Complete full application keyboard, screen-reader and high-contrast audit.
 - [ ] Build and validate with Windows MSVC and runtime keyboard-only testing.
+
+
+## Step 12 — Final UI QA and release-readiness audit
+
+**Implementation commit:** `7711f505e96580724c22dda58934ac353adb4528` — `UI_QA_CHECKLIST.md`
+
+### Source-level audit completed
+
+- Confirmed player-owned dialog call sites route through the ABM-branded dialog wrapper; no direct Win32 `MessageBoxW` call was found in the player source.
+- Confirmed no `CreatePopupMenu`, `TrackPopupMenu` or `SHBrowseForFolderW` calls remain in the audited player source.
+- Confirmed updater source has no direct native message-box or legacy popup-menu calls and uses the shared branded dialog entry point.
+- Confirmed Streaming Centre source has no direct native message-box or legacy popup-menu calls; its device actions expose tab stops and owner-drawn focus feedback.
+- Native common file open/save dialogs remain intentional system-owned file workflows. OS/UAC prompts remain OS-owned.
+- Confirmed the application opts into system-aware DPI handling. A per-monitor `WM_DPICHANGED` relayout path was not found in this audit, so mixed-DPI monitor transitions remain an explicit runtime risk to verify.
+- Reconfirmed the accessibility scope is targeted rather than complete: screen-reader/UI Automation and high-contrast coverage still need Windows testing.
+
+### QA artifact
+
+Added `UI_QA_CHECKLIST.md`, covering:
+- MSVC build and launch gates.
+- 100%, 125%, 150% and 200% display scaling, multiple monitors and work-area edge placement.
+- Keyboard-only navigation, dialog/menu behaviour, Narrator and high-contrast checks.
+- Visual states, empty/loading/error states and motion.
+- Local playback/casting, Streaming Centre, WebView2 and torrent cache/download/playback/casting regressions.
+- Idle and active performance, long-session stability, installer and updater acceptance.
+- Defect recording and release sign-off.
+
+**Validation boundary:** this step is a source-level audit and QA-documentation pass. No Windows build, runtime, DPI, accessibility, performance, installer or playback regression test was executed by this commit. Do not mark the UI redesign fully QA-certified until the checklist is completed on Windows.
+
+- [x] Add a consolidated final UI QA checklist.
+- [x] Perform targeted source audit of legacy popup/dialog APIs and DPI/accessibility markers.
+- [ ] Complete Windows build and runtime QA matrix.
