@@ -21,7 +21,7 @@
 #include <wrl.h>
 #include <WebView2.h>
 #include <gdiplus.h>
-#include "ui_theme.h"
+#include "../ui_theme.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
 #include "youtube_dial.h"
