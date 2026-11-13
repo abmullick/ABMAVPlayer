@@ -3513,10 +3513,11 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,FALSE);
     /* Playback actions use a compact fixed width, like Streaming Centre
        controls; do not stretch them to consume the entire window. */
-    const int actionW=140,actionH=42,actionGap=10;
-    int actionTotal=actionW*5+actionGap*4;
+    const int actionWidths[5]={128,156,128,128,110},actionH=42,actionGap=10;
+    int actionTotal=actionGap*4;
+    for(int i=0;i<5;i++)actionTotal+=actionWidths[i];
     int x=m+(inner-actionTotal)/2;
-    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionW,actionH,FALSE);x+=actionW+actionGap;}
+    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionWidths[i],actionH,FALSE);x+=actionWidths[i]+actionGap;}
     /* Two balanced bandwidth columns; reserve a dedicated action lane at right. */
     const int leftX=m+14,applyX=w-m-136,gap=18;
     const int sliderW=max(170,(applyX-leftX-gap)/2);
@@ -3528,18 +3529,18 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentSliders[0],leftX,networkY+25,sliderW,46,FALSE);
     MoveWindow(g_torrentSliders[1],secondX,networkY+25,sliderW,46,FALSE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),applyX,networkY+25,124,42,FALSE);
-    MoveWindow(g_torrentCacheLabel,m+14,cacheY+3,350,18,FALSE);
+    MoveWindow(g_torrentCacheLabel,m+14,cacheY+3,210,18,FALSE);
+    MoveWindow(g_torrentCacheInfoLabel,m+232,cacheY+3,max(180,inner-246),18,FALSE);
     ShowWindow(g_torrentCacheLimitEdit,SW_HIDE);
     for(int si=4;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
-    MoveWindow(g_torrentSliders[2],m+14,cacheY+25,350,46,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+396,cacheY+25,116,42,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+526,cacheY+25,144,42,FALSE);
-    MoveWindow(g_torrentCacheInfoLabel,m+680,cacheY+30,max(80,inner-692),22,FALSE);
+    MoveWindow(g_torrentSliders[2],m+14,cacheY+25,260,46,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+290,cacheY+25,112,42,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+418,cacheY+25,142,42,FALSE);
+    MoveWindow(g_torrentOpenDownloadsButton,m+574,cacheY+25,190,42,FALSE);
     MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,FALSE);
     MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,FALSE);
     MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,FALSE);
     MoveWindow(g_torrentTvButtons[2],w-m-128,tvY+26,120,42,FALSE);
-    MoveWindow(g_torrentOpenDownloadsButton,m+14,tvY+68,190,36,FALSE);
     /* Keep interactive buttons above overlapping static labels after relayout. */
     const int buttonIds[]={ID_TORRENT_APPLY_LIMITS,ID_TORRENT_CACHE_APPLY,
         ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,ID_TORRENT_CAST_TV,
@@ -3699,39 +3700,51 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     RECT face=r;InflateRect(&face,-1,-1);
     HRGN clip=CreateRoundRectRgn(face.left,face.top,face.right,face.bottom,14,14);
     int saved=SaveDC(dc);SelectClipRgn(dc,clip);
-    /* Match the main player's Add media button: restrained deep-teal
-       gradient at rest, with a brighter mint-teal flash only while pressed.
-       Returning to the base palette on mouse-up avoids a sticky hover tint. */
-    COLORREF top=pressed?RGB(42,157,148):RGB(22,48,52);
-    COLORREF bottom=pressed?RGB(76,174,151):RGB(39,75,72);
+    /* Button hierarchy: filled mint-teal for key actions, quiet slate for
+       secondary controls, and a restrained red treatment for destructive actions. */
+    int id=GetDlgCtrlID(item->hwndItem);
+    BOOL primary=(id==ID_TORRENT_STREAM||id==ID_TORRENT_CAST_TV||id==ID_TORRENT_ADD_MAGNET);
+    BOOL destructive=(id==ID_TORRENT_REMOVE||id==ID_TORRENT_CLEAR_CACHE);
+    COLORREF top,bottom,iconColor,textColor,borderColor;
+    if(primary){
+        top=pressed?RGB(35,160,151):RGB(24,112,111);
+        bottom=pressed?RGB(73,190,165):RGB(34,139,132);
+        iconColor=RGB(222,255,246);textColor=RGB(250,255,253);borderColor=RGB(91,206,183);
+    }else if(destructive){
+        top=pressed?RGB(128,57,63):RGB(65,37,47);
+        bottom=pressed?RGB(158,70,73):RGB(83,43,52);
+        iconColor=RGB(255,174,169);textColor=RGB(255,231,229);borderColor=RGB(137,77,82);
+    }else{
+        top=pressed?RGB(48,94,111):RGB(17,42,59);
+        bottom=pressed?RGB(57,111,119):RGB(24,57,71);
+        iconColor=RGB(139,194,205);textColor=RGB(213,230,239);borderColor=RGB(53,91,110);
+    }
+    if(hot&&!pressed&&!destructive){top=TorrentBlend(top,RGB(40,92,101),1,4);bottom=TorrentBlend(bottom,RGB(50,108,113),1,4);}
     for(int y=face.top;y<face.bottom;y++){
         RECT stripe={face.left,y,face.right,y+1};
         HBRUSH line=CreateSolidBrush(TorrentBlend(top,bottom,y-face.top,max(1,face.bottom-face.top-1)));
         FillRect(dc,&stripe,line);DeleteObject(line);
     }
     RestoreDC(dc,saved);DeleteObject(clip);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(139,238,220):(pressed?RGB(126,205,185):RGB(66,112,105)));
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(171,246,226):borderColor);
     HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,face.left,face.top,face.right,face.bottom,14,14);
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
     /* Fine top highlight gives the button a glass-like edge without a white rim. */
-    HPEN hi=CreatePen(PS_SOLID,1,pressed?RGB(190,238,224):RGB(66,112,105));oldPen=SelectObject(dc,hi);
+    HPEN hi=CreatePen(PS_SOLID,1,primary?RGB(127,229,207):(destructive?RGB(132,76,81):RGB(53,91,110)));oldPen=SelectObject(dc,hi);
     MoveToEx(dc,face.left+9,face.top+1,NULL);LineTo(dc,face.right-9,face.top+1);
     SelectObject(dc,oldPen);DeleteObject(hi);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-    int id=GetDlgCtrlID(item->hwndItem);
-    /* A 28px icon rail gives the Fluent glyph breathing room. Keep the
-       button face colour identical across the app; icon colour is a restrained
-       mint accent rather than introducing a rainbow of button backgrounds. */
+    /* A consistent icon rail preserves alignment across every button tier. */
     if(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||
        id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC){
         RECT glyphRect={r.left+1,r.top+1,r.right-1,r.bottom-1};
         TorrentDrawButtonIcon(dc,id,glyphRect,RGB(142,226,211));
     }else{
         RECT iconRect={r.left+3,r.top+2,r.left+31,r.bottom-2};
-        TorrentDrawButtonIcon(dc,id,iconRect,RGB(142,226,211));
+        TorrentDrawButtonIcon(dc,id,iconRect,iconColor);
         RECT textRect={r.left+31,r.top+2,r.right-5,r.bottom-2};
-        TorrentButtonText(dc,caption,textRect,RGB(242,250,253));
+        TorrentButtonText(dc,caption,textRect,textColor);
     }
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
