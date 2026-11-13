@@ -73,13 +73,13 @@ struct Task {
 };
 class Engine {
 public:
-    bool Init(const wchar_t *directory) {
+    bool Init(const wchar_t *directory,const wchar_t *download_directory) {
         std::lock_guard<std::mutex> g(m_);
         if(session_) return true;
         if(!directory||!*directory) return false;
         try {
             data_=(fs::absolute(directory)/L"torrent-cache").lexically_normal();
-            downloads_=(fs::absolute(directory)/L"Torrent Downloads").lexically_normal();
+            downloads_=(download_directory&&*download_directory?fs::absolute(download_directory):(fs::absolute(directory)/L"Torrent Downloads")).lexically_normal();
             fs::create_directories(data_);
             fs::create_directories(downloads_);
             cache_used_bytes_.store(DirectoryBytes(data_));
@@ -868,7 +868,7 @@ private:
 Engine g_engine;
 void ErrorOut(wchar_t *p,unsigned cap,const std::wstring &s){if(p&&cap)wcsncpy_s(p,cap,s.c_str(),_TRUNCATE);}
 }
-BOOL WINAPI ABM_Torrent_Initialize(const wchar_t *p){return g_engine.Init(p)?TRUE:FALSE;}
+BOOL WINAPI ABM_Torrent_Initialize(const wchar_t *p,const wchar_t *downloads){return g_engine.Init(p,downloads)?TRUE:FALSE;}
 void WINAPI ABM_Torrent_Shutdown(void){try{g_engine.Stop();}catch(...){}}
 BOOL WINAPI ABM_Torrent_AddMagnet(const wchar_t *u,uint64_t *id,wchar_t *e,unsigned c){std::wstring s;bool ok=g_engine.AddMagnet(u,id,s);ErrorOut(e,c,s);return ok?TRUE:FALSE;}
 BOOL WINAPI ABM_Torrent_AddFile(const wchar_t *p,uint64_t *id,wchar_t *e,unsigned c){std::wstring s;bool ok=g_engine.AddFile(p,id,s);ErrorOut(e,c,s);return ok?TRUE:FALSE;}
