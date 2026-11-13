@@ -204,7 +204,7 @@ static COLORREF C_LINE = RGB(39,51,70);
 
 /* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
    preserving the Win32 result codes expected by existing call sites. */
-typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; int defaultButton; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
+typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; int defaultButton; int focusedButton; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
 static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMDialogState *d=(ABMDialogState*)GetWindowLongPtrW(w,GWLP_USERDATA);
     switch(m) {
@@ -212,12 +212,19 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
         if(wp==VK_ESCAPE){d->result=(d->flags&MB_YESNO)?IDNO:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
-        if(wp==VK_RETURN){d->result=(d->flags&MB_YESNO)?(d->defaultButton==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
+        if(wp==VK_TAB||wp==VK_LEFT||wp==VK_RIGHT){
+            if(d->buttonCount>1){d->focusedButton=(d->focusedButton+1)%d->buttonCount;InvalidateRect(w,NULL,FALSE);}
+            return 0;
+        }
+        if(wp==VK_RETURN||wp==VK_SPACE){
+            int chosen=(d->focusedButton>=0&&d->focusedButton<d->buttonCount)?d->focusedButton:d->defaultButton;
+            d->result=(d->flags&MB_YESNO)?(chosen==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;
+        }
         break;
     case WM_LBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         for(int i=0;i<d->buttonCount;i++)if(x>=d->buttons[i].left&&x<d->buttons[i].right&&y>=d->buttons[i].top&&y<d->buttons[i].bottom){
-            d->result=(d->flags&MB_YESNO)?(i==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;
+            d->focusedButton=i;d->result=(d->flags&MB_YESNO)?(i==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;
         } return 0;
     }
     case WM_PAINT: {
@@ -233,7 +240,8 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
         SetTextColor(dc,RGB(215,228,241));RECT msg={44,68,rc.right-24,rc.bottom-74};DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
         for(int i=0;i<d->buttonCount;i++){
             RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton);HBRUSH br=CreateSolidBrush(primary?RGB(24,126,116):RGB(25,39,55));FillRect(dc,&b,br);DeleteObject(br);
-            HPEN pen=CreatePen(PS_SOLID,1,primary?RGB(68,180,164):RGB(57,78,99));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+            BOOL focused=(i==d->focusedButton);
+            HPEN pen=CreatePen(PS_SOLID,focused?3:1,focused?ABM_UI_COLOR_FOCUS:(primary?RGB(68,180,164):RGB(57,78,99)));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
             SetTextColor(dc,RGB(247,250,255));RECT t=b;DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&t,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
@@ -245,7 +253,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
 static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) {
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
-    ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;
+    ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;d.focusedButton=d.defaultButton;
     int width=560,height=220;HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
