@@ -1315,7 +1315,7 @@ static void DrawUI(HDC dc,RECT client) {
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
             L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
-            L"",L"",L"Alt+F4",L"Ctrl+I"
+            L"Ctrl+Shift+U",L"Ctrl+,",L"Alt+F4",L"Ctrl+I"
         };
         const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"⚙",L"×",L"i"};
         for(int i=0;i<18;i++) {
@@ -5225,6 +5225,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='L'){LoadPlaylist();return 0;}
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
+        if(ctrl && shift && wp=='U'){ABM_CheckForUpdates(hwnd,APP_VERSION);return 0;}
+        if(ctrl && !shift && wp==VK_OEM_COMMA){ShowSettingsDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
