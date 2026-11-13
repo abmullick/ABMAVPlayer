@@ -199,3 +199,28 @@ The main Command Centre overlay has been refined without changing its command ro
 - [ ] Verify menu fit at minimum window size and at 100%, 125%, 150% and 200% display scaling.
 
 No playback, playlist, local casting, Streaming Centre, torrent, WebView2, settings or updater implementation was changed in this step.
+
+
+## Step 3 — Main playback surface
+
+**Implementation commit:** `5b1396421873973a760849cc53a06d28480729a2`
+
+The main playback surface has received a focused visual refinement.
+
+- Reworked the seek row into a clear elapsed/total time presentation with a more legible progress track and playhead.
+- Refined the transport dock surface, top-edge accent, rim and shadow while retaining its existing footprint and control positions.
+- Tightened the Now Playing metadata spacing and hierarchy.
+- Removed a duplicated drawer-frame stroke and retained a single restrained inset outline.
+- Preserved the existing seek rectangle, transport rectangles, button hit targets, LibVLC calls, playlist actions, drawer state and receiver-selection behaviour.
+- No playback engine, media parsing, output discovery, casting or torrent code was changed.
+
+### Step 3 validation status
+
+- [x] Source updated on `main`.
+- [x] Seek and transport geometry retained.
+- [x] Existing playback and drawer interaction paths retained.
+- [ ] Windows build and runtime visual validation still required.
+- [ ] Verify short and long track durations, paused/playing states, seek dragging, drawer open/close and fullscreen transitions.
+- [ ] Verify at supported window sizes and 100%, 125%, 150% and 200% display scaling.
+
+The fullscreen overlay's existing input forwarding and media control routing were intentionally left unchanged in this focused pass; validate the fullscreen transition and controls as part of the regression checklist.
