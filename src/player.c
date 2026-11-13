@@ -10,6 +10,7 @@
 #include <vlc/libvlc_renderer_discoverer.h>
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
+#include "ui_theme.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
 #include "resource.h"
@@ -3598,8 +3599,8 @@ static void TorrentPaint(HWND hwnd){
     if(contentBottom<contentTop+100.0f)contentBottom=contentTop+100.0f;
     float playbackY=contentBottom+12.0f,networkY=playbackY+112.0f;
     float cacheY=networkY+84.0f,tvY=cacheY+84.0f;
-    const COLORREF bg=RGB(6,11,19),edge=RGB(38,69,88);
-    const COLORREF muted=RGB(143,168,190),accent=RGB(83,195,184),white=RGB(241,247,253);
+    const COLORREF bg=ABM_UI_COLOR_BACKGROUND,edge=ABM_UI_COLOR_BORDER_STRONG;
+    const COLORREF muted=ABM_UI_COLOR_TEXT_MUTED,accent=ABM_UI_COLOR_ACCENT,white=ABM_UI_COLOR_TEXT;
     ABM_D2D_Begin(&g_torrentUi,bg);
 
     /* Cinematic branded masthead */
@@ -3622,10 +3623,27 @@ static void TorrentPaint(HWND hwnd){
     r=(RECT){188,20,390,48};ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,RGB(132,205,194),4,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,RGB(54,177,168),RGB(112,190,157));
     r=(RECT){116,60,510,83};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,RGB(157,177,201),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    /* Live task state is presented as a compact status chip. This is a
+       read-only view of the existing engine task; it does not alter its state. */
+    const wchar_t *engineState=L"ENGINE READY";
+    COLORREF engineDot=ABM_UI_COLOR_SUCCESS;
+    ABM_TorrentTaskInfo taskInfo={0};
+    if(g_torrentTaskId&&g_torrentGetTask&&g_torrentGetTask(g_torrentTaskId,&taskInfo)){
+        switch(taskInfo.state){
+        case 0:engineState=L"QUEUED";engineDot=ABM_UI_COLOR_WARNING;break;
+        case 1:engineState=L"CHECKING";engineDot=ABM_UI_COLOR_WARNING;break;
+        case 2:engineState=L"DOWNLOADING";engineDot=ABM_UI_COLOR_ACCENT_BRIGHT;break;
+        case 3:engineState=L"COMPLETE";engineDot=ABM_UI_COLOR_SUCCESS;break;
+        case 4:engineState=L"SEEDING";engineDot=ABM_UI_COLOR_SUCCESS;break;
+        case 5:engineState=L"PAUSED";engineDot=ABM_UI_COLOR_WARNING;break;
+        case 6:engineState=L"ERROR";engineDot=ABM_UI_COLOR_DANGER;break;
+        default:engineState=L"CONNECTED";break;
+        }
+    }
     r=(RECT){w-244,23,w-22,57};ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(11,28,43));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(42,83,101),0.9f);
-    ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,RGB(77,196,153));
-    r=(RECT){w-211,25,w-34,55};ABM_D2D_Text(&g_torrentUi,L"TORRENT ENGINE",r,RGB(180,205,219),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,engineDot);
+    r=(RECT){w-211,25,w-34,55};ABM_D2D_Text(&g_torrentUi,engineState,r,RGB(180,205,219),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Source card: label above the edit row; no painted text beneath controls. */
     r=(RECT){m,sourceTop,w-m,sourceTop+sourceH};
@@ -3638,7 +3656,9 @@ static void TorrentPaint(HWND hwnd){
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(14,31,49),RGB(9,22,36));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(34,64,83),1.0f);
     r=(RECT){m+14,contentTop+5,m+260,contentTop+25};ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Fill(&g_torrentUi,m+14,contentTop+29,m+62,contentTop+31,RGB(47,151,151));
+    r=(RECT){w-420,contentTop+5,w-m-14,contentTop+25};
+    ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,0,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Fill(&g_torrentUi,m+14,contentTop+29,m+62,contentTop+31,accent);
 
     /* Playback deck: status, progress and actions each have their own row. */
     r=(RECT){m,playbackY,w-m,playbackY+100};
