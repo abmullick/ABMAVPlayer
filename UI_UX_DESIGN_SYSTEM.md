@@ -520,3 +520,14 @@ Added `UI_QA_CHECKLIST.md`, covering:
 - [x] Add a consolidated final UI QA checklist.
 - [x] Perform targeted source audit of legacy popup/dialog APIs and DPI/accessibility markers.
 - [ ] Complete Windows build and runtime QA matrix.
+
+
+## Documentation update — user-facing help alignment
+
+The User Guide now documents the branded application menus/dialogs, keyboard interaction for custom menus and confirmations, Streaming Centre device-panel tab navigation, the scope and limitations of current accessibility support, and the idle-only dashboard hover motion. The README now links directly to the consolidated UI QA checklist.
+
+This documentation does not imply that every custom control is screen-reader accessible or that high-contrast and mixed-DPI behaviour has been validated. See [UI_QA_CHECKLIST.md](UI_QA_CHECKLIST.md) for the remaining Windows verification gates.
+
+## Build note — shared theme header
+
+The Streaming Centre source includes the shared theme header relative to its source directory (`../ui_theme.h`). This reflects the repository layout where the header is stored at `src/ui_theme.h` and the translation unit is stored at `src/streaming/streaming_host.cpp`. A source update does not itself establish that the local Windows build has passed; rebuild with the documented MSVC environment after pulling `main`.
