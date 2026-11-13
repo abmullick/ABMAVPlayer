@@ -426,3 +426,33 @@ Do not mark this cleanup complete until the Windows build and the above runtime 
 
 - [x] Implement restrained dashboard hover motion using the existing UI timer.
 - [ ] Build with Windows MSVC and perform runtime/performance checks.
+
+
+## Step 10 — Global visual consistency audit
+
+**Implementation commit:** `22c0c04c60c1d31bfa811908f3470fee65dce7bf`
+
+### Shared theme adoption
+
+- The Streaming Centre now includes `src/ui_theme.h` and consumes the shared ABM tokens for its main canvas, top brand accent, native title-bar caption, window border and standard text font.
+- Removed the Streaming Centre's duplicated near-match values for those shared surfaces. This keeps the Streaming Centre aligned with the main player's navy/charcoal, teal and Segoe UI Variable design language.
+- Existing service branding, WebView2 content, TV discovery, app launch, casting and navigation behaviour are intentionally untouched.
+
+### Scope of this pass
+
+- Main player and its home/dashboard, transport, drawer, custom menus/dialogs and torrent/settings surfaces were reviewed against the existing shared theme and prior UI steps.
+- Streaming Centre was the clearest remaining top-level window using a separate hard-coded canvas/accent/font palette; this pass brings its shared chrome into alignment.
+- Provider webpages rendered inside WebView2 remain provider-owned content and are not recoloured or restyled by ABM.
+- This is a source-level consistency pass, not a claim that every control has pixel-identical geometry or that all display scaling has been validated.
+
+### Windows validation checklist
+
+1. Build with the Windows MSVC toolchain; confirm the shared theme header is found by the Streaming Centre compilation unit.
+2. Open the main player, Torrent Stream, Settings and Streaming Centre; compare canvas, title-bar, border, accent and typography at the same display scale.
+3. Open Streaming Centre About/Help and the TV/device panel; check text hierarchy, button states, list selection and focus visibility.
+4. Open each provider in WebView2 and verify its page remains provider-native and unaffected.
+5. Verify TV discovery, app checks, launch/stop, local casting and torrent casting are unchanged.
+6. Repeat at 100%, 125%, 150% and 200% scaling and on a second monitor if available.
+
+- [x] Align Streaming Centre's shared chrome to the central theme tokens.
+- [ ] Complete Windows build, visual comparison and regression validation.
