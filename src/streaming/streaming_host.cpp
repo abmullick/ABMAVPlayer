@@ -21,6 +21,7 @@
 #include <wrl.h>
 #include <WebView2.h>
 #include <gdiplus.h>
+#include "ui_theme.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
 #include "youtube_dial.h"
@@ -211,7 +212,7 @@ HFONT GetCachedTextFont(int height,int weight){
         entry.height=height;entry.weight=weight;
         entry.font=CreateFontW(-height,0,0,0,weight,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-            DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+            DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         return entry.font;
     }
     return (HFONT)GetStockObject(DEFAULT_GUI_FONT);
@@ -617,8 +618,8 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_ERASEBKGND:return 1;
     case WM_PAINT:{
         PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
-        FillRectColor(dc,rc,RGBc(8,17,30));
-        RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,RGBc(43,178,181));
+        FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
+        RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
         RECT brand={28,20,rc.right-28,54};
         Text(dc,L"ABM AV PLAYER",brand,RGBc(244,249,255),21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT subtitle={29,49,rc.right-28,72};
@@ -719,7 +720,7 @@ void ShowStreamingInfo(bool about){
         WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,x,y,width,height,g_window,nullptr,instance,nullptr);
     if(!g_infoWindow)return;
     BOOL dark=TRUE;DwmSetWindowAttribute(g_infoWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-    COLORREF captionColor=RGB(10,15,25),borderColor=RGB(46,70,104);
+    COLORREF captionColor=ABM_UI_COLOR_SURFACE,borderColor=ABM_UI_COLOR_BORDER_STRONG;
     DwmSetWindowAttribute(g_infoWindow,DWMWA_CAPTION_COLOR,&captionColor,sizeof(captionColor));
     DwmSetWindowAttribute(g_infoWindow,DWMWA_BORDER_COLOR,&borderColor,sizeof(borderColor));
     ShowWindow(g_infoWindow,SW_SHOW);UpdateWindow(g_infoWindow);SetForegroundWindow(g_infoWindow);
@@ -1835,7 +1836,7 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
         nullptr,nullptr,instance,nullptr);
     if(!window){SetStatus(L"Could not create the Streaming Centre window.");return;}
     BOOL dark=TRUE;DwmSetWindowAttribute(window,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-    int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);
+    int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_SURFACE;
     DwmSetWindowAttribute(window,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
     DwmSetWindowAttribute(window,DWMWA_BORDER_COLOR,&border,sizeof(border));
     DwmSetWindowAttribute(window,DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
