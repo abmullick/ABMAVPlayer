@@ -4522,9 +4522,10 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,655,396,780,428)){SettingsBrowse(w);return 0;}
   if(SettingsPoint(x,y,655,457,780,489)){SettingsBrowseDownloads(w);return 0;}
   if(SettingsPoint(x,y,655,496,780,528)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
-  if(SettingsPoint(x,y,39,617,194,650)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
-  if(SettingsPoint(x,y,610,710,735,748)){SettingsApply(w);return 0;}
-  if(SettingsPoint(x,y,744,710,800,748)){DestroyWindow(w);return 0;}
+  /* Keep hit targets aligned with the current Direct2D-rendered button rectangles. */
+  if(SettingsPoint(x,y,39,681,194,714)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
+  if(SettingsPoint(x,y,610,774,735,812)){SettingsApply(w);return 0;}
+  if(SettingsPoint(x,y,744,774,800,812)){DestroyWindow(w);return 0;}
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
