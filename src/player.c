@@ -204,7 +204,6 @@ static COLORREF C_LINE = RGB(39,51,70);
 /* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
    preserving the Win32 result codes expected by existing call sites. */
 typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; int defaultButton; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
-static ABMDialogState g_abmDialog;
 static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMDialogState *d=(ABMDialogState*)GetWindowLongPtrW(w,GWLP_USERDATA);
     switch(m) {
@@ -232,7 +231,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
         HBRUSH dot=CreateSolidBrush(accent);RECT mark={22,78,30,86};FillRect(dc,&mark,dot);DeleteObject(dot);
         SetTextColor(dc,RGB(215,228,241));RECT msg={44,68,rc.right-24,rc.bottom-74};DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
         for(int i=0;i<d->buttonCount;i++){
-            RECT b=d->buttons[i];BOOL primary=(i==0);HBRUSH br=CreateSolidBrush(primary?RGB(24,126,116):RGB(25,39,55));FillRect(dc,&b,br);DeleteObject(br);
+            RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton);HBRUSH br=CreateSolidBrush(primary?RGB(24,126,116):RGB(25,39,55));FillRect(dc,&b,br);DeleteObject(br);
             HPEN pen=CreatePen(PS_SOLID,1,primary?RGB(68,180,164):RGB(57,78,99));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
             SetTextColor(dc,RGB(247,250,255));RECT t=b;DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&t,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
