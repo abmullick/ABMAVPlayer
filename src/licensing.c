@@ -109,7 +109,7 @@ static BOOL ReadLicenseFile(const wchar_t *path,wchar_t *token,size_t cap) {
 }
 static BOOL SaveLicenseFile(const wchar_t *path,const wchar_t *token) {
     FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wt, ccs=UTF-8")!=0||!fp)return FALSE;
-    BOOL ok=(fputws(token,fp)>=0&&fputwc(L'\\n',fp)!=WEOF);if(fclose(fp)!=0)ok=FALSE;return ok;
+    BOOL ok=(fputws(token,fp)>=0&&fputwc(L'\n',fp)!=WEOF);if(fclose(fp)!=0)ok=FALSE;return ok;
 }
 static BOOL UnprotectTrial(const BYTE *encrypted,DWORD encryptedLen,ABMTrialState *state) {
     DATA_BLOB in={(DWORD)encryptedLen,(BYTE*)encrypted},out={0};BOOL ok=FALSE;
