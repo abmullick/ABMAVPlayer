@@ -323,3 +323,26 @@ After a TV is selected, **Use selected TV** pulses orange. After a TV confirms a
 
 
 **Refresh app status** queries the TV's current receiver application state and reports whether the selected Cast app is running or not running, or reads the selected DIAL app's running/stopped state. It does not report movie playback state (playing, paused or buffering).
+
+
+## 11. Interface, menus, dialogs and keyboard access
+
+ABM AV Player uses its own dark navy/charcoal and teal visual language for application-owned menus and dialogs. Context actions, playback options, playlist actions and recent-media selection use ABM-styled surfaces rather than the older Windows popup-menu appearance. Application alerts and confirmations use branded dialogs. The Windows system may still display its own security/UAC prompts, and standard Windows file-open/save pickers remain system-owned.
+
+### Working with menus and dialogs
+
+- Use the mouse to open and select menu items. Long custom menus support scrolling.
+- Use **Up / Down** to move through custom menu items, **Enter** to activate the selected item and **Esc** to close the menu.
+- In branded Yes/No dialogs, use **Tab** or **Left / Right** to move between choices, then **Enter** or **Space** to activate the focused choice. **Esc** cancels; for confirmations this follows the safe No/cancel path.
+- The default action is indicated by the dialog's configured default; review destructive confirmations before accepting.
+- In the Streaming Centre device panel, use **Tab / Shift+Tab** to move between its action buttons and lists. A visible focus outline indicates the focused action.
+
+### Accessibility and display scaling
+
+The current implementation includes keyboard focus and activation for branded modal buttons, keyboard navigation for custom action menus, and tab stops/focus feedback for the Streaming Centre device actions. This is a targeted improvement, not a complete accessibility certification. Some custom-painted main-player controls and auxiliary windows may not expose complete screen-reader/UI Automation names or roles. High-contrast adaptation and mixed-DPI monitor transitions also require further validation.
+
+For current manual verification steps, see [Final UI QA Checklist](UI_QA_CHECKLIST.md). If a control cannot be reached or understood using the keyboard or a screen reader, report the exact window, control and steps to reproduce.
+
+### Visual behaviour
+
+Home dashboard action cards have restrained hover feedback while the dashboard is idle. The animation is decorative only; it does not change playback, media decoding, casting or torrent transfers. Motion settles when playback or other suppressing interface states are active.
