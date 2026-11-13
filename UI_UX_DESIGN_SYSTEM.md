@@ -304,6 +304,15 @@ This is a focused visual refinement. The current Settings window remains a singl
 
 
 
+
+
+### Recent media popup refinement
+
+- Replaced the native white `TrackPopupMenu` recent-items list with a custom dark ABM popup, matching the home dashboard palette and typography.
+- Added hover highlighting, keyboard navigation (Up/Down, Enter, Esc), filename ellipsis and a recent-item count.
+- Recent history is pruned on startup to remove unavailable paths and duplicate entries; valid files retain most-recently-played ordering.
+- Both the dashboard card, Command Centre action and Ctrl+J use the same popup. The existing play-from-recent behaviour is preserved.
+- [ ] Validate popup placement near screen edges, mouse selection, keyboard selection, and behaviour with 1 and 12 recent files on Windows.
 ## Step 8 — Home dashboard
 
 **Implementation commit:** `b5e6853aab1070cc8c0b48b569c406890ddc90ac`
