@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <shlobj.h>
+#include <shobjidl.h>
 #include <KnownFolders.h>
 #include <urlmon.h>
 #include <winhttp.h>
@@ -202,7 +203,7 @@ static COLORREF C_LINE = RGB(39,51,70);
 
 /* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
    preserving the Win32 result codes expected by existing call sites. */
-typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
+typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; int defaultButton; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
 static ABMDialogState g_abmDialog;
 static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMDialogState *d=(ABMDialogState*)GetWindowLongPtrW(w,GWLP_USERDATA);
@@ -211,7 +212,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
         if(wp==VK_ESCAPE){d->result=(d->flags&MB_YESNO)?IDNO:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
-        if(wp==VK_RETURN){d->result=(d->flags&MB_YESNO)?IDYES:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
+        if(wp==VK_RETURN){d->result=(d->flags&MB_YESNO)?(d->defaultButton==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
         break;
     case WM_LBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -244,8 +245,8 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
 static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) {
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
-    ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;
-    int width=520,height=220;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
+    ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;
+    int width=560,height=220;HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
