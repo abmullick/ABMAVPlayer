@@ -10,7 +10,9 @@ For end-user operation, see the repository's [USER_GUIDE.md](../USER_GUIDE.md). 
 
 ## Licensing integration
 
-The licence gate is part of the compiled native application, not an installer-only check. The installer packages the application executable containing the 10-day trial and signed perpetual-key validation. No private signing key is shipped in the installer. Licence and trial state are retained under the Windows user's AppData/registry and are not removed by a normal application upgrade. See [LICENSING.md](../LICENSING.md) for publisher key handling and validation steps.\n\n## 1. Prepare the staging folder
+The licence gate is part of the compiled native application, not an installer-only check. The installer packages the application executable containing the 10-day trial and signed perpetual-key validation. No private signing key is shipped in the installer. Licence and trial state are retained under the Windows user's AppData/registry and are not removed by a normal application upgrade. See [LICENSING.md](../LICENSING.md) for publisher key handling and validation steps.
+
+## 1. Prepare the staging folder
 From the repository root, run:
 
     prepare_installer.bat
