@@ -3516,10 +3516,15 @@ static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
     DeleteObject(brush);DeleteObject(pen);
 }
 static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color){
-    HFONT font=CreateFontW(-13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+    /* Fit labels to the actual button width. Compact utility buttons such as
+       Add magnet / Apply quota need a smaller caption than the wide playback
+       actions; do not clip the first or last characters behind the icon. */
+    int width=r.right-r.left;
+    int fontHeight=width<88?-9:(width<116?-10:(width<150?-11:-12));
+    HFONT font=CreateFontW(fontHeight,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
-    DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
     SelectObject(dc,old);DeleteObject(font);
 }
 static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
@@ -3610,9 +3615,11 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     SelectObject(dc,oldPen);DeleteObject(hi);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
     int id=GetDlgCtrlID(item->hwndItem);
-    RECT iconRect={r.left+13,r.top+4,r.left+37,r.bottom-4};
+    /* Use a narrow, consistent icon slot so compact utility buttons retain
+       their complete captions. Text is centred in the remaining area. */
+    RECT iconRect={r.left+5,r.top+7,r.left+25,r.bottom-7};
     TorrentDrawButtonIcon(dc,id,iconRect,RGB(218,246,241));
-    RECT textRect={r.left+39,r.top+2,r.right-7,r.bottom-2};
+    RECT textRect={r.left+27,r.top+2,r.right-5,r.bottom-2};
     TorrentButtonText(dc,caption,textRect,RGB(242,250,253));
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
