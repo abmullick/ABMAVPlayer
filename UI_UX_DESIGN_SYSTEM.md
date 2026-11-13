@@ -361,3 +361,20 @@ A focused visual alignment pass brings the Equalizer, About and Help Centre clos
 - [ ] Verify all five EQ presets, preamp and all ten bands; close/reopen and confirm preferences persist.
 - [ ] Verify About portrait/fallback, text fit and Help scrolling/close at 100%, 125%, 150% and 200% display scaling.
 - [ ] Inspect updater UI separately before any visual changes; update/download/hash-verification behaviour is intentionally out of scope for this pass.
+
+
+## Product-wide rule — No legacy-looking native popups
+
+**This is a standing product requirement for all future ABM AV Player UI work.**
+
+> No legacy-looking Windows popup menus or message boxes in the application's normal user experience.
+
+- Application-owned context menus, action menus, recent-media lists, notifications, alerts, confirmations and error surfaces must use ABM-styled custom UI consistent with the shared dark navy / teal design system.
+- Do not introduce new uses of Win32 `CreatePopupMenu`, `TrackPopupMenu` or `MessageBox` for normal application interactions.
+- Existing native popup menus and message boxes are technical debt and should be replaced incrementally, preserving their existing actions, keyboard behaviour, accessibility, focus handling and safety confirmations.
+- Native Windows file and folder pickers may remain as an explicit temporary exception where the familiar OS picker provides meaningful usability or accessibility value. They should not be confused with application-owned popup menus or message boxes.
+- System-owned prompts that the application cannot or should not skin (for example, UAC consent) remain native.
+- Every custom popup/dialog must handle keyboard navigation, Escape/cancel, focus restoration, screen-edge placement, DPI scaling and long text without clipping.
+- A UI step is not complete until its affected popup/dialog paths have been checked for accidental native fallbacks.
+
+**Audit baseline (current source inventory):** `src/player.c` still contains native `MessageBoxW`, context-menu `CreatePopupMenu` / `TrackPopupMenu`, common file dialogs and `SHBrowseForFolderW`; `src/updater.cpp` contains three native `MessageBoxW` calls. The custom recent-media popup is the first replacement, not completion of the audit. Track remaining replacements as explicit work items and do not claim the application is free of native popups until a source-wide audit and Windows runtime validation confirm it.
