@@ -1073,7 +1073,13 @@ void PaintChrome(HWND hwnd){
         if(g_hoverControl==i)FillRectColor(dc,underline,RGBc(72,210,199));
     }
 
-    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=132,serviceH=116,gap=12;
+    /* Give the provider row a named section and a consistent card baseline. */
+    RECT serviceHeading={24,126,420,148};
+    Text(dc,L"YOUR STREAMING SERVICES",serviceHeading,RGBc(126,199,190),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT serviceHint={rc.right-420,126,rc.right-24,148};
+    Text(dc,L"OFFICIAL PROVIDER SITES  ·  SIGN IN WITH YOUR ACCOUNT",serviceHint,RGBc(112,143,166),10,500,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT serviceRule={24,149,rc.right-24,150};FillRectColor(dc,serviceRule,RGBc(30,53,70));
+    const int serviceLeft=22,serviceRight=rc.right-22,serviceY=154,serviceH=95,gap=12;
     const int serviceW=(serviceRight-serviceLeft-(kServiceCount-1)*gap)/kServiceCount;
     for(int i=0;i<kServiceCount;i++){
         int left=serviceLeft+i*(serviceW+gap);
@@ -1095,7 +1101,7 @@ void PaintChrome(HWND hwnd){
         if(g_serviceLogos[i]){
             UINT iw=g_serviceLogos[i]->GetWidth(),ih=g_serviceLogos[i]->GetHeight();
             if(iw&&ih){
-                const int maxLogoW=(serviceW>145?112:serviceW-30),maxLogoH=76;
+                const int maxLogoW=(serviceW>145?112:serviceW-30),maxLogoH=54;
                 float scale=(float)maxLogoW/(float)iw;
                 float scaleH=(float)maxLogoH/(float)ih;
                 if(scaleH<scale)scale=scaleH;
@@ -1112,12 +1118,12 @@ void PaintChrome(HWND hwnd){
             Text(dc,kServices[i],missing,RGBc(154,184,205),15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
         RECT label=g_serviceRects[i];
-        label.top=serviceY+88;label.bottom=serviceY+109;
+        label.top=serviceY+66;label.bottom=serviceY+87;
         label.left+=5;label.right-=5;
         Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(214,228,240),
             13,active||hover?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         if(active){
-            RECT activeMark={left+serviceW/2-18,serviceY+112,left+serviceW/2+18,serviceY+114};
+            RECT activeMark={left+serviceW/2-18,serviceY+91,left+serviceW/2+18,serviceY+93};
             FillRectColor(dc,activeMark,RGBc(89,224,205));
         }
     }
