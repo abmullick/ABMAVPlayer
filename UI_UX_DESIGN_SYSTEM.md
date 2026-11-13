@@ -301,3 +301,27 @@ The Settings window now consumes the shared UI design tokens for its core visual
 - [ ] Verify storage restart warning, invalid-value messages, update check and settings persistence.
 
 This is a focused visual refinement. The current Settings window remains a single-page layout; category navigation and a fully responsive reflow are not introduced in this step.
+
+## Step 7 — Auxiliary windows
+
+**Implementation branch:** `feature/auxiliary-windows-step7`
+
+A focused visual alignment pass brings the Equalizer, About and Help Centre closer to the shared ABM design system.
+
+- Replaced the Equalizer's legacy blue/purple palette with shared background, surface, border, text and accent tokens. The active EQ control uses the orange attention accent; the frequency curves and controls remain in their existing positions.
+- Updated Equalizer typography to the shared Segoe UI Variable families.
+- Aligned About and Help Centre surfaces, header accents, borders and text colours with the shared palette.
+- Preserved the Equalizer's 10-band gain calculations, preamp range, five preset curves, audio processing calls, preference persistence, mouse interaction and keyboard close behaviour.
+- Preserved About portrait loading, creator/contact/attribution content and Help guide content, navigation, scrolling and shortcuts.
+- Inspected the updater: it uses standard Windows message boxes for release notes, confirmation and errors rather than a dedicated custom window. Those prompts and all release/download/SHA-256/UAC flows were left unchanged.
+- No playback, streaming, casting, torrent, WebView2 or updater implementation was changed.
+
+### Step 7 validation status
+
+- [x] Auxiliary-window palette and typography changes committed on the feature branch.
+- [x] Equalizer DSP, presets, gain ranges and preference-save calls left unchanged.
+- [x] About and Help content and interaction paths retained.
+- [ ] Windows MSVC build and runtime visual validation required.
+- [ ] Verify all five EQ presets, preamp and all ten bands; close/reopen and confirm preferences persist.
+- [ ] Verify About portrait/fallback, text fit and Help scrolling/close at 100%, 125%, 150% and 200% display scaling.
+- [ ] Inspect updater UI separately before any visual changes; update/download/hash-verification behaviour is intentionally out of scope for this pass.
