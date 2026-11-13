@@ -3388,33 +3388,33 @@ static void TorrentLayout(HWND hwnd) {
     const int playbackY=contentBottom+12,networkY=playbackY+112;
     const int cacheY=networkY+84,tvY=cacheY+84;
     MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-254,36,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,sourceTop+24,104,40,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,sourceTop+24,104,40,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,sourceTop+23,104,42,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,sourceTop+23,104,42,TRUE);
     MoveWindow(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,TRUE);
     MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),TRUE);
     MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,TRUE);
     MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,TRUE);
     /* Playback actions use a compact fixed width, like Streaming Centre
        controls; do not stretch them to consume the entire window. */
-    const int actionW=132,actionH=36,actionGap=12;
+    const int actionW=140,actionH=42,actionGap=10;
     int actionTotal=actionW*5+actionGap*4;
     int x=m+(inner-actionTotal)/2;
-    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+57,actionW,actionH,TRUE);x+=actionW+actionGap;}
+    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionW,actionH,TRUE);x+=actionW+actionGap;}
     const int half=inner/2;
     MoveWindow(g_torrentDownLabel,m+14,networkY+4,112,18,TRUE);
     MoveWindow(g_torrentDownLimitEdit,m+126,networkY+30,90,30,TRUE);
     MoveWindow(g_torrentUpLabel,m+half,networkY+4,96,18,TRUE);
     MoveWindow(g_torrentUpLimitEdit,m+half+100,networkY+30,90,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-132,networkY+27,120,40,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-136,networkY+26,124,42,TRUE);
     MoveWindow(g_torrentCacheLabel,m+14,cacheY+4,116,18,TRUE);
     MoveWindow(g_torrentCacheLimitEdit,m+132,cacheY+30,72,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+214,cacheY+27,112,40,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+338,cacheY+27,140,40,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+214,cacheY+26,116,42,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+344,cacheY+26,144,42,TRUE);
     MoveWindow(g_torrentCacheInfoLabel,m+492,cacheY+30,max(80,inner-504),22,TRUE);
-    MoveWindow(g_torrentTvButtons[0],m+14,tvY+28,126,40,TRUE);
-    MoveWindow(g_torrentTvCombo,m+152,tvY+28,max(120,inner-436),40,TRUE);
-    MoveWindow(g_torrentTvButtons[1],w-m-254,tvY+28,118,40,TRUE);
-    MoveWindow(g_torrentTvButtons[2],w-m-124,tvY+28,112,40,TRUE);
+    MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,TRUE);
+    MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,TRUE);
+    MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,TRUE);
+    MoveWindow(g_torrentTvButtons[2],w-m-128,tvY+26,120,42,TRUE);
     MoveWindow(g_torrentDownloadPathLabel,m+14,tvY+72,inner-28,22,TRUE);
     /* Keep interactive buttons above overlapping static labels after relayout. */
     const int buttonIds[]={ID_TORRENT_APPLY_LIMITS,ID_TORRENT_CACHE_APPLY,
@@ -3516,7 +3516,7 @@ static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
     DeleteObject(brush);DeleteObject(pen);
 }
 static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color){
-    HFONT font=CreateFontW(-11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+    HFONT font=CreateFontW(-13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -3526,6 +3526,57 @@ static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
     return RGB((GetRValue(a)*(maxT-t)+GetRValue(b)*t)/maxT,
                (GetGValue(a)*(maxT-t)+GetGValue(b)*t)/maxT,
                (GetBValue(a)*(maxT-t)+GetBValue(b)*t)/maxT);
+}
+static void TorrentDrawButtonIcon(HDC dc,int id,RECT r,COLORREF color){
+    int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
+    HPEN pen=CreatePen(PS_SOLID,2,color);HGDIOBJ oldPen=SelectObject(dc,pen);
+    HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    SetBkMode(dc,TRANSPARENT);
+    switch(id){
+    case ID_TORRENT_PAUSE: /* torrent download pause */
+        Rectangle(dc,cx-8,cy-9,cx-3,cy+9);Rectangle(dc,cx+3,cy-9,cx+8,cy+9);break;
+    case ID_TORRENT_STREAM: { /* local stream play */
+        HGDIOBJ old=SelectObject(dc,GetStockObject(WHITE_BRUSH));
+        POINT pts[3]={{cx-6,cy-10},{cx+9,cy},{cx-6,cy+10}};
+        Polygon(dc,pts,3);SelectObject(dc,old);break;
+    }
+    case ID_TORRENT_STOP:
+        Rectangle(dc,cx-8,cy-8,cx+8,cy+8);break;
+    case ID_TORRENT_REMOVE: case ID_TORRENT_CLEAR_CACHE: /* delete */
+        MoveToEx(dc,cx-9,cy-7,NULL);LineTo(dc,cx+9,cy-7);
+        MoveToEx(dc,cx-5,cy-10,NULL);LineTo(dc,cx+5,cy-10);
+        MoveToEx(dc,cx-7,cy-5,NULL);LineTo(dc,cx-5,cy+9);LineTo(dc,cx+5,cy+9);LineTo(dc,cx+7,cy-5);
+        MoveToEx(dc,cx-2,cy-3,NULL);LineTo(dc,cx-2,cy+6);
+        MoveToEx(dc,cx+2,cy-3,NULL);LineTo(dc,cx+2,cy+6);break;
+    case ID_TORRENT_REFRESH:
+        Arc(dc,cx-9,cy-9,cx+9,cy+9, cx+8,cy-4,cx+2,cy-9);
+        MoveToEx(dc,cx+2,cy-9,NULL);LineTo(dc,cx+9,cy-9);LineTo(dc,cx+8,cy-2);break;
+    case ID_TORRENT_FIND_TVS: case ID_TORRENT_CAST_TV: case ID_TORRENT_STOP_TV:
+        RoundRect(dc,cx-11,cy-8,cx+11,cy+6,3,3);
+        MoveToEx(dc,cx,cy+6,NULL);LineTo(dc,cx,cy+10);
+        MoveToEx(dc,cx-6,cy+10,NULL);LineTo(dc,cx+6,cy+10);
+        if(id==ID_TORRENT_FIND_TVS){
+            Ellipse(dc,cx+3,cy-13,cx+12,cy-4);
+            MoveToEx(dc,cx+10,cy-5,NULL);LineTo(dc,cx+14,cy-1);
+        } else if(id==ID_TORRENT_CAST_TV){
+            MoveToEx(dc,cx-5,cy-3,NULL);LineTo(dc,cx-1,cy-3);
+            MoveToEx(dc,cx+2,cy-3,NULL);LineTo(dc,cx+6,cy-3);
+        } else {
+            Rectangle(dc,cx-4,cy-3,cx+4,cy+3);
+        }
+        break;
+    case ID_TORRENT_APPLY_LIMITS: case ID_TORRENT_CACHE_APPLY:
+        MoveToEx(dc,cx-8,cy,NULL);LineTo(dc,cx-2,cy+6);LineTo(dc,cx+9,cy-7);break;
+    case ID_TORRENT_ADD_MAGNET:
+        Arc(dc,cx-8,cy-9,cx+8,cy+9,cx+8,cy-4,cx+8,cy+4);
+        MoveToEx(dc,cx+8,cy-5,NULL);LineTo(dc,cx+8,cy-10);
+        MoveToEx(dc,cx+8,cy+5,NULL);LineTo(dc,cx+8,cy+10);break;
+    case ID_TORRENT_BROWSE:
+        MoveToEx(dc,cx-11,cy-5,NULL);LineTo(dc,cx-3,cy-5);LineTo(dc,cx,cy-1);
+        LineTo(dc,cx+11,cy-1);LineTo(dc,cx+9,cy+9);LineTo(dc,cx-11,cy+9);LineTo(dc,cx-11,cy-5);break;
+    default: break;
+    }
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
 }
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
@@ -3557,9 +3608,12 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     HPEN hi=CreatePen(PS_SOLID,1,pressed?RGB(190,238,224):RGB(66,112,105));oldPen=SelectObject(dc,hi);
     MoveToEx(dc,face.left+9,face.top+1,NULL);LineTo(dc,face.right-9,face.top+1);
     SelectObject(dc,oldPen);DeleteObject(hi);
-    InflateRect(&r,-7,-2);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-    TorrentButtonText(dc,caption,r,RGB(242,250,253));
+    int id=GetDlgCtrlID(item->hwndItem);
+    RECT iconRect={r.left+13,r.top+4,r.left+37,r.bottom-4};
+    TorrentDrawButtonIcon(dc,id,iconRect,RGB(218,246,241));
+    RECT textRect={r.left+39,r.top+2,r.right-7,r.bottom-2};
+    TorrentButtonText(dc,caption,textRect,RGB(242,250,253));
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
