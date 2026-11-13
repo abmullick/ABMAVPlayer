@@ -8,4 +8,9 @@ build/
 *.suo
 *.user
 packages/
-\n# Publisher secrets and customer licence material\n*.pem\n*.p12\n*.key\n*.license\n
+
+# Publisher secrets and customer licence material
+*.pem
+*.p12
+*.key
+*.license
