@@ -2,7 +2,9 @@
 
 This guide covers the Windows desktop player and its separate Streaming Centre. Some playback, discovery and casting features depend on the installed 64-bit VLC runtime/plugins, receiver capabilities, WebView2 and provider policies.
 
-## 1. First launch and adding media
+## 1. Licence activation and free trial
+
+On first launch, ABM AV Player displays its activation window. You can enter a perpetual product key or start the **10-day full-feature trial**. The trial begins on the first application launch, not when the installer is downloaded. The activation window displays a device ID; use **Copy device ID** when requesting a licence from the publisher. A perpetual key is bound to that device and works offline after activation. Once the trial expires, the application requires a valid key before opening the player. Reinstalling Windows or changing the system drive can change the device ID, in which case the publisher may need to issue a replacement key.\n\n## 2. First launch and adding media
 
 1. Start ABM AV Player.
 2. Select **Open media** or press **Ctrl+O**.
