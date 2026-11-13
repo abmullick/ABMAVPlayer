@@ -2434,12 +2434,12 @@ static void LoadPlaylist(void) {
 }
 static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(!g_hasMedia)return;
-    ABMMenuItem items[100];wchar_t trackLabels[64][256];int count=0,trackCount=0;
+    ABMMenuItem items[100];wchar_t trackLabels[24][256];int count=0,trackCount=0;
 #define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
-    for(libvlc_track_description_t *t=tracks;t&&trackCount<64;t=t->p_next){
+    for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
         wchar_t *label=trackLabels[trackCount];label[0]=0;
         if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,label,256);
         if(!label[0])StringCchPrintfW(label,256,L"Audio track %d",trackCount+1);
