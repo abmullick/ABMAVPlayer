@@ -2699,32 +2699,32 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         RECT client;GetClientRect(hwnd,&client);
         HDC mem=CreateCompatibleDC(dc);HBITMAP bmp=CreateCompatibleBitmap(dc,client.right,client.bottom);
         HBITMAP old=(HBITMAP)SelectObject(mem,bmp);
-        HBRUSH bg=CreateSolidBrush(RGB(10,17,29));FillRect(mem,&client,bg);DeleteObject(bg);
-        HPEN border=CreatePen(PS_SOLID,1,RGB(49,102,126));HGDIOBJ oldPen=SelectObject(mem,border);
-        HBRUSH panel=CreateSolidBrush(RGB(14,26,42));HGDIOBJ oldBrush=SelectObject(mem,panel);
+        HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(mem,&client,bg);DeleteObject(bg);
+        HPEN border=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER_STRONG);HGDIOBJ oldPen=SelectObject(mem,border);
+        HBRUSH panel=CreateSolidBrush(ABM_UI_COLOR_SURFACE);HGDIOBJ oldBrush=SelectObject(mem,panel);
         RoundRect(mem,8,8,client.right-8,client.bottom-8,22,22);
         SelectObject(mem,oldBrush);DeleteObject(panel);SelectObject(mem,oldPen);DeleteObject(border);
         SetBkMode(mem,TRANSPARENT);
-        HFONT title=CreateFontW(23,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        HFONT smallFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HFONT title=CreateFontW(23,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
+        HFONT smallFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         HFONT normal=CreateFontW(14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ oldFont=SelectObject(mem,title);SetTextColor(mem,RGB(240,247,253));
+        HGDIOBJ oldFont=SelectObject(mem,title);SetTextColor(mem,ABM_UI_COLOR_TEXT);
         TextOutW(mem,28,23,L"ADVANCED EQUALIZER",18);
-        SelectObject(mem,smallFont);SetTextColor(mem,RGB(127,171,190));
+        SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_ACCENT_BRIGHT);
         TextOutW(mem,30,52,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",48);
-        SelectObject(mem,normal);SetTextColor(mem,RGB(202,218,232));
+        SelectObject(mem,normal);SetTextColor(mem,ABM_UI_COLOR_TEXT_SECONDARY);
         TextOutW(mem,30,105,L"PREAMP",6);
-        RECT preTrack={145,116,555,120};HBRUSH track=CreateSolidBrush(RGB(44,61,78));FillRect(mem,&preTrack,track);DeleteObject(track);
+        RECT preTrack={145,116,555,120};HBRUSH track=CreateSolidBrush(ABM_UI_COLOR_BORDER);FillRect(mem,&preTrack,track);DeleteObject(track);
         int preX=145+(int)((g_eqPreamp+12.0f)/24.0f*410.0f);
-        HPEN accent=CreatePen(PS_SOLID,3,RGB(72,181,151));oldPen=SelectObject(mem,accent);
+        HPEN accent=CreatePen(PS_SOLID,3,ABM_UI_COLOR_ACCENT);oldPen=SelectObject(mem,accent);
         MoveToEx(mem,145,118,NULL);LineTo(mem,preX,118);SelectObject(mem,oldPen);DeleteObject(accent);
-        HBRUSH knob=CreateSolidBrush(RGB(91,173,145));HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
+        HBRUSH knob=CreateSolidBrush(ABM_UI_COLOR_ACCENT_BRIGHT);HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
         wchar_t preText[32];swprintf_s(preText,_countof(preText),L"%+.1f dB",g_eqPreamp);
         RECT pr={565,102,650,132};DrawTextW(mem,preText,-1,&pr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(mem,smallFont);SetTextColor(mem,RGB(110,139,165));
+        SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_TEXT_MUTED);
         for(int line=-12;line<=12;line+=6){
             int yy=155+(12-line)*160/24;
-            HPEN grid=CreatePen(PS_DOT,1,RGB(40,57,75));oldPen=SelectObject(mem,grid);
+            HPEN grid=CreatePen(PS_DOT,1,ABM_UI_COLOR_BORDER);oldPen=SelectObject(mem,grid);
             MoveToEx(mem,32,yy,NULL);LineTo(mem,648,yy);SelectObject(mem,oldPen);DeleteObject(grid);
             wchar_t db[20];swprintf_s(db,_countof(db),L"%+d",line);
             RECT lr={15,yy-8,37,yy+8};DrawTextW(mem,db,-1,&lr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
@@ -2733,24 +2733,24 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         for(int i=0;i<10;i++){
             int cx=58+i*62,zeroY=235;
             int thumbY=155+(int)((12.0f-g_eqBandGain[i])*160.0f/24.0f);
-            HPEN rail=CreatePen(PS_SOLID,5,RGB(42,59,77));oldPen=SelectObject(mem,rail);
+            HPEN rail=CreatePen(PS_SOLID,5,ABM_UI_COLOR_SURFACE_RAISED);oldPen=SelectObject(mem,rail);
             MoveToEx(mem,cx,155,NULL);LineTo(mem,cx,315);SelectObject(mem,oldPen);DeleteObject(rail);
-            HPEN active=CreatePen(PS_SOLID,5,RGB(57,190,202));oldPen=SelectObject(mem,active);
+            HPEN active=CreatePen(PS_SOLID,5,ABM_UI_COLOR_ACCENT_BRIGHT);oldPen=SelectObject(mem,active);
             MoveToEx(mem,cx,zeroY,NULL);LineTo(mem,cx,thumbY);SelectObject(mem,oldPen);DeleteObject(active);
-            HBRUSH dot=CreateSolidBrush(RGB(119,105,232));ob=SelectObject(mem,dot);
+            HBRUSH dot=CreateSolidBrush(ABM_UI_COLOR_ACCENT_ORANGE);ob=SelectObject(mem,dot);
             Ellipse(mem,cx-8,thumbY-8,cx+8,thumbY+8);SelectObject(mem,ob);DeleteObject(dot);
             wchar_t val[24];swprintf_s(val,_countof(val),L"%+.1f",g_eqBandGain[i]);
-            SelectObject(mem,normal);SetTextColor(mem,RGB(222,234,244));
+            SelectObject(mem,normal);SetTextColor(mem,ABM_UI_COLOR_TEXT_SECONDARY);
             RECT vr={cx-26,thumbY-28,cx+26,thumbY-10};DrawTextW(mem,val,-1,&vr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            SelectObject(mem,smallFont);SetTextColor(mem,RGB(139,164,187));
+            SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_TEXT_MUTED);
             RECT fr={cx-28,321,cx+28,340};DrawTextW(mem,fallback[i],-1,&fr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
         for(int i=0;i<5;i++){
             RECT r={30+i*126,354,145+i*126,383};
-            HBRUSH pb=CreateSolidBrush(RGB(24,43,63));ob=SelectObject(mem,pb);
+            HBRUSH pb=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);ob=SelectObject(mem,pb);
             RoundRect(mem,r.left,r.top,r.right,r.bottom,10,10);SelectObject(mem,ob);DeleteObject(pb);
-            SelectObject(mem,smallFont);SetTextColor(mem,RGB(174,207,226));
+            SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_TEXT_SECONDARY);
             DrawTextW(mem,presetNames[i],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         SelectObject(mem,oldFont);DeleteObject(title);DeleteObject(smallFont);DeleteObject(normal);
@@ -4229,11 +4229,11 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_PAINT: {
         PAINTSTRUCT ps; HDC dc=BeginPaint(hwnd,&ps);
         RECT rc; GetClientRect(hwnd,&rc);
-        HBRUSH bg=CreateSolidBrush(RGB(10,20,35)); FillRect(dc,&rc,bg); DeleteObject(bg);
+        HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND); FillRect(dc,&rc,bg); DeleteObject(bg);
         RECT band={0,0,rc.right,7};
-        HBRUSH accent=CreateSolidBrush(RGB(47,185,205)); FillRect(dc,&band,accent); DeleteObject(accent);
+        HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_ACCENT); FillRect(dc,&band,accent); DeleteObject(accent);
         SetBkMode(dc,TRANSPARENT);
-        HFONT title=CreateFontW(-31,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+        HFONT title=CreateFontW(-31,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,ABM_UI_FONT_FAMILY_TEXT);
         HFONT heading=CreateFontW(-22,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
         HFONT body=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
         if(g_aboutPortrait) {
@@ -4245,23 +4245,23 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             StretchBlt(dc,34,55,side,side,mem,sx,sy,sw,sw,SRCCOPY);
             SelectObject(mem,old); DeleteDC(mem);
         } else {
-            RECT photo={34,55,284,305}; HBRUSH ph=CreateSolidBrush(RGB(24,43,63)); FillRect(dc,&photo,ph); DeleteObject(ph);
-            SetTextColor(dc,RGB(155,180,198)); HFONT hint=body; SelectObject(dc,hint);
+            RECT photo={34,55,284,305}; HBRUSH ph=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED); FillRect(dc,&photo,ph); DeleteObject(ph);
+            SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED); HFONT hint=body; SelectObject(dc,hint);
             DrawTextW(dc,L"Add your portrait to\nassets\\owner_portrait.bmp",-1,&photo,DT_CENTER|DT_VCENTER|DT_WORDBREAK);
         }
-        RECT r={320,58,rc.right-34,108}; SelectObject(dc,title); SetTextColor(dc,RGB(250,253,255)); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=116;r.bottom=145;SelectObject(dc,body);SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        RECT r={320,58,rc.right-34,108}; SelectObject(dc,title); SetTextColor(dc,ABM_UI_COLOR_TEXT); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=116;r.bottom=145;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=151;r.bottom=192;SelectObject(dc,heading);SetTextColor(dc,RGB(255,255,255));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=198;r.bottom=232;SelectObject(dc,body);SetTextColor(dc,RGB(232,241,250));DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=245;r.bottom=274;SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=198;r.bottom=232;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=245;r.bottom=274;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=278;r.bottom=310;SetTextColor(dc,RGB(250,252,255));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=322;r.bottom=372;SetTextColor(dc,RGB(235,243,250));DrawTextW(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
-        RECT divider={28,405,rc.right-28,407};HBRUSH line=CreateSolidBrush(RGB(48,76,98));FillRect(dc,&divider,line);DeleteObject(line);
-        r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,body);SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=461;r.bottom=535;SetTextColor(dc,RGB(241,247,253));DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
-        r.top=550;r.bottom=580;SetTextColor(dc,RGB(91,231,220));DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=585;r.bottom=616;SetTextColor(dc,RGB(235,243,250));DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=628;r.bottom=656;SetTextColor(dc,RGB(190,211,230));DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=322;r.bottom=372;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        RECT divider={28,405,rc.right-28,407};HBRUSH line=CreateSolidBrush(ABM_UI_COLOR_BORDER);FillRect(dc,&divider,line);DeleteObject(line);
+        r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=461;r.bottom=535;SetTextColor(dc,ABM_UI_COLOR_TEXT);DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        r.top=550;r.bottom=580;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=585;r.bottom=616;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=628;r.bottom=656;SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
         DeleteObject(title);DeleteObject(heading);DeleteObject(body);
         EndPaint(hwnd,&ps);return 0;
@@ -4334,7 +4334,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"\r\n"
             L"ABM AV Player is a desktop media player built on LibVLC. Streaming Centre web playback is separate from local media playback and does not provide subscriptions or bypass provider protections.";
 
-        if(!g_helpBrush)g_helpBrush=CreateSolidBrush(RGB(12,22,35));
+        if(!g_helpBrush)g_helpBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
         if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(25,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
         if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(15,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
@@ -4353,25 +4353,25 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
-        HBRUSH bg=CreateSolidBrush(RGB(7,12,21));FillRect(dc,&rc,bg);DeleteObject(bg);
-        RECT header={0,0,rc.right,88};HBRUSH head=CreateSolidBrush(RGB(13,27,43));FillRect(dc,&header,head);DeleteObject(head);
-        RECT accent={0,86,rc.right,89};HBRUSH accentBrush=CreateSolidBrush(RGB(53,174,171));FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
+        HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
+        RECT header={0,0,rc.right,88};HBRUSH head=CreateSolidBrush(ABM_UI_COLOR_SURFACE_BLUE);FillRect(dc,&header,head);DeleteObject(head);
+        RECT accent={0,86,rc.right,89};HBRUSH accentBrush=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
         SetBkMode(dc,TRANSPARENT);
-        HFONT old=(HFONT)SelectObject(dc,g_helpTitleFont);SetTextColor(dc,RGB(245,249,255));
+        HFONT old=(HFONT)SelectObject(dc,g_helpTitleFont);SetTextColor(dc,ABM_UI_COLOR_TEXT);
         RECT title={26,13,rc.right-70,47};DrawTextW(dc,L"Help Centre",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,RGB(111,197,204));
+        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
         RECT kicker={28,48,rc.right-70,69};DrawTextW(dc,L"ABM AV PLAYER   /   USER GUIDE",-1,&kicker,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT close={rc.right-52,18,rc.right-16,54};
-        HBRUSH closeBrush=CreateSolidBrush(RGB(27,43,59));RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);DeleteObject(closeBrush);
-        HPEN pen=CreatePen(PS_SOLID,2,RGB(190,210,224));HGDIOBJ oldPen=SelectObject(dc,pen);
+        HBRUSH closeBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);DeleteObject(closeBrush);
+        HPEN pen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT_SECONDARY);HGDIOBJ oldPen=SelectObject(dc,pen);
         MoveToEx(dc,close.left+13,close.top+12,NULL);LineTo(dc,close.right-13,close.bottom-12);
         MoveToEx(dc,close.right-13,close.top+12,NULL);LineTo(dc,close.left+13,close.bottom-12);
         SelectObject(dc,oldPen);DeleteObject(pen);
-        RECT footer={0,rc.bottom-48,rc.right,rc.bottom};HBRUSH foot=CreateSolidBrush(RGB(11,20,33));FillRect(dc,&footer,foot);DeleteObject(foot);
-        HPEN line=CreatePen(PS_SOLID,1,RGB(39,59,78));oldPen=SelectObject(dc,line);
+        RECT footer={0,rc.bottom-48,rc.right,rc.bottom};HBRUSH foot=CreateSolidBrush(ABM_UI_COLOR_SURFACE);FillRect(dc,&footer,foot);DeleteObject(foot);
+        HPEN line=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);oldPen=SelectObject(dc,line);
         MoveToEx(dc,0,rc.bottom-48,NULL);LineTo(dc,rc.right,rc.bottom-48);
         SelectObject(dc,oldPen);DeleteObject(line);
-        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,RGB(130,157,181));
+        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);
         RECT footText={26,rc.bottom-42,rc.right-24,rc.bottom-12};
         DrawTextW(dc,L"TIP   Press F1 to open this guide   •   Scroll to explore all features",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
@@ -4392,7 +4392,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(218,231,243));SetBkColor(dc,RGB(12,22,35));
+        HDC dc=(HDC)wp;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);
         return (LRESULT)g_helpBrush;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
