@@ -403,3 +403,26 @@ A focused visual alignment pass brings the Equalizer, About and Help Centre clos
 7. Verify 100%, 125%, 150% and 200% DPI scaling and multi-monitor positioning.
 
 Do not mark this cleanup complete until the Windows build and the above runtime checks pass.
+
+
+## Step 9 — Motion and interaction polish
+
+**Implementation commit:** `df53ad38d4e591a067162e5c23c6967a181d2179`
+
+- Added eased hover transitions to the four idle home-dashboard action cards.
+- Cards lift by at most 3 layout pixels, their border and icon tint transition smoothly, and the animation settles when the pointer leaves.
+- Motion is driven by the existing main-window 30 Hz UI timer; it reuses the existing integer easing helper and existing paint path.
+- Animation is strictly presentation-only. It does not move the LibVLC video child, change playback state, start background work, or add a new timer.
+- Hover motion settles when media starts, the drawer/menu opens or fullscreen is entered.
+
+**Windows validation checklist**
+
+1. Hover each of the four home cards; verify smooth lift/tint transition and return-to-rest.
+2. Move rapidly between cards and outside the dashboard; verify no flicker, stuck hover state or hit-target mismatch.
+3. Click each card during and after the hover transition; verify original actions still fire.
+4. Start playback, open the drawer/menu and enter fullscreen; verify dashboard motion stops and playback/video rendering remains unaffected.
+5. Observe CPU usage and frame pacing at idle; confirm the existing 30 Hz timer is not causing unnecessary work or visible redraw flicker.
+6. Verify 100%, 125%, 150% and 200% display scaling.
+
+- [x] Implement restrained dashboard hover motion using the existing UI timer.
+- [ ] Build with Windows MSVC and perform runtime/performance checks.
