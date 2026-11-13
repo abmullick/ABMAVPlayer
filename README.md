@@ -24,6 +24,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 - [Application Settings guide](SETTINGS.md): playback/audio preferences, torrent cache location, quota, bandwidth limits and configuration files.
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
+- [UI/UX design system](UI_UX_DESIGN_SYSTEM.md): UI audit, shared visual tokens, component standards and staged adoption plan.
 
 ## Features
 
