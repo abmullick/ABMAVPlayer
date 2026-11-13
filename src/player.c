@@ -3406,26 +3406,36 @@ static void TorrentSliderSetPoint(HWND hwnd,TorrentSliderState *s,int x){
     InvalidateRect(hwnd,NULL,FALSE);
 }
 static void TorrentSliderPaint(HWND hwnd,HDC dc,TorrentSliderState *s){
-    RECT r;GetClientRect(hwnd,&r);HBRUSH bg=CreateSolidBrush(RGB(12,27,43));
-    FillRect(dc,&r,bg);DeleteObject(bg);
-    int left=14,right=r.right-104,cy=(r.top+r.bottom)/2;if(right<=left+12)return;
+    RECT r;GetClientRect(hwnd,&r);
+    HBRUSH bg=CreateSolidBrush(RGB(12,27,43));FillRect(dc,&r,bg);DeleteObject(bg);
+    int left=14,right=r.right-104,cy=(r.top+r.bottom)/2;if(right<=left+18)return;
     int pos=TorrentSliderToPos(s->kind,s->value),thumb=left+(right-left)*pos/1000;
-    RECT track={left,cy-3,right,cy+3};HRGN region=CreateRoundRectRgn(track.left,track.top,track.right,track.bottom,6,6);
-    HBRUSH rail=CreateSolidBrush(RGB(35,62,79));FillRgn(dc,region,rail);DeleteObject(region);DeleteObject(rail);
-    if(thumb>left){RECT fill={left,cy-3,thumb,cy+3};region=CreateRoundRectRgn(fill.left,fill.top,fill.right,fill.bottom,6,6);
-        HBRUSH accent=CreateSolidBrush(RGB(54,174,157));FillRgn(dc,region,accent);DeleteObject(region);DeleteObject(accent);}
-    HPEN haloPen=CreatePen(PS_SOLID,5,RGB(25,83,87));HGDIOBJ oldPen=SelectObject(dc,haloPen);
-    HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(NULL_BRUSH));
-    Ellipse(dc,thumb-10,cy-10,thumb+10,cy+10);SelectObject(dc,oldPen);DeleteObject(haloPen);
-    HBRUSH knob=CreateSolidBrush(RGB(133,231,211));oldBrush=SelectObject(dc,knob);
-    HPEN knobPen=CreatePen(PS_SOLID,1,RGB(210,255,246));oldPen=SelectObject(dc,knobPen);
-    Ellipse(dc,thumb-6,cy-6,thumb+6,cy+6);
-    SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(knobPen);DeleteObject(knob);
-    RECT pill={r.right-91,cy-15,r.right-3,cy+15};
-    HBRUSH pillBrush=CreateSolidBrush(RGB(16,48,62));HPEN pillPen=CreatePen(PS_SOLID,1,RGB(48,120,133));
-    oldBrush=SelectObject(dc,pillBrush);oldPen=SelectObject(dc,pillPen);
-    RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,12,12);
-    SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(pillPen);DeleteObject(pillBrush);
+    /* Deep recessed rail with a luminous teal progress segment. */
+    RECT track={left,cy-4,right,cy+4};
+    HRGN region=CreateRoundRectRgn(track.left,track.top,track.right,track.bottom,8,8);
+    HBRUSH rail=CreateSolidBrush(RGB(28,52,69));FillRgn(dc,region,rail);DeleteObject(region);DeleteObject(rail);
+    if(thumb>left){
+        RECT fill={left,cy-4,thumb,cy+4};region=CreateRoundRectRgn(fill.left,fill.top,fill.right,fill.bottom,8,8);
+        HBRUSH accent=CreateSolidBrush(RGB(49,151,143));FillRgn(dc,region,accent);DeleteObject(region);DeleteObject(accent);
+        HPEN sheen=CreatePen(PS_SOLID,1,RGB(103,218,190));HGDIOBJ op=SelectObject(dc,sheen);
+        MoveToEx(dc,left+4,cy-2,NULL);LineTo(dc,max(left+4,thumb-3),cy-2);
+        SelectObject(dc,op);DeleteObject(sheen);
+    }
+    /* Soft outer halo and a larger two-tone thumb. */
+    HBRUSH halo=CreateSolidBrush(RGB(22,65,73));HGDIOBJ ob=SelectObject(dc,halo);
+    HPEN none=(HPEN)GetStockObject(NULL_PEN);HGDIOBJ op=SelectObject(dc,none);
+    Ellipse(dc,thumb-13,cy-13,thumb+13,cy+13);
+    SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(halo);
+    HBRUSH knob=CreateSolidBrush(RGB(115,220,199));HPEN rim=CreatePen(PS_SOLID,1,RGB(205,255,240));
+    ob=SelectObject(dc,knob);op=SelectObject(dc,rim);
+    Ellipse(dc,thumb-7,cy-7,thumb+7,cy+7);
+    SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(rim);DeleteObject(knob);
+    /* Value capsule is isolated from the track and always legible. */
+    RECT pill={r.right-94,cy-16,r.right-2,cy+16};
+    HBRUSH pillBrush=CreateSolidBrush(RGB(17,48,64));HPEN pillPen=CreatePen(PS_SOLID,1,RGB(67,151,151));
+    ob=SelectObject(dc,pillBrush);op=SelectObject(dc,pillPen);
+    RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,14,14);
+    SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(pillPen);DeleteObject(pillBrush);
     wchar_t valueText[48];
     if(s->kind<2){if(s->value==0)StringCchCopyW(valueText,_countof(valueText),L"Unlimited");
         else if(s->value>=1024)StringCchPrintfW(valueText,_countof(valueText),L"%.1f MiB/s",(double)s->value/1024.0);
@@ -3476,40 +3486,42 @@ static void TorrentLayout(HWND hwnd) {
     if(contentBottom<contentTop+100)contentBottom=contentTop+100;
     const int playbackY=contentBottom+12,networkY=playbackY+112;
     const int cacheY=networkY+84,tvY=cacheY+84;
-    MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-254,36,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,sourceTop+23,104,42,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,sourceTop+23,104,42,TRUE);
-    MoveWindow(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,TRUE);
-    MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),TRUE);
-    MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,TRUE);
-    MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,TRUE);
+    MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-254,36,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,sourceTop+23,104,42,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,sourceTop+23,104,42,FALSE);
+    MoveWindow(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,FALSE);
+    MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),FALSE);
+    MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,FALSE);
+    MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,FALSE);
     /* Playback actions use a compact fixed width, like Streaming Centre
        controls; do not stretch them to consume the entire window. */
     const int actionW=140,actionH=42,actionGap=10;
     int actionTotal=actionW*5+actionGap*4;
     int x=m+(inner-actionTotal)/2;
-    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionW,actionH,TRUE);x+=actionW+actionGap;}
-    const int half=inner/2;
-    MoveWindow(g_torrentDownLabel,m+14,networkY+4,112,18,TRUE);
+    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionW,actionH,FALSE);x+=actionW+actionGap;}
+    /* Two balanced bandwidth columns; reserve a dedicated action lane at right. */
+    const int leftX=m+14,applyX=w-m-136,gap=18;
+    const int sliderW=max(170,(applyX-leftX-gap)/2);
+    const int secondX=leftX+sliderW+gap;
+    MoveWindow(g_torrentDownLabel,leftX,networkY+3,sliderW,18,FALSE);
+    MoveWindow(g_torrentUpLabel,secondX,networkY+3,sliderW,18,FALSE);
     ShowWindow(g_torrentDownLimitEdit,SW_HIDE);ShowWindow(g_torrentUpLimitEdit,SW_HIDE);
     for(int si=0;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
-    MoveWindow(g_torrentUpLabel,m+half,networkY+4,112,18,TRUE);
-    int sliderW=max(160,half-260);
-    MoveWindow(g_torrentSliders[0],m+126,networkY+20,sliderW,46,TRUE);
-    MoveWindow(g_torrentSliders[1],m+half+112,networkY+20,sliderW,46,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-136,networkY+26,124,42,TRUE);
-    MoveWindow(g_torrentCacheLabel,m+14,cacheY+4,116,18,TRUE);
+    MoveWindow(g_torrentSliders[0],leftX,networkY+25,sliderW,46,FALSE);
+    MoveWindow(g_torrentSliders[1],secondX,networkY+25,sliderW,46,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),applyX,networkY+25,124,42,FALSE);
+    MoveWindow(g_torrentCacheLabel,m+14,cacheY+3,350,18,FALSE);
     ShowWindow(g_torrentCacheLimitEdit,SW_HIDE);
     for(int si=4;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
-    MoveWindow(g_torrentSliders[2],m+132,cacheY+20,250,46,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+396,cacheY+26,116,42,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+526,cacheY+26,144,42,TRUE);
-    MoveWindow(g_torrentCacheInfoLabel,m+680,cacheY+30,max(80,inner-692),22,TRUE);
-    MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,TRUE);
-    MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,TRUE);
-    MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,TRUE);
-    MoveWindow(g_torrentTvButtons[2],w-m-128,tvY+26,120,42,TRUE);
-    MoveWindow(g_torrentDownloadPathLabel,m+14,tvY+72,inner-28,22,TRUE);
+    MoveWindow(g_torrentSliders[2],m+14,cacheY+25,350,46,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+396,cacheY+25,116,42,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+526,cacheY+25,144,42,FALSE);
+    MoveWindow(g_torrentCacheInfoLabel,m+680,cacheY+30,max(80,inner-692),22,FALSE);
+    MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,FALSE);
+    MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,FALSE);
+    MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,FALSE);
+    MoveWindow(g_torrentTvButtons[2],w-m-128,tvY+26,120,42,FALSE);
+    MoveWindow(g_torrentDownloadPathLabel,m+14,tvY+72,inner-28,22,FALSE);
     /* Keep interactive buttons above overlapping static labels after relayout. */
     const int buttonIds[]={ID_TORRENT_APPLY_LIMITS,ID_TORRENT_CACHE_APPLY,
         ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,ID_TORRENT_CAST_TV,
@@ -3517,8 +3529,11 @@ static void TorrentLayout(HWND hwnd) {
         ID_TORRENT_STOP,ID_TORRENT_REMOVE,ID_TORRENT_REFRESH};
     for(int i=0;i<(int)_countof(buttonIds);++i){
         HWND b=GetDlgItem(hwnd,buttonIds[i]);
-        if(b)SetWindowPos(b,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW);
+        if(b)SetWindowPos(b,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOREDRAW|SWP_SHOWWINDOW);
     }
+    /* Batch all child geometry changes, then repaint once to prevent ghosted
+       controls and stale slider/button fragments during maximize/restore. */
+    RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
 }
 static void TorrentPaint(HWND hwnd){
     RECT rc={0};GetClientRect(hwnd,&rc);
@@ -3586,11 +3601,11 @@ static void TorrentPaint(HWND hwnd){
     r=(RECT){m,networkY,w-m,networkY+76};
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
-    r=(RECT){m+14,networkY+2,m+220,networkY+22};ABM_D2D_Text(&g_torrentUi,L"NETWORK LIMITS",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Fill(&g_torrentUi,m+14,networkY+7,m+54,networkY+9,accent);
     r=(RECT){m,cacheY,w-m,cacheY+76};
     ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
-    r=(RECT){m+14,cacheY+2,m+220,cacheY+22};ABM_D2D_Text(&g_torrentUi,L"STORAGE & CACHE",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Fill(&g_torrentUi,m+14,cacheY+7,m+54,cacheY+9,accent);
 
     /* Receiver dock */
     r=(RECT){m,tvY,w-m,h-12};
@@ -3842,7 +3857,11 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
-    case WM_SIZE: if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_SIZE:
+        if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
+        TorrentLayout(hwnd);
+        RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
+        return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=760;return 0; }
     case WM_ERASEBKGND: return 1;
     
