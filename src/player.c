@@ -197,6 +197,66 @@ static COLORREF C_MUTED = RGB(145,160,181);
 static COLORREF C_ACCENT = RGB(82,205,224);
 static COLORREF C_LINE = RGB(39,51,70);
 
+
+/* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
+   preserving the Win32 result codes expected by existing call sites. */
+typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
+static ABMDialogState g_abmDialog;
+static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
+    ABMDialogState *d=(ABMDialogState*)GetWindowLongPtrW(w,GWLP_USERDATA);
+    switch(m) {
+    case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
+    case WM_ERASEBKGND:return 1;
+    case WM_KEYDOWN:
+        if(wp==VK_ESCAPE){d->result=(d->flags&MB_YESNO)?IDNO:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
+        if(wp==VK_RETURN){d->result=(d->flags&MB_YESNO)?IDYES:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
+        break;
+    case WM_LBUTTONUP: {
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        for(int i=0;i<d->buttonCount;i++)if(x>=d->buttons[i].left&&x<d->buttons[i].right&&y>=d->buttons[i].top&&y<d->buttons[i].bottom){
+            d->result=(d->flags&MB_YESNO)?(i==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;
+        } return 0;
+    }
+    case WM_PAINT: {
+        PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
+        HBRUSH bg=CreateSolidBrush(RGB(9,15,25));FillRect(dc,&rc,bg);DeleteObject(bg);
+        RECT head={0,0,rc.right,54};HBRUSH hb=CreateSolidBrush(RGB(15,34,48));FillRect(dc,&head,hb);DeleteObject(hb);
+        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(242,248,255));
+        HFONT title=CreateFontW(-18,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        HFONT body=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        HGDIOBJ old=SelectObject(dc,title);RECT cap={22,8,rc.right-20,46};DrawTextW(dc,d->caption&&*d->caption?d->caption:L"ABM AV Player",-1,&cap,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        SelectObject(dc,body);COLORREF accent=(d->flags&MB_ICONERROR)?RGB(220,75,85):(d->flags&MB_ICONWARNING)?RGB(242,177,79):RGB(82,205,190);
+        HBRUSH dot=CreateSolidBrush(accent);RECT mark={22,78,30,86};FillRect(dc,&mark,dot);DeleteObject(dot);
+        SetTextColor(dc,RGB(215,228,241));RECT msg={44,68,rc.right-24,rc.bottom-74};DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        for(int i=0;i<d->buttonCount;i++){
+            RECT b=d->buttons[i];BOOL primary=(i==0);HBRUSH br=CreateSolidBrush(primary?RGB(24,126,116):RGB(25,39,55));FillRect(dc,&b,br);DeleteObject(br);
+            HPEN pen=CreatePen(PS_SOLID,1,primary?RGB(68,180,164):RGB(57,78,99));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+            SetTextColor(dc,RGB(247,250,255));RECT t=b;DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&t,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        }
+        SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
+    }
+    case WM_NCDESTROY:if(d)d->done=TRUE;break;
+    }
+    return DefWindowProcW(w,m,wp,lp);
+}
+static int ABM_ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) {
+    static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
+    ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;
+    int width=520,height=220;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
+    RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
+    int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
+    HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
+    if(!w)return d.result;
+    RECT client={0};GetClientRect(w,&client);int bw=104,bh=36,gap=12,right=client.right-22,bottom=client.bottom-20;
+    if(d.buttonCount==2){d.buttons[1]=(RECT){right-bw,bottom-bh,right,bottom};d.buttons[0]=(RECT){right-bw*2-gap,bottom-bh,right-bw-gap,bottom};}
+    else d.buttons[0]=(RECT){right-bw,bottom-bh,right,bottom};
+    BOOL ownerWasEnabled=owner&&IsWindowEnabled(owner);if(ownerWasEnabled)EnableWindow(owner,FALSE);
+    ShowWindow(w,SW_SHOW);UpdateWindow(w);SetForegroundWindow(w);SetFocus(w);
+    MSG msg;while(!d.done&&IsWindow(w)){BOOL got=GetMessageW(&msg,NULL,0,0);if(got<=0)break;if(!IsDialogMessageW(w,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}
+    if(IsWindow(w))DestroyWindow(w);if(ownerWasEnabled){EnableWindow(owner,TRUE);SetActiveWindow(owner);}return d.result;
+}
+
 static void PlayIndex(int index);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
