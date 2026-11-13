@@ -2429,61 +2429,47 @@ static void LoadPlaylist(void) {
 }
 static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(!g_hasMedia)return;
-    HMENU menu=CreatePopupMenu();
-    HMENU audio=CreatePopupMenu(),subs=CreatePopupMenu(),speed=CreatePopupMenu(),eq=CreatePopupMenu();
-    if(!menu||!audio||!subs||!speed||!eq){if(menu)DestroyMenu(menu);if(audio)DestroyMenu(audio);if(subs)DestroyMenu(subs);if(speed)DestroyMenu(speed);if(eq)DestroyMenu(eq);return;}
+    ABMMenuItem items[100];wchar_t trackLabels[64][256];int count=0,trackCount=0;
+#define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
+#define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
+    ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
-    int n=0;
-    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){
-        wchar_t trackName[256]=L"Audio track";
-        if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,trackName,256);
-        AppendMenuW(audio,MF_STRING,t->i_id+20000,trackName);n++;
-    }
-    if(!n)AppendMenuW(audio,MF_STRING|MF_GRAYED,0,L"No audio tracks");
-    if(tracks)libvlc_track_description_list_release(tracks);
-    tracks=libvlc_video_get_spu_description(g_player);n=0;
-    AppendMenuW(subs,MF_STRING,21000,L"Disable subtitles");
-    for(libvlc_track_description_t *t=tracks;t;t=t->p_next){
-        wchar_t trackName[256]=L"Subtitle";
-        if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,trackName,256);
-        AppendMenuW(subs,MF_STRING,t->i_id+21000,trackName);n++;
+    for(libvlc_track_description_t *t=tracks;t&&trackCount<64;t=t->p_next){
+        wchar_t *label=trackLabels[trackCount];label[0]=0;
+        if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,label,256);
+        if(!label[0])StringCchPrintfW(label,256,L"Audio track %d",trackCount+1);
+        ABM_ADD(t->i_id+20000,label,TRUE);trackCount++;
     }
     if(tracks)libvlc_track_description_list_release(tracks);
-    AppendMenuW(speed,MF_STRING,22005,L"0.5x");
-    AppendMenuW(speed,MF_STRING,22007,L"0.75x");
-    AppendMenuW(speed,MF_STRING,22010,L"1.0x (Normal)");
-    AppendMenuW(speed,MF_STRING,22012,L"1.25x");
-    AppendMenuW(speed,MF_STRING,22015,L"1.5x");
-    AppendMenuW(speed,MF_STRING,22020,L"2.0x");
-    AppendMenuW(menu,MF_POPUP,(UINT_PTR)audio,L"Audio track");
-    AppendMenuW(menu,MF_POPUP,(UINT_PTR)subs,L"Subtitles");
-    AppendMenuW(menu,MF_STRING,23001,L"Load external subtitle...");
-    AppendMenuW(menu,MF_POPUP,(UINT_PTR)speed,L"Playback speed");
-    AppendMenuW(eq,MF_STRING,25000,L"Flat");
-    AppendMenuW(eq,MF_STRING,25001,L"Classical");
-    AppendMenuW(eq,MF_STRING,25002,L"Club");
-    AppendMenuW(eq,MF_STRING,25003,L"Dance");
-    AppendMenuW(eq,MF_STRING,25004,L"Full bass");
-    AppendMenuW(eq,MF_STRING,25005,L"Full treble");
-    AppendMenuW(eq,MF_STRING,25006,L"Headphones");
-    AppendMenuW(eq,MF_STRING,25007,L"Laptop / speakers");
-    AppendMenuW(eq,MF_STRING,25008,L"Live");
-    AppendMenuW(eq,MF_STRING,25009,L"Rock");
-    AppendMenuW(menu,MF_POPUP,(UINT_PTR)eq,L"Equalizer presets");
-    HMENU profiles=CreatePopupMenu();
-    AppendMenuW(profiles,MF_STRING|(g_eqProfile==0?MF_CHECKED:0),25100,L"Flat");
-    AppendMenuW(profiles,MF_STRING|(g_eqProfile==1?MF_CHECKED:0),25101,L"Bass boost");
-    AppendMenuW(profiles,MF_STRING|(g_eqProfile==2?MF_CHECKED:0),25102,L"Vocal clarity");
-    AppendMenuW(profiles,MF_STRING|(g_eqProfile==3?MF_CHECKED:0),25103,L"Treble boost");
-    AppendMenuW(menu,MF_POPUP,(UINT_PTR)profiles,L"ABM graphic EQ");
-    AppendMenuW(menu,MF_STRING|(g_replayGain?MF_CHECKED:0),23005,L"ReplayGain track normalisation (next track)");
-    AppendMenuW(menu,MF_STRING|(g_compressor?MF_CHECKED:0),23006,L"Dynamic-range compressor (next track)");
-    AppendMenuW(menu,MF_SEPARATOR,0,NULL);
-    AppendMenuW(menu,MF_STRING,23002,L"Media information...");
-    AppendMenuW(menu,MF_STRING|(g_shuffle?MF_CHECKED:0),23003,L"Shuffle");
-    AppendMenuW(menu,MF_STRING|(g_repeat?MF_CHECKED:0),23004,L"Repeat current");
-    POINT pt={x,y};ClientToScreen(hwnd,&pt);
-    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,pt.x,pt.y,0,hwnd,NULL);
+    if(!trackCount)ABM_ADD(0,L"No audio tracks available",FALSE);
+    ABM_HEAD(L"SUBTITLES");
+    ABM_ADD(21000,L"Disable subtitles",TRUE);
+    tracks=libvlc_video_get_spu_description(g_player);trackCount=0;
+    for(libvlc_track_description_t *t=tracks;t&&trackCount<64;t=t->p_next){
+        wchar_t *label=trackLabels[trackCount];label[0]=0;
+        if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,label,256);
+        if(!label[0])StringCchPrintfW(label,256,L"Subtitle %d",trackCount+1);
+        ABM_ADD(t->i_id+21000,label,TRUE);trackCount++;
+    }
+    if(tracks)libvlc_track_description_list_release(tracks);
+    ABM_ADD(23001,L"Load external subtitle...",TRUE);
+    ABM_HEAD(L"PLAYBACK SPEED");
+    ABM_ADD(22005,L"0.5x",TRUE);ABM_ADD(22007,L"0.75x",TRUE);ABM_ADD(22010,L"1.0x  (Normal)",TRUE);
+    ABM_ADD(22012,L"1.25x",TRUE);ABM_ADD(22015,L"1.5x",TRUE);ABM_ADD(22020,L"2.0x",TRUE);
+    ABM_HEAD(L"EQUALIZER PRESETS");
+    static const wchar_t *presets[10]={L"Flat",L"Classical",L"Club",L"Dance",L"Full bass",L"Full treble",L"Headphones",L"Laptop / speakers",L"Live",L"Rock"};
+    for(int i=0;i<10;i++)ABM_ADD(25000+i,presets[i],TRUE);
+    ABM_HEAD(L"ABM AUDIO OPTIONS");
+    ABM_ADD(25100,L"Graphic EQ: Flat",TRUE);ABM_ADD(25101,L"Graphic EQ: Bass boost",TRUE);
+    ABM_ADD(25102,L"Graphic EQ: Vocal clarity",TRUE);ABM_ADD(25103,L"Graphic EQ: Treble boost",TRUE);
+    ABM_ADD(23005,g_replayGain?L"Disable ReplayGain normalisation":L"Enable ReplayGain normalisation",TRUE);
+    ABM_ADD(23006,g_compressor?L"Disable dynamic-range compressor":L"Enable dynamic-range compressor",TRUE);
+    ABM_ADD(23002,L"Media information...",TRUE);
+    ABM_ADD(23003,g_shuffle?L"Disable shuffle":L"Enable shuffle",TRUE);
+    ABM_ADD(23004,g_repeat?L"Disable repeat":L"Repeat current track",TRUE);
+    int cmd=ABM_ShowMenu(hwnd,x,y,items,count);
+#undef ABM_ADD
+#undef ABM_HEAD
     if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
     else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
     else if(cmd==23001){
@@ -2496,21 +2482,16 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
         float rate=cmd==22005?0.5f:cmd==22007?0.75f:cmd==22010?1.0f:cmd==22012?1.25f:cmd==22015?1.5f:2.0f;
         g_playbackRate=rate;libvlc_media_player_set_rate(g_player,rate);
     } else if(cmd==23002){
-        libvlc_media_t *m=libvlc_media_player_get_media(g_player);
-        wchar_t info[2048]=L"";
+        libvlc_media_t *m=libvlc_media_player_get_media(g_player);wchar_t info[2048]=L"";
         if(m){
-            const char *title=libvlc_media_get_meta(m,libvlc_meta_Title);
-            const char *artist=libvlc_media_get_meta(m,libvlc_meta_Artist);
-            const char *album=libvlc_media_get_meta(m,libvlc_meta_Album);
-            int64_t duration=libvlc_media_get_duration(m);
-            wchar_t wt[512]=L"(unknown)",wa[512]=L"(unknown)",wal[512]=L"(unknown)";
+            const char *title=libvlc_media_get_meta(m,libvlc_meta_Title),*artist=libvlc_media_get_meta(m,libvlc_meta_Artist),*album=libvlc_media_get_meta(m,libvlc_meta_Album);
+            int64_t duration=libvlc_media_get_duration(m);wchar_t wt[512]=L"(unknown)",wa[512]=L"(unknown)",wal[512]=L"(unknown)";
             if(title){MultiByteToWideChar(CP_UTF8,0,title,-1,wt,512);libvlc_free((void*)title);}
             if(artist){MultiByteToWideChar(CP_UTF8,0,artist,-1,wa,512);libvlc_free((void*)artist);}
             if(album){MultiByteToWideChar(CP_UTF8,0,album,-1,wal,512);libvlc_free((void*)album);}
-            swprintf_s(info,2048,L"Title: %s\nArtist: %s\nAlbum: %s\nDuration: %02lld:%02lld",wt,wa,wal,(long long)(duration/60000),(long long)((duration/1000)%60));
-            libvlc_media_release(m);
+            swprintf_s(info,2048,L"Title: %s\nArtist: %s\nAlbum: %s\nDuration: %02lld:%02lld",wt,wa,wal,(long long)(duration/60000),(long long)((duration/1000)%60));libvlc_media_release(m);
         } else wcscpy_s(info,2048,L"Media information is not available yet.");
-        MessageBoxW(hwnd,info,L"Media information - ABM AV Player",MB_OK|MB_ICONINFORMATION);
+        ABM_MessageBoxW(hwnd,info,L"Media information",MB_OK|MB_ICONINFORMATION);
     } else if(cmd==23005){g_replayGain=!g_replayGain;SaveAudioPreferences();}
     else if(cmd==23006){g_compressor=!g_compressor;SaveAudioPreferences();}
     else if(cmd>=25100&&cmd<=25103){g_eqProfile=cmd-25100;ApplyEqProfile();SaveAudioPreferences();}
@@ -2520,32 +2501,27 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
         libvlc_equalizer_t *eqp=libvlc_audio_equalizer_new_from_preset(cmd-25000);
         if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);g_eqProfile=10+(cmd-25000);SaveAudioPreferences();}
     }
-    DestroyMenu(menu);
     InvalidateRect(hwnd,NULL,FALSE);
 }
 
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
-    if(index>=0&&index<g_playlistCount)g_selected=index;
-    else g_selected=-1;
-    HMENU menu=CreatePopupMenu();
-    if(!menu)return;
-    AppendMenuW(menu,MF_STRING|(g_selected>=0?0:MF_GRAYED),1,L"Play");
-    AppendMenuW(menu,MF_STRING|(g_selected>=0?0:MF_GRAYED),2,L"Remove from playlist");
-    AppendMenuW(menu,MF_STRING|((g_selected>0)?0:MF_GRAYED),3,L"Move up");
-    AppendMenuW(menu,MF_STRING|((g_selected>=0&&g_selected<g_playlistCount-1)?0:MF_GRAYED),4,L"Move down");
-    AppendMenuW(menu,MF_SEPARATOR,0,NULL);
-    AppendMenuW(menu,MF_STRING|(g_playlistCount?0:MF_GRAYED),5,L"Clear playlist");
-    AppendMenuW(menu,MF_STRING|(g_playlistCount?0:MF_GRAYED),6,L"Save playlist...");
-    SetForegroundWindow(hwnd);
-    POINT pt={x,y};ClientToScreen(hwnd,&pt);
-    int cmd=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,pt.x,pt.y,0,hwnd,NULL);
-    DestroyMenu(menu);
+    if(index>=0&&index<g_playlistCount)g_selected=index;else g_selected=-1;
+    ABMMenuItem items[]={
+        {1,L"Play selected media",g_selected>=0,FALSE},
+        {2,L"Remove from playlist",g_selected>=0,FALSE},
+        {3,L"Move up",g_selected>0,FALSE},
+        {4,L"Move down",g_selected>=0&&g_selected<g_playlistCount-1,FALSE},
+        {0,L"PLAYLIST",FALSE,TRUE},
+        {5,L"Clear playlist",g_playlistCount>0,FALSE},
+        {6,L"Save playlist...",g_playlistCount>0,FALSE}
+    };
+    int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
     switch(cmd){
         case 1:PlayIndex(g_selected);break;
         case 2:RemovePlaylistItem(g_selected);break;
         case 3:MovePlaylistItem(g_selected,g_selected-1);break;
         case 4:MovePlaylistItem(g_selected,g_selected+1);break;
-        case 5:if(MessageBoxW(hwnd,L"Clear all items from the playlist?",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();break;
+        case 5:if(ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONWARNING)==IDYES)ClearPlaylist();break;
         case 6:SavePlaylist();break;
     }
 }
