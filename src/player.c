@@ -624,25 +624,22 @@ static void UpdateLayout(HWND hwnd) {
     R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
     R_MENU_BUTTON=(RECT){w-244,16,w-156,72};
     R_DRAWER_BUTTON=(RECT){w-144,16,w-20,72};
-    R_MENU_PANEL=(RECT){w-376,74,w-20,74+690};
-    /* Keep the complete command menu inside the client area, including at the
-       minimum supported window height. Rows share the remaining space evenly. */
+    /* Wider command surface gives labels and shortcut hints room to breathe. */
+    R_MENU_PANEL=(RECT){w-430,74,w-20,74+690};
+    /* Keep the complete command menu inside the client area at supported sizes. */
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    /* Give the two streaming destinations genuinely prominent, full-width
-       navigation tiles while keeping every other command compact. Weighted
-       rows preserve the complete menu at shorter window heights. */
+    /* Streaming Centre and Torrent Stream remain featured two-line destinations.
+       The weighted grid preserves all 18 actions at shorter window heights. */
     int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
     int menuUnit=menuUsable/20;
     if(menuUnit<1)menuUnit=1;
     int menuY=R_MENU_PANEL.top+54;
     for(int i=0;i<18;i++){
-        /* Streaming Centre and Torrent Stream are both two-line featured
-           destinations. About remains a normal compact final menu command. */
         int weight=(i==11||i==12)?2:1;
         int rowH=menuUnit*weight;
-        R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+10,menuY,R_MENU_PANEL.right-10,menuY+rowH-3};
+        R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+12,menuY,R_MENU_PANEL.right-12,menuY+rowH-4};
         menuY+=rowH;
     }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
@@ -1288,21 +1285,21 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Bottom-edge branding removed: playback and volume surfaces own this area. */
 
-    /* Animated drop-down menu is painted last so it floats above the player. */
+    /* Command Centre: restrained surfaces, consistent action hierarchy and
+       clearly separated shortcut hints. Keep this overlay above the player. */
     if(g_menuProgress>0) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
-        /* Floating command surface with a soft shadow, refined rim and section label. */
-        RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,RGB(7,11,18),19);
-        RECT menuGlow=menu; InflateRect(&menuGlow,2,2); RoundBox(dc,menuGlow,RGB(7,12,22),21);
-        Panel(dc,menu,RGB(13,23,39),RGB(67,112,151),18);
-        RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+5};
-        GradientRect(dc,menuTop,RGB(43,179,230),RGB(127,102,244));
-        RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
-        Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
-        /* Menu order: playback and media, discovery/casting, services,
-           support/maintenance, settings, exit, and About as the final item. */
+        RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,RGB(4,8,14),20);
+        RECT menuGlow=menu;InflateRect(&menuGlow,2,2);RoundBox(dc,menuGlow,RGB(7,12,20),22);
+        Panel(dc,menu,RGB(12,20,32),RGB(49,76,94),18);
+        RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+4};
+        GradientRect(dc,menuTop,RGB(54,177,168),RGB(82,205,190));
+        RECT menuHeader={menu.left+18,menu.top+9,menu.right-18,menu.top+32};
+        Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(242,248,253),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT menuSub={menu.left+18,menu.top+31,menu.right-18,menu.top+48};
+        Txt(dc,L"PLAYBACK  ·  LIBRARY  ·  DEVICES  ·  APP",menuSub,RGB(133,163,184),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        DrawLine(dc,menu.left+16,menu.top+51,menu.right-16,menu.top+51,RGB(39,58,76),1);
         const wchar_t *labels[18]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
@@ -1325,27 +1322,48 @@ static void DrawUI(HDC dc,RECT client) {
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
-            RECT row=item;InflateRect(&row,-1,-1);
             BOOL featured=(i==11||i==12);
+            RECT row=item;InflateRect(&row,-1,-1);
+            COLORREF fill=featured?(i==11?RGB(13,55,61):RGB(62,39,29)):RGB(17,29,44);
+            COLORREF edge=featured?(i==11?RGB(43,126,125):RGB(139,91,59)):RGB(31,48,65);
+            if(hot){
+                fill=featured?(i==11?RGB(20,83,83):RGB(91,54,34)):RGB(25,55,67);
+                edge=RGB(83,181,171);
+            }
+            RoundBox(dc,row,fill,featured?13:9);
+            ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
+                featured?13.0f:9.0f,hot?RGB(105,207,192):edge,hot?1.25f:0.8f);
+            RECT glyph={item.left+(featured?14:10),item.top+(featured?9:5),
+                        item.left+(featured?56:40),item.bottom-(featured?9:5)};
+            COLORREF glyphFill=featured?(i==11?RGB(27,119,113):RGB(137,81,45)):RGB(27,47,66);
+            if(hot)glyphFill=RGB(37,116,113);
+            RoundBox(dc,glyph,glyphFill,featured?10:8);
+            Txt(dc,icons[i],glyph,RGB(231,244,248),featured?g_headingFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
+                        item.right-112,item.bottom-(featured?6:2)};
             if(featured){
-                if(hot)GradientRound(dc,row,i==11?RGB(23,111,119):RGB(139,70,29),i==11?RGB(52,82,157):RGB(104,58,113),13);
-                else GradientRound(dc,row,i==11?RGB(17,65,82):RGB(76,43,39),i==11?RGB(27,43,82):RGB(54,39,65),13);
-                ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,
-                    hot?RGB(111,208,222):(i==11?RGB(52,139,161):RGB(155,104,94)),1.2f);
-            }else if(hot){GradientRound(dc,row,RGB(22,93,111),RGB(57,62,137),11);ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,11.0f,RGB(83,169,202),1.0f);}
-            else RoundBox(dc,row,(i==0||i==3||i==13)?RGB(19,38,57):RGB(15,29,47),10);
-            RECT glyph={item.left+(featured?15:9),item.top+(featured?10:5),item.left+(featured?57:39),item.bottom-(featured?10:5)};
-            GradientRound(dc,glyph,hot?RGB(34,132,157):(featured?(i==11?RGB(28,118,132):RGB(145,78,48)):RGB(27,48,73)),hot?RGB(75,82,166):(featured?RGB(42,53,91):RGB(42,53,91)),featured?11:8);
-            Txt(dc,icons[i],glyph,hot?RGB(250,253,255):RGB(164,205,228),featured?g_headingFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+(featured?70:49),item.top+(featured?7:2),item.right-104,item.bottom-(featured?7:2)};
-            if(featured){
-                RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+4;
+                RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+3;
                 RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
-                Txt(dc,i==11?L"STREAMING TVs & SERVICES":L"TORRENT STREAMING",mainLabel,hot?RGB(255,255,255):RGB(245,249,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                Txt(dc,i==11?L"Open online services, discover Google / Android TVs and cast video":L"Open the dedicated torrent window to add a magnet or .torrent and play",subLabel,hot?RGB(225,245,255):RGB(190,211,229),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            }else Txt(dc,labels[i],label,hot?RGB(255,255,255):RGB(230,238,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            RECT shortcut={item.right-100,item.top+2,item.right-10,item.bottom-2};
-            Txt(dc,shortcuts[i],shortcut,hot?RGB(201,231,248):RGB(144,171,198),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+                Txt(dc,i==11?L"STREAMING TVs & SERVICES":L"TORRENT STREAMING",mainLabel,
+                    RGB(249,252,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,i==11?L"Open services, discover TVs and cast supported video":L"Add a magnet or torrent file and stream while downloading",
+                    subLabel,RGB(187,210,220),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }else{
+                COLORREF textColor=hot?RGB(255,255,255):RGB(226,236,246);
+                Txt(dc,labels[i],label,textColor,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
+            RECT shortcut={item.right-104,item.top+4,item.right-8,item.bottom-4};
+            RoundBox(dc,shortcut,hot?RGB(34,75,83):RGB(12,22,35),7);
+            ABM_D2D_StrokeRound(&g_ui,(float)shortcut.left,(float)shortcut.top,(float)shortcut.right,
+                (float)shortcut.bottom,7.0f,hot?RGB(65,131,131):RGB(34,51,67),0.7f);
+            Txt(dc,shortcuts[i],shortcut,hot?RGB(211,244,238):RGB(145,171,190),g_smallFont,
+                DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            /* Quiet dividers reinforce the command groups without adding
+               extra hit targets or changing menu order. */
+            if(i==2||i==7||i==10||i==12||i==15||i==16){
+                int y=item.bottom+1;
+                if(y<menu.bottom-5)DrawLine(dc,item.left+8,y,item.right-8,y,RGB(36,53,68),1);
+            }
         }
     }
 }
