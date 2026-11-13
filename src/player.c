@@ -1,4 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
+#define COBJMACROS
 #include <winsock2.h>
 #include <windows.h>
 #include <windowsx.h>
@@ -4733,15 +4734,28 @@ static void SettingsCheckDraw(int l,int t,const wchar_t *label,BOOL checked) {
  SettingsText(label,l+26,t-3,l+310,t+21,SETTINGS_FG,0,
               DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
+static BOOL ABM_PickFolder(HWND owner,const wchar_t *title,wchar_t *path,size_t pathCount) {
+    IFileOpenDialog *dialog=NULL;IShellItem *item=NULL;PWSTR selected=NULL;BOOL ok=FALSE;
+    HRESULT hr=CoCreateInstance(&CLSID_FileOpenDialog,NULL,CLSCTX_INPROC_SERVER,&IID_IFileOpenDialog,(void**)&dialog);
+    if(FAILED(hr)||!dialog)return FALSE;
+    DWORD options=0;
+    if(SUCCEEDED(IFileOpenDialog_GetOptions(dialog,&options))&&
+       SUCCEEDED(IFileOpenDialog_SetOptions(dialog,options|FOS_PICKFOLDERS|FOS_FORCEFILESYSTEM|FOS_PATHMUSTEXIST))&&
+       SUCCEEDED(IFileDialog_SetTitle((IFileDialog*)dialog,title))&&
+       SUCCEEDED(IFileDialog_Show((IFileDialog*)dialog,owner))&&
+       SUCCEEDED(IFileDialog_GetResult((IFileDialog*)dialog,&item))&&item&&
+       SUCCEEDED(IShellItem_GetDisplayName(item,SIGDN_FILESYSPATH,&selected))&&selected&&
+       SUCCEEDED(StringCchCopyW(path,pathCount,selected)))ok=TRUE;
+    if(selected)CoTaskMemFree(selected);if(item)IShellItem_Release(item);IFileOpenDialog_Release(dialog);
+    return ok;
+}
 static void SettingsBrowse(HWND w) {
- BROWSEINFOW bi={0};bi.hwndOwner=w;bi.lpszTitle=L"Select torrent cache parent folder";bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE;
- PIDLIST_ABSOLUTE pid=SHBrowseForFolderW(&bi);if(!pid)return;
- wchar_t path[PATH_CAP]={0};if(SHGetPathFromIDListW(pid,path))SetWindowTextW(GetDlgItem(w,6201),path);CoTaskMemFree(pid);
+ wchar_t path[PATH_CAP]={0};
+ if(ABM_PickFolder(w,L"Select torrent cache parent folder",path,_countof(path)))SetWindowTextW(GetDlgItem(w,6201),path);
 }
 static void SettingsBrowseDownloads(HWND w) {
- BROWSEINFOW bi={0};bi.hwndOwner=w;bi.lpszTitle=L"Select permanent torrent downloads folder";bi.ulFlags=BIF_RETURNONLYFSDIRS|BIF_NEWDIALOGSTYLE;
- PIDLIST_ABSOLUTE pid=SHBrowseForFolderW(&bi);if(!pid)return;
- wchar_t path[PATH_CAP]={0};if(SHGetPathFromIDListW(pid,path))SetWindowTextW(GetDlgItem(w,6202),path);CoTaskMemFree(pid);
+ wchar_t path[PATH_CAP]={0};
+ if(ABM_PickFolder(w,L"Select permanent torrent downloads folder",path,_countof(path)))SetWindowTextW(GetDlgItem(w,6202),path);
 }
 static void SettingsApply(HWND w) {
  wchar_t path[PATH_CAP]={0},downloads[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0};
