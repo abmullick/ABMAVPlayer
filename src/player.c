@@ -3382,6 +3382,88 @@ static void TorrentAddSource(HWND hwnd,BOOL fromFile) {
     TorrentRefreshStatus();
 }
 
+
+typedef struct TorrentSliderState { int kind; int value; BOOL dragging; } TorrentSliderState;
+static HWND g_torrentSliders[3]={0};
+static int g_torrentSliderValues[3]={0,0,20};
+static const wchar_t *g_torrentSliderClass=L"ABMTorrentPremiumSlider";
+static int TorrentSliderToValue(int kind,int pos){
+    if(kind==2)return 1+(int)((long long)(pos-1)*4095/999);
+    if(pos<=0)return 0;
+    return 64+(int)((long long)(pos-1)*(pos-1)*2097087LL/(999LL*999LL));
+}
+static int TorrentSliderToPos(int kind,int value){
+    if(kind==2)return 1+(int)((long long)(value-1)*999/4095);
+    if(value<=0)return 0;
+    int lo=1,hi=1000;
+    while(lo<hi){int mid=(lo+hi)/2;if(TorrentSliderToValue(kind,mid)<value)lo=mid+1;else hi=mid;}
+    return lo;
+}
+static void TorrentSliderSetPoint(HWND hwnd,TorrentSliderState *s,int x){
+    RECT r;GetClientRect(hwnd,&r);int left=14,right=r.right-104;if(right<=left)return;
+    int pos=(x-left)*1000/(right-left);if(pos<0)pos=0;if(pos>1000)pos=1000;
+    s->value=TorrentSliderToValue(s->kind,pos);g_torrentSliderValues[s->kind]=s->value;
+    InvalidateRect(hwnd,NULL,FALSE);
+}
+static void TorrentSliderPaint(HWND hwnd,HDC dc,TorrentSliderState *s){
+    RECT r;GetClientRect(hwnd,&r);HBRUSH bg=CreateSolidBrush(RGB(12,27,43));
+    FillRect(dc,&r,bg);DeleteObject(bg);
+    int left=14,right=r.right-104,cy=(r.top+r.bottom)/2;if(right<=left+12)return;
+    int pos=TorrentSliderToPos(s->kind,s->value),thumb=left+(right-left)*pos/1000;
+    RECT track={left,cy-3,right,cy+3};HRGN region=CreateRoundRectRgn(track.left,track.top,track.right,track.bottom,6,6);
+    HBRUSH rail=CreateSolidBrush(RGB(35,62,79));FillRgn(dc,region,rail);DeleteObject(region);DeleteObject(rail);
+    if(thumb>left){RECT fill={left,cy-3,thumb,cy+3};region=CreateRoundRectRgn(fill.left,fill.top,fill.right,fill.bottom,6,6);
+        HBRUSH accent=CreateSolidBrush(RGB(54,174,157));FillRgn(dc,region,accent);DeleteObject(region);DeleteObject(accent);}
+    HPEN haloPen=CreatePen(PS_SOLID,5,RGB(25,83,87));HGDIOBJ oldPen=SelectObject(dc,haloPen);
+    HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(NULL_BRUSH));
+    Ellipse(dc,thumb-10,cy-10,thumb+10,cy+10);SelectObject(dc,oldPen);DeleteObject(haloPen);
+    HBRUSH knob=CreateSolidBrush(RGB(133,231,211));oldBrush=SelectObject(dc,knob);
+    HPEN knobPen=CreatePen(PS_SOLID,1,RGB(210,255,246));oldPen=SelectObject(dc,knobPen);
+    Ellipse(dc,thumb-6,cy-6,thumb+6,cy+6);
+    SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(knobPen);DeleteObject(knob);
+    RECT pill={r.right-91,cy-15,r.right-3,cy+15};
+    HBRUSH pillBrush=CreateSolidBrush(RGB(16,48,62));HPEN pillPen=CreatePen(PS_SOLID,1,RGB(48,120,133));
+    oldBrush=SelectObject(dc,pillBrush);oldPen=SelectObject(dc,pillPen);
+    RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,12,12);
+    SelectObject(dc,oldPen);SelectObject(dc,oldBrush);DeleteObject(pillPen);DeleteObject(pillBrush);
+    wchar_t valueText[48];
+    if(s->kind<2){if(s->value==0)StringCchCopyW(valueText,_countof(valueText),L"Unlimited");
+        else if(s->value>=1024)StringCchPrintfW(valueText,_countof(valueText),L"%.1f MiB/s",(double)s->value/1024.0);
+        else StringCchPrintfW(valueText,_countof(valueText),L"%d KiB/s",s->value);}
+    else StringCchPrintfW(valueText,_countof(valueText),L"%d GiB",s->value);
+    HFONT font=CreateFontW(-12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(231,247,249));
+    DrawTextW(dc,valueText,-1,&pill,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    SelectObject(dc,old);DeleteObject(font);
+}
+static LRESULT CALLBACK TorrentSliderProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
+    TorrentSliderState *s=(TorrentSliderState*)GetWindowLongPtrW(hwnd,GWLP_USERDATA);
+    if(msg==WM_NCCREATE){CREATESTRUCTW *cs=(CREATESTRUCTW*)lp;
+        s=(TorrentSliderState*)HeapAlloc(GetProcessHeap(),HEAP_ZERO_MEMORY,sizeof(*s));if(!s)return FALSE;
+        s->kind=(int)(INT_PTR)cs->lpCreateParams;s->value=g_torrentSliderValues[s->kind];
+        SetWindowLongPtrW(hwnd,GWLP_USERDATA,(LONG_PTR)s);}
+    if(!s)return DefWindowProcW(hwnd,msg,wp,lp);
+    switch(msg){
+    case WM_PAINT:{PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);TorrentSliderPaint(hwnd,dc,s);EndPaint(hwnd,&ps);return 0;}
+    case WM_LBUTTONDOWN:s->dragging=TRUE;SetCapture(hwnd);TorrentSliderSetPoint(hwnd,s,GET_X_LPARAM(lp));return 0;
+    case WM_MOUSEMOVE:if(s->dragging&&(wp&MK_LBUTTON))TorrentSliderSetPoint(hwnd,s,GET_X_LPARAM(lp));return 0;
+    case WM_LBUTTONUP:if(s->dragging){s->dragging=FALSE;ReleaseCapture();TorrentSliderSetPoint(hwnd,s,GET_X_LPARAM(lp));}return 0;
+    case WM_CAPTURECHANGED:s->dragging=FALSE;return 0;
+    case WM_KEYDOWN:if(wp==VK_LEFT||wp==VK_DOWN||wp==VK_RIGHT||wp==VK_UP){
+        int p=TorrentSliderToPos(s->kind,s->value)+(wp==VK_LEFT||wp==VK_DOWN?-1:1);
+        if(p<0)p=0;if(p>1000)p=1000;s->value=TorrentSliderToValue(s->kind,p);
+        g_torrentSliderValues[s->kind]=s->value;InvalidateRect(hwnd,NULL,FALSE);return 0;}break;
+    case WM_NCDESTROY:HeapFree(GetProcessHeap(),0,s);SetWindowLongPtrW(hwnd,GWLP_USERDATA,0);break;
+    }
+    return DefWindowProcW(hwnd,msg,wp,lp);
+}
+static BOOL TorrentRegisterSliderClass(HINSTANCE instance){
+    WNDCLASSW wc={0};wc.lpfnWndProc=TorrentSliderProc;wc.hInstance=instance;
+    wc.lpszClassName=g_torrentSliderClass;wc.hCursor=LoadCursorW(NULL,IDC_HAND);
+    if(RegisterClassW(&wc)||GetLastError()==ERROR_CLASS_ALREADY_EXISTS)return TRUE;return FALSE;
+}
+
 static void TorrentLayout(HWND hwnd) {
     RECT rc={0};GetClientRect(hwnd,&rc);
     const int w=rc.right,h=rc.bottom,m=22,inner=w-2*m;
@@ -3409,21 +3491,20 @@ static void TorrentLayout(HWND hwnd) {
     for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionW,actionH,TRUE);x+=actionW+actionGap;}
     const int half=inner/2;
     MoveWindow(g_torrentDownLabel,m+14,networkY+4,112,18,TRUE);
-    MoveWindow(g_torrentDownLimitEdit,m+126,networkY+30,64,30,TRUE);
-    MoveWindow(g_torrentNumericButtons[0],m+190,networkY+30,28,30,TRUE);
-    MoveWindow(g_torrentNumericButtons[1],m+218,networkY+30,28,30,TRUE);
-    MoveWindow(g_torrentUpLabel,m+half,networkY+4,96,18,TRUE);
-    MoveWindow(g_torrentUpLimitEdit,m+half+100,networkY+30,64,30,TRUE);
-    MoveWindow(g_torrentNumericButtons[2],m+half+164,networkY+30,28,30,TRUE);
-    MoveWindow(g_torrentNumericButtons[3],m+half+192,networkY+30,28,30,TRUE);
+    ShowWindow(g_torrentDownLimitEdit,SW_HIDE);ShowWindow(g_torrentUpLimitEdit,SW_HIDE);
+    for(int si=0;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
+    MoveWindow(g_torrentUpLabel,m+half,networkY+4,112,18,TRUE);
+    int sliderW=max(160,half-260);
+    MoveWindow(g_torrentSliders[0],m+126,networkY+20,sliderW,46,TRUE);
+    MoveWindow(g_torrentSliders[1],m+half+112,networkY+20,sliderW,46,TRUE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),w-m-136,networkY+26,124,42,TRUE);
     MoveWindow(g_torrentCacheLabel,m+14,cacheY+4,116,18,TRUE);
-    MoveWindow(g_torrentCacheLimitEdit,m+132,cacheY+30,64,30,TRUE);
-    MoveWindow(g_torrentNumericButtons[4],m+196,cacheY+30,28,30,TRUE);
-    MoveWindow(g_torrentNumericButtons[5],m+224,cacheY+30,28,30,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+266,cacheY+26,116,42,TRUE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+396,cacheY+26,144,42,TRUE);
-    MoveWindow(g_torrentCacheInfoLabel,m+550,cacheY+30,max(80,inner-562),22,TRUE);
+    ShowWindow(g_torrentCacheLimitEdit,SW_HIDE);
+    for(int si=4;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
+    MoveWindow(g_torrentSliders[2],m+132,cacheY+20,250,46,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+396,cacheY+26,116,42,TRUE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+526,cacheY+26,144,42,TRUE);
+    MoveWindow(g_torrentCacheInfoLabel,m+680,cacheY+30,max(80,inner-692),22,TRUE);
     MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,TRUE);
     MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,TRUE);
     MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,TRUE);
@@ -3788,6 +3869,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
         if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
         g_torrentUiReady=TRUE;
+        if(!TorrentRegisterSliderClass(GetModuleHandleW(NULL)))return -1;
         HWND h=CreateWindowExW(0,L"STATIC",L"Magnet URI or local .torrent file",WS_CHILD|WS_VISIBLE,20,76,760,20,hwnd,NULL,NULL,NULL);
         g_torrentSourceHint=h;ShowWindow(h,SW_HIDE);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
@@ -3820,6 +3902,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentNumericButtons[4]=CreateWindowW(L"BUTTON",L"−",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,22,30,hwnd,(HMENU)ID_TORRENT_CACHE_DEC,NULL,NULL);
         g_torrentNumericButtons[5]=CreateWindowW(L"BUTTON",L"+",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,0,0,22,30,hwnd,(HMENU)ID_TORRENT_CACHE_INC,NULL,NULL);
         for(int ni=0;ni<6;ni++)SendMessageW(g_torrentNumericButtons[ni],WM_SETFONT,(WPARAM)font,TRUE);
+        g_torrentSliders[0]=CreateWindowExW(0,g_torrentSliderClass,L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP,0,0,300,46,hwnd,NULL,GetModuleHandleW(NULL),(LPVOID)(INT_PTR)0);
+        g_torrentSliders[1]=CreateWindowExW(0,g_torrentSliderClass,L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP,0,0,300,46,hwnd,NULL,GetModuleHandleW(NULL),(LPVOID)(INT_PTR)1);
+        g_torrentSliders[2]=CreateWindowExW(0,g_torrentSliderClass,L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP,0,0,250,46,hwnd,NULL,GetModuleHandleW(NULL),(LPVOID)(INT_PTR)2);
         h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"STATIC",L"CACHE QUOTA GiB",WS_CHILD|WS_VISIBLE,20,612,130,22,hwnd,NULL,NULL,NULL);
@@ -3921,10 +4006,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 return 0;
             case ID_TORRENT_REFRESH:TorrentRefreshStatus();TorrentRefreshCacheStatus();return 0;
             case ID_TORRENT_CACHE_APPLY: {
-                wchar_t value[32]=L"";GetWindowTextW(g_torrentCacheLimitEdit,value,(int)_countof(value));
-                wchar_t *end=NULL;unsigned long long gib=_wcstoui64(value,&end,10);
-                if(!value[0]||!end||*end||gib<1||gib>4096) {
-                    TorrentSetLabel(g_torrentStatusLabel,L"Cache quota must be a whole number from 1 to 4096 GiB.");return 0;
+                unsigned long long gib=(unsigned long long)g_torrentSliderValues[2];
+                if(gib<1||gib>4096) {
+                    TorrentSetLabel(g_torrentStatusLabel,L"Cache quota must be from 1 to 4096 GiB.");return 0;
                 }
                 uint64_t used=0,limit=(uint64_t)gib*1024ULL*1024ULL*1024ULL;
                 BOOL applied=g_torrentSetCacheLimit&&g_torrentSetCacheLimit(limit,&used);
@@ -3944,16 +4028,13 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 return 0;
             }
             case ID_TORRENT_APPLY_LIMITS: {
-                wchar_t downText[32]=L"",upText[32]=L"";
-                GetWindowTextW(g_torrentDownLimitEdit,downText,(int)_countof(downText));
-                GetWindowTextW(g_torrentUpLimitEdit,upText,(int)_countof(upText));
-                wchar_t *endDown=NULL,*endUp=NULL;
-                unsigned long long down=_wcstoui64(downText,&endDown,10);
-                unsigned long long up=_wcstoui64(upText,&endUp,10);
-                if(!downText[0]||!upText[0]||!endDown||*endDown||!endUp||*endUp||
-                   down>(unsigned long long)INT_MAX/1024ULL||up>(unsigned long long)INT_MAX/1024ULL) {
-                    TorrentSetLabel(g_torrentStatusLabel,L"Enter whole-number limits from 0 to 2,097,151 KiB/s.");
-                    return 0;
+                unsigned long long down=(unsigned long long)g_torrentSliderValues[0];
+                unsigned long long up=(unsigned long long)g_torrentSliderValues[1];
+                wchar_t downText[32],upText[32];
+                StringCchPrintfW(downText,_countof(downText),L"%llu",down);
+                StringCchPrintfW(upText,_countof(upText),L"%llu",up);
+                if(down>(unsigned long long)INT_MAX/1024ULL||up>(unsigned long long)INT_MAX/1024ULL) {
+                    TorrentSetLabel(g_torrentStatusLabel,L"Bandwidth limit is outside the supported range.");return 0;
                 }
                 if(!g_torrentSetRateLimits||(g_torrentInitialized&&!g_torrentSetRateLimits((int)(down*1024ULL),(int)(up*1024ULL)))) {
                     TorrentSetLabel(g_torrentStatusLabel,L"Could not apply torrent bandwidth limits.");
