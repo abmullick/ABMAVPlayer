@@ -174,3 +174,28 @@ This step adds the shared tokens and records the audit. It deliberately does **n
 - [x] Add a C/C++-compatible token header for gradual adoption.
 - [x] Keep runtime UI and media behaviour unchanged in this step.
 - [ ] Build and launch on Windows to confirm the additive header/documentation commit does not affect the existing build. This requires local Windows validation.
+
+## Step 2 — Main window and Command Centre navigation
+
+**Implementation commit:** `d13e992ace126eeaf8137555d5cd10395aef850a`
+
+The main Command Centre overlay has been refined without changing its command routing or keyboard shortcuts.
+
+- Widened the panel from 356 to 410 layout units to give action labels and shortcut hints more room.
+- Reworked the header into a clear title and supporting navigation descriptor.
+- Replaced the previous mixed blue/purple gradients with restrained navy surfaces and teal interaction states.
+- Standardised command rows, icon tiles, borders and shortcut-key pills.
+- Kept Streaming Centre and Torrent Stream as featured destinations, with teal and warm amber identities respectively.
+- Added subtle dividers between existing command groups.
+- Preserved all 18 menu entries, their order, click handlers and keyboard shortcuts.
+- Preserved existing menu hit rectangles, hover tracking and keyboard selection behaviour; only their panel width and visual presentation changed.
+
+### Step 2 validation status
+
+- [x] Source updated on `main`.
+- [x] Existing menu labels, ordering, action indices and shortcut labels retained.
+- [x] Existing click dispatch and keyboard navigation code left unchanged.
+- [ ] Windows build and runtime visual validation still required.
+- [ ] Verify menu fit at minimum window size and at 100%, 125%, 150% and 200% display scaling.
+
+No playback, playlist, local casting, Streaming Centre, torrent, WebView2, settings or updater implementation was changed in this step.
