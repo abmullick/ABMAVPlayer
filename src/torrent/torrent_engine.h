@@ -19,7 +19,7 @@ typedef struct ABM_TorrentTaskInfo {
     wchar_t error[ABM_TORRENT_TEXT_CAP];
 } ABM_TorrentTaskInfo;
 enum ABM_TorrentState { ABM_TORRENT_QUEUED=0, ABM_TORRENT_CHECKING=1, ABM_TORRENT_DOWNLOADING=2, ABM_TORRENT_FINISHED=3, ABM_TORRENT_SEEDING=4, ABM_TORRENT_PAUSED=5, ABM_TORRENT_ERROR=6, ABM_TORRENT_UNKNOWN=7 };
-__declspec(dllexport) BOOL WINAPI ABM_Torrent_Initialize(const wchar_t *data_directory);
+__declspec(dllexport) BOOL WINAPI ABM_Torrent_Initialize(const wchar_t *data_directory, const wchar_t *download_directory);
 __declspec(dllexport) void WINAPI ABM_Torrent_Shutdown(void);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_AddMagnet(const wchar_t *magnet_uri, uint64_t *task_id, wchar_t *error, unsigned int error_capacity);
 __declspec(dllexport) BOOL WINAPI ABM_Torrent_AddFile(const wchar_t *torrent_path, uint64_t *task_id, wchar_t *error, unsigned int error_capacity);
