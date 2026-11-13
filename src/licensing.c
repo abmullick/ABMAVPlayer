@@ -105,7 +105,7 @@ static BOOL ValidateLicenseToken(const wchar_t *token,const wchar_t *deviceId) {
 }
 static BOOL ReadLicenseFile(const wchar_t *path,wchar_t *token,size_t cap) {
     FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rt, ccs=UTF-8")!=0||!fp)return FALSE;
-    BOOL ok=fgetws(token,(int)cap,fp)!=NULL;fclose(fp);if(ok)token[wcscspn(token,L"\\r\\n")]=0;return ok;
+    BOOL ok=fgetws(token,(int)cap,fp)!=NULL;fclose(fp);if(ok)token[wcscspn(token,L"\r\n")]=0;return ok;
 }
 static BOOL SaveLicenseFile(const wchar_t *path,const wchar_t *token) {
     FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wt, ccs=UTF-8")!=0||!fp)return FALSE;
