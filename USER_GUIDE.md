@@ -22,7 +22,7 @@ Open **Settings** from the Command Centre. The dedicated dark settings window fo
 - **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
 - **Updates:** manually check the latest published GitHub release.
 
-Choose **Browse** to select a different cache folder, then **Save settings** to persist changes. The first-run default is the current Windows user's Downloads known folder, followed by an `ABM AV Player` folder. Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy torrent cache retain their existing location rather than silently abandoning cached data.
+Under **Settings → Torrent & Storage**, choose **Browse** beside Cache parent folder to change the cache location, or **Browse** beside Permanent downloads folder to choose where completed torrent files are stored. These are independent locations. Choose **Save settings** to persist changes. The first-run cache default is the current Windows user's Downloads known folder, followed by an `ABM AV Player` folder; the permanent downloads default is a `Torrent Downloads` subfolder beneath that location. Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy torrent cache retain their existing cache location rather than silently abandoning cached data. The Torrent window's **Open Downloads Folder** button opens the configured permanent downloads location.
 
 If the torrent engine is already running, changing its cache location takes effect after restarting ABM AV Player. Other supported settings are applied immediately where possible. The settings file is stored at `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences remain in `audio.ini`.
 
@@ -56,7 +56,7 @@ Open **Torrent Stream** from the main player's navigation. Torrent Stream runs i
 
 1. Paste a magnet URI into **Add a source** and choose **Add magnet**, or choose **Open .torrent** to load a local torrent file.
 2. Wait for metadata to load. The file list shows the files contained in the torrent.
-3. Select the media file you want. The selected file is downloaded to the persistent **Torrent Downloads** folder; it is separate from the quota-managed cache.
+3. Select the media file you want. The selected file is downloaded to the configured permanent downloads folder; it is separate from the quota-managed cache. Use **Open Downloads Folder** in the Torrent window to open that location.
 4. Use **Play / Stream** for progressive local playback. The player waits for verified pieces and reads media through a loopback-only source. Pause/resume and Stop control the torrent playback task.
 5. Watch the task line for progress, downloaded bytes, rates and peer count. The network diagnostics report tracker and DHT state, known peers and active connections. DHT being ON does not guarantee that a torrent has reachable peers; the torrent must have an active swarm and your network must allow tracker/DHT/peer traffic.
 6. Use **Find TVs** to discover DLNA MediaRenderer devices, select a receiver, then choose **Cast to TV**. The TV fetches the selected file over a temporary authenticated private-LAN connection while the torrent continues downloading to disk. **Stop TV** stops the receiver and temporary LAN listener; it does not delete the downloaded file or stop the torrent task.
