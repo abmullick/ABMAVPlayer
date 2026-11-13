@@ -974,28 +974,43 @@ static void DrawUI(HDC dc,RECT client) {
     int collectionTop=g_drawerSettingsOpen?286:82;
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
-    /* Timeline: keep the seek bar strictly inside the video canvas; never underlap the drawer. */
-    RECT timeline={R_SEEK.left,R_SEEK.top-15,R_SEEK.right,R_SEEK.bottom+16};Fill(dc,timeline,C_BG);
+    /* Timeline: a dedicated, readable seek row above the transport dock.
+       The seek rectangle and its hit-testing remain unchanged. */
+    RECT timeline={R_SEEK.left,R_SEEK.top-34,R_SEEK.right,R_SEEK.bottom+16};
+    Fill(dc,timeline,C_BG);
     int pos=0;int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
     int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
     if(len>0){pos=(int)((now*1000)/len);if(pos<0)pos=0;if(pos>1000)pos=1000;}
-    RECT track={R_SEEK.left,R_SEEK.top-2,R_SEEK.right,R_SEEK.bottom+2};RoundBox(dc,track,RGB(35,49,70),6);
-    RECT prog=track;prog.right=prog.left+(prog.right-prog.left)*pos/1000;if(prog.right>prog.left)GradientRect(dc,prog,RGB(45,166,163),RGB(104,190,158));
+    wchar_t t1[24],t2[24];
+    FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);
+    RECT elapsedLabel={R_SEEK.left,R_SEEK.top-31,R_SEEK.left+92,R_SEEK.top-9};
+    RECT totalLabel={R_SEEK.right-92,R_SEEK.top-31,R_SEEK.right,R_SEEK.top-9};
+    Txt(dc,t1,elapsedLabel,RGB(205,220,230),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,t2,totalLabel,RGB(135,157,177),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    RECT track={R_SEEK.left,R_SEEK.top-2,R_SEEK.right,R_SEEK.bottom+2};
+    RoundBox(dc,track,RGB(31,48,61),5);
+    RECT prog=track;
+    prog.right=prog.left+(prog.right-prog.left)*pos/1000;
+    if(prog.right>prog.left)GradientRound(dc,prog,RGB(42,169,158),RGB(112,199,161),5);
     int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
-    RECT halo={thumb-10,R_SEEK.top-10,thumb+10,R_SEEK.bottom+10};RoundBox(dc,halo,RGB(36,66,104),12);
-    RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};RoundBox(dc,dot,RGB(235,244,255),10);
-    wchar_t t1[24],t2[24],times[64];FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);swprintf_s(times,64,L"%s  /  %s",t1,t2);
-    RECT timeR={24,client.bottom-68,180,client.bottom-44};Txt(dc,times,timeR,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT halo={thumb-11,R_SEEK.top-11,thumb+11,R_SEEK.bottom+11};
+    RoundBox(dc,halo,RGB(21,57,67),11);
+    RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};
+    RoundBox(dc,dot,RGB(242,249,255),8);
+    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,8.0f,RGB(93,194,181),1.0f);
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
     RECT dock={dockLeft,client.bottom-144,dockLeft+720,client.bottom-42};
-    RECT dockShadow=dock; OffsetRect(&dockShadow,0,7);
-    RoundBox(dc,dockShadow,RGB(4,8,12),34);
-    GradientRound(dc,dock,RGB(17,31,40),RGB(20,29,39),30);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,30.0f,RGB(65,119,119),1.15f);
+    RECT dockShadow=dock; OffsetRect(&dockShadow,0,8);
+    RoundBox(dc,dockShadow,RGB(3,7,13),32);
+    GradientRound(dc,dock,RGB(17,34,43),RGB(15,27,39),28);
+    /* Fine top-edge light gives the transport surface a clear visual boundary. */
+    RECT dockTop={dock.left+30,dock.top+1,dock.right-30,dock.top+3};
+    GradientRect(dc,dockTop,RGB(48,157,151),RGB(93,176,151));
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,RGB(59,105,109),1.0f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,28.0f,RGB(42,66,70),0.55f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,RGB(37,61,69),0.65f);
     /* Dedicated Now Playing identity block makes the transport dock a real
        player surface rather than a floating row of generic buttons. */
     RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
@@ -1009,12 +1024,12 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
         DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
     }
-    RECT nowLabel={miniArt.right+14,dock.top+10,dock.left+346,dock.top+32};
+    RECT nowLabel={miniArt.right+14,dock.top+12,dock.left+346,dock.top+31};
     Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(111,194,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowTitle={miniArt.right+14,dock.top+32,dock.left+346,dock.top+58};
+    RECT nowTitle={miniArt.right+14,dock.top+32,dock.left+346,dock.top+59};
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
-    Txt(dc,dockTitle,nowTitle,RGB(245,248,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT nowMeta={miniArt.right+14,dock.top+58,dock.left+346,dock.bottom-8};
+    Txt(dc,dockTitle,nowTitle,RGB(246,249,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-9};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,RGB(151,174,199),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
     Fill(dc,transportDivider,RGB(45,68,71));
@@ -1043,10 +1058,8 @@ static void DrawUI(HDC dc,RECT client) {
     else
         GradientRound(dc,R_SIDEBAR,RGB(19,28,41),RGB(15,23,35),28);
     ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,28.0f,RGB(67,88,111),1.0f);
-    RECT innerGlow={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
-    ABM_D2D_StrokeRound(&g_ui,(float)innerGlow.left,(float)innerGlow.top,(float)innerGlow.right,(float)innerGlow.bottom,27.0f,RGB(45,61,80),0.65f);
-    RECT drawerInset={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.bottom-1};
-    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,27.0f,RGB(45,61,80),0.65f);
+    RECT drawerInset={R_SIDEBAR.left+2,R_SIDEBAR.top+2,R_SIDEBAR.right-2,R_SIDEBAR.bottom-2};
+    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,26.0f,RGB(43,63,78),0.55f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
     GradientRect(dc,accent,RGB(48,169,157),RGB(104,187,151));
