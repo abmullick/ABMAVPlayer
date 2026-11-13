@@ -226,6 +226,30 @@ The main playback surface has received a focused visual refinement.
 The fullscreen overlay's existing input forwarding and media control routing were intentionally left unchanged in this focused pass; validate the fullscreen transition and controls as part of the regression checklist.
 
 
+
+## Step 5 — Torrent Stream
+
+**Implementation commit:** `948d404910e6003106f191207892d573fa0db011`
+
+A focused visual pass brings the Torrent Stream window closer to the shared ABM design system and makes its live task state easier to scan.
+
+- Included the shared `ui_theme.h` tokens in the native player translation unit and adopted the shared background, border, muted-text, accent and primary-text tokens in the Torrent Stream surface.
+- Replaced the static `TORRENT ENGINE` masthead label with a live status chip reflecting the current task state: queued, checking, downloading, complete, seeding, paused or error; when no task is active it reads `ENGINE READY`.
+- Used the existing task-information API only to read the current state for painting. No task lifecycle, engine call sequence or state transition was changed.
+- Added a concise instruction to the content-library heading so the next action is clear: select a media file to download, play or cast.
+- Preserved the existing content-list, playback, bandwidth, cache and TV-control layout and all child-control hit targets.
+
+### Step 5 validation status
+
+- [x] Source updated on `main`.
+- [x] Shared theme tokens adopted by the Torrent Stream paint path.
+- [x] Status chip reads the existing task state without changing it.
+- [x] Torrent task, download, persistent storage, cache, playback, buffering, TV discovery and casting handlers left unchanged.
+- [ ] Windows build and runtime visual validation still required.
+- [ ] Verify the status chip with no task, queued/checking, downloading, complete/seeding, paused and error states.
+- [ ] Verify content-list selection, Play / Stream, pause/resume, Stop, Find TVs, Cast to TV, Stop TV, cache controls and Open Downloads Folder.
+- [ ] Verify resize/maximize and 100%, 125%, 150% and 200% display scaling.
+
 ## Step 4 — Streaming Centre
 
 **Implementation commit:** `795c67612a37b65cd62a139da7a67e4f69627f00`
