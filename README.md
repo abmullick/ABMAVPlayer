@@ -15,7 +15,11 @@ Download the installer, run it, and follow the setup instructions. The installer
 
 > Public repository visibility does not grant permission to copy, modify, redistribute, sublicense, or commercially exploit this software. See [LICENSE](LICENSE) and [COPYRIGHT.md](COPYRIGHT.md).
 
-## Licensing\n\nABM AV Player includes a 10-day full-feature trial and offline, device-bound perpetual licence activation. The licence gate runs before media, streaming, torrent or casting components initialize. Publisher key generation and private-key handling are documented in [LICENSING.md](LICENSING.md). The publisher signing private key must never be committed or distributed with the installer.\n\n## User documentation
+## Licensing
+
+ABM AV Player includes a 10-day full-feature trial and offline, device-bound perpetual licence activation. The licence gate runs before media, streaming, torrent or casting components initialize. Publisher key generation and private-key handling are documented in [LICENSING.md](LICENSING.md). The publisher signing private key must never be committed or distributed with the installer.
+
+## User documentation
 
 - [User Guide](USER_GUIDE.md): Getting started, playback, playlists, audio processing, subtitles, casting, shortcuts and troubleshooting.
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
