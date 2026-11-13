@@ -1587,7 +1587,7 @@ static void StartDiscovery(void) {
     size_t n=libvlc_renderer_discoverer_list_get(g_vlc,&services);
     if(!n||!services){
         SetStatus(L"No VLC receiver discovery plugins are available");
-        MessageBoxW(g_main,
+        ABM_MessageBoxW(g_main,
             L"LibVLC did not report any renderer-discovery services. Compatible VLC discovery plugins and their dependencies are required before network receivers can be discovered.",
             APP_NAME,MB_ICONWARNING);
         return;
@@ -1654,7 +1654,7 @@ static void StartDiscovery(void) {
                 available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
         }
         SetStatus(L"Receiver discovery could not start");
-        MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
+        ABM_MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
 
@@ -1706,7 +1706,7 @@ static void SelectRenderer(void) {
         if(!g_player){
             g_hasMedia=FALSE;g_pendingResume=FALSE;g_rendererApplied=FALSE;
             SetStatus(L"Could not recreate playback engine");
-            MessageBoxW(g_main,L"Could not recreate the playback engine. Select the media again to retry.",APP_NAME,MB_ICONERROR);
+            ABM_MessageBoxW(g_main,L"Could not recreate the playback engine. Select the media again to retry.",APP_NAME,MB_ICONERROR);
             return;
         }
         libvlc_media_player_set_hwnd(g_player,g_video);
@@ -1714,7 +1714,7 @@ static void SelectRenderer(void) {
         if(g_selectedRenderer && libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
             g_hasMedia=FALSE;g_pendingResume=FALSE;g_rendererApplied=FALSE;
             SetStatus(L"Receiver rejected the renderer connection");
-            MessageBoxW(g_main,
+            ABM_MessageBoxW(g_main,
                 L"LibVLC could not attach the selected receiver. Playback was not redirected to this PC. Refresh discovery, select the receiver again, or check whether it supports this renderer protocol.",
                 APP_NAME,MB_ICONERROR);
             InvalidateRect(g_main,NULL,FALSE);
@@ -1750,7 +1750,7 @@ static void SelectRenderer(void) {
                     SetStatus(g_selectedRenderer?
                         L"Cast request failed - local playback was not started":
                         L"Playback could not restart on the selected output");
-                    MessageBoxW(g_main,
+                    ABM_MessageBoxW(g_main,
                         g_selectedRenderer?
                         L"LibVLC could not start playback on the selected receiver. No local fallback was attempted. Check receiver compatibility and network connectivity, then retry.":
                         L"Playback could not restart on the selected output. Select the media again to retry.",
@@ -2196,7 +2196,7 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 static void ShowRecentMenu(HWND hwnd,int x,int y) {
-    if(!g_recentCount){MessageBoxW(hwnd,L"No recently played media yet.",APP_NAME,MB_OK|MB_ICONINFORMATION);return;}
+    if(!g_recentCount){ABM_MessageBoxW(hwnd,L"No recently played media yet.",APP_NAME,MB_OK|MB_ICONINFORMATION);return;}
     if(g_recentPopupWindow&&IsWindow(g_recentPopupWindow)){DestroyWindow(g_recentPopupWindow);return;}
     static BOOL registered=FALSE;
     HINSTANCE inst=GetModuleHandleW(NULL);
@@ -2280,17 +2280,17 @@ static void PlayIndex(int index) {
     if(attributes==INVALID_FILE_ATTRIBUTES || (attributes&FILE_ATTRIBUTE_DIRECTORY)){
         wchar_t message[PATH_CAP+128];
         swprintf_s(message,_countof(message),L"The selected media file is unavailable:\n%s",g_playlist[index]);
-        MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
+        ABM_MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
     char utf8[PATH_CAP*4]; int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[index],-1,utf8,sizeof(utf8),NULL,NULL); if(n<=0)return;
-    libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8); if(!m){MessageBoxW(g_main,L"LibVLC could not open this file.",APP_NAME,MB_ICONERROR);return;}
+    libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8); if(!m){ABM_MessageBoxW(g_main,L"LibVLC could not open this file.",APP_NAME,MB_ICONERROR);return;}
     libvlc_media_player_stop(g_player);
     if(g_selectedRenderer&&!g_rendererApplied){
         if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
             libvlc_media_release(m);
             SetStatus(L"Receiver setup failed - playback cancelled, not sent locally");
-            MessageBoxW(g_main,L"LibVLC rejected the selected receiver. No local playback was started. Try selecting the receiver again or choose another device.",APP_NAME,MB_ICONERROR);
+            ABM_MessageBoxW(g_main,L"LibVLC rejected the selected receiver. No local playback was started. Try selecting the receiver again or choose another device.",APP_NAME,MB_ICONERROR);
             return;
         }
         g_rendererApplied=TRUE;
@@ -2311,9 +2311,9 @@ static void PlayIndex(int index) {
         g_hasMedia=FALSE;g_pendingResume=FALSE;ResetArtwork();
         if(g_selectedRenderer){
             SetStatus(L"Receiver rejected playback - check the TV and supported format");
-            MessageBoxW(g_main,L"LibVLC could not start playback on the selected receiver. The video was not redirected to local playback. Check that the TV is awake and supports this media format.",APP_NAME,MB_ICONERROR);
+            ABM_MessageBoxW(g_main,L"LibVLC could not start playback on the selected receiver. The video was not redirected to local playback. Check that the TV is awake and supports this media format.",APP_NAME,MB_ICONERROR);
         }else{
-            MessageBoxW(g_main,L"Playback could not start. Check the media file and VLC plugins.",APP_NAME,MB_ICONERROR);
+            ABM_MessageBoxW(g_main,L"Playback could not start. Check the media file and VLC plugins.",APP_NAME,MB_ICONERROR);
         }
         return;
     }
@@ -2397,7 +2397,7 @@ static void SavePlaylist(void) {
     ofn.lpstrDefExt=L"m3u";ofn.lpstrTitle=L"Save playlist";
     ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST;
     if(!GetSaveFileNameW(&ofn))return;
-    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wb")!=0||!fp){MessageBoxW(g_main,L"Could not save the playlist.",APP_NAME,MB_ICONERROR);return;}
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wb")!=0||!fp){ABM_MessageBoxW(g_main,L"Could not save the playlist.",APP_NAME,MB_ICONERROR);return;}
     const unsigned char bom[3]={0xEF,0xBB,0xBF};fwrite(bom,1,3,fp);
     fputs("#EXTM3U\n",fp);
     for(int i=0;i<g_playlistCount;i++){
@@ -2412,7 +2412,7 @@ static void LoadPlaylist(void) {
     ofn.lpstrFilter=L"M3U playlists (*.m3u;*.m3u8)\0*.m3u;*.m3u8\0All files (*.*)\0*.*\0";
     ofn.lpstrTitle=L"Load playlist";ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
     if(!GetOpenFileNameW(&ofn))return;
-    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rb")!=0||!fp){MessageBoxW(g_main,L"Could not open the playlist.",APP_NAME,MB_ICONERROR);return;}
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rb")!=0||!fp){ABM_MessageBoxW(g_main,L"Could not open the playlist.",APP_NAME,MB_ICONERROR);return;}
     if(g_hasMedia){libvlc_media_player_stop(g_player);g_hasMedia=FALSE;}
     g_playlistCount=0;g_current=-1;g_selected=-1;g_playlistScroll=0;
     char line[PATH_CAP*4];
@@ -2984,7 +2984,7 @@ static void ShowEqualizer(void) {
         g_eqWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_LAYERED|WS_EX_TOPMOST,
             wc.lpszClassName,L"ABM AV Player - Advanced Equalizer",WS_POPUP,
             CW_USEDEFAULT,CW_USEDEFAULT,680,405,g_main,NULL,wc.hInstance,NULL);
-        if(!g_eqWindow){MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
+        if(!g_eqWindow){ABM_MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
         SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);
     }
     RECT owner;GetWindowRect(g_main,&owner);
@@ -3159,7 +3159,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
         StringCchPrintfW(message,_countof(message),
             L"The optional torrent engine was not found or could not load.\n\nExpected:\n%s\n\nBuild the Windows x64 torrent runtime and keep its dependency DLLs in the same torrent-runtime folder.",
             dllPath);
-        MessageBoxW(owner,message,L"Torrent Stream",MB_OK|MB_ICONINFORMATION);
+        ABM_MessageBoxW(owner,message,L"Torrent Stream",MB_OK|MB_ICONINFORMATION);
         return FALSE;
     }
     g_torrentInitialize=(ABM_TorrentInitializeFn)GetProcAddress(g_torrentModule,"ABM_Torrent_Initialize");
@@ -3187,7 +3187,7 @@ static BOOL LoadTorrentEngine(HWND owner) {
        !g_torrentRemove || !g_torrentSetRateLimits || !g_torrentGetCacheInfo ||
        !g_torrentSetCacheLimit || !g_torrentClearCache || !g_torrentSetReadWindow ||
        !g_torrentWaitForRange || !g_torrentStartHttpStream || !g_torrentStartLanHttpStream || !g_torrentStopHttpStream) {
-        MessageBoxW(owner,L"The torrent engine DLL is missing one or more required C ABI exports. Rebuild and install the matching Windows x64 runtime.",
+        ABM_MessageBoxW(owner,L"The torrent engine DLL is missing one or more required C ABI exports. Rebuild and install the matching Windows x64 runtime.",
                     L"Torrent Stream",MB_OK|MB_ICONERROR);
         FreeLibrary(g_torrentModule);g_torrentModule=NULL;
         g_torrentInitialize=NULL;g_torrentShutdown=NULL;
@@ -3217,7 +3217,7 @@ static void StartTorrentEngine(HWND owner) {
         return;
     }
     if(!EnsureDataDirectory() || !EnsureTorrentCacheBaseDir()) {
-        MessageBoxW(owner,L"ABM AV Player could not prepare its application data directory or torrent cache location.",
+        ABM_MessageBoxW(owner,L"ABM AV Player could not prepare its application data directory or torrent cache location.",
                     L"Torrent Stream",MB_OK|MB_ICONWARNING);
         return;
     }
@@ -3233,7 +3233,7 @@ static void StartTorrentEngine(HWND owner) {
     if(!g_torrentInitThread) {
         g_torrentInitPending=FALSE;
         SetStatus(L"Could not start torrent engine initialization");
-        MessageBoxW(owner,L"Windows could not start the torrent initialization worker.",
+        ABM_MessageBoxW(owner,L"Windows could not start the torrent initialization worker.",
                     L"Torrent Stream",MB_OK|MB_ICONERROR);
         return;
     }
@@ -4304,7 +4304,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     const wchar_t *active=(g_torrentInitialized&&g_torrentActiveDownloadDir[0])?g_torrentActiveDownloadDir:g_torrentDownloadDir;
                     ShellExecuteW(hwnd,L"open",active,NULL,NULL,SW_SHOWNORMAL);
                 }
-                else MessageBoxW(hwnd,L"Could not open the configured permanent downloads folder.",L"Torrent Downloads",MB_OK|MB_ICONWARNING);
+                else ABM_MessageBoxW(hwnd,L"Could not open the configured permanent downloads folder.",L"Torrent Downloads",MB_OK|MB_ICONWARNING);
                 return 0;
             case ID_TORRENT_STOP:TorrentStopPlayback();TorrentSetLabel(g_torrentStatusLabel,L"Stream stopped.");return 0;
             case ID_TORRENT_REMOVE:
@@ -4329,7 +4329,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 return 0;
             }
             case ID_TORRENT_CLEAR_CACHE: {
-                if(MessageBoxW(hwnd,L"Delete cached data for inactive torrents? Data belonging to the currently loaded torrent is protected. This cannot be undone.",L"Clear Torrent Cache",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return 0;
+                if(ABM_MessageBoxW(hwnd,L"Delete cached data for inactive torrents? Data belonging to the currently loaded torrent is protected. This cannot be undone.",L"Clear Torrent Cache",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return 0;
                 uint64_t freed=0,remaining=0;
                 if(g_torrentClearCache&&g_torrentClearCache(&freed,&remaining)) {
                     wchar_t a[64],b[64],msg[192];TorrentFormatBytes((int64_t)freed,a,_countof(a));TorrentFormatBytes((int64_t)remaining,b,_countof(b));
@@ -4759,7 +4759,7 @@ static void SettingsApply(HWND w) {
  else if(!(attr&FILE_ATTRIBUTE_DIRECTORY)){StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Cache location must be a folder.");InvalidateRect(w,NULL,FALSE);return;}
  BOOL changed=_wcsicmp(path,g_torrentCacheBaseDir)!=0;
  BOOL downloadsChanged=_wcsicmp(downloads,g_torrentDownloadDir)!=0;
- if((changed||downloadsChanged)&&(g_torrentInitialized||g_torrentInitPending)&&MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
+ if((changed||downloadsChanged)&&(g_torrentInitialized||g_torrentInitPending)&&ABM_MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
  wcsncpy_s(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path,_TRUNCATE);
  wcsncpy_s(g_torrentDownloadDir,_countof(g_torrentDownloadDir),downloads,_TRUNCATE);
  g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
@@ -4902,7 +4902,7 @@ static void ShowSettingsDialog(HWND owner) {
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); if(!ABM_D2D_Init(&g_ui,hwnd)){MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -5123,7 +5123,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ShowTorrentWindow(hwnd);
         } else {
             SetStatus(L"Torrent engine initialization failed");
-            MessageBoxW(hwnd,L"The native torrent engine could not initialize. Normal playback and Streaming Centre remain available.",
+            ABM_MessageBoxW(hwnd,L"The native torrent engine could not initialize. Normal playback and Streaming Centre remain available.",
                         L"Torrent Stream",MB_OK|MB_ICONWARNING);
         }
         return 0;
@@ -5380,7 +5380,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){/* The header is an expand affordance, not a toggle-to-dismiss control. Once open, keep settings open; the drawer itself closes only on an outside click. */if(!g_drawerSettingsOpen){g_drawerSettingsOpen=TRUE;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_CLEAR_PLAYLIST,x,y)){if(g_playlistCount&&MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_CLEAR_PLAYLIST,x,y)){if(g_playlistCount&&ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_LIBRARY,x,y)){g_libraryTab=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
@@ -5422,7 +5422,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
                 else if(mi==1)StartDiscovery();
-                else if(mi==2){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);}
+                else if(mi==2){StartDiscovery();ABM_MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);}
                 else if(mi==3){if(g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);}}
                 else if(mi==4)ToggleFullscreen(hwnd);
                 else if(mi==5)LoadPlaylist();
@@ -5514,7 +5514,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
         if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
-        if(ctrl && shift && wp=='C'){StartDiscovery();MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);return 0;}
+        if(ctrl && shift && wp=='C'){StartDiscovery();ABM_MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);return 0;}
         if(ctrl && !shift && wp=='L'){LoadPlaylist();return 0;}
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
@@ -5799,7 +5799,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!_wcsicmp(hwMode,L"none"))args[argCount++]="--avcodec-hw=none";
     else if(!_wcsicmp(hwMode,L"d3d11va"))args[argCount++]="--avcodec-hw=d3d11va";
     g_vlc=libvlc_new(argCount,args);
-    if(!g_vlc){MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
+    if(!g_vlc){ABM_MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     /* Failure of the optional streaming cast player must not affect local playback. */
     g_streamCastPlayer=libvlc_media_player_new(g_vlc);
