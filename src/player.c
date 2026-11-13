@@ -1300,20 +1300,23 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuHeader={menu.left+18,menu.top+10,menu.right-18,menu.top+43};
         Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(121,190,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+16,menu.top+45,menu.right-16,menu.top+45,RGB(43,70,96),1);
+        /* Menu order: playback and media, discovery/casting, services,
+           support/maintenance, settings, exit, and About as the final item. */
         const wchar_t *labels[18]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
-            L"Streaming services",L"Help & User Guide",L"Check for updates",L"Exit player",L"About ABM AV Player",
-            L"Settings",L"Torrent Stream"
+            L"Streaming services",L"Torrent Stream",L"Help & User Guide",
+            L"Check for updates",L"Settings",L"Exit player",L"About ABM AV Player"
         };
         const wchar_t *shortcuts[18]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
-            L"Ctrl+Shift+S",L"F1",L"",L"Alt+F4",L"Ctrl+I",L"",L"Ctrl+Shift+T"
+            L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
+            L"",L"",L"Alt+F4",L"Ctrl+I"
         };
-        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"?",L"↻",L"×",L"i",L"⚙",L"TOR"};
+        const wchar_t *icons[18]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"⚙",L"×",L"i"};
         for(int i=0;i<18;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -1322,7 +1325,7 @@ static void DrawUI(HDC dc,RECT client) {
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             RECT row=item;InflateRect(&row,-1,-1);
-            BOOL featured=(i==11||i==17);
+            BOOL featured=(i==11||i==12);
             if(featured){
                 if(hot)GradientRound(dc,row,i==11?RGB(23,111,119):RGB(139,70,29),i==11?RGB(52,82,157):RGB(104,58,113),13);
                 else GradientRound(dc,row,i==11?RGB(17,65,82):RGB(76,43,39),i==11?RGB(27,43,82):RGB(54,39,65),13);
@@ -5135,12 +5138,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==9){g_repeat=!g_repeat;SavePersistentState();}
                 else if(mi==10)ShowEqualizer();
                 else if(mi==11)ABM_Streaming_Show(hwnd);
-                else if(mi==12)ShowHelpDialog(hwnd);
-                else if(mi==13)ABM_CheckForUpdates(hwnd,APP_VERSION);
-                else if(mi==14)PostMessageW(hwnd,WM_CLOSE,0,0);
-                else if(mi==15)ShowAboutDialog(hwnd);
-                else if(mi==16)ShowSettingsDialog(hwnd);
-                else if(mi==17)ShowTorrentWindow(hwnd);
+                else if(mi==12)ShowTorrentWindow(hwnd);
+                else if(mi==13)ShowHelpDialog(hwnd);
+                else if(mi==14)ABM_CheckForUpdates(hwnd,APP_VERSION);
+                else if(mi==15)ShowSettingsDialog(hwnd);
+                else if(mi==16)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==17)ShowAboutDialog(hwnd);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
