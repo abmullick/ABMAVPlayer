@@ -1460,9 +1460,22 @@ static void DrawUI(HDC dc,RECT client) {
     GradientRound(dc,audioBtn,audioActive?ABM_THEME_COLOR_287E77:ABM_THEME_COLOR_18303A,audioActive?ABM_THEME_COLOR_44AE91:ABM_THEME_COLOR_264F5B,13);
     ABM_D2D_StrokeRound(&g_ui,(float)audioBtn.left,(float)audioBtn.top,(float)audioBtn.right,(float)audioBtn.bottom,13.0f,audioActive?ABM_THEME_COLOR_7BDCBC:ABM_THEME_COLOR_4C8996,1.0f);
     int acx=(audioBtn.left+audioBtn.right)/2,acy=(audioBtn.top+audioBtn.bottom)/2;
-    DrawLine(dc,acx-13,acy-5,acx-7,acy-5,ABM_THEME_COLOR_E5F5FA,2);DrawLine(dc,acx-13,acy+5,acx-7,acy+5,ABM_THEME_COLOR_E5F5FA,2);
-    DrawLine(dc,acx-7,acy-5,acx+1,acy-11,ABM_THEME_COLOR_E5F5FA,2);DrawLine(dc,acx-7,acy+5,acx+1,acy+11,ABM_THEME_COLOR_E5F5FA,2);
-    DrawLine(dc,acx+5,acy-7,acx+9,acy-3,ABM_THEME_COLOR_85DCCC,2);DrawLine(dc,acx+9,acy-3,acx+9,acy+3,ABM_THEME_COLOR_85DCCC,2);DrawLine(dc,acx+9,acy+3,acx+5,acy+7,ABM_THEME_COLOR_85DCCC,2);
+    /* Compact speaker + Bluetooth mark: the button still represents audio
+       output selection, while the secondary glyph hints at wireless audio. */
+    COLORREF speakerInk=ABM_THEME_COLOR_E5F5FA;
+    COLORREF bluetoothInk=ABM_THEME_COLOR_85DCCC;
+    DrawLine(dc,acx-15,acy-5,acx-9,acy-5,speakerInk,2);
+    DrawLine(dc,acx-15,acy+5,acx-9,acy+5,speakerInk,2);
+    DrawLine(dc,acx-9,acy-5,acx-1,acy-12,speakerInk,2);
+    DrawLine(dc,acx-9,acy+5,acx-1,acy+12,speakerInk,2);
+    DrawLine(dc,acx-1,acy-12,acx-1,acy+12,speakerInk,2);
+    DrawLine(dc,acx+5,acy-12,acx+5,acy+12,bluetoothInk,2);
+    DrawLine(dc,acx+5,acy-12,acx+13,acy-5,bluetoothInk,2);
+    DrawLine(dc,acx+13,acy-5,acx+5,acy+2,bluetoothInk,2);
+    DrawLine(dc,acx+5,acy+2,acx+13,acy+9,bluetoothInk,2);
+    DrawLine(dc,acx+13,acy+9,acx+5,acy+12,bluetoothInk,2);
+    DrawLine(dc,acx+5,acy+2,acx-1,acy-4,bluetoothInk,2);
+    DrawLine(dc,acx+5,acy+2,acx-1,acy+8,bluetoothInk,2);
     if(g_audioPopupOpen) {
         int rows=g_audioDeviceCount+1;if(rows>7)rows=7;
         R_AUDIO_PANEL=(RECT){R_SIDEBAR.right-304,R_SIDEBAR.bottom-91-(rows*38+68),R_SIDEBAR.right-14,R_SIDEBAR.bottom-91};
