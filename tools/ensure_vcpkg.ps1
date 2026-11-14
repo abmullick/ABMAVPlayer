@@ -12,6 +12,9 @@ function Invoke-Git([string[]]$GitArgs) {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+# Regenerate the ignored vcpkg manifest from VERSION before vcpkg reads it.
+& (Join-Path $PSScriptRoot "prepare_version.ps1") | Out-Null
+
 $manifestPath = Join-Path $repoRoot "vcpkg.json"
 if (-not (Test-Path $manifestPath)) {
     throw "vcpkg.json was not found at the repository root."
