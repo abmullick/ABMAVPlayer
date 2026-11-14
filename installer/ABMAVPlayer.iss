@@ -49,6 +49,10 @@ Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""A
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""ABM AV Player SSDP"" dir=in action=allow protocol=UDP localport=1900 remoteip=LocalSubnet profile=private"; Tasks: castfirewall; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch ABM AV Player"; Flags: postinstall nowait skipifsilent
 
+[UninstallDelete]
+; Remove the universal activation on explicit uninstall so reinstall requires key entry again.
+Type: files; Name: "{userappdata}\\ABMAVPlayer\\license.key"
+
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ABM AV Player mDNS"""; Flags: runhidden waituntilterminated
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ABM AV Player SSDP"""; Flags: runhidden waituntilterminated
