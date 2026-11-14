@@ -172,6 +172,7 @@ static wchar_t g_audioDeviceLabel[256] = L"System default";
 static char g_audioDeviceIds[12][256];
 static wchar_t g_audioDeviceNames[12][256];
 static int g_audioDeviceCount = 0;
+static DWORD g_audioLastDeviceCheckTick = 0;
 static BOOL g_drawerOpen = FALSE;
 static int g_drawerProgress = 0;
 static int g_hoverPlaylistIndex = -1;
@@ -1811,6 +1812,7 @@ static void SelectRenderer(void) {
                     libvlc_media_add_option(m,":compressor-release=250");
                     libvlc_media_add_option(m,":compressor-makeup-gain=0");
                 }
+                ApplyAudioOutputDevice();
                 libvlc_media_player_set_media(g_player,m);
                 ApplyEqProfile();
                 int playResult=libvlc_media_player_play(g_player);
@@ -2334,7 +2336,7 @@ static void RefreshAudioDevices(void) {
     g_audioDeviceCount=0;
     if(!g_player)return;
     libvlc_audio_output_device_t *list=libvlc_audio_output_device_enum(g_player);
-    for(libvlc_audio_output_device_t *d=list;d&&g_audioDeviceCount<6;d=d->p_next) {
+    for(libvlc_audio_output_device_t *d=list;d&&g_audioDeviceCount<11;d=d->p_next) {
         int i=g_audioDeviceCount++;
         g_audioDeviceIds[i][0]=0;g_audioDeviceNames[i][0]=0;
         if(d->psz_device)strncpy_s(g_audioDeviceIds[i],sizeof(g_audioDeviceIds[i]),d->psz_device,_TRUNCATE);
@@ -2349,6 +2351,26 @@ static void ApplyAudioOutputDevice(void) {
     if(!g_player||g_selectedRenderer)return;
     libvlc_audio_output_device_set(g_player,NULL,g_audioDeviceId[0]?g_audioDeviceId:NULL);
 }
+
+static void CheckAudioOutputAvailability(void) {
+    DWORD now=GetTickCount();
+    if(!g_player||!g_audioDeviceId[0]||(DWORD)(now-g_audioLastDeviceCheckTick)<2000)return;
+    g_audioLastDeviceCheckTick=now;
+    RefreshAudioDevices();
+    BOOL found=FALSE;
+    for(int i=0;i<g_audioDeviceCount;i++)if(!strcmp(g_audioDeviceIds[i],g_audioDeviceId)){found=TRUE;break;}
+    if(!found) {
+        g_audioDeviceId[0]=0;
+        wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),L"System default");
+        /* LibVLC's NULL device ID selects the current Windows default endpoint.
+           The same g_player is used for both local and torrent playback. */
+        libvlc_audio_output_device_set(g_player,NULL,NULL);
+        SaveAudioPreferences();
+        SetStatus(L"Audio device disconnected — switched to System Default");
+        if(g_main)InvalidateRect(g_main,NULL,FALSE);
+    }
+}
+
 static void SelectAudioOutput(int index) {
     if(index<0){g_audioDeviceId[0]=0;wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),L"System default");}
     else if(index<g_audioDeviceCount){strncpy_s(g_audioDeviceId,sizeof(g_audioDeviceId),g_audioDeviceIds[index],_TRUNCATE);wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),g_audioDeviceNames[index]);}
@@ -5205,6 +5227,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(media) {
                     libvlc_media_player_stop(g_player);
                     g_hasMedia=FALSE;g_current=-1;
+                    ApplyAudioOutputDevice();
                     libvlc_media_player_set_media(g_player,media);
                     BeginArtworkParse(media);
                     BOOL eventsAttached=TorrentAttachPlayerEvents();
@@ -5277,6 +5300,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_TIMER:if(wp==TIMER_ID){
         TorrentCheckPlaybackStall();
+        CheckAudioOutputAvailability();
         if (g_fullscreen) {
             /* Do not depend on WM_MOUSEMOVE reaching a particular HWND.
                LibVLC owns the video child and the layered controls are a
