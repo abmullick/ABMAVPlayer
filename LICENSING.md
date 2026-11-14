@@ -12,7 +12,7 @@ The native application checks licensing before media, streaming, torrent or cast
 - **Fail-closed trial state:** if a persisted trial record exists but cannot be decrypted or validated, the application requires activation rather than silently starting a new trial. If both valid copies disagree, the trial is treated as tampered. This detects corruption or alteration of records that remain present; because the trial is fully offline, a local administrator who deletes every copy of the trial state can still make the application appear to be a first launch. Preventing that reliably requires a server-side record or a separately provisioned machine-level trust anchor.
 - **Native build hardening:** `build.bat` enables MSVC `/GS`, `/sdl` and Control Flow Guard (`/guard:cf`), plus linker ASLR, DEP, high-entropy ASLR and CET compatibility flags.
 - **Key-check obfuscation:** the embedded key digest is XOR-masked in the binary and compared without an early-exit byte comparison. This is only a static-analysis speed bump, not a cryptographic boundary.
-- **Executable/component integrity:** the licensing module is statically linked into `ABMAVPlayer.exe`. Authenticode verification therefore covers the executable and embedded licensing code as one signed image. To enforce this check, sign the release executable with the publisher's trusted code-signing certificate, then build with `ABM_REQUIRE_SIGNED_BUILD=1`. Unsigned developer builds intentionally do not enforce Authenticode. The current trust check accepts a trusted Authenticode signature; publisher-certificate pinning should be added once the production certificate thumbprint is available.
+- **Executable/component integrity:** the licensing module is statically linked into `ABMAVPlayer.exe`. Authenticode verification therefore covers the executable and embedded licensing code as one signed image. Authenticode enforcement is optional and disabled by default for the current v1.0.6 configuration. The normal unsigned development and distribution builds continue to work; no certificate, publisher registration or signing workflow is required. If code signing is adopted later, sign the executable and set `ABM_REQUIRE_SIGNED_BUILD=1` for that build. The current trust check accepts a trusted Authenticode signature; it does not pin a specific ABM publisher certificate.
 
 ## Publisher activation key
 
@@ -27,8 +27,8 @@ Run `build.bat` from the x64 Native Tools Command Prompt for Visual Studio. The 
 Before distribution, test at least:
 
 - Build the normal unsigned developer configuration and confirm it starts.
-- Sign a release executable with the publisher certificate, build with `ABM_REQUIRE_SIGNED_BUILD=1`, and confirm the correctly signed executable starts.
-- Confirm an unsigned executable and an executable modified after signing are rejected in signed-enforcement mode.
+- Confirm the normal unsigned development/distribution build starts with Authenticode enforcement disabled.
+- Optional future signed-build test: sign the executable, build with `ABM_REQUIRE_SIGNED_BUILD=1`, confirm the signed executable starts, and confirm unsigned or post-signature-modified executables are rejected.
 - Corrupt an existing trial-state copy and verify that the trial does not restart.
 - Confirm trial state remains valid across restarts and in-place updates.
 
