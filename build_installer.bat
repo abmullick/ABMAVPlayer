@@ -38,7 +38,7 @@ call prepare_installer.bat
 if errorlevel 1 goto staging_failed
 
 if not exist "release\ABM AV Player\ABMAVPlayer.exe" goto missing_stage
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.5') { Write-Host 'ERROR: Staged EXE is not version 1.0.6.'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.6') { Write-Host 'ERROR: Staged EXE is not version 1.0.6.'; exit 1 }"
 if errorlevel 1 goto wrong_staged_version
 if not exist "release\ABM AV Player\LICENSE" goto missing_license
 
