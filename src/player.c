@@ -811,7 +811,6 @@ static void UpdateLayout(HWND hwnd) {
             x=hero.left+pad;
             int totalH=4*cardH+3*rowGap+footGap+footH;
             y=hero.top+(panelH-totalH)/2;
-            if(y<hero.top+8)y=hero.top+8;
             R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
             R_HOME_STREAM=(RECT){x,y+cardH+rowGap,x+cardW,y+2*cardH+rowGap};
             R_HOME_TORRENT=(RECT){x,y+2*(cardH+rowGap),x+cardW,y+3*cardH+2*rowGap};
@@ -828,7 +827,6 @@ static void UpdateLayout(HWND hwnd) {
             }
             x=hero.left+pad;
             y=hero.top+(panelH-totalH)/2;
-            if(y<hero.top+8)y=hero.top+8;
             int rightX=x+cardW+cardGap;
             R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
             R_HOME_STREAM=(RECT){rightX,y,rightX+cardW,y+cardH};
