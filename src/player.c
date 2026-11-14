@@ -4719,8 +4719,8 @@ static void HelpFormatArticle(HWND edit) {
  SendMessageW(edit,EM_SETSEL,0,-1);
  SendMessageW(edit,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
  PARAFORMAT2 pf;ZeroMemory(&pf,sizeof(pf));pf.cbSize=sizeof(pf);
- pf.dwMask=PFM_SPACEAFTER|PFM_LINESPACING;
- pf.dySpaceAfter=150;pf.bLineSpacingRule=4;pf.dyLineSpacing=285;
+ pf.dwMask=PFM_SPACEAFTER;
+ pf.dySpaceAfter=180;
  SendMessageW(edit,EM_SETPARAFORMAT,0,(LPARAM)&pf);
  wchar_t *text=(wchar_t*)calloc((size_t)len+1,sizeof(wchar_t));if(!text)return;
  GetWindowTextW(edit,text,len+1);
@@ -4743,8 +4743,8 @@ static void HelpFormatArticle(HWND edit) {
     SendMessageW(edit,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
     SendMessageW(edit,EM_SETSEL,pos,end);
     ZeroMemory(&pf,sizeof(pf));pf.cbSize=sizeof(pf);
-    pf.dwMask=PFM_SPACEBEFORE|PFM_SPACEAFTER|PFM_LINESPACING;
-    pf.dySpaceBefore=220;pf.dySpaceAfter=100;pf.bLineSpacingRule=4;pf.dyLineSpacing=300;
+    pf.dwMask=PFM_SPACEBEFORE|PFM_SPACEAFTER;
+    pf.dySpaceBefore=260;pf.dySpaceAfter=130;
     SendMessageW(edit,EM_SETPARAFORMAT,0,(LPARAM)&pf);
    }
   }
