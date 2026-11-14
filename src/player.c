@@ -4994,6 +4994,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     g_settingsThemePreset=preset;
     ABMThemeApplyPreset((ABMThemePreset)preset);
     SaveThemePreference(preset);
+    StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Theme applied and saved.");
     RefreshThemeWindows();
     InvalidateRect(w,NULL,FALSE);
     return 0;
@@ -5956,10 +5957,11 @@ static void EnableDpiAwareness(void) {
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     EnableDpiAwareness();
     (void)prev;(void)cmd;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
+    /* Load the user's palette before the activation UI is shown. */
+    LoadThemePreference();
     /* Licensing is an independent gate; no playback, torrent or casting state is initialized before access is granted. */
     if(!ABM_LicenseCheckAndPrompt(inst,NULL)){if(SUCCEEDED(comInit))CoUninitialize();return 0;}
     InitializeCriticalSection(&g_rendererLock);
-    LoadThemePreference();
     g_videoBrush=CreateSolidBrush(ABM_THEME_COLOR_000000);g_comboBrush=CreateSolidBrush(C_PANEL2);
     g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
     g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
