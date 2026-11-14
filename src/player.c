@@ -5030,8 +5030,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
-   int left=40+preset*108;
-   if(SettingsPoint(x,y,left,790,left+102,850)){
+   int col=preset%4,row=preset/4;
+   int left=40+col*185,top=780+row*46;
+   if(SettingsPoint(x,y,left,top,left+177,top+44)){
     g_settingsThemePreset=preset;
     ABMThemeApplyPreset((ABMThemePreset)preset);
     SaveThemePreference(preset);
@@ -5102,14 +5103,15 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsText(L"Checks the latest published GitHub release.",210,682,770,713,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(748,L"COLOR THEME",L"Seven coordinated palettes · changes apply immediately",872);
    for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
-    float left=(float)(40+preset*108);
+    int col=preset%4,row=preset/4;
+    float left=(float)(40+col*185),top=(float)(780+row*46);
     BOOL selected=(preset==g_settingsThemePreset);
     COLORREF accent=ABMThemePresetAccent((ABMThemePreset)preset);
-    ABM_D2D_Round(&g_settingsUi,left,790,left+102.0f,850.0f,9.0f,selected?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
-    ABM_D2D_Round(&g_settingsUi,left+7.0f,797,left+95.0f,822.0f,6.0f,accent);
-    ABM_D2D_Round(&g_settingsUi,left+7.0f,826,left+95.0f,844.0f,5.0f,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE);
-    SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+8,826,(int)left+94,844,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,790.5f,left+101.5f,849.5f,9.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
+    ABM_D2D_Round(&g_settingsUi,left,top,left+177.0f,top+44.0f,8.0f,selected?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
+    ABM_D2D_Round(&g_settingsUi,left+7.0f,top+4.0f,left+170.0f,top+19.0f,5.0f,accent);
+    ABM_D2D_Round(&g_settingsUi,left+7.0f,top+22.0f,left+170.0f,top+39.0f,5.0f,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE);
+    SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
    SettingsText(g_settingsMessage,40,878,780,902,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    SettingsButtonDraw(610,914,735,952,L"Save settings",TRUE);
