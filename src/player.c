@@ -142,6 +142,7 @@ static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
 static libvlc_media_t *g_artMedia=NULL;
 static volatile LONG g_artworkGeneration=0;
+static LONG g_artworkCallbackGeneration=0;
 static BOOL g_artworkLoaded=FALSE;
 static int g_artworkFade=100;
 static wchar_t g_trackTitle[256]=L"";
@@ -456,7 +457,9 @@ static int EaseToward(int current,int target,int responsePercent) {
 static void ResetArtwork(void) {
     if (g_artMedia) {
         libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
-        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,NULL);
+        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,
+                            (void *)(INT_PTR)g_artworkCallbackGeneration);
+        g_artworkCallbackGeneration=0;
         libvlc_media_parse_stop(g_artMedia);
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
@@ -469,13 +472,23 @@ static void BeginArtworkParse(libvlc_media_t *media) {
     ResetArtwork(); if (!media) return;
     g_artMedia=media; libvlc_media_retain(g_artMedia);
     libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
-    if (libvlc_event_attach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,NULL)!=0) return;
-    libvlc_media_parse_with_options(g_artMedia,libvlc_media_parse_local,5000);
+    LONG generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
+    if (libvlc_event_attach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,(void *)(INT_PTR)generation)!=0) {
+        libvlc_media_release(g_artMedia);g_artMedia=NULL;
+        return;
+    }
+    g_artworkCallbackGeneration=generation;
+    if(libvlc_media_parse_with_options(g_artMedia,libvlc_media_parse_local,5000)!=0) {
+        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,(void *)(INT_PTR)generation);
+        g_artworkCallbackGeneration=0;
+        libvlc_media_release(g_artMedia);g_artMedia=NULL;
+    }
 }
 static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque) {
-    (void)opaque;
-    if (ev && ev->type==libvlc_MediaParsedChanged && g_main)
-        PostMessageW(g_main,WM_ARTWORK_READY,(WPARAM)ev->p_obj,0);
+    LONG generation=(LONG)(INT_PTR)opaque;
+    HWND target=g_main;
+    if (ev && ev->type==libvlc_MediaParsedChanged && target)
+        PostMessageW(target,WM_ARTWORK_READY,(WPARAM)generation,0);
 }
 static void CopyVlcMeta(libvlc_media_t *media,libvlc_meta_t key,wchar_t *out,size_t cap) {
     char *value=libvlc_media_get_meta(media,key);
@@ -6085,7 +6098,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
         DestroyWindow(hwnd);return 0;
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
-    case WM_ARTWORK_READY: if((libvlc_media_t *)wp==g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
+    case WM_ARTWORK_READY: if((LONG)wp==InterlockedCompareExchange(&g_artworkGeneration,0,0) && g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
     case WM_ARTWORK_DOWNLOAD_READY: {
         LONG generation=(LONG)wp;
         if(generation==InterlockedCompareExchange(&g_artworkGeneration,0,0) && lp && EnsureDataDirectory()) {
