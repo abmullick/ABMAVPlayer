@@ -652,7 +652,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT description={322,362,rc.right-28,412};
             Text(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,420,rc.right-28,446};
-            Text(dc,L"Version 1.0.6   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Version 1.0.7   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,ABM_THEME_COLOR_233E52);
             RECT featuresTitle={32,470,rc.right-32,495};
             Text(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
