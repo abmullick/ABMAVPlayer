@@ -5099,7 +5099,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsSection(666,L"UPDATES",L"Maintenance",738);
    SettingsButtonDraw(39,681,194,714,L"Check for updates",TRUE);
    SettingsText(L"Checks the latest published GitHub release.",210,682,770,713,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsSection(748,L"COLOR THEME",L"Seven coordinated palettes · changes apply immediately",872);
+   SettingsSection(748,L"COLOR THEME",L"Changes apply immediately",872);
    for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
     int col=preset%4,row=preset/4;
     float left=(float)(40+col*185),top=(float)(780+row*46);
