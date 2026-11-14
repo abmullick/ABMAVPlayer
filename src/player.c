@@ -5480,7 +5480,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
     /* Page 6 paints its interactive performance controls above. Do not draw
        the generic runtime-status card over those controls. */
-    if(g_advancedSettingsPage!=6){
+    if(g_advancedSettingsPage!=6&&g_advancedSettingsPage!=7){
      ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);
      ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
      AdvancedSettingsText(sectionTitle,326,260,1008,298,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
