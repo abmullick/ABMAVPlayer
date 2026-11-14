@@ -6,7 +6,7 @@ cd /d "%ROOT%"
 
 echo Preparing the pinned vcpkg toolchain and dependency cache...
 set "VCPKG_ROOT="
-for /f "usebackq delims=" %%V in (\`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_vcpkg.ps1\`) do set "VCPKG_ROOT=%%V"
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_vcpkg.ps1`) do set "VCPKG_ROOT=%%V"
 if not defined VCPKG_ROOT (
   echo ERROR: Could not prepare the vcpkg toolchain.
   exit /b 1
