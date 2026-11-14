@@ -1532,16 +1532,16 @@ static void DrawUI(HDC dc,RECT client) {
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
             L"Streaming services",L"Torrent Stream",L"Help & User Guide",
-            L"Check for updates",L"License & Activation",L"Settings",L"Exit player",L"About ABM AV Player"
+            L"Check for updates",L"License & Activation",L"Settings",L"About ABM AV Player",L"Exit player"
         };
         const wchar_t *shortcuts[19]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
             L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
-            L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Alt+F4",L"Ctrl+I"
+            L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",L"Alt+F4"
         };
-        const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"×",L"i"};
+        const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
         for(int i=0;i<19;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -1565,7 +1565,7 @@ static void DrawUI(HDC dc,RECT client) {
             COLORREF glyphFill=featured?(i==11?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_89512D):ABM_THEME_COLOR_1B2F42;
             if(hot)glyphFill=ABM_THEME_COLOR_257471;
             RoundBox(dc,glyph,glyphFill,featured?10:8);
-            Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,featured?g_headingFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
                         item.right-112,item.bottom-(featured?6:2)};
             if(featured){
@@ -1573,7 +1573,7 @@ static void DrawUI(HDC dc,RECT client) {
                 RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
                 Txt(dc,i==11?L"STREAMING TVs & SERVICES":L"TORRENT STREAMING",mainLabel,
                     ABM_THEME_COLOR_F9FCFF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                Txt(dc,i==11?L"Open services, discover TVs and cast supported video":L"Add a magnet or torrent file and stream while downloading",
+                Txt(dc,i==11?L"Open services, discover TVs and cast video":L"Stream torrents while they download",
                     subLabel,ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }else{
                 COLORREF textColor=hot?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E2ECF6;
@@ -5671,8 +5671,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==14)ABM_CheckForUpdates(hwnd,APP_VERSION);
                 else if(mi==15){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);}
                 else if(mi==16)ShowSettingsDialog(hwnd);
-                else if(mi==17)PostMessageW(hwnd,WM_CLOSE,0,0);
-                else if(mi==18)ShowAboutDialog(hwnd);
+                else if(mi==17)ShowAboutDialog(hwnd);
+                else if(mi==18)PostMessageW(hwnd,WM_CLOSE,0,0);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
