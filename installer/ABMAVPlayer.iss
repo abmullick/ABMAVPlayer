@@ -51,7 +51,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch ABM AV Player"; Flags: p
 
 [UninstallDelete]
 ; Remove the universal activation on explicit uninstall so reinstall requires key entry again.
-Type: files; Name: "{userappdata}\\ABMAVPlayer\\license.key"
+Type: files; Name: "{userappdata}\ABMAVPlayer\license.key"
 
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ABM AV Player mDNS"""; Flags: runhidden waituntilterminated
