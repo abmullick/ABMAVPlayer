@@ -179,12 +179,17 @@ static int g_hoverPlaylistIndex = -1;
 static BOOL g_drawerSettingsOpen = FALSE;
 static int64_t g_advancedSubtitleDelayUs=0;
 static int g_advancedSubtitleFontSize=13; /* LibVLC relative subtitle size: 10, 13, 16, 19 */
+static int g_advancedSubtitleColor=16777215; /* RGB white */
 static void ApplySubtitleAppearanceOption(libvlc_media_t *media) {
     if(!media)return;
     char option[64];
     int size=g_advancedSubtitleFontSize;
     if(size!=10&&size!=13&&size!=16&&size!=19)size=13;
     snprintf(option,sizeof(option),":freetype-rel-fontsize=%d",size);
+    libvlc_media_add_option(media,option);
+    int color=g_advancedSubtitleColor;
+    if(color!=16777215&&color!=16776960&&color!=65535&&color!=65280)color=16777215;
+    snprintf(option,sizeof(option),":freetype-color=%d",color);
     libvlc_media_add_option(media,option);
 }
 static BOOL g_menuOpen = FALSE;
@@ -5026,6 +5031,8 @@ static BOOL g_advancedHwEnvOverride=FALSE;
 static int g_advancedAudioOutMode=0,g_advancedAudioOutDraft=0;
 static const int g_subtitleFontSizes[4]={10,13,16,19};
 static const wchar_t *g_subtitleFontSizeLabels[4]={L"Small",L"Normal",L"Large",L"Larger"};
+static const int g_subtitleColors[4]={16777215,16776960,65535,65280};
+static const wchar_t *g_subtitleColorLabels[4]={L"White",L"Yellow",L"Cyan",L"Green"};
 
 static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
@@ -5066,6 +5073,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,p);if(v!=10&&v!=13&&v!=16&&v!=19)v=13;g_advancedSubtitleFontSize=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,p);if(v!=16777215&&v!=16776960&&v!=65535&&v!=65280)v=16777215;g_advancedSubtitleColor=v;}
   {wchar_t env[32]={0};if(GetEnvironmentVariableW(L"ABM_VLC_HW",env,(DWORD)_countof(env))>0){
    if(!_wcsicmp(env,L"none")){g_advancedHwDraft=1;g_advancedHwEnvOverride=TRUE;}
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
@@ -5105,6 +5113,19 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
+   for(int i=0;i<4;i++){
+    int left=320+i*176;
+    if(AdvancedSettingsPoint(x,y,left,638,left+164,660)){
+     g_advancedSubtitleColor=g_subtitleColors[i];
+     if(EnsureDataDirectory()){
+      wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);
+      StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleColor);
+      if(!WritePrivateProfileStringW(L"Subtitles",L"TextColor",v,p))
+       ABM_MessageBoxW(w,L"Could not save the subtitle text-color preference.",APP_NAME,MB_ICONWARNING);
+     }
+     InvalidateRect(w,NULL,FALSE);return 0;
+    }
+   }
    for(int i=0;i<4;i++){
     int left=320+i*176;
     if(AdvancedSettingsPoint(x,y,left,556,left+164,604)){
@@ -5250,7 +5271,13 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,556.5f,(float)left+163.5f,603.5f,8,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
      AdvancedSettingsText(g_subtitleFontSizeLabels[i],left+8,558,left+156,602,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
-    AdvancedSettingsText(L"Applies to the next media opened. Text subtitles only; styled ASS/SSA and image-based tracks may ignore this setting.",322,612,1018,650,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+    AdvancedSettingsText(L"Subtitle text color",322,612,1018,634,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){
+     int left=320+i*176;BOOL selected=(g_advancedSubtitleColor==g_subtitleColors[i]);
+     ABM_D2D_Round(&g_advancedSettingsUi,(float)left,638,(float)left+164,660,6,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,638.5f,(float)left+163.5f,659.5f,6,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
+     AdvancedSettingsText(g_subtitleColorLabels[i],left+6,639,left+158,659,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
    }else{
     ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
     ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
@@ -6415,6 +6442,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_advancedAudioOutMode=savedAudioOut;
     {int savedSubtitleDelayMs=GetPrivateProfileIntW(L"Subtitles",L"DelayMs",0,hwSettingsPath);if(savedSubtitleDelayMs < -10000)savedSubtitleDelayMs=-10000;if(savedSubtitleDelayMs > 10000)savedSubtitleDelayMs=10000;g_advancedSubtitleDelayUs=(int64_t)savedSubtitleDelayMs*1000;}
     {int savedSubtitleSize=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,hwSettingsPath);if(savedSubtitleSize!=10&&savedSubtitleSize!=13&&savedSubtitleSize!=16&&savedSubtitleSize!=19)savedSubtitleSize=13;g_advancedSubtitleFontSize=savedSubtitleSize;}
+    {int savedSubtitleColor=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,hwSettingsPath);if(savedSubtitleColor!=16777215&&savedSubtitleColor!=16776960&&savedSubtitleColor!=65535&&savedSubtitleColor!=65280)savedSubtitleColor=16777215;g_advancedSubtitleColor=savedSubtitleColor;}
     if(savedAudioOut==1)args[argCount++]="--aout=mmdevice";
     else if(savedAudioOut==2)args[argCount++]="--aout=directsound";
     g_vlc=libvlc_new(argCount,args);
