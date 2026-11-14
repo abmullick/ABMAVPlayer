@@ -1117,10 +1117,10 @@ RGB(255, 255, 255)
 static volatile LONG g_activePreset = ABM_THEME_PRESET_MIDNIGHT_TEAL;
 static const wchar_t *g_presetNames[ABM_THEME_PRESET_COUNT] = {
     L"Midnight Teal", L"Arctic Blue", L"Royal Violet",
-    L"Ruby Rose", L"Sunset Amber", L"Emerald"
+    L"Ruby Rose", L"Sunset Amber", L"Emerald", L"Golden Yellow"
 };
 static const double g_presetAccentHue[ABM_THEME_PRESET_COUNT] = {
-    174.0, 207.0, 267.0, 342.0, 38.0, 146.0
+    174.0, 207.0, 267.0, 342.0, 38.0, 146.0, 50.0
 };
 static COLORREF ABMThemeTransformColor(COLORREF color, double targetHue) {
     double r=(double)GetRValue(color)/255.0, g=(double)GetGValue(color)/255.0, b=(double)GetBValue(color)/255.0;
