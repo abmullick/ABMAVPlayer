@@ -1217,10 +1217,10 @@ static void DrawUI(HDC dc,RECT client) {
     RECT prog=track;
     prog.right=prog.left+(prog.right-prog.left)*pos/1000;
     if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_2AA99E,ABM_THEME_COLOR_70C7A1,5);
-    int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
-    RECT halo={seekThumb.left-11,R_SEEK.top-11,seekThumb.left+11,R_SEEK.bottom+11};
+    int seekThumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
+    RECT halo={seekThumb-11,R_SEEK.top-11,seekThumb+11,R_SEEK.bottom+11};
     RoundBox(dc,halo,ABM_THEME_COLOR_153943,11);
-    RECT dot={seekThumb.left-5,R_SEEK.top-5,seekThumb.left+5,R_SEEK.bottom+5};
+    RECT dot={seekThumb-5,R_SEEK.top-5,seekThumb+5,R_SEEK.bottom+5};
     RoundBox(dc,dot,ABM_THEME_COLOR_F2F9FF,8);
     ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,8.0f,ABM_THEME_COLOR_5DC2B5,1.0f);
 
@@ -1453,12 +1453,12 @@ static void DrawUI(HDC dc,RECT client) {
         else RoundBox(dc,row,hot?ABM_THEME_COLOR_1F2D3B:ABM_THEME_COLOR_17212E,13);
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?ABM_THEME_COLOR_468B94:(selected?ABM_THEME_COLOR_45697C:(hot?ABM_THEME_COLOR_415E71:ABM_THEME_COLOR_304052)),current?1.25f:0.75f);
         if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,ABM_THEME_COLOR_39B2B0,ABM_THEME_COLOR_4D91A0);}
-        RECT thumb={row.left+10,row.top+8,row.left+72,row.bottom-8};
-        GradientRect(dc,thumb,current?ABM_THEME_COLOR_1B8BA9:RGB(22+(i*13)%22,53+(i*9)%24,82+(i*7)%28),current?ABM_THEME_COLOR_5F4FBE:RGB(55+(i*11)%26,55+(i*7)%24,119+(i*5)%24));
-        RoundBox(dc,thumb,current?ABM_THEME_COLOR_3167A6:RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),10);
-        RECT coverInset={thumb.left+5,thumb.top+5,thumb.right-5,thumb.bottom-5};
+        RECT rowThumb={row.left+10,row.top+8,row.left+72,row.bottom-8};
+        GradientRect(dc,rowThumb,current?ABM_THEME_COLOR_1B8BA9:RGB(22+(i*13)%22,53+(i*9)%24,82+(i*7)%28),current?ABM_THEME_COLOR_5F4FBE:RGB(55+(i*11)%26,55+(i*7)%24,119+(i*5)%24));
+        RoundBox(dc,rowThumb,current?ABM_THEME_COLOR_3167A6:RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),10);
+        RECT coverInset={rowThumb.left+5,rowThumb.top+5,rowThumb.right-5,rowThumb.bottom-5};
         ABM_D2D_StrokeRound(&g_ui,(float)coverInset.left,(float)coverInset.top,(float)coverInset.right,(float)coverInset.bottom,7.0f,ABM_THEME_COLOR_91B8DA,0.65f);
-        if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
+        if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)rowThumb.left+2,(float)rowThumb.top+2,(float)rowThumb.right-2,(float)rowThumb.bottom-2);
         else {
             int cx=(thumb.left+thumb.right)/2,cy=(thumb.top+thumb.bottom)/2;
             COLORREF iconColor=current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_ABC6E5;
