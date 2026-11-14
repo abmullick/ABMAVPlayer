@@ -110,3 +110,28 @@ The main executable is produced under `build\\ABMAVPlayer.exe`. Use `run.bat` fo
 - [TORRENT_STREAM.md](TORRENT_STREAM.md) — torrent design and implementation notes.
 - [RELEASES.md](RELEASES.md) — release asset and updater contract.
 - [UI_QA_CHECKLIST.md](UI_QA_CHECKLIST.md) — UI validation matrix.
+
+## Settings behaviour and engineering contract
+
+The settings UI is not merely descriptive: each preference has a specific scope and activation boundary. When adding or changing a setting, update all four surfaces together: the control and persistence code, the in-app F1 Help Centre, `SETTINGS.md`, and the relevant `USER_GUIDE.md` section.
+
+### Activation classes
+
+- **Startup / restart:** LibVLC instance options such as hardware decoding and audio output module are selected before the LibVLC instance is created. A saved value alone cannot reconfigure that existing instance; restart is required. The `ABM_VLC_HW` environment override has precedence over the persisted hardware preference.
+- **New-media options:** caching targets, decoder performance options and subtitle appearance are attached when a media instance is opened. Do not describe these as guaranteed to reconfigure media already playing.
+- **Current-player capable:** aspect ratio and subtitle timing have code paths that can affect current playback; document any runtime limitations.
+- **Immediate interaction preferences:** Controls & Behaviour toggles are persisted and read by the corresponding interaction handlers.
+- **Read-only surfaces:** Overview and Diagnostics report state; they must not be described as settings that alter playback.
+
+### Practical impact guidance for maintainers
+
+Document both the expected benefit and the cost:
+- More cache can absorb jitter but adds startup delay and, for live streams, distance from the live edge.
+- More decoder threads can help parallel codecs but may increase scheduling/CPU contention; it is not a process-wide CPU cap.
+- Frame dropping/skipping can preserve playback responsiveness while sacrificing visual continuity.
+- Hardware decoding can reduce CPU work on supported combinations, but GPU/driver/codec compatibility is decisive.
+- Torrent cache quota is disk-retention capacity, not bandwidth or peer availability. Cache parent and permanent-download destination are distinct paths; path changes do not migrate existing data.
+- Subtitle appearance is a presentation preference; timing is a synchronisation correction. Do not imply that one fixes the other.
+
+Use concrete examples, units and activation requirements. Avoid claims such as "improves performance" without explaining the condition and trade-off. For any new control, add a troubleshooting example and state whether the setting applies immediately, to new media, or after restart.
+
