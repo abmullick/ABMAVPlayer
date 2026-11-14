@@ -47,7 +47,8 @@ static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
     HPEN pen=CreatePen(PS_SOLID,focus?2:1,focus?RGB(99,225,205):(primary?RGB(67,178,166):RGB(52,77,98)));
     HGDIOBJ ob=SelectObject(d->hDC,brush),op=SelectObject(d->hDC,pen);
     RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,12,12);
-    if(focus) { RECT fr=d->rcItem; InflateRect(&fr,-5,-5); DrawFocusRect(d->hDC,&fr); }
+    /* Focus is shown by the rounded accent pen above; avoid the native
+       rectangular focus rectangle which breaks the premium button shape. */
     SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(brush);DeleteObject(pen);
     wchar_t label[64]=L"";
     GetWindowTextW(d->hwndItem,label,_countof(label));
@@ -146,8 +147,8 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_NCCREATE:
         d=(ABMLicenseDialog*)((CREATESTRUCTW*)lp)->lpCreateParams;d->window=w;SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)d);return TRUE;
     case WM_CREATE: {
-        d->edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_UPPERCASE,
-            34,218,552,46,w,(HMENU)ID_LICENSE_KEY,d->instance,NULL);
+        d->edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_UPPERCASE|ES_NOHIDESEL,
+            38,222,544,38,w,(HMENU)ID_LICENSE_KEY,d->instance,NULL);
         SendMessageW(d->edit,EM_LIMITTEXT,16,0);
         SendMessageW(d->edit,EM_SETCUEBANNER,TRUE,(LPARAM)L"Enter your 16-character activation key");
         d->activateButton=CreateWindowW(L"BUTTON",d->alreadyActivated?L"Close":L"Activate",
@@ -214,8 +215,10 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             L"Enter your activation key now, or continue with your 10-day full-feature trial.";
         LicenseDrawText(dc,intro,(RECT){106,105,rc.right-34,145},RGB(177,196,213),g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
         LicenseDrawText(dc,L"ACTIVATION KEY",(RECT){34,184,rc.right-34,210},RGB(132,171,187),g_licenseCaptionFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        RECT inputFrame={32,216,rc.right-32,266};HPEN inputPen=CreatePen(PS_SOLID,1,RGB(53,111,127));HGDIOBJ old=SelectObject(dc,inputPen);
-        HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,inputFrame.left,inputFrame.top,inputFrame.right,inputFrame.bottom,9,9);
+        RECT inputFrame={32,216,rc.right-32,266};
+        HBRUSH inputFill=CreateSolidBrush(RGB(11,25,40));FillRect(dc,&inputFrame,inputFill);DeleteObject(inputFill);
+        HPEN inputPen=CreatePen(PS_SOLID,1,RGB(53,111,127));HGDIOBJ old=SelectObject(dc,inputPen);
+        HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,inputFrame.left,inputFrame.top,inputFrame.right,inputFrame.bottom,10,10);
         SelectObject(dc,oldBrush);SelectObject(dc,old);DeleteObject(inputPen);
         RECT status={32,282,rc.right-32,332};HBRUSH statusBrush=CreateSolidBrush(RGB(12,27,40));FillRect(dc,&status,statusBrush);DeleteObject(statusBrush);
         HBRUSH dot=CreateSolidBrush(d->alreadyActivated?RGB(77,196,153):(d->trialAllowed?RGB(82,205,190):RGB(242,177,79)));
