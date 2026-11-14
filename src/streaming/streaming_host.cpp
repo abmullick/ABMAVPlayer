@@ -226,10 +226,10 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
 }
 
-void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color){
+void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
     /* Match Torrent Stream's premium icon treatment exactly: crisp Segoe
-       MDL2 vector glyphs, normal weight, 17px, transparent background. */
-    HFONT font=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+       MDL2 vector glyphs, normal weight, caller-sized, transparent background. */
+    HFONT font=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
         L"Segoe MDL2 Assets");
     HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
