@@ -4876,7 +4876,8 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RoundRect(dc,334,188,rc.right-24,rc.bottom-62,12,12);
         SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(edge);DeleteObject(card);
         RECT close={rc.right-54,20,rc.right-18,56};
-        HBRUSH closeBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);DeleteObject(closeBrush);
+        HBRUSH closeBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);HGDIOBJ closeOld=SelectObject(dc,closeBrush);
+        RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);SelectObject(dc,closeOld);DeleteObject(closeBrush);
         HPEN pen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT_SECONDARY);HGDIOBJ oldPen=SelectObject(dc,pen);
         MoveToEx(dc,close.left+13,close.top+12,NULL);LineTo(dc,close.right-13,close.bottom-12);
         MoveToEx(dc,close.right-13,close.top+12,NULL);LineTo(dc,close.left+13,close.bottom-12);
@@ -4892,7 +4893,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_MEASUREITEM: {
         MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp;
-        if(mi&&mi->CtlID==HELP_ID_TOPICS){mi->itemHeight=34;return TRUE;}
+        if(mi&&mi->CtlID==HELP_ID_TOPICS){mi->itemHeight=40;return TRUE;}
         break;
     }
     case WM_DRAWITEM: {
@@ -4907,7 +4908,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             SelectObject(di->hDC,op);SelectObject(di->hDC,ob);DeleteObject(p);DeleteObject(b);
             SetBkMode(di->hDC,TRANSPARENT);SetTextColor(di->hDC,ABM_THEME_COLOR_F7FAFF);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpMetaFont);
-            RECT label=r;InflateRect(&label,-8,-2);DrawTextW(di->hDC,L"SEARCH  →",-1,&label,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label=r;InflateRect(&label,-8,-2);wchar_t caption[64]=L"SEARCH  →";
+            if(g_helpFindButton)GetWindowTextW(g_helpFindButton,caption,(int)_countof(caption));
+            DrawTextW(di->hDC,caption,-1,&label,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             SelectObject(di->hDC,f);return TRUE;
         }
         if(di->CtlID==HELP_ID_TOPICS){
