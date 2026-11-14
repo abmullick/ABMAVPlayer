@@ -4689,7 +4689,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 
-static HBRUSH g_helpBrush=NULL;
+static HBRUSH g_helpBrush=NULL, g_helpInputBrush=NULL, g_helpArticleBrush=NULL, g_helpNavBrush=NULL;
 static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
 static HWND g_helpEdit=NULL, g_helpSearch=NULL, g_helpTopics=NULL, g_helpFindButton=NULL;
 static int g_helpSearchCursor=0;
@@ -4812,6 +4812,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"ABM AV Player is a desktop media player built on LibVLC. Streaming Centre web playback is separate from local media playback and does not provide subscriptions or bypass provider protections.";
 
         if(!g_helpBrush)g_helpBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
+        if(!g_helpInputBrush)g_helpInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+        if(!g_helpArticleBrush)g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
+        if(!g_helpNavBrush)g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
         if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(29,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
         if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
@@ -4953,10 +4956,10 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORLISTBOX: {
         HDC dc=(HDC)wp;
-        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);}
-        else if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);}
-        else {SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);}
-        return (LRESULT)g_helpBrush;
+        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);return (LRESULT)g_helpInputBrush;}
+        if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);return (LRESULT)g_helpArticleBrush;}
+        SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);
+        return (LRESULT)g_helpNavBrush;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
     case WM_DESTROY:
