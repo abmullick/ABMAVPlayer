@@ -27,8 +27,11 @@ This recreates release\ABM AV Player and validates/copies the executable, requir
 ## 2. Test the staged application
 Run release\ABM AV Player\ABMAVPlayer.exe directly (not through run.bat). Test local audio/video, subtitles, playlists, Help, About/portrait loading and receiver discovery/casting. The app sets VLC plugin/data paths relative to its executable.
 
-## 3. Compile the installer
-Run build_installer.bat from the repository root with Inno Setup installed, or open installer\ABMAVPlayer.iss in Inno Setup and compile it.
+## 3. Build and compile the release installer
+
+For a release build, run `build_installer.bat` from the repository root with Inno Setup installed. This is the recommended release path: it rebuilds the application from source, checks that the main app, Streaming Centre, Inno Setup metadata and vcpkg manifest all identify the same release version, refreshes the staging folder, verifies the built and staged executable versions, and only then compiles the installer.
+
+For a development-only packaging test, you can run `prepare_installer.bat` and compile `installer\ABMAVPlayer.iss` manually. A manually compiled installer does not replace the release build/version preflight.
 
 The output is:
 
