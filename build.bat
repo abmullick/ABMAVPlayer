@@ -119,7 +119,7 @@ if errorlevel 1 (
   echo Windows Resource Compiler rc.exe not found. Run from the x64 Native Tools Command Prompt.
   goto build_failed
 )
-rc /nologo /fo build\player.res src\player.rc
+rc /nologo /I build /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
 echo [13/13] Linking ABM AV Player...
