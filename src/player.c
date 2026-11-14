@@ -5151,7 +5151,7 @@ static BOOL LoadAdvancedDiagnosticPreview(const wchar_t *path){
  wchar_t *buffer=(wchar_t*)calloc(65536,sizeof(wchar_t));if(!buffer){fclose(fp);return FALSE;}
  size_t used=0;wchar_t chunk[2048];
  while(fgetws(chunk,(int)_countof(chunk),fp)){size_t n=wcslen(chunk);if(used+n>=65535)break;memcpy(buffer+used,chunk,n*sizeof(wchar_t));used+=n;}
- buffer[used]=L'\\0';fclose(fp);SetWindowTextW(g_advancedDiagnosticEdit,buffer);free(buffer);
+ buffer[used]=L'\0';fclose(fp);SetWindowTextW(g_advancedDiagnosticEdit,buffer);free(buffer);
  SendMessageW(g_advancedDiagnosticEdit,EM_SETSEL,0,0);SendMessageW(g_advancedDiagnosticEdit,EM_SCROLLCARET,0,0);return TRUE;
 }
 static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
@@ -5520,6 +5520,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       StringCchPrintfW(row3,_countof(row3),L"Installed RAM: %llu MB     Available RAM: %llu MB     Memory load: %lu%%",(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL)),(unsigned long long)(mem.ullAvailPhys/(1024ULL*1024ULL)),mem.dwMemoryLoad);
       StringCchPrintfW(row4,_countof(row4),L"ABM AV PLAYER PROCESS  |  Working set: %llu MB     Page file: %llu MB",(unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)),(unsigned long long)(pmc.PagefileUsage/(1024ULL*1024ULL)));
       StringCchPrintfW(row5,_countof(row5),L"Playback: %s     Video: %u x %u     Playlist: %d     Recent: %d",g_hasMedia?(g_overlayPlaying?L"Playing":L"Loaded / paused"):L"No media",g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount);
+     }
     /* Page 6 paints its interactive performance controls above. Do not draw
        the generic runtime-status card over those controls. */
     if(g_advancedSettingsPage==8){
