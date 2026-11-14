@@ -5071,7 +5071,22 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      StringCchPrintfW(value,_countof(value),L"%d",g_advancedHwDraft);
      if(WritePrivateProfileStringW(L"Video",L"HardwareAcceleration",value,path)){
       g_advancedHwMode=g_advancedHwDraft;
-      StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Saved. Restart ABM AV Player to activate this decoder mode.");
+      StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Decoder preference saved.");
+      InvalidateRect(w,NULL,FALSE);
+      if(ABM_MessageBoxW(w,L"The hardware-decoding preference has been saved. Restart ABM AV Player now to activate it?",L"Restart ABM AV Player",MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2)==IDYES){
+       wchar_t exePath[PATH_CAP]={0};
+       DWORD exeLen=GetModuleFileNameW(NULL,exePath,(DWORD)_countof(exePath));
+       if(exeLen>0&&exeLen<_countof(exePath)){
+        HINSTANCE launched=ShellExecuteW(NULL,L"open",exePath,NULL,NULL,SW_SHOWNORMAL);
+        if((INT_PTR)launched>32){
+         HWND mainWindow=g_main;
+         DestroyWindow(w);
+         if(mainWindow&&IsWindow(mainWindow))PostMessageW(mainWindow,WM_CLOSE,0,0);
+         return 0;
+        }
+       }
+       StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Saved, but restart could not be started. Please close and reopen ABM AV Player.");
+      }else StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Saved. Restart ABM AV Player later to activate this decoder mode.");
      }else StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Could not save the decoder preference. Check folder permissions.");
     }else StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Could not access the ABM AV Player settings folder.");
     InvalidateRect(w,NULL,FALSE);return 0;
