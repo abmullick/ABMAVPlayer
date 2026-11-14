@@ -26,7 +26,6 @@ static D2D1_COLOR_F ToD2D(COLORREF c) {
 
 static ID2D1Factory *Factory(ABM_D2D *ui) { return static_cast<ID2D1Factory *>(ui->factory); }
 static ID2D1HwndRenderTarget *Target(ABM_D2D *ui) { return static_cast<ID2D1HwndRenderTarget *>(ui->target); }
-static IDWriteFactory *WriteFactory(ABM_D2D *ui) { return static_cast<IDWriteFactory *>(ui->writeFactory); }
 static ID2D1SolidColorBrush *Brush(ABM_D2D *ui) { return static_cast<ID2D1SolidColorBrush *>(ui->brush); }
 
 static void SetColor(ABM_D2D *ui, COLORREF color);
