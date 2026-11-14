@@ -125,6 +125,26 @@ The page reports application version and PID, logical processor count, installed
 
 The report is local and is not automatically uploaded or sent to support. Review it before sharing because it can include machine details, executable paths, process information and playback/session state.
 
+### Practical settings scenarios
+
+Use these as starting points, not universal prescriptions. Compare the same file or stream before and after each single change.
+
+| What you notice | First setting to test | What you may notice | What to watch for |
+|---|---|---|---|
+| A network stream pauses repeatedly | Network stream caching: raise one step, e.g. 1,000 to 2,000 ms | Playback may become more tolerant of short delivery gaps. | Startup can take longer and the player may sit further behind the live source. |
+| A live stream is stable but too far behind real time | Live stream caching: lower one step | Playback may move closer to the live edge. | Short network disruptions may cause more visible stalls. |
+| A local file on a slow external drive pauses | Local file caching: try a higher target | More read-ahead may smooth intermittent storage delays. | Initial playback may take longer; this cannot fix a failing drive. |
+| High CPU use or stutter on a supported video | Compare Automatic and D3D11VA; restart for each test | Hardware decoding may reduce CPU work when the codec/GPU/driver combination supports it. | Unsupported combinations may not improve or may introduce rendering issues. |
+| GPU decoding appears unstable | Select Software decoding and restart | CPU performs decoding instead of the requested GPU path; this can help isolate a GPU/driver issue. | CPU usage can rise sharply, especially with high-resolution/high-frame-rate media. |
+| Video motion is not keeping up | Test Drop late frames, then Skip frames separately; reopen media | Playback may remain more responsive when decoding falls behind. | Some frames or motion detail can be lost. Restore the previous setting if visual continuity matters more. |
+| Audio is silent or unreliable with the current output module | Compare WASAPI and DirectSound, restarting after each | One output module may work better with a particular Windows audio setup. | These choices do not select a speaker device or guarantee exclusive/bit-perfect audio. |
+| Subtitle text appears before the dialogue | Increase subtitle delay by 50 ms and reassess | Text should move later relative to the audio. | Make small adjustments; a large offset can make later dialogue worse. |
+| Subtitle text is difficult to read | Try a larger size, a contrasting colour and Normal outline | Text may be easier to distinguish over bright or changing scenes. | Larger/bolder text covers more of the picture; embedded styling may override preferences. |
+| Torrent activity competes with calls or browsing | Set a moderate torrent download limit | Other network activity may become more stable. | Torrent completion and progressive playback can slow; 0 means unlimited. |
+| Torrent cache consumes too much of the system drive | Review cache parent and quota; select a roomier drive if needed | New cache activity can use the chosen drive and a larger quota permits more retention. | Existing data is not moved automatically; restart if the engine has already initialised the cache path. |
+
+**A disciplined comparison:** note the original value, change only the relevant setting, perform its required restart/reopen action, replay the same section, and decide whether the trade-off is worthwhile. Restore the original value if there is no clear benefit.
+
 ### Persistence and activation summary
 
 Advanced preferences are stored in `%APPDATA%\\ABMAVPlayer\\settings.ini`, in sections such as `[Video]`, `[Audio]`, `[Subtitles]`, `[Streaming]`, `[Performance]` and `[Controls]`. Hardware decoding and audio output-engine changes require restart. Caching, performance and subtitle appearance options are attached to newly opened media; they are not guaranteed to reconfigure media already playing. Aspect ratio and subtitle timing can affect the current player. Controls preferences are read by their corresponding interactions. Overview is observational only.
