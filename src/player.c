@@ -1309,7 +1309,7 @@ static void DrawUI(HDC dc,RECT client) {
     ABM_D2D_StrokeRound(&g_ui,(float)advancedButton.left,(float)advancedButton.top,(float)advancedButton.right,(float)advancedButton.bottom,10.0f,ABM_THEME_COLOR_2B586F,1.0f);
     /* Compact gear icon: eight teeth around a ring with a clear centre. */
     int gearX=advancedButton.left+22,gearY=(advancedButton.top+advancedButton.bottom)/2;
-    COLORREF gearColor=ABM_THEME_COLOR_BDE9E8;
+    COLORREF gearColor=ABM_THEME_COLOR_B7EBE5;
     DrawLine(dc,gearX,gearY-11,gearX,gearY-7,gearColor,2);
     DrawLine(dc,gearX,gearY+7,gearX,gearY+11,gearColor,2);
     DrawLine(dc,gearX-11,gearY,gearX-7,gearY,gearColor,2);
