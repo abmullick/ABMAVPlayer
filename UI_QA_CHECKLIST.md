@@ -70,6 +70,18 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Verify the shared navy/charcoal, teal accent, typography and focus treatment are consistent across app-owned windows.
 - [ ] Confirm provider pages inside WebView2 retain provider-owned styling.
 
+### Help Centre — F1 documentation and search
+
+- [ ] Open Help Centre with F1 and confirm the branded header, search field, topic index, reading pane and footer fit without clipping.
+- [ ] Select every topic in the index. Confirm the reading pane shows only the selected topic's article, not the entire concatenated guide.
+- [ ] Verify article hierarchy: topic title is visually distinct; paragraphs have visible separation; lists and shortcut references remain understandable.
+- [ ] Inspect every article for visible literal escape sequences such as `\\n`, `\\r` or `\\r\\n`; none should appear as documentation text.
+- [ ] Confirm long articles wrap at the reading-pane width and scroll vertically without horizontal clipping or hidden final paragraphs.
+- [ ] Search for a term in the currently selected topic and in a different topic. Confirm the match opens the correct topic and highlights the actual matching text.
+- [ ] Test Enter, Find next, F3, search wraparound, empty query and no-match feedback.
+- [ ] Resize the Help Centre and test 100%, 125%, 150% and 200% scaling. Confirm topic labels, article margins, search controls and scrollbars remain usable.
+- [ ] Test keyboard-only operation: search focus, topic selection, article scrolling, close via Esc and visible focus feedback.
+
 ## 6. Functional regression — do not change these behaviours during UI QA
 
 - [ ] Local audio and video playback, pause/resume, seek, volume and fullscreen.
