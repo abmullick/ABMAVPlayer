@@ -178,6 +178,15 @@ static int g_drawerProgress = 0;
 static int g_hoverPlaylistIndex = -1;
 static BOOL g_drawerSettingsOpen = FALSE;
 static int64_t g_advancedSubtitleDelayUs=0;
+static int g_advancedSubtitleFontSize=13; /* LibVLC relative subtitle size: 10, 13, 16, 19 */
+static void ApplySubtitleAppearanceOption(libvlc_media_t *media) {
+    if(!media)return;
+    char option[64];
+    int size=g_advancedSubtitleFontSize;
+    if(size!=10&&size!=13&&size!=16&&size!=19)size=13;
+    snprintf(option,sizeof(option),":freetype-rel-fontsize=%d",size);
+    libvlc_media_add_option(media,option);
+}
 static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
 /* Suppress intermediate WM_SIZE layout while Win32 restores fullscreen placement.
@@ -1865,6 +1874,7 @@ static void SelectRenderer(void) {
                     libvlc_media_add_option(m,":compressor-makeup-gain=0");
                 }
                 ApplyAudioOutputDevice();
+                ApplySubtitleAppearanceOption(m);
                 libvlc_media_player_set_media(g_player,m);
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
@@ -2486,6 +2496,7 @@ static void PlayIndex(int index) {
         libvlc_media_add_option(m,":compressor-release=250");
         libvlc_media_add_option(m,":compressor-makeup-gain=0");
     }
+    ApplySubtitleAppearanceOption(m);
     BeginArtworkParse(m);
     libvlc_media_player_set_media(g_player,m);libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);libvlc_media_release(m);
     ApplyEqProfile();
@@ -5013,6 +5024,8 @@ static int g_advancedSettingsPage=0;
 static int g_advancedHwMode=0,g_advancedHwDraft=0;
 static BOOL g_advancedHwEnvOverride=FALSE;
 static int g_advancedAudioOutMode=0,g_advancedAudioOutDraft=0;
+static const int g_subtitleFontSizes[4]={10,13,16,19};
+static const wchar_t *g_subtitleFontSizeLabels[4]={L"Small",L"Normal",L"Large",L"Larger"};
 
 static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
@@ -5052,6 +5065,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   g_advancedSettingsPage=0;
   g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,p);if(v!=10&&v!=13&&v!=16&&v!=19)v=13;g_advancedSubtitleFontSize=v;}
   {wchar_t env[32]={0};if(GetEnvironmentVariableW(L"ABM_VLC_HW",env,(DWORD)_countof(env))>0){
    if(!_wcsicmp(env,L"none")){g_advancedHwDraft=1;g_advancedHwEnvOverride=TRUE;}
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
@@ -5091,6 +5105,19 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
+   for(int i=0;i<4;i++){
+    int left=320+i*176;
+    if(AdvancedSettingsPoint(x,y,left,556,left+164,604)){
+     g_advancedSubtitleFontSize=g_subtitleFontSizes[i];
+     if(EnsureDataDirectory()){
+      wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);
+      StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleFontSize);
+      if(!WritePrivateProfileStringW(L"Subtitles",L"RelativeFontSize",v,p))
+       ABM_MessageBoxW(w,L"Could not save the subtitle font-size preference.",APP_NAME,MB_ICONWARNING);
+     }
+     InvalidateRect(w,NULL,FALSE);return 0;
+    }
+   }
    if(AdvancedSettingsPoint(x,y,770,300,850,356)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,860,300,940,356)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,950,300,1032,356)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
@@ -5215,7 +5242,15 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     wchar_t delayText[96];double delayMs=(double)g_advancedSubtitleDelayUs/1000.0;
     StringCchPrintfW(delayText,_countof(delayText),L"Current offset: %+.0f ms",delayMs);
     AdvancedSettingsText(delayText,344,420,1018,456,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(g_player?L"Changes are applied immediately to the current playback.":L"Start playback to apply subtitle timing adjustments.",344,468,1018,508,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(g_player?L"Subtitle timing changes apply immediately to current playback.":L"Start playback to apply subtitle timing adjustments.",344,468,1018,508,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Subtitle font size",322,520,1018,546,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){
+     int left=320+i*176;BOOL selected=(g_advancedSubtitleFontSize==g_subtitleFontSizes[i]);
+     ABM_D2D_Round(&g_advancedSettingsUi,(float)left,556,(float)left+164,604,8,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,556.5f,(float)left+163.5f,603.5f,8,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
+     AdvancedSettingsText(g_subtitleFontSizeLabels[i],left+8,558,left+156,602,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    }
+    AdvancedSettingsText(L"Applies to the next media opened. Text subtitles only; styled ASS/SSA and image-based tracks may ignore this setting.",322,612,1018,650,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
    }else{
     ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
     ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
@@ -5609,6 +5644,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     libvlc_media_player_stop(g_player);
                     g_hasMedia=FALSE;g_current=-1;
                     ApplyAudioOutputDevice();
+                    ApplySubtitleAppearanceOption(media);
                     libvlc_media_player_set_media(g_player,media);
                     libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                     BeginArtworkParse(media);
