@@ -35,7 +35,7 @@ if not exist "build\ABMAVPlayer.exe" goto missing_build
 
 rem Verify that the freshly compiled EXE contains the requested release version.
 rem This catches stale object files or an out-of-date source checkout before packaging.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p='build\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch ('Version ' + [regex]::Escape($expected))) { Write-Host ('ERROR: Built EXE does not contain canonical About version ' + $expected + '.'); exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p='build\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); if ($s -notmatch ('Version ' + [regex]::Escape($expected)) -or $v.ProductVersion -ne $expected -or $v.FileVersion -notlike ($expected + '*')) { Write-Host ('ERROR: Built EXE About/FileVersion/ProductVersion do not match canonical version ' + $expected + '.'); exit 1 }"
 if errorlevel 1 goto wrong_app_version
 
 
@@ -44,7 +44,7 @@ call prepare_installer.bat
 if errorlevel 1 goto staging_failed
 
 if not exist "release\ABM AV Player\ABMAVPlayer.exe" goto missing_stage
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch ('Version ' + [regex]::Escape($expected))) { Write-Host ('ERROR: Staged EXE is not version ' + $expected + '.'); exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); if ($s -notmatch ('Version ' + [regex]::Escape($expected)) -or $v.ProductVersion -ne $expected -or $v.FileVersion -notlike ($expected + '*')) { Write-Host ('ERROR: Staged EXE About/FileVersion/ProductVersion do not match canonical version ' + $expected + '.'); exit 1 }"
 if errorlevel 1 goto wrong_staged_version
 if not exist "release\ABM AV Player\LICENSE" goto missing_license
 
