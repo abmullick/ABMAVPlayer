@@ -11,6 +11,8 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 **Current source version:** ABM AV Player v1.0.7 · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
 
+The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; v1.0.7 becomes available there only after its Windows build and validation are complete.
+
 ### v1.0.7 release highlights
 
 - Refined the F1 Help Centre presentation with application-matched visual styling and clearer navigation and search controls.
