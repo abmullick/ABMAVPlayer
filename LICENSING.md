@@ -12,9 +12,9 @@ The native application checks licensing before media, streaming, torrent or cast
 
 ## Publisher activation key
 
-Keep the universal key private and share it only with authorized customers or distributors. The key is intentionally not stored in this public repository. The same key can activate any number of installations. Because it is a shared offline key, it can be forwarded or published and does not provide per-customer revocation, device limits or strong anti-piracy protection. A determined user may also patch the executable or inspect the validation logic.
+Keep the universal key private and share it only with authorized customers or distributors. For the maintainer's current distribution workflow, the key is recorded in [`OWNER_DISTRIBUTION_KEY.md`](OWNER_DISTRIBUTION_KEY.md). This repository is public, so the key must be treated as publicly exposed and can be used by anyone who can view the repository. The same key can activate any number of installations. Because it is a shared offline key, it can be forwarded or published and does not provide per-customer revocation, device limits or strong anti-piracy protection. A determined user may also patch the executable or inspect the validation logic.
 
-The application stores the accepted key locally so the customer does not need to enter it on every launch. No publisher private key, signing certificate, customer device ID, key-generation script or licensing server is required.
+The application stores the accepted key locally so the customer does not need to enter it on every launch. A user who starts the trial can activate later from **Command Centre → License & Activation** without reinstalling. No publisher private key, signing certificate, customer device ID, key-generation script or licensing server is required.
 
 ## Build and test
 
@@ -25,6 +25,7 @@ Before distribution, test at least:
 - First launch shows the 10-day trial and starts the clock.
 - Repeated launches preserve the remaining trial days.
 - The universal 16-character key activates successfully.
+- A user can open Command Centre → License & Activation during an active trial, activate without reinstalling, and see an already-activated status on subsequent visits.
 - Incorrect, incomplete and malformed keys are rejected.
 - A valid activation persists across application restarts, reboots and in-place application upgrades.
 - Uninstalling removes the saved activation; reinstalling requires the key to be entered again.
