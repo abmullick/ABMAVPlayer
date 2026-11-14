@@ -135,3 +135,14 @@ Document both the expected benefit and the cost:
 
 Use concrete examples, units and activation requirements. Avoid claims such as "improves performance" without explaining the condition and trade-off. For any new control, add a troubleshooting example and state whether the setting applies immediately, to new media, or after restart.
 
+
+### F1 Help Centre navigation and search
+
+The F1 Help Centre uses a read-only article edit control plus a topic list, search edit and Find next action. Topic names in `g_helpTopicNames` must match section headings in the help article text; navigation locates the heading and selects/scrolls the article to it. Search scans the displayed article text case-insensitively, selects the next match and wraps at the end. Ctrl+F focuses/selects the query, Enter and Find next advance the search, and F3 repeats it. The search surface is intentionally scoped to in-app Help content; it does not index Markdown files, the filesystem or user media.
+
+When extending Help:
+- Add or rename the article heading and its matching topic-index entry together.
+- Keep topic labels concise and useful for navigation.
+- Include practical consequences, examples, limitations and activation timing for settings.
+- Verify topic selection, search wraparound, no-match feedback, Ctrl+F, Enter, F3, resize behaviour and Esc close in the Windows build.
+- Keep the full documentation in the Markdown guides; the in-app article is a navigable quick reference, not a replacement for the developer guide.
