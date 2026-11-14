@@ -17,3 +17,6 @@ packages/
 
 # Local activation key files
 *.key
+
+# Generated from the canonical VERSION file by tools/prepare_version.ps1
+/vcpkg.json
