@@ -9,7 +9,16 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 [**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)
 
-**Current source version:** ABM AV Player v1.0.6 · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+**Current source version:** ABM AV Player v1.0.7 · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+
+### v1.0.7 release highlights
+
+- Refined the F1 Help Centre presentation with application-matched visual styling and clearer navigation and search controls.
+- Improved help article presentation with topic-focused views, richer heading/body typography, paragraph spacing and normalization of escaped line breaks across topics.
+- Aligned the main application, Streaming Centre, installer metadata, packaging guards, release publisher and vcpkg manifest to v1.0.7.
+- Preserved the existing installer identity and per-user application data location so an in-place upgrade can retain existing user data.
+
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the release notes and [RELEASES.md](RELEASES.md) for build, validation and publishing requirements.
 
 Download the installer, run it, and follow the setup instructions. The installer is provided through GitHub Releases. See [RELEASES.md](RELEASES.md) for release and update information.
 
