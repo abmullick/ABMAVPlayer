@@ -5033,7 +5033,7 @@ static void ShowSettingsDialog(HWND owner) {
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
-        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -5959,7 +5959,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){ABM_MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
-    LoadAudioPreferences();ApplyAudioOutputDevice();
     /* Failure of the optional streaming cast player must not affect local playback. */
     g_streamCastPlayer=libvlc_media_player_new(g_vlc);
     WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
