@@ -5044,6 +5044,23 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
+  if(g_advancedSettingsPage==1){
+   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedHwDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,334,1018,400)){g_advancedHwDraft=1;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,408,1018,474)){g_advancedHwDraft=2;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
+    if(g_advancedHwEnvOverride)StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"ABM_VLC_HW environment override is active. Remove it to use the saved preference.");
+    else if(EnsureDataDirectory()){
+     wchar_t path[PATH_CAP],value[16];StringCchPrintfW(path,_countof(path),L"%s\\settings.ini",g_dataDir);
+     StringCchPrintfW(value,_countof(value),L"%d",g_advancedHwDraft);
+     if(WritePrivateProfileStringW(L"Video",L"HardwareAcceleration",value,path)){
+      g_advancedHwMode=g_advancedHwDraft;
+      StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Saved. Restart ABM AV Player to activate this decoder mode.");
+     }else StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Could not save the decoder preference. Check folder permissions.");
+    }else StringCchCopyW(g_advancedHwMessage,_countof(g_advancedHwMessage),L"Could not access the ABM AV Player settings folder.");
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
+  }
   if(AdvancedSettingsPoint(x,y,914,694,1040,738)){DestroyWindow(w);return 0;}
   return 0;
  }
