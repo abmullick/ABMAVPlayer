@@ -4991,6 +4991,148 @@ static void SettingsApply(HWND w) {
  StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),(changed||downloadsChanged)&&(g_torrentInitialized||g_torrentInitPending)?L"Settings saved. Restart ABM AV Player to activate the new storage locations.":L"All settings saved successfully.");
  InvalidateRect(w,NULL,FALSE);InvalidateRect(g_main,NULL,FALSE);
 }
+
+/* Advanced Settings framework. This first stage establishes navigation and
+   page surfaces only; engine controls are added in later, capability-backed steps. */
+static ABM_D2D g_advancedSettingsUi;
+static BOOL g_advancedSettingsUiReady=FALSE;
+static HWND g_advancedSettingsWindow=NULL;
+static int g_advancedSettingsPage=0;
+static const wchar_t *g_advancedSettingsPages[]={
+ L"Overview",L"Video & Decoding",L"Audio Engine",L"Video Output",
+ L"Subtitles",L"Streaming & Network",L"Performance",L"Controls & Behaviour",L"Diagnostics"
+};
+static const wchar_t *g_advancedSettingsDescriptions[]={
+ L"Advanced configuration for ABM AV Player.",
+ L"Decoder selection, hardware acceleration and frame handling.",
+ L"Output devices, channel layout, processing and synchronization.",
+ L"Scaling, aspect ratio, colour handling and display options.",
+ L"Subtitle languages, appearance, timing and file loading.",
+ L"Network caching, stream timeouts and connection behaviour.",
+ L"Playback resource usage, buffering and performance controls.",
+ L"Keyboard, mouse, playlist and playback behaviour.",
+ L"Playback engine information, logs and troubleshooting."
+};
+static BOOL AdvancedSettingsPoint(int x,int y,int l,int t,int r,int b){
+ return x>=l&&x<=r&&y>=t&&y<=b;
+}
+static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
+ switch(msg){
+ case WM_CREATE:
+  if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
+  g_advancedSettingsUiReady=TRUE;
+  g_advancedSettingsPage=0;
+  return 0;
+ case WM_LBUTTONDOWN:{
+  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
+   int top=112+i*54;
+   if(AdvancedSettingsPoint(x,y,22,top,254,top+46)){
+    g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
+   }
+  }
+  if(AdvancedSettingsPoint(x,y,914,694,1040,738)){DestroyWindow(w);return 0;}
+  return 0;
+ }
+ case WM_KEYDOWN:
+  if(wp==VK_ESCAPE){DestroyWindow(w);return 0;}
+  if(wp==VK_UP||wp==VK_DOWN){
+   int n=(int)_countof(g_advancedSettingsPages);
+   g_advancedSettingsPage=(g_advancedSettingsPage+(wp==VK_DOWN?1:n-1))%n;
+   InvalidateRect(w,NULL,FALSE);return 0;
+  }
+  break;
+ case WM_PAINT:{
+  PAINTSTRUCT ps;BeginPaint(w,&ps);
+  if(g_advancedSettingsUiReady){
+   ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
+   ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
+       ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
+   ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
+       ABM_THEME_COLOR_2B586F,1.0f);
+   ABM_D2D_Round(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_1C9D9D);
+   ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_73D2CF,1.0f);
+   SettingsText(L"⚙",39,31,73,70,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"ADVANCED SETTINGS",94,24,560,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,620,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   ABM_D2D_Round(&g_advancedSettingsUi,18,106,258,680,14,SETTINGS_PANEL);
+   ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,106.5f,257.5f,679.5f,14,SETTINGS_BORDER,0.8f);
+   SettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
+    float top=(float)(151+i*54);
+    BOOL selected=(i==g_advancedSettingsPage);
+    if(selected){
+     ABM_D2D_Round(&g_advancedSettingsUi,28,top,248,top+46,9,ABM_UI_COLOR_SURFACE_BLUE);
+     ABM_D2D_Round(&g_advancedSettingsUi,28,top+9,31,top+37,1.5f,ABM_UI_COLOR_ACCENT_BRIGHT);
+    }
+    SettingsText(g_advancedSettingsPages[i],42,(int)top+2,237,(int)top+44,
+       selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,
+       DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   }
+   ABM_D2D_Round(&g_advancedSettingsUi,274,106,1062,680,14,SETTINGS_PANEL);
+   ABM_D2D_StrokeRound(&g_advancedSettingsUi,274.5f,106.5f,1061.5f,679.5f,14,SETTINGS_BORDER,0.8f);
+   SettingsText(g_advancedSettingsPages[g_advancedSettingsPage],304,130,1028,174,
+       ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(g_advancedSettingsDescriptions[g_advancedSettingsPage],306,178,1028,216,
+       SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
+   ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
+   SettingsText(L"Configuration workspace",326,264,1008,302,
+       ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"This section is ready for capability-backed settings.",
+       326,310,1008,342,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"No playback or output behaviour is changed in this setup stage.",
+       326,346,1008,374,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"Controls will be introduced section by section and connected to the playback engine.",
+       304,408,1032,454,SETTINGS_MUTED,0,DT_LEFT|DT_TOP|DT_WORDBREAK);
+   ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
+   SettingsText(L"Advanced controls are added in stages. Existing settings remain unchanged.",
+       292,674,880,724,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsButtonDraw(914,694,1040,738,L"Close",FALSE);
+   ABM_D2D_End(&g_advancedSettingsUi);
+  }
+  EndPaint(w,&ps);return 0;
+ }
+ case WM_CLOSE:DestroyWindow(w);return 0;
+ case WM_DESTROY:
+  g_advancedSettingsWindow=NULL;
+  if(g_advancedSettingsUiReady){ABM_D2D_Destroy(&g_advancedSettingsUi);g_advancedSettingsUiReady=FALSE;}
+  return 0;
+ }
+ return DefWindowProcW(w,msg,wp,lp);
+}
+static void ShowAdvancedSettingsDialog(HWND owner){
+ if(g_advancedSettingsWindow&&IsWindow(g_advancedSettingsWindow)){
+  ShowWindow(g_advancedSettingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_advancedSettingsWindow);return;
+ }
+ static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+ if(!registered){
+  WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=AdvancedSettingsWndProc;
+  wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+  wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerAdvancedSettings";
+  if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
+  registered=TRUE;
+ }
+ RECT wr={0,0,1080,780};
+ AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
+ int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
+ int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
+ g_advancedSettingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,
+  L"ABMAVPlayerAdvancedSettings",L"ABM AV Player — Advanced Settings",
+  WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
+ if(!g_advancedSettingsWindow)return;
+ BOOL dark=TRUE;DwmSetWindowAttribute(g_advancedSettingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+ {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
+  DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+  DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+  DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+ EnableWindow(owner,FALSE);ShowWindow(g_advancedSettingsWindow,SW_SHOW);UpdateWindow(g_advancedSettingsWindow);
+ MSG m;while(IsWindow(g_advancedSettingsWindow)&&GetMessageW(&m,NULL,0,0)>0){
+  if(!IsDialogMessageW(g_advancedSettingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
+ }
+ EnableWindow(owner,TRUE);SetActiveWindow(owner);
+}
+
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  switch(msg) {
@@ -5050,6 +5192,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,655,457,780,489)){SettingsBrowseDownloads(w);return 0;}
   if(SettingsPoint(x,y,655,496,780,528)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
   /* Keep hit targets aligned with the current Direct2D-rendered button rectangles. */
+  if(SettingsPoint(x,y,650,27,780,62)){ShowAdvancedSettingsDialog(w);return 0;}
   if(SettingsPoint(x,y,39,681,194,714)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
   if(SettingsPoint(x,y,610,914,735,952)){SettingsApply(w);return 0;}
   if(SettingsPoint(x,y,744,914,800,952)){DestroyWindow(w);return 0;}
@@ -5070,6 +5213,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_73D2CF,1.0f);
    SettingsText(L"⚙",39,29,72,66,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
    SettingsText(L"SETTINGS",92,20,420,53,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsButtonDraw(650,27,780,62,L"Advanced…",TRUE);
    SettingsText(L"PLAYBACK  ·  AUDIO  ·  STORAGE  ·  NETWORK",94,49,550,69,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(88,L"GENERAL",L"Playback defaults",226);
    SettingsText(L"Volume (0–100)",40,140,155,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
