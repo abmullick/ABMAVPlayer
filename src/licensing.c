@@ -27,7 +27,7 @@ static const BYTE g_masterKeyHash[32] = {
 };
 typedef struct ABMTrialState { DWORD magic; DWORD reserved; ULONGLONG firstUtc; ULONGLONG lastUtc; } ABMTrialState;
 #define ABM_TRIAL_MAGIC 0x314D4241u
-typedef struct ABMLicenseDialog { HWND window, edit, status; HINSTANCE instance; BOOL done, allowed, trialAllowed; int daysLeft; } ABMLicenseDialog;
+typedef struct ABMLicenseDialog { HWND window, edit, status; HINSTANCE instance; BOOL done, allowed, trialAllowed, manual, alreadyActivated; int daysLeft; } ABMLicenseDialog;
 
 static BOOL GetLicensePaths(wchar_t *dir,size_t dc,wchar_t *licensePath,size_t lc,wchar_t *statePath,size_t sc) {
     wchar_t base[MAX_PATH];
@@ -122,21 +122,25 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         d=(ABMLicenseDialog*)((CREATESTRUCTW*)lp)->lpCreateParams;d->window=w;SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)d);return TRUE;
     case WM_CREATE: {
         HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
-        CreateWindowW(L"STATIC",L"Activate ABM AV Player",WS_CHILD|WS_VISIBLE,28,22,520,32,w,NULL,d->instance,NULL);
-        CreateWindowW(L"STATIC",L"Enter the 16-character activation key, or continue with the 10-day full-feature trial.",WS_CHILD|WS_VISIBLE,28,62,530,36,w,NULL,d->instance,NULL);
+        CreateWindowW(L"STATIC",d->manual?L"License & Activation":L"Activate ABM AV Player",WS_CHILD|WS_VISIBLE,28,22,520,32,w,NULL,d->instance,NULL);
+        CreateWindowW(L"STATIC",d->manual?L"Enter your universal 16-character activation key to unlock the full version.":L"Enter the 16-character activation key, or continue with the 10-day full-feature trial.",WS_CHILD|WS_VISIBLE,28,62,530,36,w,NULL,d->instance,NULL);
         d->edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,112,520,34,w,(HMENU)ID_LICENSE_KEY,d->instance,NULL);
         SendMessageW(d->edit,EM_LIMITTEXT,16,0);
         d->status=CreateWindowW(L"STATIC",L"",WS_CHILD|WS_VISIBLE,28,154,520,42,w,NULL,d->instance,NULL);
-        CreateWindowW(L"BUTTON",L"Activate",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_DEFPUSHBUTTON,326,258,104,38,w,(HMENU)ID_LICENSE_ACTIVATE,d->instance,NULL);
-        CreateWindowW(L"BUTTON",d->trialAllowed?L"Continue trial":L"Exit",WS_CHILD|WS_VISIBLE|WS_TABSTOP,444,258,104,38,w,(HMENU)ID_LICENSE_TRIAL,d->instance,NULL);
+        CreateWindowW(L"BUTTON",d->alreadyActivated?L"Close":L"Activate",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_DEFPUSHBUTTON,326,258,104,38,w,(HMENU)ID_LICENSE_ACTIVATE,d->instance,NULL);
+        CreateWindowW(L"BUTTON",(d->manual||!d->trialAllowed)?L"Close":L"Continue trial",WS_CHILD|WS_VISIBLE|WS_TABSTOP,444,258,104,38,w,(HMENU)ID_LICENSE_TRIAL,d->instance,NULL);
+        if(d->alreadyActivated)EnableWindow(d->edit,FALSE);
         HWND child=GetWindow(w,GW_CHILD);while(child){SendMessageW(child,WM_SETFONT,(WPARAM)font,TRUE);child=GetWindow(child,GW_HWNDNEXT);}
         wchar_t status[256];
-        if(d->trialAllowed)StringCchPrintfW(status,_countof(status),L"Trial: %d day(s) remaining.",d->daysLeft);
+        if(d->alreadyActivated)StringCchCopyW(status,_countof(status),L"This installation is already activated.");
+        else if(d->manual)StringCchCopyW(status,_countof(status),L"Activation is immediate. Close this window to keep using your trial.");
+        else if(d->trialAllowed)StringCchPrintfW(status,_countof(status),L"Trial: %d day(s) remaining.",d->daysLeft);
         else StringCchCopyW(status,_countof(status),L"Trial expired or system clock changed. Enter the activation key to continue.");
         SetWindowTextW(d->status,status);return 0;
     }
     case WM_COMMAND:
         if(LOWORD(wp)==ID_LICENSE_ACTIVATE){
+            if(d->alreadyActivated){d->done=TRUE;DestroyWindow(w);return 0;}
             wchar_t token[ABM_LICENSE_MAX];GetWindowTextW(d->edit,token,_countof(token));
             wchar_t dir[MAX_PATH],lic[MAX_PATH],state[MAX_PATH];
             if(!GetLicensePaths(dir,_countof(dir),lic,_countof(lic),state,_countof(state))||!ValidateMasterKey(token)){
@@ -144,7 +148,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             if(!SaveLicenseFile(lic,token)){SetWindowTextW(d->status,L"Could not save the licence. Check your Windows user profile permissions.");return 0;}
             d->allowed=TRUE;d->done=TRUE;DestroyWindow(w);return 0;
         }
-        if(LOWORD(wp)==ID_LICENSE_TRIAL){d->allowed=d->trialAllowed;d->done=TRUE;DestroyWindow(w);return 0;}
+        if(LOWORD(wp)==ID_LICENSE_TRIAL){d->allowed=d->manual?FALSE:d->trialAllowed;d->done=TRUE;DestroyWindow(w);return 0;}
         break;
     case WM_CLOSE:d->done=TRUE;d->allowed=FALSE;DestroyWindow(w);return 0;
     case WM_ERASEBKGND:return 1;
@@ -157,13 +161,13 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     return DefWindowProcW(w,msg,wp,lp);
 }
-static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL trialAllowed) {
+static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL trialAllowed,BOOL manual,BOOL alreadyActivated) {
     static BOOL registered=FALSE;WNDCLASSEXW wc={0};ABMLicenseDialog d={0};RECT work={0};int width=590,height=330;HWND w;
     BOOL ownerEnabled=owner&&IsWindowEnabled(owner);
     if(!registered){wc.cbSize=sizeof(wc);wc.lpfnWndProc=LicenseWndProc;wc.hInstance=instance;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
         wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.Licensing";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return FALSE;registered=TRUE;}
-    d.instance=instance;d.daysLeft=daysLeft;d.trialAllowed=trialAllowed;
+    d.instance=instance;d.daysLeft=daysLeft;d.trialAllowed=trialAllowed;d.manual=manual;d.alreadyActivated=alreadyActivated;
     SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);int x=work.left+(work.right-work.left-width)/2,y=work.top+(work.bottom-work.top-height)/2;
     w=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT|WS_EX_TOPMOST,L"ABMAVPlayer.Licensing",L"ABM AV Player — Activation",
         WS_POPUP|WS_CAPTION|WS_SYSMENU,x,y,width,height,owner,NULL,instance,&d);if(!w)return FALSE;
@@ -182,5 +186,15 @@ BOOL ABM_LicenseCheckAndPrompt(HINSTANCE instance,HWND owner) {
     if(now>state.lastUtc)state.lastUtc=now;
     if(!SaveTrialState(statePath,&state))return FALSE;
     if(!tampered)daysLeft=TrialDaysLeft(&state,now);
-    return ShowLicenseDialog(instance,owner,daysLeft,daysLeft>0&&!tampered);
+    return ShowLicenseDialog(instance,owner,daysLeft,daysLeft>0&&!tampered,FALSE,FALSE);
+}
+
+
+/* Open the same branded activation surface from the running application. */
+BOOL ABM_LicenseShowActivation(HINSTANCE instance,HWND owner) {
+    wchar_t dir[MAX_PATH],licensePath[MAX_PATH],statePath[MAX_PATH],token[ABM_LICENSE_MAX]={0};
+    BOOL alreadyActivated=GetLicensePaths(dir,_countof(dir),licensePath,_countof(licensePath),statePath,_countof(statePath)) &&
+        ReadLicenseFile(licensePath,token,_countof(token)) && ValidateMasterKey(token);
+    SecureZeroMemory(token,sizeof(token));
+    return ShowLicenseDialog(instance,owner,0,FALSE,TRUE,alreadyActivated);
 }
