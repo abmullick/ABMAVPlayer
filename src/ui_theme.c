@@ -1113,6 +1113,44 @@ RGB(255, 231, 229),
 RGB(255, 239, 232),
 RGB(255, 255, 255)
 };
+static volatile LONG g_activePreset = ABM_THEME_PRESET_MIDNIGHT_TEAL;
+static const wchar_t *g_presetNames[ABM_THEME_PRESET_COUNT] = {
+    L"Midnight Teal", L"Arctic Blue", L"Royal Violet",
+    L"Ruby Rose", L"Sunset Amber", L"Emerald"
+};
+static const double g_presetAccentHue[ABM_THEME_PRESET_COUNT] = {
+    174.0, 207.0, 267.0, 342.0, 38.0, 146.0
+};
+static COLORREF ABMThemeTransformColor(COLORREF color, double targetHue) {
+    double r=(double)GetRValue(color)/255.0, g=(double)GetGValue(color)/255.0, b=(double)GetBValue(color)/255.0;
+    double mx=r>g?(r>b?r:b):(g>b?g:b), mn=r<g?(r<b?r:b):(g<b?g:b), d=mx-mn;
+    double l=(mx+mn)/2.0, s=0.0, hue=0.0;
+    if(d>0.00001) {
+        s=d/(1.0-fabs(2.0*l-1.0));
+        if(mx==r) hue=60.0*fmod((g-b)/d,6.0);
+        else if(mx==g) hue=60.0*(((b-r)/d)+2.0);
+        else hue=60.0*(((r-g)/d)+4.0);
+        if(hue<0.0)hue+=360.0;
+    }
+    /* Preserve neutral surfaces and semantic status colors; recolor the
+       established blue/teal family while retaining luminance and saturation. */
+    if(s<0.16 || hue<140.0 || hue>235.0)return color;
+    hue=targetHue+(hue-174.0)*0.35;
+    while(hue<0.0)hue+=360.0;
+    while(hue>=360.0)hue-=360.0;
+    {
+        double chroma=(1.0-fabs(2.0*l-1.0))*s, section=hue/60.0;
+        double x=chroma*(1.0-fabs(fmod(section,2.0)-1.0)), m=l-chroma/2.0;
+        double rr=0.0,gg=0.0,bb=0.0;
+        if(section<1.0){rr=chroma;gg=x;}
+        else if(section<2.0){rr=x;gg=chroma;}
+        else if(section<3.0){gg=chroma;bb=x;}
+        else if(section<4.0){gg=x;bb=chroma;}
+        else if(section<5.0){rr=x;bb=chroma;}
+        else {rr=chroma;bb=x;}
+        return RGB((BYTE)((rr+m)*255.0+0.5),(BYTE)((gg+m)*255.0+0.5),(BYTE)((bb+m)*255.0+0.5));
+    }
+}
 COLORREF ABMThemeColor(ABMThemeColorId id) {
     if ((unsigned)id >= (unsigned)ABM_THEME_COLOR_COUNT) return RGB(0, 0, 0);
     return (COLORREF)InterlockedCompareExchange((volatile LONG *)&g_themeColors[id], 0, 0);
@@ -1122,8 +1160,30 @@ BOOL ABMThemeSetColor(ABMThemeColorId id, COLORREF color) {
     InterlockedExchange((volatile LONG *)&g_themeColors[id], (LONG)color);
     return TRUE;
 }
-void ABMThemeReset(void) {
+BOOL ABMThemeApplyPreset(ABMThemePreset preset) {
     unsigned i;
-    for (i = 0; i < (unsigned)ABM_THEME_COLOR_COUNT; ++i)
-        InterlockedExchange((volatile LONG *)&g_themeColors[i], (LONG)g_defaultColors[i]);
+    if((unsigned)preset>=(unsigned)ABM_THEME_PRESET_COUNT)return FALSE;
+    for(i=0;i<(unsigned)ABM_THEME_COLOR_COUNT;i++) {
+        COLORREF color=g_defaultColors[i];
+        if(i!=(unsigned)ABM_THEME_ID_4DC499 && i!=(unsigned)ABM_THEME_ID_F2B14F &&
+           i!=(unsigned)ABM_THEME_ID_DC4B55 && i!=(unsigned)ABM_THEME_ID_FF911C)
+            color=ABMThemeTransformColor(color,g_presetAccentHue[preset]);
+        InterlockedExchange((volatile LONG *)&g_themeColors[i],(LONG)color);
+    }
+    InterlockedExchange(&g_activePreset,(LONG)preset);
+    return TRUE;
 }
+ABMThemePreset ABMThemeCurrentPreset(void) {
+    LONG p=InterlockedCompareExchange(&g_activePreset,0,0);
+    if(p<0 || p>=ABM_THEME_PRESET_COUNT)return ABM_THEME_PRESET_MIDNIGHT_TEAL;
+    return (ABMThemePreset)p;
+}
+const wchar_t *ABMThemePresetName(ABMThemePreset preset) {
+    if((unsigned)preset>=(unsigned)ABM_THEME_PRESET_COUNT)return L"Unknown";
+    return g_presetNames[preset];
+}
+COLORREF ABMThemePresetAccent(ABMThemePreset preset) {
+    if((unsigned)preset>=(unsigned)ABM_THEME_PRESET_COUNT)return RGB(54,177,168);
+    return ABMThemeTransformColor(g_defaultColors[ABM_THEME_ID_36B1A8],g_presetAccentHue[preset]);
+}
+void ABMThemeReset(void) { (void)ABMThemeApplyPreset(ABM_THEME_PRESET_MIDNIGHT_TEAL); }
