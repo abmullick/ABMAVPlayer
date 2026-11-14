@@ -5048,7 +5048,7 @@ static const wchar_t *g_subtitleColorLabels[4]={L"White",L"Yellow",L"Cyan",L"Gre
 static const int g_subtitleOutlineValues[4]={0,2,4,6};
 static const wchar_t *g_subtitleOutlineLabels[4]={L"Off",L"Thin",L"Normal",L"Thick"};
 static const int g_subtitleMarginValues[4]={0,10,25,50};
-static const wchar_t *g_subtitleMarginLabels[4]={L"Low",L"Normal",L"High",L"Higher"};
+static const wchar_t *g_subtitleMarginLabels[4]={L"Default",L"10 px",L"25 px",L"50 px"};
 
 static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
@@ -5160,7 +5160,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
    if(AdvancedSettingsPoint(x,y,320,518,500,560)){
     g_advancedSubtitleBold=!g_advancedSubtitleBold;
-    if(EnsureDataDirectory())WritePrivateProfileStringW(L"Subtitles",L"Bold",g_advancedSubtitleBold?L"1":L"0",({wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);p;}));
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"Bold",g_advancedSubtitleBold?L"1":L"0",p);}
     InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
