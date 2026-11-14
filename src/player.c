@@ -1785,6 +1785,7 @@ static void SelectRenderer(void) {
             return;
         }
         libvlc_media_player_set_hwnd(g_player,g_video);
+        if(!g_selectedRenderer)ApplyAudioOutputDevice();
 
         if(g_selectedRenderer && libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
             g_hasMedia=FALSE;g_pendingResume=FALSE;g_rendererApplied=FALSE;
