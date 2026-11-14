@@ -127,6 +127,7 @@ static DWORD g_discoveryStartedTick=0;
 static BOOL g_discoveryTimedOut=FALSE;
 static wchar_t g_statusText[256]=L"";
 static BOOL g_pendingResume=FALSE;
+static BOOL g_advancedConfirmClearPlaylist=TRUE;
 static BOOL g_pendingResumePause=FALSE;
 static int64_t g_pendingResumeMs=0;
 static int64_t g_forcedResumeMs=0;
@@ -5043,7 +5044,6 @@ static void SettingsApply(HWND w) {
 static ABM_D2D g_advancedSettingsUi;
 static BOOL g_advancedSettingsUiReady=FALSE;
 static BOOL g_advancedConfirmExit=TRUE;
-static BOOL g_advancedConfirmClearPlaylist=TRUE;
 static BOOL g_advancedDoubleClickFullscreen=TRUE;
 static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
