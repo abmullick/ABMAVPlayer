@@ -9,5 +9,11 @@ build/
 *.user
 packages/
 
+# Local vcpkg installation and generated release/diagnostic artifacts
+/vcpkg_installed/
+/release/
+/dist/
+/vlc-help.txt
+
 # Local activation key files
 *.key
