@@ -30,6 +30,7 @@ ABM AV Player includes a 10-day full-feature trial and offline activation with o
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 - [UI/UX design system](UI_UX_DESIGN_SYSTEM.md): UI audit, shared visual tokens, component standards and staged adoption plan.
 - [Final UI QA checklist](UI_QA_CHECKLIST.md): Windows build, DPI, keyboard/accessibility, visual, playback, casting, torrent, performance and installer validation.
+- [Reproducible Windows vcpkg setup](VCPKG_SETUP.md): pinned vcpkg bootstrap, libjuice overlay, dependency-cache restore and cache publishing.
 
 ## Features
 
@@ -112,7 +113,7 @@ LibVLC handles media decoding and device output. ABM AV Player owns the desktop 
 - Visual Studio / Build Tools with Desktop development with C++ and Windows 10/11 SDK.
 - Microsoft Edge WebView2 Evergreen Runtime (required for the Streaming Centre; the app checks for it before browser startup and reports an installation instruction if missing).
 - Microsoft.Web.WebView2 NuGet SDK package for compiling the streaming module.
-- CMake 3.21+, vcpkg, and the manifest-pinned libtorrent 2.1.2 dependency for the Torrent Stream engine.
+- Git for Windows, CMake 3.21+, and the manifest-pinned vcpkg dependencies for the Torrent Stream engine. vcpkg is bootstrapped automatically by the build unless `VCPKG_ROOT` is set.
 - 64-bit VLC installation and matching 64-bit LibVLC SDK (LibVLC 3.0 or later for renderer discovery).
 - For Google Cast, use a full VLC runtime containing its renderer-discovery and Chromecast plugins. The SDK alone is not a complete runtime.
 
@@ -153,8 +154,8 @@ Updates are installed over the existing ABM AV Player installation. User prefere
 5. Set SDK paths if they are not in the default locations:
    `set VLC_SDK=C:\\vlc-sdk`
    `set WEBVIEW2_SDK=%CD%\\packages\\Microsoft.Web.WebView2`
-6. Set `VCPKG_ROOT` to your vcpkg checkout and run `vcpkg install` from the repository root to install the pinned libtorrent dependency.
-7. Run build.bat from the repository root. The build compiles the separate `abm_torrent_engine.dll` and stages its runtime dependencies.
+6. Run `build.bat` from the repository root. The torrent build step automatically bootstraps the pinned vcpkg toolchain, restores the shared x64-windows dependency cache when that cache is published on the latest GitHub Release, and runs manifest installation. If no compatible cache is published, vcpkg builds the pinned dependencies from source once.
+7. The build compiles the separate `abm_torrent_engine.dll` and stages its runtime dependencies. See [VCPKG_SETUP.md](VCPKG_SETUP.md) to package and publish the known-good dependency cache for future machines.
 
 The executable is written to build\\ABMAVPlayer.exe.
 
