@@ -1880,6 +1880,11 @@ extern "C" void ABM_Streaming_RefreshTheme(void){
     if(!g_window || !IsWindow(g_window)) return;
     /* Refresh only ABM-owned chrome; never navigate a provider page. */
     if(g_activeService < 0) NavigateHome();
+    BOOL dark=TRUE; DwmSetWindowAttribute(g_window,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+    int corners=2; COLORREF border=ABM_UI_COLOR_BORDER_STRONG, caption=ABM_UI_COLOR_SURFACE;
+    DwmSetWindowAttribute(g_window,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+    DwmSetWindowAttribute(g_window,DWMWA_BORDER_COLOR,&border,sizeof(border));
+    DwmSetWindowAttribute(g_window,DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
     InvalidateRect(g_window,nullptr,FALSE);
     if(g_devicePanel && IsWindow(g_devicePanel)) InvalidateRect(g_devicePanel,nullptr,FALSE);
 }
