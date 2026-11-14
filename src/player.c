@@ -4707,6 +4707,46 @@ static const wchar_t *g_helpTopicNames[]={
 #define HELP_ID_SEARCH 7101
 #define HELP_ID_FIND 7102
 #define HELP_ID_TOPICS 7103
+/* Convert both real and accidentally escaped line endings into real paragraphs.
+   Also break long prose at sentence boundaries so every topic reads as an article. */
+static wchar_t *HelpNormalizeArticle(const wchar_t *src) {
+ if(!src)return NULL;
+ size_t n=wcslen(src),cap=n*2+32,out=0;
+ wchar_t *dst=(wchar_t*)calloc(cap,sizeof(wchar_t));if(!dst)return NULL;
+ size_t lineStart=0;
+ for(size_t i=0;i<n;i++) {
+  if(src[i]==L'\\'&&src[i+1]==L'r') {
+   i++;if(src[i+1]==L'\\'&&src[i+2]==L'n')i+=2;
+   if(out&&dst[out-1]!=L'\\r'&&dst[out-1]!=L'\\n'){dst[out++]=L'\\r';dst[out++]=L'\\n';}
+   lineStart=out;continue;
+  }
+  if(src[i]==L'\\'&&src[i+1]==L'n') {
+   i++;if(out&&dst[out-1]!=L'\\r'&&dst[out-1]!=L'\\n'){dst[out++]=L'\\r';dst[out++]=L'\\n';}
+   lineStart=out;continue;
+  }
+  if(src[i]==L'\\r'||src[i]==L'\\n') {
+   if(src[i]==L'\\r'&&src[i+1]==L'\\n')i++;
+   if(out&&dst[out-1]!=L'\\r'&&dst[out-1]!=L'\\n'){dst[out++]=L'\\r';dst[out++]=L'\\n';}
+   lineStart=out;continue;
+  }
+  if((src[i]==L'.'||src[i]==L'?'||src[i]==L'!')&&src[i+1]==L' ') {
+   size_t next=i+2;while(src[next]==L' ')next++;
+   if((src[next]>=L'A'&&src[next]<=L'Z')||(src[next]>=L'0'&&src[next]<=L'9')) {
+    dst[out++]=src[i];dst[out++]=L'\\r';dst[out++]=L'\\n';i++;while(src[i+1]==L' ')i++;lineStart=out;continue;
+   }
+  }
+  if(src[i]==L':'&&src[i+1]==L' ') {
+   size_t next=i+2;while(src[next]==L' ')next++;
+   size_t prefix=out-lineStart;
+   if(prefix>0&&prefix<48&&((src[next]>=L'A'&&src[next]<=L'Z')||(src[next]>=L'0'&&src[next]<=L'9'))) {
+    dst[out++]=L':';dst[out++]=L'\\r';dst[out++]=L'\\n';i++;while(src[i+1]==L' ')i++;lineStart=out;continue;
+   }
+  }
+  dst[out++]=src[i];
+ }
+ while(out>0&&(dst[out-1]==L'\\r'||dst[out-1]==L'\\n'||dst[out-1]==L' '))out--;
+ dst[out]=0;return dst;
+}
 /* Format the guide as an actual article: distinct title/section hierarchy,
    readable paragraph rhythm and consistent application typography. */
 static void HelpFormatArticle(HWND edit) {
@@ -4767,8 +4807,9 @@ static void HelpNavigateToTopic(HWND hwnd,int index) {
  }
  g_helpArticleStart=(int)(start-g_helpDocument);
  g_helpArticleLength=(int)(end-start);
- wchar_t *article=(wchar_t*)calloc((size_t)g_helpArticleLength+1,sizeof(wchar_t));if(!article)return;
- wmemcpy(article,start,(size_t)g_helpArticleLength);article[g_helpArticleLength]=0;
+ wchar_t *raw=(wchar_t*)calloc((size_t)g_helpArticleLength+1,sizeof(wchar_t));if(!raw)return;
+ wmemcpy(raw,start,(size_t)g_helpArticleLength);raw[g_helpArticleLength]=0;
+ wchar_t *article=HelpNormalizeArticle(raw);free(raw);if(!article)return;
  SetWindowTextW(g_helpEdit,article);
  free(article);
  HelpFormatArticle(g_helpEdit);
@@ -4803,9 +4844,15 @@ static BOOL HelpFindNext(HWND hwnd) {
   SendMessageW(g_helpTopics,LB_SETCURSEL,topic,0);
   HelpNavigateToTopic(hwnd,topic);
  }
- int articlePos=docPos-g_helpArticleStart;
- SendMessageW(g_helpEdit,EM_SETSEL,articlePos,articlePos+(int)qlen);
- SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);
+ int articleLen=GetWindowTextLengthW(g_helpEdit);
+ wchar_t *visible=(wchar_t*)calloc((size_t)articleLen+1,sizeof(wchar_t));
+ if(visible) {
+  GetWindowTextW(g_helpEdit,visible,articleLen+1);
+  wchar_t *match=NULL;
+  for(int i=0;i<articleLen;i++)if((size_t)(articleLen-i)>=qlen&&_wcsnicmp(visible+i,query,qlen)==0){match=visible+i;break;}
+  if(match){int p=(int)(match-visible);SendMessageW(g_helpEdit,EM_SETSEL,p,p+(int)qlen);SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);}
+  free(visible);
+ }
  g_helpSearchCursor=docPos+(int)qlen;
  return TRUE;
 }
