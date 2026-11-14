@@ -5463,14 +5463,18 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      StringCchCopyW(row4,_countof(row4),g_dataDir);
      StringCchCopyW(row5,_countof(row5),L"Diagnostic paths are shown for troubleshooting. No logs or media are uploaded.");
     }
-    ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);
-    ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
-    AdvancedSettingsText(sectionTitle,326,260,1008,298,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(row1,326,312,1008,344,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    AdvancedSettingsText(row2,326,354,1008,386,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    AdvancedSettingsText(row3,326,396,1008,428,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    AdvancedSettingsText(row4,326,438,1008,470,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    AdvancedSettingsText(row5,326,480,1008,522,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    /* Page 6 paints its interactive performance controls above. Do not draw
+       the generic runtime-status card over those controls. */
+    if(g_advancedSettingsPage!=6){
+     ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
+     AdvancedSettingsText(sectionTitle,326,260,1008,298,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsText(row1,326,312,1008,344,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+     AdvancedSettingsText(row2,326,354,1008,386,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+     AdvancedSettingsText(row3,326,396,1008,428,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+     AdvancedSettingsText(row4,326,438,1008,470,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+     AdvancedSettingsText(row5,326,480,1008,522,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    }
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
    AdvancedSettingsText(L"Settings are saved automatically. Buffering changes apply to the next opened media.",
