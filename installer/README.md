@@ -29,7 +29,7 @@ Run release\ABM AV Player\ABMAVPlayer.exe directly (not through run.bat). Test l
 
 ## Version source
 
-The only editable application version is stored in the repository-root `VERSION` file. The release build generates `build\version.iss` from that file, and the installer script includes the generated definition. Do not change version numbers directly in the Inno Setup script. If compiling the installer manually for development, run `tools\prepare_version.ps1` first so the generated include exists.
+The only editable application version is stored in the repository-root `VERSION` file. `prepare_installer.bat` and `build_installer.bat` generate `build\version.iss` from that file, and the installer script includes the generated definition. Do not change version numbers directly in the Inno Setup script. If you open the Inno Setup script directly without first running either preparation script, run `tools\prepare_version.ps1` so the generated include exists.
 
 ## 3. Build and compile the release installer
 
