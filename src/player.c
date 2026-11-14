@@ -36,6 +36,7 @@
 
 static void ApplyAdvancedAspectRatio(void);
 static void AddAdvancedCachingOptions(libvlc_media_t *media);
+static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "shell32.lib")
@@ -1896,7 +1897,7 @@ static void SelectRenderer(void) {
                     libvlc_media_add_option(m,":compressor-makeup-gain=0");
                 }
                 ApplyAudioOutputDevice();
-                ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);
+                ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);AddAdvancedPerformanceOptions(m);
                 libvlc_media_player_set_media(g_player,m);ApplyAdvancedAspectRatio();
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
@@ -5044,6 +5045,19 @@ static BOOL g_advancedSettingsUiReady=FALSE;
 static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
 static int g_advancedAspectMode=0;
+static int g_advancedDecoderThreads=0;
+static BOOL g_advancedDropLateFrames=TRUE,g_advancedSkipFrames=FALSE;
+static const int g_advancedThreadChoices[4]={0,2,4,8};
+static const wchar_t *g_advancedThreadLabels[4]={L"Automatic",L"2 threads",L"4 threads",L"8 threads"};
+static void AddAdvancedPerformanceOptions(libvlc_media_t *media){
+ if(!media)return;
+ char opt[64];
+ if(g_advancedDecoderThreads>0){sprintf_s(opt,sizeof(opt),":avcodec-threads=%d",g_advancedDecoderThreads);libvlc_media_add_option(media,opt);}
+ if(g_advancedDropLateFrames)libvlc_media_add_option(media,":drop-late-frames");
+ else libvlc_media_add_option(media,":no-drop-late-frames");
+ if(g_advancedSkipFrames)libvlc_media_add_option(media,":skip-frames");
+ else libvlc_media_add_option(media,":no-skip-frames");
+}
 static int g_advancedNetworkCaching=1000,g_advancedFileCaching=300,g_advancedLiveCaching=1000;
 static const int g_advancedCacheChoices[4]={300,1000,2000,5000};
 static const wchar_t *g_advancedCacheLabels[4]={L"300 ms",L"1,000 ms",L"2,000 ms",L"5,000 ms"};
@@ -5113,6 +5127,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Video",L"AspectRatio",0,p);g_advancedAspectMode=(v>=0&&v<=3)?v:0;ApplyAdvancedAspectRatio();}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Performance",L"DecoderThreads",0,p);g_advancedDecoderThreads=(v==0||v==2||v==4||v==8)?v:0;g_advancedDropLateFrames=GetPrivateProfileIntW(L"Performance",L"DropLateFrames",1,p)!=0;g_advancedSkipFrames=GetPrivateProfileIntW(L"Performance",L"SkipFrames",0,p)!=0;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Streaming",L"NetworkCachingMs",1000,p);g_advancedNetworkCaching=(v==300||v==1000||v==2000||v==5000)?v:1000;v=GetPrivateProfileIntW(L"Streaming",L"FileCachingMs",300,p);g_advancedFileCaching=(v==300||v==1000||v==2000||v==5000)?v:300;v=GetPrivateProfileIntW(L"Streaming",L"LiveCachingMs",1000,p);g_advancedLiveCaching=(v==300||v==1000||v==2000||v==5000)?v:1000;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,p);if(v!=10&&v!=13&&v!=16&&v!=19)v=13;g_advancedSubtitleFontSize=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,p);if(v!=16777215&&v!=16776960&&v!=65535&&v!=65280)v=16777215;g_advancedSubtitleColor=v;}
@@ -5153,6 +5168,24 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     int current=0;for(int j=0;j<4;j++)if(g_advancedCacheChoices[j]==*values[n])current=j;
     *values[n]=g_advancedCacheChoices[(current+1)%4];
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",*values[n]);WritePrivateProfileStringW(L"Streaming",keys[n],v,p);}
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
+  }
+  if(g_advancedSettingsPage==6){
+   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){
+    int current=0;for(int j=0;j<4;j++)if(g_advancedThreadChoices[j]==g_advancedDecoderThreads)current=j;
+    g_advancedDecoderThreads=g_advancedThreadChoices[(current+1)%4];
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedDecoderThreads);WritePrivateProfileStringW(L"Performance",L"DecoderThreads",v,p);}
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
+   if(AdvancedSettingsPoint(x,y,320,350,1018,416)){
+    g_advancedDropLateFrames=!g_advancedDropLateFrames;
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Performance",L"DropLateFrames",g_advancedDropLateFrames?L"1":L"0",p);}
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
+   if(AdvancedSettingsPoint(x,y,320,440,1018,506)){
+    g_advancedSkipFrames=!g_advancedSkipFrames;
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Performance",L"SkipFrames",g_advancedSkipFrames?L"1":L"0",p);}
     InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
@@ -5375,6 +5408,22 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      StringCchPrintfW(row3,_countof(row3),L"Volume: %d%%     Speed: %.2fx",g_volume,(double)g_playbackRate);
      StringCchPrintfW(row4,_countof(row4),L"Playlist: %d item(s)     Current index: %d",g_playlistCount,g_current>=0?g_current+1:0);
      StringCchPrintfW(row5,_countof(row5),L"Shuffle: %s     Repeat: %s",g_shuffle?L"On":L"Off",g_repeat?L"On":L"Off");
+    }else if(g_advancedSettingsPage==6){
+     int threadIndex=0;for(int j=0;j<4;j++)if(g_advancedThreadChoices[j]==g_advancedDecoderThreads)threadIndex=j;
+     AdvancedSettingsText(L"Decoder thread count",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     ABM_D2D_Round(&g_advancedSettingsUi,320,260,1018,326,9,ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,260.5f,1017.5f,325.5f,9,SETTINGS_BORDER,0.8f);
+     AdvancedSettingsText(L"CPU threads used by the video decoder",340,270,730,314,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsButtonDraw(820,272,996,314,g_advancedThreadLabels[threadIndex],TRUE);
+     ABM_D2D_Round(&g_advancedSettingsUi,320,350,1018,416,9,ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,350.5f,1017.5f,415.5f,9,SETTINGS_BORDER,0.8f);
+     AdvancedSettingsText(L"Drop late frames",340,360,730,406,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsButtonDraw(820,362,996,404,g_advancedDropLateFrames?L"Enabled":L"Disabled",g_advancedDropLateFrames);
+     ABM_D2D_Round(&g_advancedSettingsUi,320,440,1018,506,9,ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,440.5f,1017.5f,505.5f,9,SETTINGS_BORDER,0.8f);
+     AdvancedSettingsText(L"Skip frames when decoding falls behind",340,450,730,496,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsButtonDraw(820,452,996,494,g_advancedSkipFrames?L"Enabled":L"Disabled",g_advancedSkipFrames);
+     AdvancedSettingsText(L"Changes are saved immediately and take effect when the next media item opens. Higher thread counts may increase CPU use.",322,536,1018,604,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
     }else if(g_advancedSettingsPage==3){
      RECT vr={0};if(g_video&&IsWindow(g_video))GetClientRect(g_video,&vr);
      sectionTitle=L"Video output status";
@@ -5808,7 +5857,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     libvlc_media_player_stop(g_player);
                     g_hasMedia=FALSE;g_current=-1;
                     ApplyAudioOutputDevice();
-                    ApplySubtitleAppearanceOption(media);AddAdvancedCachingOptions(media);
+                    ApplySubtitleAppearanceOption(media);AddAdvancedCachingOptions(media);AddAdvancedPerformanceOptions(media);
                     libvlc_media_player_set_media(g_player,media);
                     libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                     BeginArtworkParse(media);
