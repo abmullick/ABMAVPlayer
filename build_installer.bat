@@ -17,9 +17,11 @@ if exist "%ISCC%" goto found_compiler
 goto missing_compiler
 
 :found_compiler
-rem Fail early if any independently maintained release-version source is out of sync.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected='1.0.7'; $app=[IO.File]::ReadAllText('src\player.c'); $stream=[IO.File]::ReadAllText('src\streaming\streaming_host.cpp'); $iss=[IO.File]::ReadAllText('installer\ABMAVPlayer.iss'); $manifest=Get-Content 'vcpkg.json' -Raw | ConvertFrom-Json; $av=[regex]::Match($app,'APP_VERSION L[^0-9]*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $sv=[regex]::Match($stream,'Version ([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $iv=[regex]::Match($iss,'MyAppVersion[^0-9]*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $pe=[regex]::Match($iss,'VersionInfoVersion=([0-9]+\.[0-9]+\.[0-9]+)\.0').Groups[1].Value; $mv=$manifest.'version-string'; Write-Host ('App=' + $av + '; Streaming=' + $sv + '; Installer=' + $iv + '; PE=' + $pe + '; vcpkg=' + $mv); if ($av -ne $expected -or $sv -ne $expected -or $iv -ne $expected -or $pe -ne $expected -or $mv -ne $expected) { Write-Host 'ERROR: Release version metadata is inconsistent. Align all version sources to 1.0.7.'; exit 1 }"
-if errorlevel 1 goto version_metadata_mismatch
+rem VERSION is the only editable version source. Generate C/C++, Inno Setup and vcpkg artifacts from it.
+set "ABM_VERSION="
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare_version.ps1`) do set "ABM_VERSION=%%V"
+if not defined ABM_VERSION goto version_metadata_mismatch
+echo Preparing ABM AV Player release version %ABM_VERSION%...
 
 rem Build the application from current source before staging anything.
 rem This prevents an old build\ABMAVPlayer.exe from being silently packaged.
@@ -33,7 +35,7 @@ if not exist "build\ABMAVPlayer.exe" goto missing_build
 
 rem Verify that the freshly compiled EXE contains the requested release version.
 rem This catches stale object files or an out-of-date source checkout before packaging.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='build\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.7') { Write-Host 'ERROR: Built EXE does not contain About version 1.0.7.'; if ($s -match 'Version 1\.0\.[0-9]+') { Write-Host ('Found: ' + $Matches[0]) }; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p='build\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch ('Version ' + [regex]::Escape($expected))) { Write-Host ('ERROR: Built EXE does not contain canonical About version ' + $expected + '.'); exit 1 }"
 if errorlevel 1 goto wrong_app_version
 
 
@@ -42,7 +44,7 @@ call prepare_installer.bat
 if errorlevel 1 goto staging_failed
 
 if not exist "release\ABM AV Player\ABMAVPlayer.exe" goto missing_stage
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.7') { Write-Host 'ERROR: Staged EXE is not version 1.0.7.'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch ('Version ' + [regex]::Escape($expected))) { Write-Host ('ERROR: Staged EXE is not version ' + $expected + '.'); exit 1 }"
 if errorlevel 1 goto wrong_staged_version
 if not exist "release\ABM AV Player\LICENSE" goto missing_license
 
@@ -99,17 +101,17 @@ endlocal
 exit /b 1
 
 :version_metadata_mismatch
-echo ERROR: Release version metadata is not consistently set to 1.0.7.
-echo Check src\player.c, src\streaming\streaming_host.cpp, installer\ABMAVPlayer.iss and vcpkg.json.
+echo ERROR: Could not generate release artifacts from the canonical VERSION file.
+echo Check VERSION, tools\prepare_version.ps1 and vcpkg.json.in.
 endlocal
 exit /b 1
 
 :wrong_app_version
-echo ERROR: Application executable is not version 1.0.7. Check src\player.c and rebuild.
+echo ERROR: Application executable does not contain canonical version %ABM_VERSION%. Check the generated build\version.h and rebuild.
 endlocal
 exit /b 1
 
 :wrong_staged_version
-echo ERROR: Installer payload does not contain application version 1.0.7.
+echo ERROR: Installer payload does not contain canonical application version %ABM_VERSION%.
 endlocal
 exit /b 1
