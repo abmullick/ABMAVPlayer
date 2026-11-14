@@ -9,15 +9,15 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 [**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)
 
-**Current source version:** ABM AV Player v1.0.7 · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+**Current source version:** see the canonical [`VERSION`](VERSION) file · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
 
-The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; v1.0.7 becomes available there only after its Windows build and validation are complete.
+The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
-### v1.0.7 release highlights
+### Current release highlights
 
 - Refined the F1 Help Centre presentation with application-matched visual styling and clearer navigation and search controls.
 - Improved help article presentation with topic-focused views, richer heading/body typography, paragraph spacing and normalization of escaped line breaks across topics.
-- Aligned the main application, Streaming Centre, installer metadata, packaging guards, release publisher and vcpkg manifest to v1.0.7.
+- Aligned the main application, Streaming Centre, installer metadata, packaging guards, release publisher and vcpkg manifest to the version in `VERSION`.
 - Preserved the existing installer identity and per-user application data location so an in-place upgrade can retain existing user data.
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the release notes and [RELEASES.md](RELEASES.md) for build, validation and publishing requirements.
@@ -150,7 +150,7 @@ ABM AV Player includes an in-app update checker connected to the public GitHub R
 ### For maintainers
 
 - A release must be published on GitHub and include an installer asset named exactly `ABM-AV-Player-Setup.exe`; the updater cannot find an installer attached under a different name.
-- Before building a release, align `APP_VERSION` in `src/player.c`, the Streaming Centre About version in `src/streaming/streaming_host.cpp`, `MyAppVersion` and `VersionInfoVersion` in `installer/ABMAVPlayer.iss`, and `version-string` in `vcpkg.json`. `build_installer.bat` checks these sources before building and checks the built/staged executable versions.
+- Maintain the release number only in the root `VERSION` file. `tools/prepare_version.ps1` generates the C/C++ header, Inno Setup include and vcpkg manifest from it. Do not edit generated `build/version.h`, `build/version.iss` or `vcpkg.json`; they are build artifacts. `build_installer.bat` regenerates them and validates the built/staged executable versions.
 - Build and test the application and installer on Windows before publishing.
 - The `publish_release.bat` script uses GitHub CLI. **Only the maintainer publishing the release** needs GitHub CLI installed and authenticated with `gh auth login`. This authentication is not used by the application or required by end users.
 - See [RELEASES.md](RELEASES.md) for the complete publishing procedure and release requirements.
