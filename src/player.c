@@ -1896,7 +1896,7 @@ static void SelectRenderer(void) {
                     libvlc_media_add_option(m,":compressor-makeup-gain=0");
                 }
                 ApplyAudioOutputDevice();
-                ApplySubtitleAppearanceOption(m);
+                ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);
                 libvlc_media_player_set_media(g_player,m);ApplyAdvancedAspectRatio();
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
