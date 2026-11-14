@@ -32,6 +32,7 @@ typedef struct ABMLicenseDialog {
     HWND window, edit, activateButton, trialButton;
     HINSTANCE instance;
     BOOL done, allowed, trialAllowed, manual, alreadyActivated;
+    wchar_t statusMessage[160]; COLORREF statusColor;
 } ABMLicenseDialog;
 static HBRUSH g_licenseEditBrush=NULL;
 static HFONT g_licenseBodyFont=NULL, g_licenseTitleFont=NULL, g_licenseCaptionFont=NULL;
@@ -46,9 +47,8 @@ static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
     HGDIOBJ ob=SelectObject(d->hDC,brush),op=SelectObject(d->hDC,pen);
     RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,12,12);
     SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(brush);DeleteObject(pen);
-    const wchar_t *label=primary?(d->CtlID==ID_LICENSE_ACTIVATE?L"Activate":L"Activate"):(L"Continue trial");
-    if(d->CtlID==ID_LICENSE_TRIAL)label=L"Continue trial";
-    if(d->CtlID==ID_LICENSE_ACTIVATE && (d->itemState&ODS_DISABLED))label=L"Close";
+    wchar_t label[64]=L"";
+    GetWindowTextW(d->hwndItem,label,_countof(label));
     RECT text=d->rcItem;LicenseDrawText(d->hDC,label,text,RGB(247,250,255),g_licenseBodyFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
 
@@ -159,6 +159,10 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_licenseBodyFont)SendMessageW(d->edit,WM_SETFONT,(WPARAM)g_licenseBodyFont,TRUE);
         if(g_licenseBodyFont){SendMessageW(d->activateButton,WM_SETFONT,(WPARAM)g_licenseBodyFont,TRUE);SendMessageW(d->trialButton,WM_SETFONT,(WPARAM)g_licenseBodyFont,TRUE);}
         if(d->alreadyActivated)EnableWindow(d->edit,FALSE);
+        if(d->alreadyActivated){StringCchCopyW(d->statusMessage,_countof(d->statusMessage),L"ACTIVATED  ·  This installation is ready to use.");d->statusColor=RGB(77,196,153);}
+        else if(d->manual){StringCchCopyW(d->statusMessage,_countof(d->statusMessage),L"READY TO ACTIVATE  ·  Your trial remains available until activation.");d->statusColor=RGB(82,205,190);}
+        else if(d->trialAllowed){StringCchPrintfW(d->statusMessage,_countof(d->statusMessage),L"TRIAL ACTIVE  ·  %d day(s) remaining",d->daysLeft);d->statusColor=RGB(82,205,190);}
+        else {StringCchCopyW(d->statusMessage,_countof(d->statusMessage),L"TRIAL ENDED  ·  Enter your key to continue using the player.");d->statusColor=RGB(242,177,79);}
         return 0;
     }
     case WM_COMMAND:
@@ -167,10 +171,16 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             wchar_t token[ABM_LICENSE_MAX]={0},dir[MAX_PATH],lic[MAX_PATH],state[MAX_PATH];
             GetWindowTextW(d->edit,token,_countof(token));
             if(!GetLicensePaths(dir,_countof(dir),lic,_countof(lic),state,_countof(state))||!ValidateMasterKey(token)){
-                SetWindowTextW(d->edit,token);SetFocus(d->edit);SendMessageW(d->edit,EM_SETSEL,0,-1);
+                StringCchCopyW(d->statusMessage,_countof(d->statusMessage),L"That key wasn't recognized. Check all 16 characters and try again.");
+                d->statusColor=RGB(220,75,85);InvalidateRect(w,NULL,FALSE);
+                SetFocus(d->edit);SendMessageW(d->edit,EM_SETSEL,0,-1);
                 MessageBeep(MB_ICONWARNING);SecureZeroMemory(token,sizeof(token));return 0;
             }
-            if(!SaveLicenseFile(lic,token)){MessageBeep(MB_ICONERROR);SecureZeroMemory(token,sizeof(token));return 0;}
+            if(!SaveLicenseFile(lic,token)){
+                StringCchCopyW(d->statusMessage,_countof(d->statusMessage),L"Unable to save activation. Check your Windows profile permissions.");
+                d->statusColor=RGB(220,75,85);InvalidateRect(w,NULL,FALSE);
+                MessageBeep(MB_ICONERROR);SecureZeroMemory(token,sizeof(token));return 0;
+            }
             SecureZeroMemory(token,sizeof(token));d->allowed=TRUE;d->done=TRUE;DestroyWindow(w);return 0;
         }
         if(LOWORD(wp)==ID_LICENSE_TRIAL && HIWORD(wp)==BN_CLICKED){d->allowed=d->manual?FALSE:d->trialAllowed;d->done=TRUE;DestroyWindow(w);return 0;}
@@ -205,12 +215,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         RECT status={32,282,rc.right-32,332};HBRUSH statusBrush=CreateSolidBrush(RGB(12,27,40));FillRect(dc,&status,statusBrush);DeleteObject(statusBrush);
         HBRUSH dot=CreateSolidBrush(d->alreadyActivated?RGB(77,196,153):(d->trialAllowed?RGB(82,205,190):RGB(242,177,79)));
         RECT dotRc={48,302,56,310};RoundRect(dc,dotRc.left,dotRc.top,dotRc.right,dotRc.bottom,5,5);DeleteObject(dot);
-        wchar_t statusText[160];
-        if(d->alreadyActivated)StringCchCopyW(statusText,_countof(statusText),L"ACTIVATED  ·  This installation is ready to use.");
-        else if(d->manual)StringCchCopyW(statusText,_countof(statusText),L"READY TO ACTIVATE  ·  Your trial remains available until activation.");
-        else if(d->trialAllowed)StringCchPrintfW(statusText,_countof(statusText),L"TRIAL ACTIVE  ·  %d day(s) remaining",d->daysLeft);
-        else StringCchCopyW(statusText,_countof(statusText),L"TRIAL ENDED  ·  Enter your key to continue using the player.");
-        LicenseDrawText(dc,statusText,(RECT){68,290,rc.right-44,324},RGB(206,224,237),g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        LicenseDrawText(dc,d->statusMessage,(RECT){68,290,rc.right-44,324},d->statusColor,g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         LicenseDrawText(dc,L"Your key is checked offline. No account or internet connection is required.",(RECT){34,338,rc.right-34,357},RGB(116,140,160),g_licenseCaptionFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         EndPaint(w,&ps);return 0;
     }
@@ -233,9 +238,9 @@ static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL tr
     DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP;
     AdjustWindowRectEx(&wr,style,FALSE,WS_EX_DLGMODALFRAME);width=wr.right-wr.left+620;height=wr.bottom-wr.top+470;
     if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
+    SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
     int x=ownerRect.left+(ownerRect.right-ownerRect.left-width)/2,y=ownerRect.top+(ownerRect.bottom-ownerRect.top-height)/2;
     if(x<work.left+8)x=work.left+8;if(y<work.top+8)y=work.top+8;
-    SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
     if(x+width>work.right-8)x=work.right-width-8;if(y+height>work.bottom-8)y=work.bottom-height-8;
     w=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayer.Licensing",L"ABM AV Player — License & Activation",
         style,x,y,width,height,owner,NULL,instance,&d);if(!w)return FALSE;
