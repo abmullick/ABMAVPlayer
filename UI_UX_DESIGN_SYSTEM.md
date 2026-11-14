@@ -545,10 +545,10 @@ The Streaming Centre source includes the shared theme header relative to its sou
 
 ## Runtime color presets — Step 2
 
-- Added six coordinated application palettes: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber and Emerald.
+- Added seven coordinated application palettes: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald and Golden Yellow.
 - Presets recolor the existing blue/teal design family while preserving neutral surfaces and semantic success, warning, error and orange status colors.
 - The selected preset is stored in `%APPDATA%\\ABMAVPlayer\\theme.ini` and restored at startup.
-- The Settings window exposes six clickable swatches with immediate application and a selected-state outline.
+- The Settings window exposes seven clickable swatches with immediate application and a selected-state outline.
 - Main player, open application-owned windows and Streaming Centre chrome refresh after a selection. An active third-party streaming website is never navigated or recolored.
 - Preset selection is independent of playback, audio routing, torrent cache/download behavior and casting.
 - Windows build and visual QA remain required for each preset, including text contrast, DPI scaling and active-window refresh.
