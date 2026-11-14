@@ -4812,27 +4812,28 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"ABM AV Player is a desktop media player built on LibVLC. Streaming Centre web playback is separate from local media playback and does not provide subscriptions or bypass provider protections.";
 
         if(!g_helpBrush)g_helpBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
-        if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(25,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(15,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        /* Searchable Help Centre: query field, topic index and article pane. */
+        if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(29,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        /* Branded Help Centre workspace: borderless native text editing retains
+           keyboard, selection and clipboard behaviour while the host paints the chrome. */
         g_helpSearch=CreateWindowExW(0,L"EDIT",L"",
-            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,34,116,570,42,hwnd,
+            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,32,124,760,46,hwnd,
             (HMENU)HELP_ID_SEARCH,GetModuleHandleW(NULL),NULL);
         g_helpFindButton=CreateWindowExW(0,L"BUTTON",L"SEARCH",
-            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,614,116,118,42,hwnd,
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,806,124,132,46,hwnd,
             (HMENU)HELP_ID_FIND,GetModuleHandleW(NULL),NULL);
         g_helpTopics=CreateWindowExW(0,L"LISTBOX",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_HASSTRINGS|LBS_OWNERDRAWFIXED,
-            34,190,250,500,hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
+            32,198,286,500,hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
         g_helpEdit=CreateWindowExW(0,L"EDIT",help,
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY,
-            300,190,600,500,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
-        if(g_helpEdit){SendMessageW(g_helpEdit,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(18,18));}
-        if(g_helpSearch){SendMessageW(g_helpSearch,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpSearch,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(14,12));SetWindowSubclass(g_helpSearch,HelpSearchSubclass,1,0);}
-        if(g_helpSearch)SendMessageW(g_helpSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search help: buffering, subtitles, D3D11VA, torrent cache...");
-        if(g_helpTopics){SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpTopics,LB_SETITEMHEIGHT,0,34);}
+            338,198,600,500,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
+        if(g_helpEdit){SendMessageW(g_helpEdit,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(24,24));}
+        if(g_helpSearch){SendMessageW(g_helpSearch,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpSearch,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(16,16));SetWindowSubclass(g_helpSearch,HelpSearchSubclass,1,0);}
+        if(g_helpSearch)SendMessageW(g_helpSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search all help topics  ·  e.g. subtitles, buffering, D3D11VA, torrent cache");
+        if(g_helpTopics){SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpTopics,LB_SETITEMHEIGHT,0,40);}
         if(g_helpFindButton)SendMessageW(g_helpFindButton,WM_SETFONT,(WPARAM)g_helpMetaFont,TRUE);
         for(int ti=0;ti<(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]));ti++)
             SendMessageW(g_helpTopics,LB_ADDSTRING,0,(LPARAM)g_helpTopicNames[ti]);
@@ -4842,25 +4843,35 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_SIZE: {
         int w=LOWORD(lp),h=HIWORD(lp);
-        int contentH=h-246;if(contentH<180)contentH=180;
-        int left=34,top=190,topicW=250,gap=16;
-        if(g_helpSearch)MoveWindow(g_helpSearch,left,116,w-340,42,TRUE);
-        if(g_helpFindButton)MoveWindow(g_helpFindButton,w-194,116,160,42,TRUE);
-        if(g_helpTopics)MoveWindow(g_helpTopics,left,top,topicW,contentH,TRUE);
-        if(g_helpEdit)MoveWindow(g_helpEdit,left+topicW+gap,top,w-(left+topicW+gap)-34,contentH,TRUE);
+        int contentH=h-278;if(contentH<190)contentH=190;
+        int margin=32,top=198,topicW=(w<900?240:286),gap=20;
+        int searchButtonW=132,searchY=124,searchH=46;
+        if(g_helpSearch)MoveWindow(g_helpSearch,margin,searchY,w-(margin*2)-searchButtonW-14,searchH,TRUE);
+        if(g_helpFindButton)MoveWindow(g_helpFindButton,w-margin-searchButtonW,searchY,searchButtonW,searchH,TRUE);
+        if(g_helpTopics)MoveWindow(g_helpTopics,margin,top,topicW,contentH,TRUE);
+        if(g_helpEdit)MoveWindow(g_helpEdit,margin+topicW+gap,top,w-(margin+topicW+gap)-margin,contentH,TRUE);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
     }
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
         HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
-        RECT header={0,0,rc.right,96};HBRUSH head=CreateSolidBrush(ABM_UI_COLOR_SURFACE_BLUE);FillRect(dc,&header,head);DeleteObject(head);
-        RECT accent={0,94,rc.right,97};HBRUSH accentBrush=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
+        RECT header={0,0,rc.right,104};HBRUSH head=CreateSolidBrush(ABM_UI_COLOR_SURFACE_BLUE);FillRect(dc,&header,head);DeleteObject(head);
+        RECT accent={0,101,rc.right,104};HBRUSH accentBrush=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
         SetBkMode(dc,TRANSPARENT);
         HFONT old=(HFONT)SelectObject(dc,g_helpTitleFont);SetTextColor(dc,ABM_UI_COLOR_TEXT);
-        RECT title={34,17,rc.right-70,53};DrawTextW(dc,L"Help Centre",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT title={32,12,rc.right-70,52};DrawTextW(dc,L"Help Centre",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
-        RECT kicker={36,56,rc.right-70,78};DrawTextW(dc,L"ABM AV PLAYER   /   USER GUIDE",-1,&kicker,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT kicker={34,55,rc.right-70,78};DrawTextW(dc,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",-1,&kicker,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        SelectObject(dc,g_helpBodyFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
+        RECT intro={34,82,rc.right-70,101};DrawTextW(dc,L"Find answers, learn features and understand the practical impact of settings.",-1,&intro,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        /* Search field and content cards are painted by the application, not default control chrome. */
+        HBRUSH card=CreateSolidBrush(ABM_UI_COLOR_SURFACE);HPEN edge=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);
+        HGDIOBJ ob=SelectObject(dc,card),op=SelectObject(dc,edge);
+        RoundRect(dc,24,116,rc.right-24,178,12,12);
+        RoundRect(dc,24,188,324,rc.bottom-62,12,12);
+        RoundRect(dc,334,188,rc.right-24,rc.bottom-62,12,12);
+        SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(edge);DeleteObject(card);
         RECT close={rc.right-54,20,rc.right-18,56};
         HBRUSH closeBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);DeleteObject(closeBrush);
         HPEN pen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT_SECONDARY);HGDIOBJ oldPen=SelectObject(dc,pen);
@@ -4885,25 +4896,29 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         DRAWITEMSTRUCT *di=(DRAWITEMSTRUCT*)lp;
         if(!di)break;
         if(di->CtlID==HELP_ID_FIND){
-            HBRUSH b=CreateSolidBrush((di->itemState&ODS_SELECTED)?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_187E74);
-            FillRect(di->hDC,&di->rcItem,b);DeleteObject(b);
+            RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
+            COLORREF fill=pressed?ABM_THEME_COLOR_146B64:ABM_THEME_COLOR_187E74;
+            HBRUSH b=CreateSolidBrush(fill);HPEN p=CreatePen(PS_SOLID,focused?2:1,focused?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_2A9D91);
+            HGDIOBJ ob=SelectObject(di->hDC,b),op=SelectObject(di->hDC,p);
+            RoundRect(di->hDC,r.left+1,r.top+1,r.right-1,r.bottom-1,12,12);
+            SelectObject(di->hDC,op);SelectObject(di->hDC,ob);DeleteObject(p);DeleteObject(b);
             SetBkMode(di->hDC,TRANSPARENT);SetTextColor(di->hDC,ABM_THEME_COLOR_F7FAFF);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpMetaFont);
-            DrawTextW(di->hDC,L"SEARCH",-1,&di->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT label=r;InflateRect(&label,-8,-2);DrawTextW(di->hDC,L"SEARCH  →",-1,&label,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             SelectObject(di->hDC,f);return TRUE;
         }
         if(di->CtlID==HELP_ID_TOPICS){
             wchar_t label[256]={0};
             if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
             BOOL selected=(di->itemState&ODS_SELECTED)!=0;
-            RECT row=di->rcItem;InflateRect(&row,-4,-2);
-            HBRUSH b=CreateSolidBrush(selected?ABM_THEME_COLOR_163B48:ABM_THEME_COLOR_0F1723);
+            RECT row=di->rcItem;InflateRect(&row,-6,-2);
+            HBRUSH b=CreateSolidBrush(selected?ABM_THEME_COLOR_163B48:ABM_UI_COLOR_SURFACE);
             FillRect(di->hDC,&row,b);DeleteObject(b);
             if(selected){RECT mark={row.left,row.top+7,row.left+3,row.bottom-7};b=CreateSolidBrush(ABM_THEME_COLOR_52CDE0);FillRect(di->hDC,&mark,b);DeleteObject(b);}
             SetBkMode(di->hDC,TRANSPARENT);
-            SetTextColor(di->hDC,selected?ABM_THEME_COLOR_F5F8FF:ABM_THEME_COLOR_B0C0D5);
+            SetTextColor(di->hDC,selected?ABM_THEME_COLOR_F5F8FF:ABM_UI_COLOR_TEXT_SECONDARY);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpBodyFont);
-            RECT t=row;t.left+=14;t.right-=8;
+            RECT t=row;t.left+=18;t.right-=10;
             DrawTextW(di->hDC,label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
             SelectObject(di->hDC,f);return TRUE;
         }
@@ -4938,9 +4953,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORLISTBOX: {
         HDC dc=(HDC)wp;
-        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_THEME_COLOR_F4F8FF);SetBkColor(dc,ABM_THEME_COLOR_0B1928);}
-        else if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);SetBkColor(dc,ABM_THEME_COLOR_09101B);}
-        else {SetTextColor(dc,ABM_THEME_COLOR_B0C0D5);SetBkColor(dc,ABM_THEME_COLOR_0F1723);}
+        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);}
+        else if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);}
+        else {SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);}
         return (LRESULT)g_helpBrush;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
@@ -4961,11 +4976,16 @@ static void ShowHelpDialog(HWND owner) {
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    int w=920,h=760;
+    int w=1120,h=840;
     RECT ownerRect;GetWindowRect(owner,&ownerRect);
+    HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
+    if(GetMonitorInfoW(mon,&mi)){
+        int maxW=mi.rcWork.right-mi.rcWork.left-48,maxH=mi.rcWork.bottom-mi.rcWork.top-48;
+        if(w>maxW)w=maxW;if(h>maxH)h=maxH;
+    }
     int x=ownerRect.left+(ownerRect.right-ownerRect.left-w)/2;
     int y=ownerRect.top+(ownerRect.bottom-ownerRect.top-h)/2;
-    if(x<0)x=20;if(y<0)y=20;
+    if(x<ownerRect.left)x=ownerRect.left+12;if(y<ownerRect.top)y=ownerRect.top+12;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerHelp",
         L"ABM AV Player - Help Centre",WS_POPUP|WS_THICKFRAME,
         x,y,w,h,owner,NULL,inst,NULL);
