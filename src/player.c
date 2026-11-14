@@ -1313,8 +1313,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT deviceText={receiver.left+44,receiver.top+2,receiver.right-48,receiver.bottom-2};
     Txt(dc,deviceName,deviceText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     int arrowX=receiver.right-20,arrowY=(receiver.top+receiver.bottom)/2;
-    DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,ABM_THEME_COLOR_BEC4CC,1.8f);
-    DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,ABM_THEME_COLOR_BEC4CC,1.8f);
+    DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,ABM_THEME_COLOR_BEC4CC,2);
+    DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,ABM_THEME_COLOR_BEC4CC,2);
 
     RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+198,R_SIDEBAR.right-18,R_SIDEBAR.top+218};
     Txt(dc,L"QUICK CONTROLS",toolsHead,ABM_THEME_COLOR_77B1A4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -1398,7 +1398,7 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,R_SEARCH,g_searchFocused?ABM_THEME_COLOR_0D2F3A:ABM_THEME_COLOR_0B1727,g_searchFocused?ABM_THEME_COLOR_43B7C2:ABM_THEME_COLOR_2A4B67,12);
     RECT searchGlyph={R_SEARCH.left+12,R_SEARCH.top+10,R_SEARCH.left+26,R_SEARCH.bottom-10};
     ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,ABM_THEME_COLOR_8BA3C1,1.5f);
-    DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,ABM_THEME_COLOR_8BA3C1,1.5f);
+    DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,ABM_THEME_COLOR_8BA3C1,2);
     RECT searchText={R_SEARCH.left+36,R_SEARCH.top+2,R_SEARCH.right-10,R_SEARCH.bottom-2};
     Txt(dc,g_searchText[0]?g_searchText:(g_searchFocused?L"Type to search":L"Search tracks, artists, albums"),searchText,
         g_searchText[0]?C_TEXT:ABM_THEME_COLOR_8797AC,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
