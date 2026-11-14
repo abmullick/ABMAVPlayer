@@ -17,7 +17,7 @@ Download the installer, run it, and follow the setup instructions. The installer
 
 ## Licensing
 
-ABM AV Player includes a 10-day full-feature trial and offline, device-bound perpetual licence activation. The licence gate runs before media, streaming, torrent or casting components initialize. Publisher key generation and private-key handling are documented in [LICENSING.md](LICENSING.md). The publisher signing private key must never be committed or distributed with the installer.
+ABM AV Player includes a 10-day full-feature trial and offline activation with one universal 16-character key. The same key activates every installation; no device ID, individual licence generation, publisher signing key or licensing server is required. See [LICENSING.md](LICENSING.md) for activation details.
 
 ## User documentation
 
