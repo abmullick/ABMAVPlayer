@@ -5011,6 +5011,7 @@ static int g_advancedSettingsPage=0;
 static int g_advancedHwMode=0,g_advancedHwDraft=0;
 static BOOL g_advancedHwEnvOverride=FALSE;
 static int g_advancedAudioOutMode=0,g_advancedAudioOutDraft=0;
+static int64_t g_advancedSubtitleDelayUs=0;
 static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
@@ -5086,6 +5087,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Could not access the ABM AV Player settings folder.");
     InvalidateRect(w,NULL,FALSE);return 0;
    }
+  }
+  if(g_advancedSettingsPage==4){
+   if(AdvancedSettingsPoint(x,y,770,300,850,356)){g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,860,300,940,356)){g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,950,300,1032,356)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==1){
    if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedHwDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
@@ -5195,6 +5201,19 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(g_advancedHwEnvOverride?L"Environment override active: ABM_VLC_HW takes precedence over this saved setting.":L"Decoder changes require an application restart. Automatic is the default.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedHwMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else if(g_advancedSettingsPage==4){
+    AdvancedSettingsText(L"Subtitle timing",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Round(&g_advancedSettingsUi,320,270,1018,390,12,ABM_UI_COLOR_SURFACE);
+    ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,270.5f,1017.5f,389.5f,12,SETTINGS_BORDER,0.8f);
+    AdvancedSettingsText(L"Subtitle delay",344,288,650,322,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Adjust subtitle timing during the current playback session.",344,326,720,362,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(770,300,850,356,L"- 50 ms",FALSE);
+    AdvancedSettingsButtonDraw(860,300,940,356,L"+ 50 ms",FALSE);
+    AdvancedSettingsButtonDraw(950,300,1032,356,L"Reset",FALSE);
+    wchar_t delayText[96];double delayMs=(double)g_advancedSubtitleDelayUs/1000.0;
+    StringCchPrintfW(delayText,_countof(delayText),L"Current offset: %+.0f ms",delayMs);
+    AdvancedSettingsText(delayText,344,420,1018,456,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(g_player?L"Changes are applied immediately to the current playback.":L"Start playback to apply subtitle timing adjustments.",344,468,1018,508,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else{
     ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
     ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
