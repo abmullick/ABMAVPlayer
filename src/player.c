@@ -4019,6 +4019,9 @@ static void TorrentRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF color){
 static void TorrentStrokeRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF color,float width){
     ABM_D2D_StrokeRound(ui,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,radius,color,width);
 }
+static void TorrentGradientRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF start,COLORREF end){
+    ABM_D2D_GradientRound(ui,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,radius,start,end);
+}
 static void TorrentPaint(HWND hwnd){
     RECT rc={0};GetClientRect(hwnd,&rc);
     const float w=(float)rc.right,h=(float)rc.bottom;
@@ -4076,13 +4079,13 @@ static void TorrentPaint(HWND hwnd){
 
     /* Source card: label above the edit row; no painted text beneath controls. */
     r=TorrentMakeRect(m,sourceTop,w-m,sourceTop+sourceH);
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,ABM_THEME_COLOR_11273A,ABM_THEME_COLOR_0A1928);
+    TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_THEME_COLOR_11273A,ABM_THEME_COLOR_0A1928);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
     r=TorrentMakeRect(m+14,sourceTop+3,m+250,sourceTop+22);ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Content library card */
     r=TorrentMakeRect(m,contentTop,w-m,contentBottom);
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,ABM_THEME_COLOR_0E1F31,ABM_THEME_COLOR_091624);
+    TorrentGradientRoundRect(&g_torrentUi,r,16,ABM_THEME_COLOR_0E1F31,ABM_THEME_COLOR_091624);
     TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_THEME_COLOR_224053,1.0f);
     r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=TorrentMakeRect(w-420,contentTop+5,w-m-14,contentTop+25);
@@ -4091,7 +4094,7 @@ static void TorrentPaint(HWND hwnd){
 
     /* Playback deck: status, progress and actions each have their own row. */
     r=TorrentMakeRect(m,playbackY,w-m,playbackY+100);
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,ABM_THEME_COLOR_112638,ABM_THEME_COLOR_0A1928);
+    TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_THEME_COLOR_112638,ABM_THEME_COLOR_0A1928);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
     r=TorrentMakeRect(m+14,playbackY+2,m+250,playbackY+21);ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int progress=(int)SendMessageW(g_torrentBufferBar,PBM_GETPOS,0,0);
@@ -4102,15 +4105,15 @@ static void TorrentPaint(HWND hwnd){
 
     /* Matched utility cards */
     r=TorrentMakeRect(m,networkY,w-m,networkY+76);
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
+    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
     r=TorrentMakeRect(m,cacheY,w-m,cacheY+76);
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
+    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
 
     /* Receiver dock */
     r=TorrentMakeRect(m,tvY,w-m,h-12);
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
+    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
     r=TorrentMakeRect(m+14,tvY+2,m+220,tvY+22);ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_End(&g_torrentUi);
