@@ -196,7 +196,6 @@ void ReleaseServiceLogos(){
     if(g_gdiplusToken){Gdiplus::GdiplusShutdown(g_gdiplusToken);g_gdiplusToken=0;}
 }
 
-COLORREF RGBc(int r,int g,int b){return RGB(r,g,b);}
 void FillRectColor(HDC dc,const RECT &r,COLORREF color){
     HBRUSH b=CreateSolidBrush(color);FillRect(dc,&r,b);DeleteObject(b);
 }
@@ -252,19 +251,19 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
     bool focused=(item->itemState&ODS_FOCUS)!=0;
     const bool pulse=(item->hwndItem==g_deviceSelect&&g_deviceSelectPulse)||
                      (item->hwndItem==g_deviceLaunch&&g_deviceLaunchPulse);
-    COLORREF fill=pulse?(g_devicePulsePhase?RGBc(255,145,28):RGBc(194,83,16)):
-        primary?(pressed?RGBc(25,112,101):RGBc(24,91,82)):
-        (pressed?RGBc(35,75,94):RGBc(20,42,60));
-    COLORREF edge=pulse?RGBc(255,190,82):primary?RGBc(65,190,165):RGBc(48,91,113);
+    COLORREF fill=pulse?(g_devicePulsePhase?ABM_THEME_COLOR_FF911C:ABM_THEME_COLOR_C25310):
+        primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_185B52):
+        (pressed?ABM_THEME_COLOR_234B5E:ABM_THEME_COLOR_142A3C);
+    COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_THEME_COLOR_41BEA5:ABM_THEME_COLOR_305B71;
     Rounded(dc,r,fill,9);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGBc(99,225,205):edge);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_63E1CD:edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
     RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
-    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),RGBc(145,229,213),17);
+    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),ABM_THEME_COLOR_91E5D5,17);
     RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
-    Text(dc,caption,label,RGBc(229,244,250),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Text(dc,caption,label,ABM_THEME_COLOR_E5F4FA,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     if(!item||item->itemID==(UINT)-1)return;
@@ -272,12 +271,12 @@ void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)name);
     bool selected=(item->itemState&ODS_SELECTED)!=0;
     RECT r=item->rcItem;
-    FillRectColor(item->hDC,r,selected?RGBc(29,91,103):RGBc(15,31,47));
+    FillRectColor(item->hDC,r,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
     RECT textRect=r;InflateRect(&textRect,-9,0);
-    Text(item->hDC,name,textRect,selected?RGBc(245,255,255):RGBc(207,225,237),11,selected?700:500,
+    Text(item->hDC,name,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,11,selected?700:500,
         DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(item->itemState&ODS_FOCUS){
-        HPEN pen=CreatePen(PS_SOLID,1,RGBc(75,190,184));
+        HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_4BBEB8);
         HGDIOBJ old=SelectObject(item->hDC,pen),brush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
         Rectangle(item->hDC,r.left+1,r.top+1,r.right-1,r.bottom-1);
         SelectObject(item->hDC,brush);SelectObject(item->hDC,old);DeleteObject(pen);
@@ -621,56 +620,56 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
         RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
         RECT brand={28,20,rc.right-28,54};
-        Text(dc,L"ABM AV PLAYER",brand,RGBc(244,249,255),21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Text(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT subtitle={29,49,rc.right-28,72};
-        Text(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,RGBc(91,224,218),12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Text(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_infoAbout){
             RECT photoFrame={28,94,286,362};
-            Rounded(dc,photoFrame,RGBc(18,38,55),10);
+            Rounded(dc,photoFrame,ABM_THEME_COLOR_122637,10);
             if(g_infoPortrait){
                 Gdiplus::Graphics graphics(dc);
                 graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
                 graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));
             }else{
                 RECT fallback={36,102,278,344};
-                Rounded(dc,fallback,RGBc(27,143,145),8);
-                Text(dc,L"ABM",fallback,RGBc(245,255,255),42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                Rounded(dc,fallback,ABM_THEME_COLOR_1B8F91,8);
+                Text(dc,L"ABM",fallback,ABM_THEME_COLOR_F5FFFF,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
             RECT product={322,98,rc.right-28,138};
-            Text(dc,L"ABM AV Player",product,RGBc(255,255,255),25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tagline={322,140,rc.right-28,163};
-            Text(dc,L"Capture the feeling. Relive every moment.",tagline,RGBc(112,211,202),13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT creatorLabel={322,174,rc.right-28,197};
-            Text(dc,L"THE CREATOR",creatorLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"THE CREATOR",creatorLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT creator={322,204,rc.right-28,237};
-            Text(dc,L"Abhisek Basu Mullick",creator,RGBc(255,255,255),19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT role={322,244,rc.right-28,271};
-            Text(dc,L"Founder & Developer",role,RGBc(232,241,250),15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            Text(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
             RECT contactLabel={322,290,rc.right-28,313};
-            Text(dc,L"CONTACT",contactLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"CONTACT",contactLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT email={322,321,rc.right-28,348};
-            Text(dc,L"abmullick@gmail.com",email,RGBc(246,250,255),15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"abmullick@gmail.com",email,ABM_THEME_COLOR_F6FAFF,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT description={322,362,rc.right-28,412};
-            Text(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,RGBc(226,238,249),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            Text(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,420,rc.right-28,446};
-            Text(dc,L"Version 1.0.6   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,RGBc(35,62,82));
+            Text(dc,L"Version 1.0.6   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,ABM_THEME_COLOR_233E52);
             RECT featuresTitle={32,470,rc.right-32,495};
-            Text(dc,L"KEY FEATURES",featuresTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT features={32,500,rc.right-32,592};
-            Text(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,RGBc(235,243,250),13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            Text(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT tributeTitle={32,610,rc.right-32,635};
-            Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tribute={32,640,rc.right-32,700};
-            Text(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,RGBc(235,243,250),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            Text(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT stackTitle={32,720,rc.right-32,745};
-            Text(dc,L"BUILT WITH",stackTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"BUILT WITH",stackTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT stack={32,750,rc.right-32,790};
-            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,RGBc(221,233,245),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }else{
             const int left=32,right=rc.right-32;
             RECT intro={left,91,right,125};
-            Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,RGBc(238,245,252),16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,ABM_THEME_COLOR_EEF5FC,16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *heads[6]={
                 L"1. CHOOSE A SERVICE",L"2. SIGN IN & BROWSER PROFILE",L"3. NAVIGATION CONTROLS",
                 L"4. FULLSCREEN & EXTERNAL BROWSER",L"5. FIND TVs & SELECT A RECEIVER",L"6. CAST VIDEO & TROUBLESHOOT"
@@ -686,13 +685,13 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             int y=140;
             for(int i=0;i<6;i++){
                 RECT h={left,y,right,y+21};
-                Text(dc,heads[i],h,RGBc(91,231,220),13,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                Text(dc,heads[i],h,ABM_THEME_COLOR_5BE7DC,13,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
                 RECT b={left,y+22,right,y+70};
-                Text(dc,body[i],b,RGBc(235,242,250),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+                Text(dc,body[i],b,ABM_THEME_COLOR_EBF2FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
                 y+=88;
             }
             RECT note={left,rc.bottom-62,right,rc.bottom-18};
-            Text(dc,L"Streaming compatibility, DRM, subscriptions and protected playback are controlled by each provider. ABM AV Player does not host content or bypass provider protections.",note,RGBc(190,210,228),12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            Text(dc,L"Streaming compatibility, DRM, subscriptions and protected playback are controlled by each provider. ABM AV Player does not host content or bypass provider protections.",note,ABM_THEME_COLOR_BED2E4,12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
         }
         EndPaint(hwnd,&ps);return 0;
     }
@@ -929,17 +928,46 @@ void Navigate(int service){
     }
     if(g_window)InvalidateRect(g_window,nullptr,FALSE);
 }
+
+std::wstring ThemeCssColor(COLORREF color) {
+    wchar_t value[16]{};
+    StringCchPrintfW(value, _countof(value), L"#%02X%02X%02X", GetRValue(color), GetGValue(color), GetBValue(color));
+    return value;
+}
+std::wstring ThemeCssColorAlpha(COLORREF color, BYTE alpha) {
+    wchar_t value[64]{};
+    StringCchPrintfW(value, _countof(value), L"rgba(%u,%u,%u,%.3f)", GetRValue(color), GetGValue(color), GetBValue(color), (double)alpha / 255.0);
+    return value;
+}
+void ReplaceThemeCssColor(std::wstring &html, const wchar_t *marker, const std::wstring &value) {
+    const size_t at = html.find(marker);
+    if (at != std::wstring::npos) html.replace(at, wcslen(marker), value);
+}
+
 void NavigateHome(){
     g_activeService=-1;
     if(g_webView){
-        static const wchar_t html[]=LR"HTML(
+        std::wstring html=LR"HTML(
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <style>
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,#163b48 0,#0b1728 48%,#080f1c 100%);color:#eff6ff;font:16px 'Segoe UI',sans-serif;min-height:100vh;display:grid;place-items:center}
-main{max-width:780px;padding:52px;text-align:center} .mark{width:62px;height:62px;border-radius:18px;margin:0 auto 24px;background:linear-gradient(135deg,#239e9b,#397c89);display:grid;place-items:center;font-size:28px;font-weight:700;box-shadow:0 12px 35px #02081188}
-h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:#a9bfd2;line-height:1.7;margin:0 auto 28px;max-width:650px}.tag{display:inline-block;border:1px solid #34566b;background:#102337;border-radius:999px;padding:8px 14px;color:#9bd4d0;font-size:12px;letter-spacing:1px}
-</style></head><body><main><div class="mark">A</div><div class="tag">ABM  /  STREAMING CENTRE</div><h1>Your streaming universe</h1><p>Choose a service from the navigation above. Sign in directly on its official website using your own account. Your browser session is stored locally on this Windows profile.</p><p style="font-size:13px;color:#7893aa">Playback availability and protected-video support depend on each streaming provider and the installed Microsoft Edge WebView2 Runtime.</p></main></body></html>)HTML";
-        g_webView->NavigateToString(html);
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,@BG_TOP@ 0,@BG_MID@ 48%,@BG_BOTTOM@ 100%);color:@TEXT@;font:16px 'Segoe UI',sans-serif;min-height:100vh;display:grid;place-items:center}
+main{max-width:780px;padding:52px;text-align:center} .mark{width:62px;height:62px;border-radius:18px;margin:0 auto 24px;background:linear-gradient(135deg,@ACCENT@,@ACCENT_2@);display:grid;place-items:center;font-size:28px;font-weight:700;box-shadow:0 12px 35px @SHADOW@}
+h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:@TEXT_SECONDARY@;line-height:1.7;margin:0 auto 28px;max-width:650px}.tag{display:inline-block;border:1px solid @BORDER@;background:@INPUT@;border-radius:999px;padding:8px 14px;color:@ACCENT_BRIGHT@;font-size:12px;letter-spacing:1px}
+</style></head><body><main><div class="mark">A</div><div class="tag">ABM  /  STREAMING CENTRE</div><h1>Your streaming universe</h1><p>Choose a service from the navigation above. Sign in directly on its official website using your own account. Your browser session is stored locally on this Windows profile.</p><p style="font-size:13px;color:@TEXT_MUTED@">Playback availability and protected-video support depend on each streaming provider and the installed Microsoft Edge WebView2 Runtime.</p></main></body></html>)HTML";
+
+        ReplaceThemeCssColor(html,L"@BG_TOP@",ThemeCssColor(ABM_THEME_COLOR_163B48));
+        ReplaceThemeCssColor(html,L"@BG_MID@",ThemeCssColor(ABM_THEME_COLOR_0B1728));
+        ReplaceThemeCssColor(html,L"@BG_BOTTOM@",ThemeCssColor(ABM_THEME_COLOR_080F1C));
+        ReplaceThemeCssColor(html,L"@TEXT@",ThemeCssColor(ABM_THEME_COLOR_EFF6FF));
+        ReplaceThemeCssColor(html,L"@ACCENT@",ThemeCssColor(ABM_THEME_COLOR_239E9B));
+        ReplaceThemeCssColor(html,L"@ACCENT_2@",ThemeCssColor(ABM_THEME_COLOR_397C89));
+        ReplaceThemeCssColor(html,L"@SHADOW@",ThemeCssColorAlpha(ABM_THEME_COLOR_020811,0x88));
+        ReplaceThemeCssColor(html,L"@TEXT_SECONDARY@",ThemeCssColor(ABM_THEME_COLOR_A9BFD2));
+        ReplaceThemeCssColor(html,L"@BORDER@",ThemeCssColor(ABM_THEME_COLOR_34566B));
+        ReplaceThemeCssColor(html,L"@INPUT@",ThemeCssColor(ABM_THEME_COLOR_102337));
+        ReplaceThemeCssColor(html,L"@ACCENT_BRIGHT@",ThemeCssColor(ABM_THEME_COLOR_9BD4D0));
+        ReplaceThemeCssColor(html,L"@TEXT_MUTED@",ThemeCssColor(ABM_THEME_COLOR_7893AA));
+        g_webView->NavigateToString(html.c_str());
         SetStatus(L"Choose a streaming service above.");
     }
     if(g_window)InvalidateRect(g_window,nullptr,FALSE);
@@ -956,101 +984,101 @@ void PaintChrome(HWND hwnd){
         if(dc)DeleteDC(dc);
         dc=paintDc;buffer=nullptr;previousBitmap=nullptr;
     }
-    FillRectColor(dc,rc,RGBc(7,12,21));
+    FillRectColor(dc,rc,ABM_THEME_COLOR_070C15);
 
     /* A taller, clearly separated native chrome keeps the service selector prominent. */
-    RECT header={0,0,rc.right,260};FillRectColor(dc,header,RGBc(11,24,39));
-    RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,RGBc(31,91,105));
-    RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,RGBc(48,166,161));
+    RECT header={0,0,rc.right,260};FillRectColor(dc,header,ABM_THEME_COLOR_0B1827);
+    RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,ABM_THEME_COLOR_1F5B69);
+    RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,ABM_THEME_COLOR_30A6A1);
 
     /* Use the same signature logo and split wordmark as the main player.
        ABM is the large display face; AV PLAYER is deliberately smaller and
        teal, with the same baseline/offset and palette as the main masthead. */
-    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,RGBc(13,28,45),22);
-    HPEN haloPen=CreatePen(PS_SOLID,1,RGBc(63,151,180));
+    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,22);
+    HPEN haloPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_3F97B4);
     HGDIOBJ oldLogoPen=SelectObject(dc,haloPen);
     HGDIOBJ oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoHalo.left,logoHalo.top,logoHalo.right,logoHalo.bottom,22,22);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(haloPen);
-    RECT logo={28,14,94,80};Rounded(dc,logo,RGBc(28,157,157),17);
+    RECT logo={28,14,94,80};Rounded(dc,logo,ABM_THEME_COLOR_1C9D9D,17);
     RECT logoInset={33,19,89,75};
-    HPEN insetPen=CreatePen(PS_SOLID,1,RGBc(190,229,255));oldLogoPen=SelectObject(dc,insetPen);
+    HPEN insetPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_BEE5FF);oldLogoPen=SelectObject(dc,insetPen);
     oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoInset.left,logoInset.top,logoInset.right,logoInset.bottom,14,14);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(insetPen);
-    HPEN markPen=CreatePen(PS_SOLID,3,RGBc(255,255,255));oldLogoPen=SelectObject(dc,markPen);
+    HPEN markPen=CreatePen(PS_SOLID,3,ABM_THEME_COLOR_FFFFFF);oldLogoPen=SelectObject(dc,markPen);
     MoveToEx(dc,42,63,nullptr);LineTo(dc,59,30);LineTo(dc,76,63);
     SelectObject(dc,oldLogoPen);DeleteObject(markPen);
-    HPEN crossPen=CreatePen(PS_SOLID,2,RGBc(226,245,255));oldLogoPen=SelectObject(dc,crossPen);
+    HPEN crossPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_E2F5FF);oldLogoPen=SelectObject(dc,crossPen);
     MoveToEx(dc,49,49,nullptr);LineTo(dc,68,49);
     SelectObject(dc,oldLogoPen);DeleteObject(crossPen);
-    HPEN playPen=CreatePen(PS_SOLID,2,RGBc(255,255,255));oldLogoPen=SelectObject(dc,playPen);
+    HPEN playPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_FFFFFF);oldLogoPen=SelectObject(dc,playPen);
     MoveToEx(dc,62,40,nullptr);LineTo(dc,75,48);LineTo(dc,62,56);LineTo(dc,62,40);
     SelectObject(dc,oldLogoPen);DeleteObject(playPen);
 
     RECT brandMain={116,8,188,49};
-    Text(dc,L"ABM",brandMain,RGBc(247,250,255),30,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,30,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandSuffix={188,20,306,48};
-    Text(dc,L"AV  PLAYER",brandSuffix,RGBc(132,205,194),18,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,RGBc(54,177,168));
+    Text(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,18,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,ABM_THEME_COLOR_36B1A8);
     RECT sub={116,60,306,83};
-    Text(dc,L"STREAMING CENTRE",sub,RGBc(157,177,201),13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"STREAMING CENTRE",sub,ABM_THEME_COLOR_9DB1C9,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     g_helpRect=RECT{318,15,390,55};
-    Rounded(dc,g_helpRect,g_hoverControl==5?RGBc(36,75,94):RGBc(20,42,60),9);
-    DrawFluentGlyph(dc,RECT{g_helpRect.left+3,g_helpRect.top+2,g_helpRect.left+31,g_helpRect.bottom-2},0xE897,RGBc(142,226,211),17);
+    Rounded(dc,g_helpRect,g_hoverControl==5?ABM_THEME_COLOR_244B5E:ABM_THEME_COLOR_142A3C,9);
+    DrawFluentGlyph(dc,RECT{g_helpRect.left+3,g_helpRect.top+2,g_helpRect.left+31,g_helpRect.bottom-2},0xE897,ABM_THEME_COLOR_8EE2D3,17);
     RECT helpLabel={g_helpRect.left+29,g_helpRect.top,g_helpRect.right-4,g_helpRect.bottom};
-    Text(dc,L"Help",helpLabel,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Help",helpLabel,ABM_THEME_COLOR_D2E8F4,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     g_aboutRect=RECT{398,15,470,55};
-    Rounded(dc,g_aboutRect,g_hoverControl==6?RGBc(36,75,94):RGBc(20,42,60),9);
-    DrawFluentGlyph(dc,RECT{g_aboutRect.left+3,g_aboutRect.top+2,g_aboutRect.left+31,g_aboutRect.bottom-2},0xE946,RGBc(142,226,211),17);
+    Rounded(dc,g_aboutRect,g_hoverControl==6?ABM_THEME_COLOR_244B5E:ABM_THEME_COLOR_142A3C,9);
+    DrawFluentGlyph(dc,RECT{g_aboutRect.left+3,g_aboutRect.top+2,g_aboutRect.left+31,g_aboutRect.bottom-2},0xE946,ABM_THEME_COLOR_8EE2D3,17);
     RECT aboutLabel={g_aboutRect.left+29,g_aboutRect.top,g_aboutRect.right-4,g_aboutRect.bottom};
-    Text(dc,L"About",aboutLabel,RGBc(210,232,244),11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"About",aboutLabel,ABM_THEME_COLOR_D2E8F4,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castRect=RECT{482,15,612,55};
     const bool receiverReady=IsStreamReceiverReady();
     const bool pulseOn=receiverReady && ((GetTickCount64()/400)%2==0);
-    const COLORREF castFill=receiverReady?(pulseOn?RGBc(190,35,48):RGBc(112,22,34)):
-        (g_hoverControl==8?RGBc(34,112,112):RGBc(24,75,83));
-    const COLORREF castEdge=receiverReady?(pulseOn?RGBc(255,105,112):RGBc(220,65,76)):
-        (g_hoverControl==8?RGBc(93,225,207):RGBc(48,137,137));
+    const COLORREF castFill=receiverReady?(pulseOn?ABM_THEME_COLOR_BE2330:ABM_THEME_COLOR_701622):
+        (g_hoverControl==8?ABM_THEME_COLOR_227070:ABM_THEME_COLOR_184B53);
+    const COLORREF castEdge=receiverReady?(pulseOn?ABM_THEME_COLOR_FF6970:ABM_THEME_COLOR_DC414C):
+        (g_hoverControl==8?ABM_THEME_COLOR_5DE1CF:ABM_THEME_COLOR_308989);
     Rounded(dc,g_castRect,castFill,10);
     HPEN castPen=CreatePen(PS_SOLID,(receiverReady||g_hoverControl==8)?2:1,castEdge);
     HGDIOBJ oldCastPen=SelectObject(dc,castPen);
     HGDIOBJ oldCastBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castRect.left,g_castRect.top,g_castRect.right,g_castRect.bottom,10,10);
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
-    DrawFluentGlyph(dc,RECT{g_castRect.left+3,g_castRect.top+2,g_castRect.left+31,g_castRect.bottom-2},0xE721,RGBc(142,226,211),17);
+    DrawFluentGlyph(dc,RECT{g_castRect.left+3,g_castRect.top+2,g_castRect.left+31,g_castRect.bottom-2},0xE721,ABM_THEME_COLOR_8EE2D3,17);
     RECT findTvLabel={g_castRect.left+29,g_castRect.top,g_castRect.right-5,g_castRect.bottom};
-    Text(dc,L"Find TVs",findTvLabel,receiverReady?RGBc(255,255,255):RGBc(224,250,245),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Find TVs",findTvLabel,receiverReady?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E0FAF5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castVideoRect=RECT{620,15,730,55};
-    Rounded(dc,g_castVideoRect,g_hoverControl==9?RGBc(35,126,111):RGBc(25,91,80),10);
-    HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,g_hoverControl==9?RGBc(113,237,198):RGBc(57,164,132));
+    Rounded(dc,g_castVideoRect,g_hoverControl==9?ABM_THEME_COLOR_237E6F:ABM_THEME_COLOR_195B50,10);
+    HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,g_hoverControl==9?ABM_THEME_COLOR_71EDC6:ABM_THEME_COLOR_39A484);
     HGDIOBJ oldVideoPen=SelectObject(dc,videoPen);
     HGDIOBJ oldVideoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castVideoRect.left,g_castVideoRect.top,g_castVideoRect.right,g_castVideoRect.bottom,10,10);
     SelectObject(dc,oldVideoBrush);SelectObject(dc,oldVideoPen);DeleteObject(videoPen);
-    DrawFluentGlyph(dc,RECT{g_castVideoRect.left+3,g_castVideoRect.top+2,g_castVideoRect.left+31,g_castVideoRect.bottom-2},0xE768,RGBc(142,226,211),17);
+    DrawFluentGlyph(dc,RECT{g_castVideoRect.left+3,g_castVideoRect.top+2,g_castVideoRect.left+31,g_castVideoRect.bottom-2},0xE768,ABM_THEME_COLOR_8EE2D3,17);
     RECT castVideoLabel={g_castVideoRect.left+29,g_castVideoRect.top,g_castVideoRect.right-5,g_castVideoRect.bottom};
-    Text(dc,L"Cast video",castVideoLabel,RGBc(226,255,241),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Cast video",castVideoLabel,ABM_THEME_COLOR_E2FFF1,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_stopTvRect=RECT{740,15,850,55};
-    Rounded(dc,g_stopTvRect,g_hoverControl==10?RGBc(150,55,34):RGBc(100,43,32),10);
-    HPEN stopPen=CreatePen(PS_SOLID,g_hoverControl==10?2:1,RGBc(220,119,83));
+    Rounded(dc,g_stopTvRect,g_hoverControl==10?ABM_THEME_COLOR_963722:ABM_THEME_COLOR_642B20,10);
+    HPEN stopPen=CreatePen(PS_SOLID,g_hoverControl==10?2:1,ABM_THEME_COLOR_DC7753);
     HGDIOBJ oldStopPen=SelectObject(dc,stopPen);
     HGDIOBJ oldStopBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_stopTvRect.left,g_stopTvRect.top,g_stopTvRect.right,g_stopTvRect.bottom,10,10);
     SelectObject(dc,oldStopBrush);SelectObject(dc,oldStopPen);DeleteObject(stopPen);
-    DrawFluentGlyph(dc,RECT{g_stopTvRect.left+3,g_stopTvRect.top+2,g_stopTvRect.left+31,g_stopTvRect.bottom-2},0xE71A,RGBc(255,210,196),17);
+    DrawFluentGlyph(dc,RECT{g_stopTvRect.left+3,g_stopTvRect.top+2,g_stopTvRect.left+31,g_stopTvRect.bottom-2},0xE71A,ABM_THEME_COLOR_FFD2C4,17);
     RECT stopTvLabel={g_stopTvRect.left+29,g_stopTvRect.top,g_stopTvRect.right-5,g_stopTvRect.bottom};
-    Text(dc,L"Stop TV",stopTvLabel,RGBc(255,239,232),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Stop TV",stopTvLabel,ABM_THEME_COLOR_FFEFE8,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
-    Rounded(dc,g_externalRect,g_hoverControl==7?RGBc(34,91,101):RGBc(22,49,64),10);
-    DrawFluentGlyph(dc,RECT{g_externalRect.left+3,g_externalRect.top+2,g_externalRect.left+31,g_externalRect.bottom-2},0xE774,RGBc(142,226,211),17);
+    Rounded(dc,g_externalRect,g_hoverControl==7?ABM_THEME_COLOR_225B65:ABM_THEME_COLOR_163140,10);
+    DrawFluentGlyph(dc,RECT{g_externalRect.left+3,g_externalRect.top+2,g_externalRect.left+31,g_externalRect.bottom-2},0xE774,ABM_THEME_COLOR_8EE2D3,17);
     RECT externalLabel={g_externalRect.left+29,g_externalRect.top,g_externalRect.right-6,g_externalRect.bottom};
-    Text(dc,L"Open in browser",externalLabel,RGBc(183,235,229),11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Open in browser",externalLabel,ABM_THEME_COLOR_B7EBE5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     /* Dedicated second-row toolbar: larger targets with both icon and readable label. */
     const int navY=68,navH=52,navW=104,navGap=10;
@@ -1064,41 +1092,41 @@ void PaintChrome(HWND hwnd){
     const wchar_t glyphs[5]={0xE72B,0xE72A,0xE72C,0xE80F,0xE740};
     const wchar_t *labels[5]={L"Back",L"Forward",L"Reload",L"Home",L"Fullscreen"};
     for(int i=0;i<5;i++){
-        COLORREF fill=(g_hoverControl==i)?RGBc(43,91,113):(i==4?RGBc(31,103,111):RGBc(24,52,73));
+        COLORREF fill=(g_hoverControl==i)?ABM_THEME_COLOR_2B5B71:(i==4?ABM_THEME_COLOR_1F676F:ABM_THEME_COLOR_183449);
         Rounded(dc,navButtons[i],fill,12);
         HPEN navPen=CreatePen(PS_SOLID,g_hoverControl==i?2:1,
-            g_hoverControl==i?RGBc(83,211,199):(i==4?RGBc(62,151,153):RGBc(43,76,99)));
+            g_hoverControl==i?ABM_THEME_COLOR_53D3C7:(i==4?ABM_THEME_COLOR_3E9799:ABM_THEME_COLOR_2B4C63));
         HGDIOBJ oldNavPen=SelectObject(dc,navPen);
         HGDIOBJ oldNavBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
         RoundRect(dc,navButtons[i].left,navButtons[i].top,navButtons[i].right,navButtons[i].bottom,12,12);
         SelectObject(dc,oldNavBrush);SelectObject(dc,oldNavPen);DeleteObject(navPen);
         RECT glyph=navButtons[i];glyph.top+=1;glyph.bottom-=19;
-        DrawFluentGlyph(dc,glyph,glyphs[i],RGBc(239,248,255),22);
+        DrawFluentGlyph(dc,glyph,glyphs[i],ABM_THEME_COLOR_EFF8FF,22);
         RECT label=navButtons[i];label.top=navButtons[i].bottom-21;label.bottom-=3;
-        Text(dc,labels[i],label,RGBc(204,226,238),10,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Text(dc,labels[i],label,ABM_THEME_COLOR_CCE2EE,10,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT underline={navButtons[i].left+18,navButtons[i].bottom-2,navButtons[i].right-18,navButtons[i].bottom};
-        if(g_hoverControl==i)FillRectColor(dc,underline,RGBc(72,210,199));
+        if(g_hoverControl==i)FillRectColor(dc,underline,ABM_THEME_COLOR_48D2C7);
     }
 
     /* Give the provider row a named section and a consistent card baseline. */
     RECT serviceHeading={24,126,420,148};
-    Text(dc,L"YOUR STREAMING SERVICES",serviceHeading,RGBc(126,199,190),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"YOUR STREAMING SERVICES",serviceHeading,ABM_THEME_COLOR_7EC7BE,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT serviceHint={rc.right-420,126,rc.right-24,148};
-    Text(dc,L"OFFICIAL PROVIDER SITES  ·  SIGN IN WITH YOUR ACCOUNT",serviceHint,RGBc(112,143,166),10,500,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    RECT serviceRule={24,149,rc.right-24,150};FillRectColor(dc,serviceRule,RGBc(30,53,70));
+    Text(dc,L"OFFICIAL PROVIDER SITES  ·  SIGN IN WITH YOUR ACCOUNT",serviceHint,ABM_THEME_COLOR_708FA6,10,500,DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT serviceRule={24,149,rc.right-24,150};FillRectColor(dc,serviceRule,ABM_THEME_COLOR_1E3546);
     const int serviceLeft=22,serviceRight=rc.right-22,serviceY=154,serviceH=95,gap=12;
     const int serviceW=(serviceRight-serviceLeft-(kServiceCount-1)*gap)/kServiceCount;
     for(int i=0;i<kServiceCount;i++){
         int left=serviceLeft+i*(serviceW+gap);
         g_serviceRects[i]=RECT{left,serviceY,left+serviceW,serviceY+serviceH};
         bool active=(i==g_activeService),hover=(i==g_hoverService);
-        COLORREF baseFill=active?RGBc(25,91,91):RGBc(17,35,53);
-        COLORREF hoverFill=active?RGBc(34,119,113):RGBc(28,54,76);
+        COLORREF baseFill=active?ABM_THEME_COLOR_195B5B:ABM_THEME_COLOR_112335;
+        COLORREF hoverFill=active?ABM_THEME_COLOR_227771:ABM_THEME_COLOR_1C364C;
         COLORREF fill=hover?hoverFill:baseFill;
         Rounded(dc,g_serviceRects[i],fill,14);
         RECT border=g_serviceRects[i];
-        COLORREF baseBorder=active?RGBc(63,201,190):RGBc(30,53,73);
-        COLORREF hoverBorder=active?RGBc(104,232,213):RGBc(61,119,145);
+        COLORREF baseBorder=active?ABM_THEME_COLOR_3FC9BE:ABM_THEME_COLOR_1E3549;
+        COLORREF hoverBorder=active?ABM_THEME_COLOR_68E8D5:ABM_THEME_COLOR_3D7791;
         HPEN pen=CreatePen(PS_SOLID,active?2:1,hover?hoverBorder:baseBorder);
         HGDIOBJ oldPen=SelectObject(dc,pen);
         HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
@@ -1122,20 +1150,20 @@ void PaintChrome(HWND hwnd){
             }
         }else{
             RECT missing={left+8,serviceY+18,left+serviceW-8,serviceY+82};
-            Text(dc,kServices[i],missing,RGBc(154,184,205),15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Text(dc,kServices[i],missing,ABM_THEME_COLOR_9AB8CD,15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
         RECT label=g_serviceRects[i];
         label.top=serviceY+66;label.bottom=serviceY+87;
         label.left+=5;label.right-=5;
-        Text(dc,kServices[i],label,active?RGBc(248,255,255):RGBc(214,228,240),
+        Text(dc,kServices[i],label,active?ABM_THEME_COLOR_F8FFFF:ABM_THEME_COLOR_D6E4F0,
             13,active||hover?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         if(active){
             RECT activeMark={left+serviceW/2-18,serviceY+91,left+serviceW/2+18,serviceY+93};
-            FillRectColor(dc,activeMark,RGBc(89,224,205));
+            FillRectColor(dc,activeMark,ABM_THEME_COLOR_59E0CD);
         }
     }
-    RECT footer={0,rc.bottom-34,rc.right,rc.bottom};FillRectColor(dc,footer,RGBc(10,20,33));
-    RECT line={0,rc.bottom-35,rc.right,rc.bottom-34};FillRectColor(dc,line,RGBc(39,61,79));
+    RECT footer={0,rc.bottom-34,rc.right,rc.bottom};FillRectColor(dc,footer,ABM_THEME_COLOR_0A1421);
+    RECT line={0,rc.bottom-35,rc.right,rc.bottom-34};FillRectColor(dc,line,ABM_THEME_COLOR_273D4F);
     const wchar_t *footerText=g_hoverControl==0?L"Go back to the previous page":
         g_hoverControl==1?L"Go forward to the next page":
         g_hoverControl==2?L"Reload the current streaming page":
@@ -1148,7 +1176,7 @@ void PaintChrome(HWND hwnd){
         g_hoverControl==9?L"Send a directly addressable HTML5 video URL to the selected TV; DRM and blob streams are not supported":
         g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
-    Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?RGBc(173,211,220):RGBc(133,164,188),11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?ABM_THEME_COLOR_ADD3DC:ABM_THEME_COLOR_85A4BC,11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(g_devicePanelVisible)LayoutDevicePanel();
     if(buffer){
         BitBlt(paintDc,0,0,width,height,dc,0,0,SRCCOPY);
@@ -1301,13 +1329,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(!item)return TRUE;
         if(item->hwndItem==g_devicePanel){
             RECT r=item->rcItem;
-            FillRectColor(item->hDC,r,RGBc(12,29,45));
-            HPEN pen=CreatePen(PS_SOLID,1,RGBc(43,91,112));
+            FillRectColor(item->hDC,r,ABM_THEME_COLOR_0C1D2D);
+            HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B5B70);
             HGDIOBJ oldPen=SelectObject(item->hDC,pen),oldBrush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
             RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,14,14);
             SelectObject(item->hDC,oldBrush);SelectObject(item->hDC,oldPen);DeleteObject(pen);
-            RECT accent={r.left+16,r.top+157,r.right-16,r.top+158};FillRectColor(item->hDC,accent,RGBc(38,112,119));
-            RECT appDivider={r.left+16,r.top+326,r.right-16,r.top+327};FillRectColor(item->hDC,appDivider,RGBc(38,112,119));
+            RECT accent={r.left+16,r.top+157,r.right-16,r.top+158};FillRectColor(item->hDC,accent,ABM_THEME_COLOR_267077);
+            RECT appDivider={r.left+16,r.top+326,r.right-16,r.top+327};FillRectColor(item->hDC,appDivider,ABM_THEME_COLOR_267077);
             return TRUE;
         }
         if(item->hwndItem==g_deviceRefresh){DrawDeviceButton(item,L"Refresh devices",false);return TRUE;}
@@ -1322,9 +1350,9 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             if(item->itemID==(UINT)-1)return TRUE;
             wchar_t label[256]{};SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)label);
             const bool selected=(item->itemState&ODS_SELECTED)!=0;
-            FillRectColor(item->hDC,item->rcItem,selected?RGBc(29,91,103):RGBc(15,31,47));
+            FillRectColor(item->hDC,item->rcItem,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
             RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
-            Text(item->hDC,label,textRect,selected?RGBc(245,255,255):RGBc(207,225,237),10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Text(item->hDC,label,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             return TRUE;
         }
         break;
@@ -1333,8 +1361,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         HDC dc=(HDC)wp;HWND control=(HWND)lp;
         if(control==g_deviceTitle||control==g_deviceHint){
             SetBkMode(dc,TRANSPARENT);
-            SetTextColor(dc,control==g_deviceTitle?RGBc(242,249,255):RGBc(150,190,207));
-            static HBRUSH panelBrush=CreateSolidBrush(RGBc(12,29,45));
+            SetTextColor(dc,control==g_deviceTitle?ABM_THEME_COLOR_F2F9FF:ABM_THEME_COLOR_96BECF);
+            static HBRUSH panelBrush=CreateSolidBrush(ABM_THEME_COLOR_0C1D2D);
             return (LRESULT)panelBrush;
         }
         break;
