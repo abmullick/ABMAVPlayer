@@ -798,29 +798,30 @@ static void UpdateLayout(HWND hwnd) {
             R_VIDEO.bottom-hh/7
         };
         int panelW=hero.right-hero.left, panelH=hero.bottom-hero.top;
-        /* A compact vertical action rail sits on the right side of the hero.
-           Keep the left half of the panel visually open so the cards no
-           longer dominate or span the entire green surface. */
-        int cardGap=8, footGap=10, footH=20;
-        int cardH=50, x, y;
-        int cardW=panelW*52/100;
-        if(cardW>280)cardW=280;
-        if(cardW<190)cardW=190;
-        if(cardW>panelW-36)cardW=panelW-36;
-        if(cardW<140)cardW=panelW-24;
-        int totalH=4*cardH+3*cardGap+footGap+footH;
+        /* Balanced 2 x 2 shortcut grid, right-aligned within the hero panel
+           with a deliberate inset so it does not touch the panel edge. */
+        int cardGap=12, rowGap=12, footGap=12, footH=20;
+        int cardH=66, x, y, cardW;
+        int gridW=panelW*78/100;
+        if(gridW>456)gridW=456;
+        if(gridW>panelW-48)gridW=panelW-48;
+        if(gridW<260)gridW=panelW-24;
+        cardW=(gridW-cardGap)/2;
+        int totalH=2*cardH+rowGap+footGap+footH;
         if(totalH>panelH-20) {
-            cardH=(panelH-20-3*cardGap-footGap-footH)/4;
-            if(cardH<38)cardH=38;
-            totalH=4*cardH+3*cardGap+footGap+footH;
+            cardH=(panelH-20-rowGap-footGap-footH)/2;
+            if(cardH>66)cardH=66;
+            if(cardH<44)cardH=44;
+            totalH=2*cardH+rowGap+footGap+footH;
         }
-        x=hero.right-22-cardW;
+        x=hero.right-28-gridW;
         y=hero.top+(panelH-totalH)/2;
         if(y<hero.top+8)y=hero.top+8;
+        int rightX=x+cardW+cardGap;
         R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
-        R_HOME_STREAM=(RECT){x,y+cardH+cardGap,x+cardW,y+2*cardH+cardGap};
-        R_HOME_TORRENT=(RECT){x,y+2*(cardH+cardGap),x+cardW,y+3*cardH+2*cardGap};
-        R_HOME_RECENT=(RECT){x,y+3*(cardH+cardGap),x+cardW,y+4*cardH+3*cardGap};
+        R_HOME_STREAM=(RECT){rightX,y,rightX+cardW,y+cardH};
+        R_HOME_TORRENT=(RECT){x,y+cardH+rowGap,x+cardW,y+2*cardH+rowGap};
+        R_HOME_RECENT=(RECT){rightX,y+cardH+rowGap,rightX+cardW,y+2*cardH+rowGap};
     }
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1132,8 +1133,7 @@ static void DrawUI(HDC dc,RECT client) {
                 Txt(dc,titles[i],title,RGB(244,249,255),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,subs[i],sub,RGB(158,181,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
-            int footGap=(R_HOME_RECENT.left==R_HOME_OPEN.left)?10:16;
-            int footHeight=(R_HOME_RECENT.left==R_HOME_OPEN.left)?20:24;
+            int footGap=12, footHeight=20;
             RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
             Txt(dc,L"LOCAL LIBRARY   •   STREAMING   •   TORRENT",foot,RGB(119,169,169),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
