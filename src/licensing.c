@@ -141,13 +141,19 @@ static BOOL SaveTrialState(const wchar_t *file,const ABMTrialState *state) {
     SecureZeroMemory(out.pbData,out.cbData);LocalFree(out.pbData);return saved;
 }
 static BOOL TrialArtifactsExist(const wchar_t *file,BOOL *fileExists,BOOL *registryExists) {
-    *fileExists=GetFileAttributesW(file)!=INVALID_FILE_ATTRIBUTES;
+    DWORD attr=GetFileAttributesW(file),fileError=GetLastError();
+    *fileExists=(attr!=INVALID_FILE_ATTRIBUTES ||
+        (fileError!=ERROR_FILE_NOT_FOUND && fileError!=ERROR_PATH_NOT_FOUND));
     *registryExists=FALSE;
     HKEY key=NULL;
-    if(RegOpenKeyExW(HKEY_CURRENT_USER,L"Software\\ABMAVPlayer\\Licensing",0,KEY_QUERY_VALUE,&key)==ERROR_SUCCESS) {
-        LONG e=RegQueryValueExW(key,L"TrialState",NULL,NULL,NULL,NULL);
+    LONG openResult=RegOpenKeyExW(HKEY_CURRENT_USER,L"Software\\ABMAVPlayer\\Licensing",0,KEY_QUERY_VALUE,&key);
+    if(openResult==ERROR_SUCCESS) {
+        DWORD type=0,size=0;
+        LONG e=RegQueryValueExW(key,L"TrialState",NULL,&type,NULL,&size);
         *registryExists=(e==ERROR_SUCCESS||e==ERROR_MORE_DATA);
         RegCloseKey(key);
+    } else if(openResult!=ERROR_FILE_NOT_FOUND) {
+        *registryExists=TRUE; /* inaccessible state must not silently reset the trial */
     }
     return *fileExists||*registryExists;
 }
@@ -306,7 +312,9 @@ static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL tr
 static BOOL VerifyCurrentExecutableSignature(void) {
 #ifdef ABM_REQUIRE_AUTHENTICODE
     wchar_t path[MAX_PATH];
-    if(!GetModuleFileNameW(NULL,path,_countof(path))||GetLastError()==ERROR_INSUFFICIENT_BUFFER)return FALSE;
+    SetLastError(ERROR_SUCCESS);
+    DWORD pathLength=GetModuleFileNameW(NULL,path,_countof(path));
+    if(!pathLength||pathLength>=_countof(path))return FALSE;
     WINTRUST_FILE_INFO fileInfo={0};fileInfo.cbStruct=sizeof(fileInfo);fileInfo.pcwszFilePath=path;
     WINTRUST_DATA trust={0};trust.cbStruct=sizeof(trust);trust.dwUIChoice=WTD_UI_NONE;
     trust.fdwRevocationChecks=WTD_REVOKE_NONE;trust.dwUnionChoice=WTD_CHOICE_FILE;
