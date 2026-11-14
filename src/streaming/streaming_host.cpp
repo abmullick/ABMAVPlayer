@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 #include <functional>
@@ -1906,6 +1907,7 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
+    g_workersStopping.store(false);
     HWND window=CreateWindowExW(0,kClassName,L"ABM AV Player - Streaming Centre",
         WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1160,820,
         nullptr,nullptr,instance,nullptr);
