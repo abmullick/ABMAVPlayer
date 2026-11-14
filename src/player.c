@@ -5046,6 +5046,9 @@ static BOOL g_advancedSettingsUiReady=FALSE;
 static BOOL g_advancedConfirmExit=TRUE;
 static BOOL g_advancedDoubleClickFullscreen=TRUE;
 static HWND g_advancedSettingsWindow=NULL;
+static HWND g_advancedDiagnosticEdit=NULL;
+static HFONT g_advancedDiagnosticFont=NULL;
+static HBRUSH g_advancedDiagnosticBrush=NULL;
 static int g_advancedSettingsPage=0;
 static int g_advancedAspectMode=0;
 static int g_advancedDecoderThreads=0;
@@ -5142,12 +5145,27 @@ static BOOL GenerateAdvancedDiagnosticReport(wchar_t *reportPath,size_t reportPa
  fwprintf(fp,L"\r\n[Notes]\r\nThis report contains local application, system and playback configuration details. It does not include media file contents or upload anything. Review it before sharing.\r\n");
  fclose(fp);return TRUE;
 }
+static BOOL LoadAdvancedDiagnosticPreview(const wchar_t *path){
+ if(!g_advancedDiagnosticEdit||!path)return FALSE;
+ FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rt, ccs=UTF-8")!=0||!fp)return FALSE;
+ wchar_t *buffer=(wchar_t*)calloc(65536,sizeof(wchar_t));if(!buffer){fclose(fp);return FALSE;}
+ size_t used=0;wchar_t chunk[2048];
+ while(fgetws(chunk,(int)_countof(chunk),fp)){size_t n=wcslen(chunk);if(used+n>=65535)break;memcpy(buffer+used,chunk,n*sizeof(wchar_t));used+=n;}
+ buffer[used]=L'\\0';fclose(fp);SetWindowTextW(g_advancedDiagnosticEdit,buffer);free(buffer);
+ SendMessageW(g_advancedDiagnosticEdit,EM_SETSEL,0,0);SendMessageW(g_advancedDiagnosticEdit,EM_SCROLLCARET,0,0);return TRUE;
+}
 static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  switch(msg){
  case WM_CREATE:
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
+  g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+  g_advancedDiagnosticFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
+  g_advancedDiagnosticEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"Generate a diagnostic report to preview its contents here.",
+   WS_CHILD|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
+   326,514,684,132,w,(HMENU)6408,GetModuleHandleW(NULL),NULL);
+  if(g_advancedDiagnosticEdit){SendMessageW(g_advancedDiagnosticEdit,WM_SETFONT,(WPARAM)(g_advancedDiagnosticFont?g_advancedDiagnosticFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);ShowWindow(g_advancedDiagnosticEdit,SW_HIDE);}
   g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Video",L"AspectRatio",0,p);g_advancedAspectMode=(v>=0&&v<=3)?v:0;ApplyAdvancedAspectRatio();}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
@@ -5169,7 +5187,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    /* Match the exact row origin used by the navigation renderer. */
    int top=151+i*54;
    if(AdvancedSettingsPoint(x,y,22,top,254,top+46)){
-    g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
+    g_advancedSettingsPage=i;if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,i==8?SW_SHOW:SW_HIDE);InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
   if(g_advancedSettingsPage==3){
@@ -5196,8 +5214,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==8){
-   if(AdvancedSettingsPoint(x,y,326,512,610,548)){wchar_t report[PATH_CAP];if(GenerateAdvancedDiagnosticReport(report,_countof(report))){HINSTANCE opened=ShellExecuteW(w,L"open",report,NULL,NULL,SW_SHOWNORMAL);if((INT_PTR)opened<=32)ABM_MessageBoxW(w,L"The diagnostic report was saved, but Windows could not open it.",APP_NAME,MB_ICONWARNING);}else ABM_MessageBoxW(w,L"Could not create the diagnostic report. Check that the ABM AV Player data folder is writable.",APP_NAME,MB_ICONERROR);return 0;}
-   if(AdvancedSettingsPoint(x,y,626,512,850,548)){if(EnsureDataDirectory())ShellExecuteW(w,L"open",g_dataDir,NULL,NULL,SW_SHOWNORMAL);else ABM_MessageBoxW(w,L"Could not access the ABM AV Player data folder.",APP_NAME,MB_ICONERROR);return 0;}
+   if(AdvancedSettingsPoint(x,y,326,442,610,478)){wchar_t report[PATH_CAP];if(GenerateAdvancedDiagnosticReport(report,_countof(report))){if(!LoadAdvancedDiagnosticPreview(report))ABM_MessageBoxW(w,L"The report was saved, but its contents could not be loaded for preview.",APP_NAME,MB_ICONWARNING);}else ABM_MessageBoxW(w,L"Could not create the diagnostic report. Check that the ABM AV Player data folder is writable.",APP_NAME,MB_ICONERROR);return 0;}
+   if(AdvancedSettingsPoint(x,y,626,442,850,478)){if(EnsureDataDirectory())ShellExecuteW(w,L"open",g_dataDir,NULL,NULL,SW_SHOWNORMAL);else ABM_MessageBoxW(w,L"Could not access the ABM AV Player data folder.",APP_NAME,MB_ICONERROR);return 0;}
   }
   if(g_advancedSettingsPage==7){
    BOOL *values[3]={&g_advancedConfirmExit,&g_advancedConfirmClearPlaylist,&g_advancedDoubleClickFullscreen};
@@ -5498,23 +5516,22 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      PROCESS_MEMORY_COUNTERS pmc={0};pmc.cb=sizeof(pmc);GetProcessMemoryInfo(GetCurrentProcess(),&pmc,sizeof(pmc));
      sectionTitle=L"Live diagnostic summary";
      StringCchPrintfW(row1,_countof(row1),L"ABM AV Player %s     PID: %lu",APP_VERSION,GetCurrentProcessId());
-     StringCchPrintfW(row2,_countof(row2),L"CPU: %lu logical processors     RAM: %llu GB     Memory load: %lu%%",si.dwNumberOfProcessors,(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL*1024ULL)),mem.dwMemoryLoad);
-     StringCchPrintfW(row3,_countof(row3),L"Process working set: %llu MB     Playlist: %d     Recent: %d",(unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)),g_playlistCount,g_recentCount);
-     StringCchPrintfW(row4,_countof(row4),L"Playback: %s     Video: %u x %u",g_hasMedia?(g_overlayPlaying?L"Playing":L"Loaded / paused"):L"No media",g_videoWidth,g_videoHeight);
-     StringCchCopyW(row5,_countof(row5),L"Generate a local text report for troubleshooting. Nothing is uploaded automatically.");
-    }
+      StringCchPrintfW(row2,_countof(row2),L"SYSTEM RESOURCES  |  CPU: %lu logical processors",si.dwNumberOfProcessors);
+      StringCchPrintfW(row3,_countof(row3),L"Installed RAM: %llu MB     Available RAM: %llu MB     Memory load: %lu%%",(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL)),(unsigned long long)(mem.ullAvailPhys/(1024ULL*1024ULL)),mem.dwMemoryLoad);
+      StringCchPrintfW(row4,_countof(row4),L"ABM AV PLAYER PROCESS  |  Working set: %llu MB     Page file: %llu MB",(unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)),(unsigned long long)(pmc.PagefileUsage/(1024ULL*1024ULL)));
+      StringCchPrintfW(row5,_countof(row5),L"Playback: %s     Video: %u x %u     Playlist: %d     Recent: %d",g_hasMedia?(g_overlayPlaying?L"Playing":L"Loaded / paused"):L"No media",g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount);
     /* Page 6 paints its interactive performance controls above. Do not draw
        the generic runtime-status card over those controls. */
     if(g_advancedSettingsPage==8){
-     ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
-     AdvancedSettingsText(sectionTitle,326,260,1008,298,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-     AdvancedSettingsText(row1,326,310,1008,340,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-     AdvancedSettingsText(row2,326,350,1008,380,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-     AdvancedSettingsText(row3,326,390,1008,420,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-     AdvancedSettingsText(row4,326,430,1008,460,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-     AdvancedSettingsText(row5,326,470,1008,502,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
-     AdvancedSettingsButtonDraw(326,512,610,548,L"Generate & open report",TRUE);
-     AdvancedSettingsButtonDraw(626,512,850,548,L"Open data folder",FALSE);
+      ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
+      AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(row1,326,294,1008,320,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(row2,326,326,1008,352,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(row3,326,358,1008,384,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(row4,326,390,1008,416,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(L"Diagnostic report preview  |  Read-only",326,486,1008,510,ABM_UI_COLOR_TEXT_SECONDARY,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsButtonDraw(326,442,610,478,L"Generate report",TRUE);
+      AdvancedSettingsButtonDraw(626,442,850,478,L"Open data folder",FALSE);
     }else if(g_advancedSettingsPage!=6&&g_advancedSettingsPage!=7){
      ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);
      ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
@@ -5535,8 +5552,16 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   EndPaint(w,&ps);return 0;
  }
  case WM_CLOSE:DestroyWindow(w);return 0;
+  case WM_CTLCOLOREDIT:{
+   HDC dc=(HDC)wp;SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);SetBkMode(dc,OPAQUE);
+   if(!g_advancedDiagnosticBrush)g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+   return (LRESULT)g_advancedDiagnosticBrush;
+  }
  case WM_DESTROY:
   g_advancedSettingsWindow=NULL;
+   if(g_advancedDiagnosticEdit){DestroyWindow(g_advancedDiagnosticEdit);g_advancedDiagnosticEdit=NULL;}
+   if(g_advancedDiagnosticFont){DeleteObject(g_advancedDiagnosticFont);g_advancedDiagnosticFont=NULL;}
+   if(g_advancedDiagnosticBrush){DeleteObject(g_advancedDiagnosticBrush);g_advancedDiagnosticBrush=NULL;}
   if(g_advancedSettingsUiReady){ABM_D2D_Destroy(&g_advancedSettingsUi);g_advancedSettingsUiReady=FALSE;}
   return 0;
  }
