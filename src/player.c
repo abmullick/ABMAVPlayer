@@ -5101,7 +5101,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
-   int top=112+i*54;
+   /* Match the exact row origin used by the navigation renderer. */
+   int top=151+i*54;
    if(AdvancedSettingsPoint(x,y,22,top,254,top+46)){
     g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
    }
