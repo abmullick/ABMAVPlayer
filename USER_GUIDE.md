@@ -4,7 +4,7 @@ This guide covers the Windows desktop player and its separate Streaming Centre. 
 
 ## Licence activation and free trial
 
-On first launch, ABM AV Player displays its activation window. You can enter a perpetual product key or start the **10-day full-feature trial**. The trial begins on the first application launch, not when the installer is downloaded. The activation window displays a device ID; use **Copy device ID** when requesting a licence from the publisher. A perpetual key is bound to that device and works offline after activation. Once the trial expires, the application requires a valid key before opening the player. Reinstalling Windows or changing the system drive can change the device ID, in which case the publisher may need to issue a replacement key.
+On first launch, ABM AV Player displays its activation window. Enter the universal 16-character activation key to unlock the full version, or start the **10-day full-feature trial**. The trial begins on the first application launch, not when the installer is downloaded. The same key works offline on every installation; no device ID or individual customer key is needed. After activation, the key is saved locally. Once the trial expires, the application requires the universal key before opening the player.
 
 ## 1. First launch and adding media
 
