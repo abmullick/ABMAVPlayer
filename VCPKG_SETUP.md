@@ -1,6 +1,6 @@
 # Reproducible Windows vcpkg setup
 
-ABM AV Player uses vcpkg manifest mode. The root vcpkg.json pins the libtorrent dependency and its builtin registry baseline. The project-local vcpkg-configuration.json selects the committed libjuice overlay, which contains the libjuice 1.7.4 port and the CMake compatibility patch.
+ABM AV Player uses vcpkg manifest mode. The tracked `vcpkg.json.in` template pins the libtorrent dependency and its builtin registry baseline. The ignored root `vcpkg.json` manifest is generated from the canonical `VERSION` file by `tools/prepare_version.ps1`; do not create or edit it by hand. The project-local vcpkg-configuration.json selects the committed libjuice overlay, which contains the libjuice 1.7.4 port and the CMake compatibility patch.
 
 ## Normal setup on a new Windows machine
 
@@ -9,9 +9,9 @@ ABM AV Player uses vcpkg manifest mode. The root vcpkg.json pins the libtorrent 
 3. Open the **x64 Native Tools Command Prompt for VS 2026**.
 4. Run build.bat.
 
-The torrent build step now calls tools/ensure_vcpkg.ps1 automatically. Unless VCPKG_ROOT is explicitly set, it creates a project-managed vcpkg checkout under build/toolchain/vcpkg, checks out the pinned tool commit, and bootstraps vcpkg. It then runs manifest installation for the x64-windows triplet.
+The torrent build step now calls tools/ensure_vcpkg.ps1 automatically. That script regenerates the versioned vcpkg manifest before invoking vcpkg. For a manual `vcpkg install`, first run `powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare_version.ps1` from the repository root. Unless VCPKG_ROOT is explicitly set, it creates a project-managed vcpkg checkout under build/toolchain/vcpkg, checks out the pinned tool commit, and bootstraps vcpkg. It then runs manifest installation for the x64-windows triplet.
 
-If the latest GitHub Release contains the three cache assets listed below, the setup script downloads and verifies the archive, restores the vcpkg_installed directory, and lets vcpkg validate the installed package ABI. If there is no compatible cache asset, vcpkg builds missing dependencies from source using the committed manifest and libjuice overlay. That first build is the one-time cost on a new machine.
+If the latest GitHub Release contains the three cache assets listed below, the setup script downloads and verifies the archive, restores the vcpkg_installed directory, and lets vcpkg validate the installed package ABI. If there is no compatible cache asset, vcpkg builds missing dependencies from source using the generated manifest from `vcpkg.json.in` and the libjuice overlay. That first build is the one-time cost on a new machine.
 
 An existing vcpkg_installed directory is never overwritten by the setup script.
 
@@ -42,7 +42,7 @@ The setup script checks the SHA-256, triplet, and manifest baseline before extra
 
 ## What is and is not stored in Git
 
-Do not commit vcpkg_installed or the cache ZIP to the source repository. The installed tree is large and Windows/toolchain-specific. Keep the manifest, baseline, overlay port, patches, and setup scripts in Git; distribute the known-good compiled dependency snapshot as a GitHub Release asset.
+Do not commit vcpkg_installed or the cache ZIP to the source repository. The installed tree is large and Windows/toolchain-specific. Keep `VERSION`, `vcpkg.json.in`, the baseline, overlay port, patches, and setup scripts in Git; distribute the known-good compiled dependency snapshot as a GitHub Release asset.
 
 The local vcpkg_installed, release, and dist folders are ignored by Git. This does not delete or move any existing local files.
 
