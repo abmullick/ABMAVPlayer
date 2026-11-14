@@ -561,7 +561,7 @@ static BOOL ValidateArtworkImage(const wchar_t *path) {
         IWICFormatConverter *converter=NULL;
         hr=factory->lpVtbl->CreateFormatConverter(factory,&converter);
         if(SUCCEEDED(hr) && converter) {
-            hr=converter->lpVtbl->Initialize(converter,(IWICBitmapFrameDecode *)frame,
+            hr=converter->lpVtbl->Initialize(converter,(IWICBitmapSource *)frame,
                 &GUID_WICPixelFormat32bppBGRA,WICBitmapDitherTypeNone,NULL,0.0,
                 WICBitmapPaletteTypeCustom);
             if(SUCCEEDED(hr)) {
@@ -772,7 +772,7 @@ static void RefreshVideoGeometry(void) {
 }
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
-    int left=28,top=104,bottom=150,gap=22;
+    int left=28,top=104,bottom=150;
     int side=w>=1700?640:(w>=1400?600:(w>=1180?540:460));
     int drawerWidth=side*g_drawerProgress/100;
     int videoW=w-left*2; if(videoW<260)videoW=260;
@@ -1124,7 +1124,6 @@ static void DrawUI(HDC dc,RECT client) {
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
-        int cx=(R_VIDEO.left+R_VIDEO.right)/2;
         int cy=(R_VIDEO.top+R_VIDEO.bottom)/2;
         /* Ambient colour fields make the stage feel like a listening space,
            not an empty black video rectangle. */
@@ -1159,7 +1158,6 @@ static void DrawUI(HDC dc,RECT client) {
             const wchar_t *titles[4]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Recent media"};
             const wchar_t *subs[4]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Continue where you left off"};
             const wchar_t *glyphs[4]={L"+",L"TV",L"↗",L"↶"};
-            POINT mouse={0,0}; BOOL haveMouse=GetCursorPos(&mouse)&&ScreenToClient(g_main,&mouse);
             for(int i=0;i<4;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
@@ -1528,8 +1526,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
     Panel(dc,volPanel,ABM_THEME_COLOR_172628,ABM_THEME_COLOR_37574D,16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
-     RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
-    Txt(dc,L"VOLUME",volLabel,ABM_THEME_COLOR_A1B7D3,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+         Txt(dc,L"VOLUME",volLabel,ABM_THEME_COLOR_A1B7D3,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT audioBtn=R_AUDIO_BUTTON;BOOL audioActive=g_audioPopupOpen;
     GradientRound(dc,audioBtn,audioActive?ABM_THEME_COLOR_287E77:ABM_THEME_COLOR_18303A,audioActive?ABM_THEME_COLOR_44AE91:ABM_THEME_COLOR_264F5B,13);
     ABM_D2D_StrokeRound(&g_ui,(float)audioBtn.left,(float)audioBtn.top,(float)audioBtn.right,(float)audioBtn.bottom,13.0f,audioActive?ABM_THEME_COLOR_7BDCBC:ABM_THEME_COLOR_4C8996,1.0f);
@@ -4021,7 +4018,7 @@ static void TorrentPaint(HWND hwnd){
     float playbackY=contentBottom+12.0f,networkY=playbackY+112.0f;
     float cacheY=networkY+84.0f,tvY=cacheY+84.0f;
     const COLORREF bg=ABM_UI_COLOR_BACKGROUND,edge=ABM_UI_COLOR_BORDER_STRONG;
-    const COLORREF muted=ABM_UI_COLOR_TEXT_MUTED,accent=ABM_UI_COLOR_ACCENT,white=ABM_UI_COLOR_TEXT;
+    const COLORREF muted=ABM_UI_COLOR_TEXT_MUTED,accent=ABM_UI_COLOR_ACCENT;
     ABM_D2D_Begin(&g_torrentUi,bg);
 
     /* Cinematic branded masthead */
@@ -4549,9 +4546,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(ABM_MessageBoxW(hwnd,L"Delete cached data for inactive torrents? Data belonging to the currently loaded torrent is protected. This cannot be undone.",L"Clear Torrent Cache",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return 0;
                 uint64_t freed=0,remaining=0;
                 if(g_torrentClearCache&&g_torrentClearCache(&freed,&remaining)) {
-                    wchar_t a[64],b[64],msg[192];TorrentFormatBytes((int64_t)freed,a,_countof(a));TorrentFormatBytes((int64_t)remaining,b,_countof(b));
-                    StringCchPrintfW(msg,_countof(msg),L"Inactive cache cleared — freed %s. Remaining cache: %s.",a,b);
-                    TorrentSetLabel(g_torrentStatusLabel,msg);TorrentRefreshCacheStatus();
+                    wchar_t a[64],b[64],statusMessage[192];TorrentFormatBytes((int64_t)freed,a,_countof(a));TorrentFormatBytes((int64_t)remaining,b,_countof(b));
+                    StringCchPrintfW(statusMessage,_countof(statusMessage),L"Inactive cache cleared — freed %s. Remaining cache: %s.",a,b);
+                    TorrentSetLabel(g_torrentStatusLabel,statusMessage);TorrentRefreshCacheStatus();
                 } else TorrentSetLabel(g_torrentStatusLabel,L"Could not clear inactive torrent cache.");
                 return 0;
             }
