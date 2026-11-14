@@ -76,6 +76,23 @@ Adjust SDK paths for the local machine. The build scripts bootstrap/build the to
 
 The main executable is produced under `build\\ABMAVPlayer.exe`. Use `run.bat` for the repository runtime launch setup. The installer is staged under `dist\\ABM-AV-Player-Setup.exe` after running the installer preparation and packaging scripts.
 
+## Release version sources and packaging
+
+The current source-prepared release is **v1.0.7**. These version values are intentionally repeated because they are consumed by different toolchains:
+
+| Component | Version source |
+|---|---|
+| Main application About and updater comparison | `APP_VERSION` in `src/player.c` |
+| Streaming Centre About | Version string in `src/streaming/streaming_host.cpp` |
+| Installer display version | `MyAppVersion` in `installer/ABMAVPlayer.iss` |
+| Installer executable version resource | `VersionInfoVersion` and `VersionInfoProductVersion` in the Inno Setup script |
+| Dependency manifest package metadata | `version-string` in `vcpkg.json` |
+| Build-time release guards | `build_installer.bat` |
+| Release tag, installer validation and publication | `publish_release.bat` |
+| Public release description | `RELEASE_NOTES.md` and `RELEASES.md` |
+
+For a version change, update every source above in the same release change. Run `build_installer.bat`, not only `build.bat`, for the release package. The installer script performs a metadata-consistency preflight, rebuilds the app, recreates staging, checks the built and staged executable versions, and then compiles the installer. The publisher validates the installer PE version and refuses an existing release tag. Never publish until the Windows acceptance and upgrade tests in [RELEASES.md](RELEASES.md) have passed.
+
 ## Engineering workflow and guardrails
 
 1. Fetch and inspect current `main` before editing. Keep changes focused and preserve unrelated work.
