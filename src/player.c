@@ -763,7 +763,8 @@ static void UpdateLayout(HWND hwnd) {
     R_LIST=(RECT){R_SIDEBAR.left+12,R_SIDEBAR.top+collectionTop+176,R_SIDEBAR.right-12,R_SIDEBAR.bottom-112};
     R_PLAYLIST_SCROLL=(RECT){R_LIST.right-8,R_LIST.top+8,R_LIST.right-3,R_LIST.bottom-8};
     R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
-    R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-30,R_SIDEBAR.bottom-35};
+    R_VOLUME=(RECT){R_SIDEBAR.left+100,R_SIDEBAR.bottom-43,R_SIDEBAR.right-92,R_SIDEBAR.bottom-35};
+    R_AUDIO_BUTTON=(RECT){R_SIDEBAR.right-70,R_SIDEBAR.bottom-65,R_SIDEBAR.right-18,R_SIDEBAR.bottom-15};
     R_MENU_BUTTON=(RECT){w-244,16,w-156,72};
     R_DRAWER_BUTTON=(RECT){w-144,16,w-20,72};
     /* Wider command surface gives labels and shortcut hints room to breathe. */
