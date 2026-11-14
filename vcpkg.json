@@ -1,6 +1,6 @@
 {
   "name": "abm-av-player",
-  "version-string": "1.0.2",
+  "version-string": "1.0.6",
   "builtin-baseline": "927f62e4b8838bd7e441e9c45103a16ffd75007e",
   "dependencies": [
     {
