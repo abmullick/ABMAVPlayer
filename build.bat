@@ -1,6 +1,14 @@
 @echo off
 setlocal
 
+rem Compiler and linker hardening for all native modules.
+set "CL=%CL% /GS /sdl /guard:cf"
+set "LINK=%LINK% /guard:cf /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /CETCOMPAT"
+
+rem Set ABM_REQUIRE_SIGNED_BUILD=1 only after signing the EXE with the
+rem publisher's trusted Authenticode certificate.
+if /I "%ABM_REQUIRE_SIGNED_BUILD%"=="1" set "CL=%CL% /DABM_REQUIRE_AUTHENTICODE"
+
 if "%VLC_SDK%"=="" set "VLC_SDK=C:\vlc-sdk"
 if "%WEBVIEW2_SDK%"=="" set "WEBVIEW2_SDK=%CD%\packages\Microsoft.Web.WebView2"
 
