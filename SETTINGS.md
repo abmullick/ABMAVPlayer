@@ -1,125 +1,202 @@
-# ABM AV Player — Application Settings Reference
+# ABM AV Player — Application Settings & Practical Impact Reference
 
-This reference describes the controls currently exposed by the Windows application. Main Settings and Advanced Settings are separate surfaces.
+This guide explains not only what each setting does, but what a user is likely to notice after changing it. It documents the controls currently exposed by ABM AV Player; it does not imply that unexposed VLC, Windows, GPU-driver or provider controls are available in the UI.
+
+## How to use this reference
+
+For each setting, distinguish three things:
+- **Scope:** which part of ABM AV Player or media it affects.
+- **Activation:** when the change takes effect.
+- **Trade-off:** what may improve and what may get worse.
+
+Change one setting at a time when troubleshooting. Reopen the same test media and compare under similar conditions. A setting is not guaranteed to improve every file, codec, PC or network.
 
 ## Open the settings windows
 
-- **Main Settings:** Command Centre → Settings. Use it for general defaults, audio processing, torrent storage, bandwidth and colour theme.
-- **Advanced Settings:** choose **Advanced…** in the main Settings window. Pages: Overview, Video & Decoding, Audio Engine, Video Output, Subtitles, Streaming & Network, Performance, Controls & Behaviour and Diagnostics.
-
-A status line is not necessarily an editable control. Overview and diagnostic metrics are read-only.
+- **Main Settings:** Command Centre → Settings.
+- **Advanced Settings:** Main Settings → Advanced…
+- **Overview:** read-only status; it does not change preferences.
+- **Diagnostics:** live metrics and a local report; it does not tune or repair the system.
 
 ## Main Settings
 
 ### General
 
-| Option | Meaning |
-|---|---|
-| Volume | Default player volume, 0–100. |
-| Playback speed | Default rate, 0.5x–2.0x. |
-| Shuffle by default | Saves the preferred shuffle state. |
-| Repeat current item | Saves the preferred repeat state. |
+| Option | What it controls | Practical impact and example | Activation |
+|---|---|---|---|
+| Volume (0–100) | Player output volume level. | Raising 30 to 60 makes playback louder; it does not improve source quality. If Windows/device volume is already high, raising both can cause uncomfortable loudness or clipping downstream. | Immediate for current player where changed; saved as the default preference. |
+| Playback speed (0.5x–2.0x) | Playback rate. | 1.0x is normal. 1.25x shortens a lecture or podcast; 0.75x slows speech. Audio pitch/quality depends on the playback implementation and media. | Applied to playback; saved preference is used as the default. |
+| Shuffle by default | Whether playback order is randomised by default. | On is useful for a music collection; Off preserves the playlist sequence. It changes selection order, not file order on disk. | Saved preference; affects playlist behaviour. |
+| Repeat current item | Whether the current item repeats. | On is useful for a single song, practice clip or presentation loop; Off allows normal progression. | Saved preference; affects playback progression. |
 
 ### Audio processing
 
-| Option | Meaning |
-|---|---|
-| ReplayGain normalisation | Uses track-mode ReplayGain where supported and usable ReplayGain metadata exists. It is not a general volume leveller for untagged files. |
-| Dynamic range compressor | Enables/disables the VLC compressor processing option. Effect availability depends on the VLC runtime/plugins. |
+| Option | What it controls | Practical impact and example | Trade-off / activation |
+|---|---|---|---|
+| ReplayGain normalisation | Requests track-mode ReplayGain processing when supported metadata is present. | Tracks tagged with ReplayGain can play at more consistent perceived loudness. An untagged file may sound unchanged; this is not automatic analysis of every file. | Metadata and VLC support are required. Changes are intended for newly opened media; reopen the track to compare. |
+| Dynamic range compressor | Enables the VLC compressor processing option. | Can reduce the difference between quiet and loud passages. For example, dialogue may be easier to hear in a film with loud action scenes. | May change dynamics and perceived punch; effect depends on VLC runtime/plugins. It is not a guaranteed true-peak limiter. Reopen media after changing. |
 
 Audio processing preferences are also stored in `audio.ini`.
 
 ### Torrent & Storage
 
-| Option | Meaning |
-|---|---|
-| Cache parent folder | Parent directory in which the torrent engine creates its `torrent-cache` working directory. |
-| Permanent downloads folder | Destination for selected/completed torrent media; separate from the working cache. |
-| Cache quota | Persistent cache quota, 1–4096 GiB; default 20 GiB. |
-| Browse / Open folder | Select or open the configured directory in File Explorer. |
+| Option | What it controls | Practical impact and example | Trade-off / activation |
+|---|---|---|---|
+| Cache parent folder | Parent location for the torrent engine's `torrent-cache` working directory. | Choose a drive with sufficient free space, e.g. a roomy secondary SSD instead of a nearly full system drive. | Does not move existing cache data. If the engine has started, restart ABM AV Player to initialise the new path. |
+| Permanent downloads folder | Where selected/completed torrent media is stored. | Choose a media drive or organised download folder so completed files are easy to find. | Separate from the working cache. Changing it does not relocate already-downloaded files. |
+| Cache quota (1–4096 GiB; default 20 GiB) | Persistent working-cache quota. | Raising 20 to 100 GiB permits more cached torrent pieces/data to be retained before quota management needs to reclaim space. | Uses more disk capacity; it does not make a slow swarm faster or guarantee that 100 GiB is immediately allocated. |
+| Browse / Open folder | Selects or opens a configured directory. | Use Browse to choose a folder on a drive with adequate free space; Open folder checks the selected location in File Explorer. | Folder selection alone does not migrate old files. |
 
-A new installation uses the Windows Downloads known folder as the basis for `<Downloads>\\ABM AV Player\\torrent-cache`. Existing installations with a legacy cache retain that location unless changed. Changing the path does not move existing data. If the torrent engine has started, restart ABM AV Player to initialise it with the new cache path.
+A new installation bases its cache location on the Windows Downloads known folder: `<Downloads>\\ABM AV Player\\torrent-cache`. Existing installations with a legacy cache retain that location unless changed. Keep the old folder until you have confirmed the new location works and no data is needed from the old cache.
 
-### Network
+### Network — torrent transfer limits
 
-Download and upload limits constrain torrent transfer rates in KiB/s. Enter `0` for unlimited. A limit does not guarantee throughput; peers, trackers, routing and remote upload capacity remain external factors.
+Download and upload limits are in **KiB/s** and constrain torrent traffic, not all internet traffic generated by Windows or Streaming Centre.
+
+- **0 = unlimited:** the torrent engine is not capped by this setting.
+- **A lower non-zero limit:** leaves more bandwidth available for browsing, calls or other devices, but can slow torrent completion and progressive playback if data arrives too slowly.
+- **A higher limit:** allows faster transfers when peers and the internet connection can supply data, but may compete with other network use.
+- **Example:** if a video call becomes unstable while a torrent is downloading, set a moderate download limit and compare call quality. Do not assume the configured limit is the achieved speed.
+
+Peer availability, tracker/DHT reachability, routing, disk speed and remote peer upload capacity remain external factors. These controls do not change the Advanced Settings LibVLC cache targets.
 
 ### Updates
 
-**Check for updates** checks the latest published GitHub Release. The updater expects `ABM-AV-Player-Setup.exe`, downloads over HTTPS and verifies SHA-256 before launching. See [RELEASES.md](RELEASES.md).
+**Check for updates** checks the latest published GitHub Release. The updater expects `ABM-AV-Player-Setup.exe`, downloads over HTTPS and verifies the supplied SHA-256 digest before launching. If the digest is absent or does not match, installation is blocked. Windows SmartScreen may still warn about an unsigned installer. See [RELEASES.md](RELEASES.md).
 
 ### Color Theme
 
-Seven presets: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald and Golden Yellow. The palette applies immediately to ABM-owned interface surfaces and persists in `%APPDATA%\\ABMAVPlayer\\theme.ini`. Provider websites keep their own styling.
+Seven presets are available: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald and Golden Yellow.
+
+- Changing the preset updates ABM AV Player-owned interface surfaces, making the app easier to match to personal preference or room lighting.
+- It does not recolour the video itself or change the appearance of websites inside Streaming Centre; provider pages control their own styling.
+- The choice applies immediately and persists in `%APPDATA%\\ABMAVPlayer\\theme.ini`.
 
 ## Advanced Settings
 
-### Overview
+### Overview — observe before changing
 
-Read-only live summary of playback and video dimensions, volume/speed/shuffle, playlist/recent counts and position, audio output-engine preference, caching targets, decoder/frame options, subtitle size/bold/delay, CPU count, installed RAM and process working set.
+Overview is a read-only snapshot of playback, playlist, audio engine, caching, performance, subtitles and system resources. Use it to note the current state before changing a preference. It is not a benchmark, does not diagnose every bottleneck and does not apply changes.
 
 ### Video & Decoding
 
-| Choice | Meaning | Activation |
-|---|---|---|
-| Automatic | LibVLC selects an available decoder. | Save and restart. |
-| Software decoding | Requests CPU decoding. | Save and restart. |
-| D3D11VA | Requests Direct3D 11 Video Acceleration. | Save and restart. |
+| Choice | What it requests | When it is useful | Trade-offs / activation |
+|---|---|---|---|
+| Automatic | Lets LibVLC select an available decoder path. | Best starting point for normal use. | Actual selection depends on VLC build, codec/profile, GPU and driver. Save/apply and restart ABM AV Player. |
+| Software decoding | Requests CPU-based decoding. | Troubleshooting a black screen, corrupted frames or instability suspected to involve GPU acceleration. | Moves decoding work to the CPU; high-resolution/high-frame-rate video may use much more CPU and can stutter on a weaker processor. Restart required. |
+| D3D11VA | Requests Direct3D 11 Video Acceleration. | Testing GPU-assisted decoding to reduce CPU load on supported media and hardware. | Unsupported codecs/profiles or drivers may fall back or fail to use the requested path. GPU/video-memory use may rise. Restart required. |
 
-Saved under `[Video] HardwareAcceleration`. `ABM_VLC_HW` environment override takes precedence. Hardware support depends on codec/profile, VLC build, GPU and driver.
+Saved under `[Video] HardwareAcceleration`. The `ABM_VLC_HW` environment override takes precedence over the saved choice. If behaviour does not change, check that override and restart before concluding the option is ineffective.
+
+**Example troubleshooting sequence:** test a known H.264 file using Automatic; if it shows rendering problems, try Software and restart; compare the same file; then try D3D11VA and restart. Change only this setting during the comparison.
 
 ### Audio Engine
 
-| Choice | Meaning | Activation |
-|---|---|---|
-| Automatic | LibVLC chooses the output module. | Save and restart. |
-| WASAPI | Requests Windows Audio Session API output. | Save and restart. |
-| DirectSound | Requests DirectSound output. | Save and restart. |
+| Choice | What it requests | When it is useful | Trade-offs / activation |
+|---|---|---|---|
+| Automatic | Lets LibVLC choose its output module. | Recommended default if audio works normally. | Module selection is made by LibVLC; restart required after changing. |
+| WASAPI | Requests Windows Audio Session API output (`mmdevice`). | Try when checking compatibility with the modern Windows audio path or when Automatic behaves unexpectedly. | Does not mean exclusive mode, bit-perfect output or a dedicated device selector. Restart required. |
+| DirectSound | Requests the DirectSound output module. | Compatibility test if another output module has issues on a particular system. | Behaviour depends on Windows/runtime configuration. Restart required. |
 
-Saved under `[Audio] OutputEngine`. This is not an exclusive-mode/bit-perfect option or a new device picker.
+This setting chooses the output engine, not the physical speaker/headphone device. The main-window Output selector remains a separate control.
 
-### Video Output
+**Example:** if audio is silent only with one output path, switch from Automatic to the alternative, restart ABM AV Player and test the same file and Windows output device. Restore Automatic if there is no improvement.
 
-Aspect ratio: Original, 16:9, 4:3 or 21:9. Saved under `[Video] AspectRatio` and applied through LibVLC. It affects display geometry, not source media. The status area reports video window availability, decoded dimensions and client area. Per-monitor calibration, full colour management and every renderer-specific scaling option are not exposed.
+### Video Output — aspect ratio
+
+Available choices: **Original, 16:9, 4:3 and 21:9**.
+
+- **Original** lets the source's aspect ratio determine the displayed shape.
+- **16:9** fits widescreen content/display expectations.
+- **4:3** is useful for older television or archival content.
+- **21:9** suits ultra-wide presentation.
+
+This changes the displayed geometry through LibVLC; it does not rewrite, crop or re-encode the source file. Depending on the source and output surface, the picture may show bars or appear stretched/cropped. If faces or circles look unnaturally wide, return to Original. The selection is applied to the current player and saved for future playback.
+
+The status area reports video-window availability, decoded dimensions and client area. Per-monitor calibration, complete colour management and all renderer-specific scaling controls are not exposed here.
 
 ### Subtitles
 
-| Control | Values | Meaning |
-|---|---|---|
-| Timing | −50 ms / +50 ms / Reset | Adjusts subtitle delay in 50 ms steps, within ±10 seconds. |
-| Font size | 10 / 13 / 16 / 19 | LibVLC relative subtitle font-size values. |
-| Text colour | White / Yellow / Cyan / Green | Supported preset colours. |
-| Bold | On / Off | Requests bold text. |
-| Outline | Off / Thin / Normal / Thick | Outline thickness. |
-| Vertical position | Default / 10 / 25 / 50 px | Subtitle bottom margin. |
+| Control | Available values | What changes in practice | Activation / caveat |
+|---|---|---|---|
+| Timing | −50 ms, +50 ms, Reset; range ±10,000 ms | If text appears before speech, add delay; if text appears after speech, reduce delay. Adjust in small steps while watching dialogue. | Timing can update current playback when possible. Reset returns to zero. |
+| Font size | 10, 13, 16, 19 | Larger values improve readability on a distant display; smaller values leave more picture unobstructed. | Appearance settings are attached to newly opened media. Values are LibVLC relative sizes, not guaranteed pixel heights. |
+| Text colour | White, Yellow, Cyan, Green | Choose a colour with strong contrast against the scene. Yellow may stand out over bright/white scenes; white is familiar but can disappear on snow or bright backgrounds. | New media; embedded subtitle styling may override. |
+| Bold | On / Off | On makes glyph strokes heavier and may help at a distance; Off is less visually heavy. | New media; format/player support can vary. |
+| Outline | Off, Thin, Normal, Thick | A stronger outline can improve legibility over changing backgrounds. Thick may look heavy around small text. | New media; embedded styling may override. |
+| Vertical position | Default, 10, 25, 50 px bottom margin | Moves subtitles farther above the bottom edge; useful when a TV bezel or on-screen controls obscure text. | New media; actual placement depends on video dimensions and subtitle format. |
 
-Appearance options are attached to newly opened media; embedded subtitle styling may override them. Timing also updates the current player when possible.
+**Example:** for a subtitle line hidden by a bright scene, try Yellow plus Normal outline. If subtitles cover too much of the picture, reduce font size or return the margin to Default. If timing is wrong, change only timing; colour and size cannot correct synchronisation.
 
-### Streaming & Network
+### Streaming & Network — LibVLC caching targets
 
-Network, file and live caching each cycle through 300, 1,000, 2,000 and 5,000 ms. These LibVLC buffering targets are passed to newly opened media. More buffering can absorb jitter but increase startup delay/latency; less buffering can reduce delay but increase interruptions. Torrent quota and torrent bandwidth limits are configured in the main Settings window.
+Each target cycles through **300, 1,000, 2,000 and 5,000 ms**. These are buffering targets passed to newly opened media, not a promise of end-to-end latency.
+
+| Target | Applies to | Increase it when… | Decrease it when… |
+|---|---|---|---|
+| Network stream caching | Network URLs and remote streams | Playback repeatedly pauses because network delivery is bursty or jittery. | Startup delay or interaction latency matters more and the connection is stable. |
+| Local file caching | Local media file read-ahead | A local file on slow/removable/network-backed storage pauses during read-ahead. | You want less initial buffering and the storage is fast and reliable. |
+| Live stream caching | Live/time-sensitive streams | Live playback breaks up on an unstable connection and extra delay is acceptable. | You need to stay closer to the live edge and the stream/network is stable. |
+
+**Example:** if a remote stream pauses every few seconds, compare 1,000 ms with 2,000 ms. If interruptions reduce but playback starts later, that is the expected trade-off. For a live sports stream, 5,000 ms may make you noticeably further behind the live event. Use the smallest value that plays reliably.
+
+Torrent cache quota and torrent download/upload caps are separate controls in Main Settings. Changing these LibVLC targets does not increase torrent disk quota or peer bandwidth.
 
 ### Performance
 
-| Control | Values | Effect |
-|---|---|---|
-| Decoder threads | Automatic / 2 / 4 / 8 | LibVLC decoder worker-thread selection/cap for newly opened media. |
-| Drop late frames | Enabled / Disabled | Permits late frames to be dropped for responsiveness. |
-| Skip frames | Enabled / Disabled | Permits frame skipping when decoding falls behind; visual quality may be reduced. |
+| Control | What it changes | Potential benefit | Cost / caution |
+|---|---|---|---|
+| Decoder threads: Automatic / 2 / 4 / 8 | Requests LibVLC decoder worker-thread selection/cap for newly opened media. | More threads may help a codec that can decode in parallel, especially high-resolution content. | More threads can increase CPU scheduling and contention; some codecs gain little. A fixed value is not a global CPU limit. |
+| Drop late frames: Enabled / Disabled | Allows frames that miss their display deadline to be dropped. | Can keep audio and playback responsive when video decoding/rendering falls behind. | Visible frames may be skipped, reducing smoothness/detail. |
+| Skip frames: Enabled / Disabled | Allows decoding work/frames to be skipped when decoding falls behind. | Can help playback keep moving when the decoder cannot process every frame in time. | Motion/detail can look less complete. Not ideal when every frame matters. |
 
-These are not global CPU caps and do not guarantee better performance. Reopen media after changing them.
+Changes are saved immediately and attached to newly opened media; reopen the file to test them.
+
+**Example for stutter:** first compare Automatic threads with 4 threads on the same demanding file. If CPU usage rises without smoother playback, restore Automatic. Then test Drop late frames separately. Avoid turning on every option at once because you will not know which change helped or hurt.
+
+These controls do not overclock hardware, set a system-wide CPU cap, guarantee GPU decoding or improve a network bottleneck.
 
 ### Controls & Behaviour
 
-- Confirm before exiting ABM AV Player.
-- Confirm before clearing the playlist; source files are not deleted.
-- Double-click video to toggle fullscreen.
-
 Each preference is saved immediately under `[Controls]`.
+
+- **Confirm before exiting ABM AV Player:** On adds a Yes/No checkpoint before closing, reducing accidental exits; Off closes without that extra prompt. Useful if playback or a long task is easy to close accidentally.
+- **Confirm before clearing playlist:** On asks before removing playlist entries; Off clears immediately. It does not delete the original media files in either case.
+- **Double-click video to toggle fullscreen:** On enables the double-click gesture on the video surface; Off prevents that gesture from changing display mode. It does not disable F11 or other fullscreen controls.
+
+These options change interaction behaviour, not playback quality, keyboard mapping or file safety.
 
 ### Diagnostics
 
-Live metrics include application version/PID, logical processors, installed/available RAM, system memory load, process working set/page-file usage, playback state, video dimensions, playlist count and recent count. **Generate report** writes a timestamped local TXT report and loads it into the read-only, scrollable preview. **Open data folder** opens the directory. No automatic upload occurs; review the report before sharing.
+The page separates system-wide resources from ABM AV Player process metrics.
+
+- **System resources:** logical processor count, installed/available RAM and system memory load. High system memory load can indicate that Windows and multiple applications are competing for RAM; it does not identify which other application is responsible.
+- **ABM AV Player process:** working set and page-file usage for the player process. A rising working set indicates more physical memory is resident for this process; it is not the same as total system RAM use.
+- **Playback context:** playback state, decoded video dimensions, playlist count and recent count.
+
+**Generate report** writes a timestamped local UTF-8 TXT report and loads it into the read-only, scrollable preview. **Open data folder** opens the report/data directory. The report is not automatically uploaded. Review it before sharing: it can include machine details, executable paths, process information and playback/session state.
+
+Diagnostics reports observations; it does not automatically change settings or prove that a particular component caused a problem.
+
+## What takes effect when?
+
+| Setting group | Activation behaviour |
+|---|---|
+| Theme | Immediate; persisted in `theme.ini`. |
+| General volume/playback preferences | Used by the player as current/default playback preferences. |
+| Audio processing | Reopen media to ensure the processing option is applied to the new media instance. |
+| Torrent cache parent | Restart if the torrent engine has already initialised; existing cache data is not moved. |
+| Torrent permanent-download folder | Used as the configured destination; existing downloaded files are not relocated. |
+| Torrent bandwidth limits | Applied to torrent transfer limits; actual throughput still depends on the swarm/network. |
+| Video hardware acceleration | Save/apply and restart the application; environment override takes precedence. |
+| Audio output engine | Save/apply and restart the application. |
+| Aspect ratio | Applied to the current player and saved. |
+| Subtitle timing | Can update current playback when possible. |
+| Subtitle appearance | Attached to newly opened media. |
+| Streaming/file/live caching | Passed to newly opened media. |
+| Performance options | Attached to newly opened media; reopen to test. |
+| Controls & Behaviour | Saved immediately and read by the corresponding UI action. |
+| Overview / Diagnostics | Read-only; no activation. |
 
 ## Configuration files
 
@@ -129,13 +206,21 @@ Live metrics include application version/PID, logical processors, installed/avai
 | `%APPDATA%\\ABMAVPlayer\\audio.ini` | Audio processing preferences. |
 | `%APPDATA%\\ABMAVPlayer\\theme.ini` | Selected ABM interface theme preset. |
 
-Prefer the UI over manual INI editing. If editing manually, close the application and make a backup. Invalid values may be normalised to defaults.
+Prefer the UI over manual INI editing. If editing manually, close the application first and make a backup. Invalid values may be normalised to defaults.
 
-## Troubleshooting
+## A practical troubleshooting method
 
-- Hardware choice not active: restart and check whether `ABM_VLC_HW` overrides it.
-- Audio output change not active: restart ABM AV Player.
-- New torrent cache path not active: restart the application; the engine initialises its cache path at startup.
-- Excessive buffering: lower the relevant cache target, noting that unstable networks may interrupt more often.
-- Playback stutter: compare decoder modes and change one Performance option at a time; reopen media.
-- Empty diagnostic preview: generate again; otherwise use Open data folder to inspect the saved TXT report.
+1. Reproduce the issue with one known media file or stream.
+2. Note current settings and observe Overview/Diagnostics.
+3. Change one relevant setting only.
+4. Apply the documented activation step (reopen media or restart).
+5. Replay the same section under similar conditions.
+6. Keep the change only if the result is measurably or clearly better; otherwise restore the previous value.
+
+Common starting points:
+- **Remote stream stutters:** raise only Network stream caching one step; expect more startup delay.
+- **Live stream delay is too high:** lower Live stream caching one step; watch for more interruptions.
+- **High CPU / video stutter:** compare Automatic and Software/D3D11VA decoding with restart; then test one Performance control at a time.
+- **Audio silent or unstable:** compare Automatic, WASAPI and DirectSound one at a time, restarting after each change.
+- **Subtitle sync is wrong:** adjust Timing in 50 ms increments; do not change font/outline to fix timing.
+- **Disk pressure during torrent use:** review cache quota and both folder paths; changing a path does not move old data.
