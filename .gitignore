@@ -9,8 +9,5 @@ build/
 *.user
 packages/
 
-# Publisher secrets and customer licence material
-*.pem
-*.p12
+# Local activation key files
 *.key
-*.license
