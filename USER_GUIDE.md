@@ -20,6 +20,8 @@ The playlist stores references to media files. Removing an item from the playlis
 
 Open **Settings** from the Command Centre. The dedicated dark settings window follows the player's navy/blue visual theme and groups the preferences that are currently supported by the application.
 
+Under **Color Theme**, choose one of six application palettes: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber or Emerald. The palette applies immediately and is remembered across restarts in `%APPDATA%\\ABMAVPlayer\\theme.ini`. This changes ABM AV Player's own interface; provider websites inside Streaming Centre keep their own appearance.
+
 - **General:** default volume, playback speed, shuffle and repeat.
 - **Audio:** ReplayGain normalisation and dynamic-range compressor preferences.
 - **Torrent & Storage:** torrent cache parent folder and cache quota. The engine creates a `torrent-cache` subfolder inside the selected location.
