@@ -12,6 +12,10 @@ if not "%VERSION%"=="1.0.7" goto invalid_version
 if not exist "dist\ABM-AV-Player-Setup.exe" goto missing_installer
 if not exist "RELEASE_NOTES.md" goto missing_notes
 
+rem Refuse to publish if source metadata or the release-notes heading is stale.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected='%VERSION%'; $app=[IO.File]::ReadAllText('src\player.c'); $stream=[IO.File]::ReadAllText('src\streaming\streaming_host.cpp'); $iss=[IO.File]::ReadAllText('installer\ABMAVPlayer.iss'); $manifest=Get-Content 'vcpkg.json' -Raw | ConvertFrom-Json; $notes=[IO.File]::ReadAllText('RELEASE_NOTES.md'); $av=[regex]::Match($app,'APP_VERSION L[^0-9]*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $sv=[regex]::Match($stream,'Version ([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $iv=[regex]::Match($iss,'MyAppVersion[^0-9]*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $pe=[regex]::Match($iss,'VersionInfoVersion=([0-9]+\.[0-9]+\.[0-9]+)\.0').Groups[1].Value; $mv=$manifest.'version-string'; $heading='# ABM AV Player v' + $expected; Write-Host ('App=' + $av + '; Streaming=' + $sv + '; Installer=' + $iv + '; PE=' + $pe + '; vcpkg=' + $mv); if ($av -ne $expected -or $sv -ne $expected -or $iv -ne $expected -or $pe -ne $expected -or $mv -ne $expected -or -not $notes.StartsWith($heading)) { Write-Host 'ERROR: Source versions or release notes do not match the requested release version.'; exit 1 }"
+if errorlevel 1 goto version_metadata_mismatch
+
 rem Inno Setup compresses the application payload, so do not search the
 rem installer bytes for the About string. Verify the installer PE version
 rem resource, which is stamped by VersionInfoVersion/ProductVersion in the ISS.
@@ -54,6 +58,12 @@ exit /b 1
 
 :missing_notes
 echo ERROR: RELEASE_NOTES.md not found.
+endlocal
+exit /b 1
+
+:version_metadata_mismatch
+echo ERROR: Source version metadata or RELEASE_NOTES.md does not match %VERSION%.
+echo Run the guarded build and align all release metadata before publishing.
 endlocal
 exit /b 1
 
