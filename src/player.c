@@ -4726,7 +4726,7 @@ static void HelpFormatArticle(HWND edit) {
  GetWindowTextW(edit,text,len+1);
  int pos=0;
  while(pos<len) {
-  int end=pos;while(end<len&&text[end]!=L'\\r'&&text[end]!=L'\\n')end++;
+  int end=pos;while(end<len&&text[end]!=L'\r'&&text[end]!=L'\n')end++;
   int lineLen=end-pos;
   if(lineLen>0) {
    BOOL heading=FALSE;
@@ -4748,7 +4748,7 @@ static void HelpFormatArticle(HWND edit) {
     SendMessageW(edit,EM_SETPARAFORMAT,0,(LPARAM)&pf);
    }
   }
-  while(end<len&&(text[end]==L'\\r'||text[end]==L'\\n'))end++;
+  while(end<len&&(text[end]==L'\r'||text[end]==L'\n'))end++;
   pos=end;
  }
  free(text);
