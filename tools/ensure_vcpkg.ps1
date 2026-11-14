@@ -131,7 +131,15 @@ else {
     $currentCommit = (& git -C $vcpkgRoot rev-parse HEAD 2>$null | Select-Object -First 1)
     if ($LASTEXITCODE -ne 0 -or $currentCommit -ne $toolCommit) {
         Write-Log "Fetching pinned vcpkg tool commit $toolCommit..."
-        Invoke-Git -GitArgs @("-C", $vcpkgRoot, "fetch", "--depth", "1", "origin", $toolCommit)
+        try {
+            Invoke-Git -GitArgs @("-C", $vcpkgRoot, "fetch", "--depth", "1", "origin", $toolCommit)
+        }
+        catch {
+            if ($toolCommit -eq $baseline) { throw }
+            Write-Log "The cache's vcpkg tool commit is not available from the official upstream. Falling back to the manifest baseline."
+            $toolCommit = $baseline
+            Invoke-Git -GitArgs @("-C", $vcpkgRoot, "fetch", "--depth", "1", "origin", $toolCommit)
+        }
         Invoke-Git -GitArgs @("-C", $vcpkgRoot, "checkout", "--detach", "FETCH_HEAD")
     }
 }
