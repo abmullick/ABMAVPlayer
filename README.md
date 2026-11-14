@@ -148,7 +148,7 @@ ABM AV Player includes an in-app update checker connected to the public GitHub R
 ### For maintainers
 
 - A release must be published on GitHub and include an installer asset named exactly `ABM-AV-Player-Setup.exe`; the updater cannot find an installer attached under a different name.
-- Before building a release, keep `APP_VERSION` in `src/player.c` and `MyAppVersion` in `installer/ABMAVPlayer.iss` identical to the release version.
+- Before building a release, align `APP_VERSION` in `src/player.c`, the Streaming Centre About version in `src/streaming/streaming_host.cpp`, `MyAppVersion` and `VersionInfoVersion` in `installer/ABMAVPlayer.iss`, and `version-string` in `vcpkg.json`. `build_installer.bat` checks these sources before building and checks the built/staged executable versions.
 - Build and test the application and installer on Windows before publishing.
 - The `publish_release.bat` script uses GitHub CLI. **Only the maintainer publishing the release** needs GitHub CLI installed and authenticated with `gh auth login`. This authentication is not used by the application or required by end users.
 - See [RELEASES.md](RELEASES.md) for the complete publishing procedure and release requirements.
