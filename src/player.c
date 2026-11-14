@@ -1318,9 +1318,27 @@ static void DrawUI(HDC dc,RECT client) {
     if(selectedOutput>0)SendMessageW(g_renderers,CB_GETLBTEXT,(WPARAM)selectedOutput,(LPARAM)outputSummary);
     RECT settingsSub={R_SETTINGS_BUTTON.left+55,R_SETTINGS_BUTTON.top+28,R_SETTINGS_BUTTON.right-48,R_SETTINGS_BUTTON.bottom-4};
     Txt(dc,outputSummary,settingsSub,ABM_THEME_COLOR_8BB4C2,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
-    if(g_drawerSettingsOpen){DrawLine(dc,chevronX-4,chevronY+2,chevronX,chevronY-2,ABM_THEME_COLOR_BED2EA,2);DrawLine(dc,chevronX,chevronY-2,chevronX+4,chevronY+2,ABM_THEME_COLOR_BED2EA,2);}
-    else {DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,ABM_THEME_COLOR_BED2EA,2);DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,ABM_THEME_COLOR_BED2EA,2);}
+    /* Prominent but restrained drawer control: a larger inset capsule gives
+       the chevron a clear visual anchor without changing the header hit target. */
+    RECT chevronButton={R_SETTINGS_BUTTON.right-50,R_SETTINGS_BUTTON.top+7,
+                        R_SETTINGS_BUTTON.right-8,R_SETTINGS_BUTTON.bottom-7};
+    if(g_drawerSettingsOpen)
+        GradientRound(dc,chevronButton,ABM_THEME_COLOR_1B695B,ABM_THEME_COLOR_1E524E,12);
+    else
+        RoundBox(dc,chevronButton,ABM_THEME_COLOR_1E303B,12);
+    ABM_D2D_StrokeRound(&g_ui,(float)chevronButton.left,(float)chevronButton.top,
+                        (float)chevronButton.right,(float)chevronButton.bottom,12.0f,
+                        g_drawerSettingsOpen?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_466F7D,1.1f);
+    int chevronX=(chevronButton.left+chevronButton.right)/2;
+    int chevronY=(chevronButton.top+chevronButton.bottom)/2;
+    COLORREF chevronColor=g_drawerSettingsOpen?ABM_THEME_COLOR_E5F6F7:ABM_THEME_COLOR_C7DCEB;
+    if(g_drawerSettingsOpen) {
+        DrawLine(dc,chevronX-8,chevronY+3,chevronX,chevronY-5,chevronColor,3);
+        DrawLine(dc,chevronX,chevronY-5,chevronX+8,chevronY+3,chevronColor,3);
+    } else {
+        DrawLine(dc,chevronX-8,chevronY-3,chevronX,chevronY+5,chevronColor,3);
+        DrawLine(dc,chevronX,chevronY+5,chevronX+8,chevronY-3,chevronColor,3);
+    }
     RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+collectionTop,R_SIDEBAR.right-18,R_SIDEBAR.top+collectionTop+24};
     Txt(dc,g_libraryTab?L"YOUR COLLECTION":L"YOUR QUEUE",listHead,ABM_THEME_COLOR_84BBCF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
