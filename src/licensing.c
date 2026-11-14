@@ -47,6 +47,7 @@ static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
     HPEN pen=CreatePen(PS_SOLID,focus?2:1,focus?RGB(99,225,205):(primary?RGB(67,178,166):RGB(52,77,98)));
     HGDIOBJ ob=SelectObject(d->hDC,brush),op=SelectObject(d->hDC,pen);
     RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,12,12);
+    if(focus) { RECT fr=d->rcItem; InflateRect(&fr,-5,-5); DrawFocusRect(d->hDC,&fr); }
     SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(brush);DeleteObject(pen);
     wchar_t label[64]=L"";
     GetWindowTextW(d->hwndItem,label,_countof(label));
@@ -150,7 +151,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(d->edit,EM_LIMITTEXT,16,0);
         SendMessageW(d->edit,EM_SETCUEBANNER,TRUE,(LPARAM)L"Enter your 16-character activation key");
         d->activateButton=CreateWindowW(L"BUTTON",d->alreadyActivated?L"Close":L"Activate",
-            WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW|BS_DEFPUSHBUTTON,310,365,132,44,w,(HMENU)ID_LICENSE_ACTIVATE,d->instance,NULL);
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,310,365,132,44,w,(HMENU)ID_LICENSE_ACTIVATE,d->instance,NULL);
         d->trialButton=CreateWindowW(L"BUTTON",(d->manual||!d->trialAllowed)?L"Close":L"Continue trial",
             WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,454,365,132,44,w,(HMENU)ID_LICENSE_TRIAL,d->instance,NULL);
         g_licenseEditBrush=CreateSolidBrush(RGB(11,25,40));
@@ -202,7 +203,10 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         RECT hero={18,16,rc.right-18,160};HBRUSH panel=CreateSolidBrush(RGB(14,34,49));FillRect(dc,&hero,panel);DeleteObject(panel);
         HPEN accent=CreatePen(PS_SOLID,2,RGB(54,177,168));HGDIOBJ oldPen=SelectObject(dc,accent);
         MoveToEx(dc,hero.left+14,hero.top+1,NULL);LineTo(dc,hero.right-14,hero.top+1);SelectObject(dc,oldPen);DeleteObject(accent);
-        HBRUSH logo=CreateSolidBrush(RGB(28,125,119));RECT logoRc={34,36,88,90};RoundRect(dc,logoRc.left,logoRc.top,logoRc.right,logoRc.bottom,13,13);DeleteObject(logo);
+        HBRUSH logo=CreateSolidBrush(RGB(28,125,119));RECT logoRc={34,36,88,90};
+        HGDIOBJ oldLogoBrush=SelectObject(dc,logo);HGDIOBJ oldLogoPen=SelectObject(dc,GetStockObject(NULL_PEN));
+        RoundRect(dc,logoRc.left,logoRc.top,logoRc.right,logoRc.bottom,13,13);
+        SelectObject(dc,oldLogoPen);SelectObject(dc,oldLogoBrush);DeleteObject(logo);
         LicenseDrawText(dc,L"A",(RECT){34,36,88,90},RGB(255,255,255),g_licenseTitleFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         LicenseDrawText(dc,L"ABM AV PLAYER  /  LICENSE",(RECT){106,34,rc.right-34,56},RGB(104,205,190),g_licenseCaptionFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         LicenseDrawText(dc,d->alreadyActivated?L"You're all set.":L"Unlock the full experience.",(RECT){106,58,rc.right-34,101},RGB(247,250,255),g_licenseTitleFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
