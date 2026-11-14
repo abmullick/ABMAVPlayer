@@ -29,7 +29,7 @@ if not exist "build\ABMAVPlayer.exe" goto missing_build
 
 rem Verify that the freshly compiled EXE contains the requested release version.
 rem This catches stale object files or an out-of-date source checkout before packaging.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='build\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.5') { Write-Host 'ERROR: Built EXE does not contain About version 1.0.5.'; if ($s -match 'Version 1\.0\.[0-9]+') { Write-Host ('Found: ' + $Matches[0]) }; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='build\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.6') { Write-Host 'ERROR: Built EXE does not contain About version 1.0.6.'; if ($s -match 'Version 1\.0\.[0-9]+') { Write-Host ('Found: ' + $Matches[0]) }; exit 1 }"
 if errorlevel 1 goto wrong_app_version
 
 
@@ -38,7 +38,7 @@ call prepare_installer.bat
 if errorlevel 1 goto staging_failed
 
 if not exist "release\ABM AV Player\ABMAVPlayer.exe" goto missing_stage
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.5') { Write-Host 'ERROR: Staged EXE is not version 1.0.5.'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='release\ABM AV Player\ABMAVPlayer.exe'; $s=[Text.Encoding]::Unicode.GetString([IO.File]::ReadAllBytes($p)); if ($s -notmatch 'Version 1\.0\.5') { Write-Host 'ERROR: Staged EXE is not version 1.0.6.'; exit 1 }"
 if errorlevel 1 goto wrong_staged_version
 if not exist "release\ABM AV Player\LICENSE" goto missing_license
 
@@ -95,7 +95,7 @@ endlocal
 exit /b 1
 
 :wrong_app_version
-echo ERROR: Application executable is not version 1.0.5. Check src\player.c and rebuild.
+echo ERROR: Application executable is not version 1.0.6. Check src\player.c and rebuild.
 endlocal
 exit /b 1
 
