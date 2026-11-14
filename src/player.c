@@ -4069,15 +4069,13 @@ static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
     DeleteObject(brush);DeleteObject(pen);
 }
 static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color){
-    /* Fit labels to the actual button width. Compact utility buttons such as
-       Add magnet / Apply quota need a smaller caption than the wide playback
-       actions; do not clip the first or last characters behind the icon. */
-    int width=r.right-r.left;
-    int fontHeight=width<88?-9:(width<116?-10:(width<150?-11:-12));
-    HFONT font=CreateFontW(fontHeight,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+    /* One shared 11px semibold type size for every Torrent Stream button.
+       Button geometry and the compact icon rail are sized to keep full labels
+       visible; never shrink individual captions or replace their endings with ellipses. */
+    HFONT font=CreateFontW(-11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
-    DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
+    DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
     SelectObject(dc,old);DeleteObject(font);
 }
 static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
@@ -4168,9 +4166,9 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
         RECT glyphRect={r.left+1,r.top+1,r.right-1,r.bottom-1};
         TorrentDrawButtonIcon(dc,id,glyphRect,ABM_THEME_COLOR_8EE2D3);
     }else{
-        RECT iconRect={r.left+3,r.top+2,r.left+31,r.bottom-2};
+        RECT iconRect={r.left+2,r.top+2,r.left+24,r.bottom-2};
         TorrentDrawButtonIcon(dc,id,iconRect,iconColor);
-        RECT textRect={r.left+31,r.top+2,r.right-5,r.bottom-2};
+        RECT textRect={r.left+23,r.top+2,r.right-3,r.bottom-2};
         TorrentButtonText(dc,caption,textRect,textColor);
     }
 }
