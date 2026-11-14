@@ -93,7 +93,7 @@ void StartManagedWorker(std::function<void()> work) {
     ManagedWorker &worker=g_workers.back();
     worker.finished=finished;
     try {
-        worker.thread=StartManagedWorker([work=std::move(work),finished]() mutable {
+        worker.thread=std::thread([work=std::move(work),finished]() mutable {
             try { work(); } catch(...) { OutputDebugStringW(L"ABM AV Player: Streaming Centre worker threw an exception.\\n"); }
             finished->store(true);
         });
@@ -831,7 +831,7 @@ void CastCurrentBrowserVideo(){
                     SetStatus((L"Opening "+service+L" on the selected TV… The desktop browser's title/session is not transferred.").c_str());
                     const HWND target=g_window;
                     try{
-                        std::thread([target,dialIndex,service](){
+                        StartManagedWorker([target,dialIndex,service](){
                             const wchar_t *aliases[3]={
                                 service==L"ZEE5"?L"ZEE5":L"SonyLIV",
                                 service==L"ZEE5"?L"Zee5":L"SonyLiv",
@@ -872,7 +872,7 @@ void CastCurrentBrowserVideo(){
                     if(castIndex>=0){
                         SetStatus(L"Opening Prime Video on the selected TV… Title transfer from the desktop browser is not supported.");
                         try{
-                            std::thread([target,castIndex](){
+                            StartManagedWorker([target,castIndex](){
                                 std::wstring message;
                                 if(ABM_CastV2_LaunchApplication((unsigned int)castIndex,L"17608BC8"))
                                     message=L"Prime Video opened on the selected TV. Choose the title using the TV remote. ABM cannot transfer the desktop browser's Amazon session or protected video; use Prime Video's official mobile Cast button for phone-to-TV playback.";
@@ -903,7 +903,7 @@ void CastCurrentBrowserVideo(){
                     }
                     SetStatus(L"Connecting to the selected TV and transferring the YouTube video…");
                     try{
-                        std::thread([target,id,castIndex,dialIndex](){
+                        StartManagedWorker([target,id,castIndex,dialIndex](){
                             std::wstring message;
                             if(castIndex>=0){
                                 StreamingDiag(L"Starting asynchronous Google Cast YouTube handoff videoId=%s receiverIndex=%d",id.c_str(),castIndex);
@@ -1643,7 +1643,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SetWindowTextW(g_deviceHint,L"Checking TV application endpoints. This is read-only; no app will be launched.");
             SetStatus(L"Checking which streaming app endpoints this TV exposes…");
             try{
-                std::thread([target,dialIndex,castV2Index](){
+                StartManagedWorker([target,dialIndex,castV2Index](){
                     auto *payload=new DialAppProbePayload();
                     std::wstring &report=payload->report;
                     report=L"TV app checks (read-only):\r\n";
@@ -1749,7 +1749,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             HWND target=hwnd;
             SetStatus((std::wstring(L"Requesting launch of ")+choice.label+L"…").c_str());
             try{
-                std::thread([target,choice,dialIndex,castV2Index](){
+                StartManagedWorker([target,choice,dialIndex,castV2Index](){
                     std::wstring result;
                     bool launchConfirmed=false;
                     if(choice.castV2){
@@ -1792,7 +1792,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 const HWND target=hwnd;
                 SetStatus(stop?L"Requesting Google Cast to stop the selected TV application…":L"Refreshing Google Cast application status…");
                 try{
-                    std::thread([target,castIndex,choice,stop](){
+                    StartManagedWorker([target,castIndex,choice,stop](){
                         int code=-1;
                         if(castIndex>=0){
                             code=stop?ABM_CastV2_StopApplication((unsigned int)castIndex,choice.castAppId.c_str())
@@ -1824,7 +1824,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             const HWND target=hwnd;
             SetStatus(stop?L"Sending standard DIAL stop request to the TV…":L"Checking TV application state…");
             try{
-                std::thread([target,dialIndex,choice,stop](){
+                StartManagedWorker([target,dialIndex,choice,stop](){
                     std::wstring message;
                     if(stop){
                         int code=ABM_Dial_StopApplication((unsigned int)dialIndex,choice.dialApp.c_str());
