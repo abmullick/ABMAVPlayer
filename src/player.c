@@ -1052,8 +1052,8 @@ static void DrawUI(HDC dc,RECT client) {
     Txt(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,354,54};
     GradientRect(dc,brandRule,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
-    RECT sub={116,60,510,83};
-    Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",sub,ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT brandSubtitle={116,60,510,83};
+    Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",brandSubtitle,ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
@@ -1079,8 +1079,8 @@ static void DrawUI(HDC dc,RECT client) {
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
     int glow=(int)(14.0+5.0*(0.5+0.5*sin((double)g_visualPulse*0.045)));
-    COLORREF edge=Blend(ABM_THEME_COLOR_1E3035,ABM_THEME_COLOR_377F75,glow);
-    Panel(dc,frame,ABM_THEME_COLOR_060A11,edge,20);
+    COLORREF frameEdge=Blend(ABM_THEME_COLOR_1E3035,ABM_THEME_COLOR_377F75,glow);
+    Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
@@ -1161,11 +1161,11 @@ static void DrawUI(HDC dc,RECT client) {
             for(int i=0;i<4;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
-                COLORREF edge=Blend((i==0)?ABM_THEME_COLOR_449A8F:ABM_THEME_COLOR_334F65,ABM_THEME_COLOR_68C9B8,motion);
+                COLORREF cardEdge=Blend((i==0)?ABM_THEME_COLOR_449A8F:ABM_THEME_COLOR_334F65,ABM_THEME_COLOR_68C9B8,motion);
                 RECT shadow=card;OffsetRect(&shadow,0,5);RoundBox(dc,shadow,ABM_THEME_COLOR_03080E,13);
                 if(i==0)GradientRound(dc,card,Blend(ABM_THEME_COLOR_197770,ABM_THEME_COLOR_25998B,motion),ABM_THEME_COLOR_184B52,13);
                 else GradientRound(dc,card,Blend(ABM_THEME_COLOR_142535,ABM_THEME_COLOR_1D3A4C,motion),ABM_THEME_COLOR_0D1927,13);
-                ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,edge,0.85f+(float)motion*0.005f);
+                ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,cardEdge,0.85f+(float)motion*0.005f);
                 int cardW=card.right-card.left, cardH=card.bottom-card.top;
                 int iconSize=cardW<180?30:36, iconLeft=card.left+(cardW<180?10:12);
                 RECT icon={iconLeft,card.top+(cardH-iconSize)/2,iconLeft+iconSize,card.top+(cardH+iconSize)/2};
@@ -1175,9 +1175,9 @@ static void DrawUI(HDC dc,RECT client) {
                 int titleTop=cardH>=70?10:6, titleBottom=cardH>=70?39:cardH/2+2;
                 int subTop=cardH>=70?38:cardH/2, subBottom=cardH>=70?cardH-8:cardH-5;
                 RECT title={textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
-                RECT sub={textLeft,card.top+subTop,card.right-8,card.top+subBottom};
+                RECT cardSubtitle={textLeft,card.top+subTop,card.right-8,card.top+subBottom};
                 Txt(dc,titles[i],title,ABM_THEME_COLOR_F4F9FF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                Txt(dc,subs[i],sub,ABM_THEME_COLOR_9EB5C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,subs[i],cardSubtitle,ABM_THEME_COLOR_9EB5C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             int footGap=12, footHeight=20;
             RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
@@ -1218,9 +1218,9 @@ static void DrawUI(HDC dc,RECT client) {
     prog.right=prog.left+(prog.right-prog.left)*pos/1000;
     if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_2AA99E,ABM_THEME_COLOR_70C7A1,5);
     int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
-    RECT halo={thumb-11,R_SEEK.top-11,thumb+11,R_SEEK.bottom+11};
+    RECT halo={seekThumb.left-11,R_SEEK.top-11,seekThumb.left+11,R_SEEK.bottom+11};
     RoundBox(dc,halo,ABM_THEME_COLOR_153943,11);
-    RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};
+    RECT dot={seekThumb.left-5,R_SEEK.top-5,seekThumb.left+5,R_SEEK.bottom+5};
     RoundBox(dc,dot,ABM_THEME_COLOR_F2F9FF,8);
     ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,8.0f,ABM_THEME_COLOR_5DC2B5,1.0f);
 
