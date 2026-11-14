@@ -785,20 +785,56 @@ static void UpdateLayout(HWND hwnd) {
         menuY+=rowH;
     }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
-    /* Home dashboard actions occupy the right-hand hero column. Keep their
-       geometry derived from the video stage so they follow window resizing. */
+    /* Keep the four dashboard actions strictly inside the green hero panel.
+       The panel, not the full video stage, is the source of truth for their
+       available width and height. Switch to one column only when two columns
+       would make the cards too narrow to read. */
     {
         int hw=R_VIDEO.right-R_VIDEO.left, hh=R_VIDEO.bottom-R_VIDEO.top;
-        int cardW=(hw*20/100); if(cardW>224)cardW=224; if(cardW<154)cardW=154;
-        int cardH=76, gap=14;
-        int x=R_VIDEO.left+hw*58/100, y=R_VIDEO.top+hh*34/100;
-        int maxRight=R_VIDEO.right-24;
-        if(x+cardW*2+gap>maxRight)x=maxRight-cardW*2-gap;
-        if(x<R_VIDEO.left+hw*48/100)x=R_VIDEO.left+hw*48/100;
-        R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
-        R_HOME_STREAM=(RECT){x+cardW+gap,y,x+cardW*2+gap,y+cardH};
-        R_HOME_TORRENT=(RECT){x,y+cardH+gap,x+cardW,y+cardH*2+gap};
-        R_HOME_RECENT=(RECT){x+cardW+gap,y+cardH+gap,x+cardW*2+gap,y+cardH*2+gap};
+        RECT hero={
+            R_VIDEO.left+hw*36/100,
+            R_VIDEO.top+hh/6,
+            R_VIDEO.right-hw/8,
+            R_VIDEO.bottom-hh/7
+        };
+        int panelW=hero.right-hero.left, panelH=hero.bottom-hero.top;
+        int cardGap=14, rowGap=14, footGap=16, footH=24;
+        int cardH=76, x, y, cardW;
+        BOOL oneColumn=panelW<330;
+        if(oneColumn) {
+            int pad=18, rowSpace=8;
+            cardGap=0; rowGap=rowSpace; footGap=10; footH=20;
+            cardW=panelW-2*pad;
+            cardH=(panelH-3*rowGap-footGap-footH)/4;
+            if(cardH>58)cardH=58;
+            if(cardH<42)cardH=42;
+            x=hero.left+pad;
+            int totalH=4*cardH+3*rowGap+footGap+footH;
+            y=hero.top+(panelH-totalH)/2;
+            if(y<hero.top+8)y=hero.top+8;
+            R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
+            R_HOME_STREAM=(RECT){x,y+cardH+rowGap,x+cardW,y+2*cardH+rowGap};
+            R_HOME_TORRENT=(RECT){x,y+2*(cardH+rowGap),x+cardW,y+3*cardH+2*rowGap};
+            R_HOME_RECENT=(RECT){x,y+3*(cardH+rowGap),x+cardW,y+4*cardH+3*rowGap};
+        } else {
+            int pad=24;
+            cardW=(panelW-2*pad-cardGap)/2;
+            int totalH=2*cardH+rowGap+footGap+footH;
+            if(totalH>panelH) {
+                cardH=(panelH-rowGap-footGap-footH)/2;
+                if(cardH>76)cardH=76;
+                if(cardH<44)cardH=44;
+                totalH=2*cardH+rowGap+footGap+footH;
+            }
+            x=hero.left+pad;
+            y=hero.top+(panelH-totalH)/2;
+            if(y<hero.top+8)y=hero.top+8;
+            int rightX=x+cardW+cardGap;
+            R_HOME_OPEN=(RECT){x,y,x+cardW,y+cardH};
+            R_HOME_STREAM=(RECT){rightX,y,rightX+cardW,y+cardH};
+            R_HOME_TORRENT=(RECT){x,y+cardH+rowGap,x+cardW,y+2*cardH+rowGap};
+            R_HOME_RECENT=(RECT){rightX,y+cardH+rowGap,rightX+cardW,y+2*cardH+rowGap};
+        }
     }
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -1097,15 +1133,22 @@ static void DrawUI(HDC dc,RECT client) {
                 if(i==0)GradientRound(dc,card,Blend(RGB(25,119,112),RGB(37,153,139),motion),RGB(24,75,82),13);
                 else GradientRound(dc,card,Blend(RGB(20,37,53),RGB(29,58,76),motion),RGB(13,25,39),13);
                 ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,edge,0.85f+(float)motion*0.005f);
-                RECT icon={card.left+12,card.top+13,card.left+48,card.bottom-13};
+                int cardW=card.right-card.left, cardH=card.bottom-card.top;
+                int iconSize=cardW<180?30:36, iconLeft=card.left+(cardW<180?10:12);
+                RECT icon={iconLeft,card.top+(cardH-iconSize)/2,iconLeft+iconSize,card.top+(cardH+iconSize)/2};
                 RoundBox(dc,icon,Blend((i==0)?RGB(39,157,143):RGB(29,56,71),RGB(44,171,154),motion),9);
                 Txt(dc,glyphs[i],icon,RGB(226,247,245),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-                RECT title={cards[i].left+58,cards[i].top+10,cards[i].right-8,cards[i].top+39};
-                RECT sub={cards[i].left+58,cards[i].top+38,cards[i].right-8,cards[i].bottom-8};
+                int textLeft=icon.right+10;
+                int titleTop=cardH>=70?10:6, titleBottom=cardH>=70?39:cardH/2+2;
+                int subTop=cardH>=70?38:cardH/2, subBottom=cardH>=70?cardH-8:cardH-5;
+                RECT title={card.left+textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
+                RECT sub={card.left+textLeft,card.top+subTop,card.right-8,card.top+subBottom};
                 Txt(dc,titles[i],title,RGB(244,249,255),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,subs[i],sub,RGB(158,181,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
-            RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+16,R_HOME_RECENT.right,R_HOME_RECENT.bottom+40};
+            int footGap=(R_HOME_RECENT.left==R_HOME_OPEN.left)?10:16;
+            int footHeight=(R_HOME_RECENT.left==R_HOME_OPEN.left)?20:24;
+            RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
             Txt(dc,L"LOCAL LIBRARY   •   STREAMING   •   TORRENT",foot,RGB(119,169,169),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
     }
