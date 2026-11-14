@@ -201,13 +201,13 @@ static int g_eqDragBand=-1;
 
 enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT_VOLUME, HIT_SCAN, HIT_ROW_BASE = 1000 };
 
-static COLORREF C_BG = RGB(6,9,16);
-static COLORREF C_PANEL = RGB(12,18,29);
-static COLORREF C_PANEL2 = RGB(20,29,43);
-static COLORREF C_TEXT = RGB(245,248,255);
-static COLORREF C_MUTED = RGB(145,160,181);
-static COLORREF C_ACCENT = RGB(82,205,224);
-static COLORREF C_LINE = RGB(39,51,70);
+#define C_BG     ABM_UI_COLOR_BACKGROUND
+#define C_PANEL  ABM_UI_COLOR_SURFACE
+#define C_PANEL2 ABM_UI_COLOR_SURFACE_RAISED
+#define C_TEXT   ABM_THEME_COLOR_F5F8FF
+#define C_MUTED  ABM_UI_COLOR_TEXT_MUTED
+#define C_ACCENT ABM_THEME_COLOR_52CDE0
+#define C_LINE   ABM_UI_COLOR_BORDER
 
 
 /* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
@@ -237,20 +237,20 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     }
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
-        HBRUSH bg=CreateSolidBrush(RGB(9,15,25));FillRect(dc,&rc,bg);DeleteObject(bg);
-        RECT head={0,0,rc.right,54};HBRUSH hb=CreateSolidBrush(RGB(15,34,48));FillRect(dc,&head,hb);DeleteObject(hb);
-        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(242,248,255));
+        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_090F19);FillRect(dc,&rc,bg);DeleteObject(bg);
+        RECT head={0,0,rc.right,54};HBRUSH hb=CreateSolidBrush(ABM_THEME_COLOR_0F2230);FillRect(dc,&head,hb);DeleteObject(hb);
+        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
         HFONT title=CreateFontW(-18,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
         HFONT body=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         HGDIOBJ old=SelectObject(dc,title);RECT cap={22,8,rc.right-20,46};DrawTextW(dc,d->caption&&*d->caption?d->caption:L"ABM AV Player",-1,&cap,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        SelectObject(dc,body);COLORREF accent=(d->flags&MB_ICONERROR)?RGB(220,75,85):(d->flags&MB_ICONWARNING)?RGB(242,177,79):RGB(82,205,190);
+        SelectObject(dc,body);COLORREF accent=(d->flags&MB_ICONERROR)?ABM_THEME_COLOR_DC4B55:(d->flags&MB_ICONWARNING)?ABM_THEME_COLOR_F2B14F:ABM_THEME_COLOR_52CDBE;
         HBRUSH dot=CreateSolidBrush(accent);RECT mark={22,78,30,86};FillRect(dc,&mark,dot);DeleteObject(dot);
-        SetTextColor(dc,RGB(215,228,241));RECT msg={44,68,rc.right-24,rc.bottom-74};DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);RECT msg={44,68,rc.right-24,rc.bottom-74};DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
         for(int i=0;i<d->buttonCount;i++){
-            RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton);HBRUSH br=CreateSolidBrush(primary?RGB(24,126,116):RGB(25,39,55));FillRect(dc,&b,br);DeleteObject(br);
+            RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton);HBRUSH br=CreateSolidBrush(primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737);FillRect(dc,&b,br);DeleteObject(br);
             BOOL focused=(i==d->focusedButton);
-            HPEN pen=CreatePen(PS_SOLID,focused?3:1,focused?ABM_UI_COLOR_FOCUS:(primary?RGB(68,180,164):RGB(57,78,99)));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
-            SetTextColor(dc,RGB(247,250,255));RECT t=b;DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&t,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            HPEN pen=CreatePen(PS_SOLID,focused?3:1,focused?ABM_UI_COLOR_FOCUS:(primary?ABM_THEME_COLOR_44B4A4:ABM_THEME_COLOR_394E63));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
+            SetTextColor(dc,ABM_THEME_COLOR_F7FAFF);RECT t=b;DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&t,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
     }
@@ -308,17 +308,17 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){d->done=TRUE;DestroyWindow(w);return 0;}break;
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
-        HBRUSH bg=CreateSolidBrush(RGB(9,16,27));FillRect(dc,&rc,bg);DeleteObject(bg);
-        HBRUSH head=CreateSolidBrush(RGB(15,37,51));RECT hr={0,0,rc.right,48};FillRect(dc,&hr,head);DeleteObject(head);
+        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_09101B);FillRect(dc,&rc,bg);DeleteObject(bg);
+        HBRUSH head=CreateSolidBrush(ABM_THEME_COLOR_0F2533);RECT hr={0,0,rc.right,48};FillRect(dc,&hr,head);DeleteObject(head);
         SetBkMode(dc,TRANSPARENT);HFONT title=CreateFontW(-17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
         HFONT body=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,RGB(243,249,255));RECT tr={18,7,rc.right-14,42};DrawTextW(dc,L"ABM  /  ACTIONS",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,ABM_THEME_COLOR_F3F9FF);RECT tr={18,7,rc.right-14,42};DrawTextW(dc,L"ABM  /  ACTIONS",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         int visible=(rc.bottom-62)/36;if(visible<1)visible=1;
         for(int v=0;v<visible&&d->first+v<d->count;v++){
             int i=d->first+v;int top=54+v*36;RECT row={8,top,rc.right-8,top+33};const ABMMenuItem *it=&d->items[i];
-            if(it->heading){SelectObject(dc,body);SetTextColor(dc,RGB(89,185,174));RECT t={18,top+1,rc.right-12,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);continue;}
-            if(i==d->hover){HBRUSH hot=CreateSolidBrush(RGB(24,66,76));FillRect(dc,&row,hot);DeleteObject(hot);}
-            SelectObject(dc,body);SetTextColor(dc,it->enabled?RGB(226,238,249):RGB(91,108,128));RECT t={20,top+1,rc.right-14,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(it->heading){SelectObject(dc,body);SetTextColor(dc,ABM_THEME_COLOR_59B9AE);RECT t={18,top+1,rc.right-12,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);continue;}
+            if(i==d->hover){HBRUSH hot=CreateSolidBrush(ABM_THEME_COLOR_18424C);FillRect(dc,&row,hot);DeleteObject(hot);}
+            SelectObject(dc,body);SetTextColor(dc,it->enabled?ABM_THEME_COLOR_E2EEF9:ABM_THEME_COLOR_5B6C80);RECT t={20,top+1,rc.right-14,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
         SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
     }
@@ -862,22 +862,22 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
     int diameter=(r.right-r.left<r.bottom-r.top)?r.right-r.left:r.bottom-r.top;
     int radius=diameter/2;
-    COLORREF glyph=RGB(224,231,240);
+    COLORREF glyph=ABM_THEME_COLOR_E0E7F0;
     if(active) {
         int pulse=(int)(3.0+3.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
         RECT halo=r; InflateRect(&halo,3,3);
-        RoundBox(NULL,halo,Blend(RGB(12,48,57),RGB(24,91,99),pulse*2),radius+4);
-        GradientRound(NULL,r,RGB(25,143,145),RGB(31,111,116),radius);
-        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,RGB(105,202,195),1.15f);
-        glyph=RGB(255,255,255);
+        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_0C3039,ABM_THEME_COLOR_185B63,pulse*2),radius+4);
+        GradientRound(NULL,r,ABM_THEME_COLOR_198F91,ABM_THEME_COLOR_1F6F74,radius);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_69CAC3,1.15f);
+        glyph=ABM_THEME_COLOR_FFFFFF;
     } else {
-        COLORREF base=Blend(RGB(22,32,43),RGB(38,61,68),hot?g_hoverLevel:0);
+        COLORREF base=Blend(ABM_THEME_COLOR_16202B,ABM_THEME_COLOR_263D44,hot?g_hoverLevel:0);
         RoundBox(NULL,r,base,radius);
         if(hot) {
             RECT sheen={r.left+3,r.top+2,r.right-3,r.top+5};
-            GradientRect(NULL,sheen,RGB(47,157,157),RGB(80,177,164));
+            GradientRect(NULL,sheen,ABM_THEME_COLOR_2F9D9D,ABM_THEME_COLOR_50B1A4);
         }
-        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,hot?RGB(91,166,157):RGB(55,76,82),1.0f);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,hot?ABM_THEME_COLOR_5BA69D:ABM_THEME_COLOR_374C52,1.0f);
     }
     if(kind==1) {
         DrawLine(NULL,cx-6,cy-11,cx+10,cy,glyph,2);DrawLine(NULL,cx+10,cy,cx-6,cy+11,glyph,2);DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,2);
@@ -894,7 +894,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
     ABM_AudioVisualizer_GetBands(levels,24);
-    Fill(dc,area,RGB(8,15,20));
+    Fill(dc,area,ABM_THEME_COLOR_080F14);
     RECT inset=area; InflateRect(&inset,-22,-24);
     int width=inset.right-inset.left;
     int gap=5;
@@ -909,21 +909,21 @@ static void DrawVisualizer(HDC dc,RECT area) {
         int height=(int)(level*(float)maxHeight);
         int x=inset.left+i*(barWidth+gap);
         RECT bar={x,base-height,x+barWidth,base};
-        COLORREF color=Blend(RGB(35,116,122),RGB(100,202,166),(i*100)/23);
+        COLORREF color=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,(i*100)/23);
         ABM_D2D_Round(&g_ui,(float)bar.left,(float)bar.top,(float)bar.right,(float)bar.bottom,(float)(barWidth/2),color);
     }
     RECT label={area.left+20,area.top+14,area.right-20,area.top+38};
-    Txt(dc,L"NOW PLAYING  •  LIVE AUDIO SPECTRUM",label,RGB(151,184,180),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"NOW PLAYING  •  LIVE AUDIO SPECTRUM",label,ABM_THEME_COLOR_97B8B4,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT baseline={inset.left,base+8,inset.right,base+9};
-    Fill(dc,baseline,RGB(43,67,68));
+    Fill(dc,baseline,ABM_THEME_COLOR_2B4344);
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
         /* Immersive now-playing view: artwork, track metadata and transport
            controls are composed as one screen rather than a centered cover. */
-        GradientRect(dc,client,RGB(7,15,21),RGB(12,20,25));
+        GradientRect(dc,client,ABM_THEME_COLOR_070F15,ABM_THEME_COLOR_0C1419);
         RECT ambientTop={0,0,client.right,client.bottom/2};
-        GradientRect(dc,ambientTop,RGB(10,35,39),RGB(8,16,23));
+        GradientRect(dc,ambientTop,ABM_THEME_COLOR_0A2327,ABM_THEME_COLOR_081017);
         if(g_artworkLoaded) {
             int artSize=client.bottom-270;
             if(artSize>500)artSize=500;
@@ -932,9 +932,9 @@ static void DrawUI(HDC dc,RECT client) {
             int artX=(client.right/2-artSize)/2;
             int artY=(client.bottom-170-artSize)/2+12;
             RECT tile={artX,artY,artX+artSize,artY+artSize};
-            RECT tileShadow=tile;OffsetRect(&tileShadow,0,14);RoundBox(dc,tileShadow,RGB(3,6,13),22);
-            GradientRound(dc,tile,RGB(18,55,59),RGB(34,48,59),22);
-            ABM_D2D_StrokeRound(&g_ui,(float)tile.left,(float)tile.top,(float)tile.right,(float)tile.bottom,22.0f,RGB(83,151,143),1.25f);
+            RECT tileShadow=tile;OffsetRect(&tileShadow,0,14);RoundBox(dc,tileShadow,ABM_THEME_COLOR_03060D,22);
+            GradientRound(dc,tile,ABM_THEME_COLOR_12373B,ABM_THEME_COLOR_22303B,22);
+            ABM_D2D_StrokeRound(&g_ui,(float)tile.left,(float)tile.top,(float)tile.right,(float)tile.bottom,22.0f,ABM_THEME_COLOR_53978F,1.25f);
             ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+7,(float)tile.top+7,
                 (float)tile.right-7,(float)tile.bottom-7,(float)g_artworkFade/100.0f);
 
@@ -943,24 +943,24 @@ static void DrawUI(HDC dc,RECT client) {
             RECT kicker={infoX,artY+4,infoX+infoW,artY+34};
             RECT title={infoX,artY+50,infoX+infoW,artY+105};
             RECT artist={infoX,artY+112,infoX+infoW,artY+145};
-            Txt(dc,L"ABM  /  NOW PLAYING",kicker,RGB(104,194,177),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"ABM  /  NOW PLAYING",kicker,ABM_THEME_COLOR_68C2B1,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             Txt(dc,g_trackTitle[0]?g_trackTitle:L"Untitled track",title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            Txt(dc,g_trackArtist[0]?g_trackArtist:L"Unknown artist",artist,RGB(194,198,204),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,g_trackArtist[0]?g_trackArtist:L"Unknown artist",artist,ABM_THEME_COLOR_C2C6CC,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
             int cardY=artY+184;
             RECT artistCard={infoX,cardY,infoX+infoW,cardY+112};
-            Panel(dc,artistCard,RGB(13,29,46),RGB(48,91,125),16);
+            Panel(dc,artistCard,ABM_THEME_COLOR_0D1D2E,ABM_THEME_COLOR_305B7D,16);
             RECT artistHead={infoX+18,cardY+12,infoX+infoW-18,cardY+37};
             RECT artistName={infoX+18,cardY+45,infoX+infoW-18,cardY+72};
             RECT artistRole={infoX+18,cardY+75,infoX+infoW-18,cardY+98};
-            Txt(dc,L"ARTIST",artistHead,RGB(102,192,209),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"ARTIST",artistHead,ABM_THEME_COLOR_66C0D1,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             Txt(dc,g_trackArtist[0]?g_trackArtist:L"Artist information unavailable",artistName,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             Txt(dc,L"Artist",artistRole,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
             RECT credits={infoX,cardY+128,infoX+infoW,cardY+242};
-            Panel(dc,credits,RGB(13,29,46),RGB(48,91,125),16);
+            Panel(dc,credits,ABM_THEME_COLOR_0D1D2E,ABM_THEME_COLOR_305B7D,16);
             RECT creditsHead={infoX+18,credits.top+12,infoX+infoW-18,credits.top+37};
-            Txt(dc,L"TRACK INFORMATION",creditsHead,RGB(102,192,209),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"TRACK INFORMATION",creditsHead,ABM_THEME_COLOR_66C0D1,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT albumLabel={infoX+18,credits.top+45,infoX+110,credits.top+67};
             RECT albumValue={infoX+118,credits.top+45,infoX+infoW-18,credits.top+67};
             RECT genreLabel={infoX+18,credits.top+73,infoX+110,credits.top+95};
@@ -980,70 +980,70 @@ static void DrawUI(HDC dc,RECT client) {
     }
     Fill(dc,client,C_BG);
     RECT header={0,0,client.right,96};
-    GradientRect(dc,header,RGB(13,27,45),RGB(5,10,19));
+    GradientRect(dc,header,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
     RECT headerShade={0,82,client.right,96};
-    GradientRect(dc,headerShade,RGB(8,17,29),RGB(5,10,18));
-    Fill(dc,(RECT){0,95,client.right,96},RGB(39,61,83));
+    GradientRect(dc,headerShade,ABM_THEME_COLOR_08111D,ABM_THEME_COLOR_050A12);
+    Fill(dc,(RECT){0,95,client.right,96},ABM_THEME_COLOR_273D53);
     /* A restrained moving light sweep gives the top bar a little life without
        competing with the video or increasing the media-rendering workload. */
-    Fill(dc,(RECT){0,92,client.right,95},RGB(13,24,39));
+    Fill(dc,(RECT){0,92,client.right,95},ABM_THEME_COLOR_0D1827);
     int sweepWidth=112;
     int sweepX=(int)((g_visualPulse*3u)%(unsigned int)(client.right+sweepWidth))-sweepWidth;
     RECT sweep={sweepX,92,sweepX+sweepWidth,95};
-    GradientRect(dc,sweep,RGB(45,169,166),RGB(105,190,164));
+    GradientRect(dc,sweep,ABM_THEME_COLOR_2DA9A6,ABM_THEME_COLOR_69BEA4);
     /* Signature mark: a luminous A-monogram fused with a play glyph. */
     RECT logoHalo={20,7,102,87};
-    Panel(dc,logoHalo,RGB(13,28,45),RGB(63,151,180),22);
+    Panel(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,ABM_THEME_COLOR_3F97B4,22);
     RECT logo={28,14,94,80};
-    GradientRound(dc,logo,RGB(28,157,157),RGB(52,119,126),17);
+    GradientRound(dc,logo,ABM_THEME_COLOR_1C9D9D,ABM_THEME_COLOR_34777E,17);
     RECT logoInset={33,19,89,75};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
-        (float)logoInset.right,(float)logoInset.bottom,14.0f,RGB(190,229,255),0.8f);
+        (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_THEME_COLOR_BEE5FF,0.8f);
     /* Geometric A: crisp strokes remain legible at small window sizes. */
-    DrawLine(dc,42,63,59,30,RGB(255,255,255),3);
-    DrawLine(dc,59,30,76,63,RGB(255,255,255),3);
-    DrawLine(dc,49,49,68,49,RGB(226,245,255),2);
+    DrawLine(dc,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3);
+    DrawLine(dc,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3);
+    DrawLine(dc,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2);
     /* Play triangle, offset into the A to make the mark distinctive. */
-    DrawLine(dc,62,40,75,48,RGB(255,255,255),2);
-    DrawLine(dc,75,48,62,56,RGB(255,255,255),2);
-    DrawLine(dc,62,56,62,40,RGB(255,255,255),2);
+    DrawLine(dc,62,40,75,48,ABM_THEME_COLOR_FFFFFF,2);
+    DrawLine(dc,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2);
+    DrawLine(dc,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2);
 
     RECT brandMain={116,8,420,49};
-    Txt(dc,L"ABM",brandMain,RGB(247,250,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandSuffix={188,20,390,48};
-    Txt(dc,L"AV  PLAYER",brandSuffix,RGB(132,205,194),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,354,54};
-    GradientRect(dc,brandRule,RGB(54,177,168),RGB(112,190,157));
+    GradientRect(dc,brandRule,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
     RECT sub={116,60,510,83};
-    Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",sub,RGB(157,177,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",sub,ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
-    Panel(dc,menuBtn,g_menuOpen?RGB(32,78,91):Blend(RGB(17,29,47),RGB(36,57,84),menuHot?100:0),
-        g_menuOpen?RGB(92,165,182):(menuHot?RGB(80,132,191):RGB(47,69,98)),15);
+    Panel(dc,menuBtn,g_menuOpen?ABM_THEME_COLOR_204E5B:Blend(ABM_THEME_COLOR_111D2F,ABM_THEME_COLOR_243954,menuHot?100:0),
+        g_menuOpen?ABM_THEME_COLOR_5CA5B6:(menuHot?ABM_THEME_COLOR_5084BF:ABM_THEME_COLOR_2F4562),15);
     /* Keep the hamburger icon in its own compact column, clear of the label. */
-    for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.left+29,menuBtn.top+13+i*7,RGB(226,236,249),2);
+    for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.left+29,menuBtn.top+13+i*7,ABM_THEME_COLOR_E2ECF9,2);
     RECT menuLabel={menuBtn.left+39,menuBtn.top+3,menuBtn.right-7,menuBtn.bottom-3};
-    Txt(dc,L"MENU",menuLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"MENU",menuLabel,ABM_THEME_COLOR_E0EBF9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT drawerBtn=R_DRAWER_BUTTON;
-    Panel(dc,drawerBtn,g_drawerOpen?RGB(32,78,132):Blend(RGB(17,29,47),RGB(36,57,84),drawerHot?100:0),g_drawerOpen?RGB(92,165,242):(drawerHot?RGB(80,132,191):RGB(47,69,98)),15);
-    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+15,drawerBtn.left+29,drawerBtn.top+15,RGB(220,235,252),2);
-    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+22,drawerBtn.left+29,drawerBtn.top+22,RGB(220,235,252),2);
-    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,RGB(220,235,252),2);
+    Panel(dc,drawerBtn,g_drawerOpen?ABM_THEME_COLOR_204E84:Blend(ABM_THEME_COLOR_111D2F,ABM_THEME_COLOR_243954,drawerHot?100:0),g_drawerOpen?ABM_THEME_COLOR_5CA5F2:(drawerHot?ABM_THEME_COLOR_5084BF:ABM_THEME_COLOR_2F4562),15);
+    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+15,drawerBtn.left+29,drawerBtn.top+15,ABM_THEME_COLOR_DCEBFC,2);
+    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+22,drawerBtn.left+29,drawerBtn.top+22,ABM_THEME_COLOR_DCEBFC,2);
+    DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,ABM_THEME_COLOR_DCEBFC,2);
     RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
-    Txt(dc,L"MEDIA",drawerLabel,RGB(224,235,249),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"MEDIA",drawerLabel,ABM_THEME_COLOR_E0EBF9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT status={client.right-540,26,client.right-300,64};
-    Panel(dc,status,RGB(12,24,39),RGB(53,116,143),18);
-    RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?RGB(63,205,145):RGB(100,117,139),5);
+    Panel(dc,status,ABM_THEME_COLOR_0C1827,ABM_THEME_COLOR_35748F,18);
+    RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?ABM_THEME_COLOR_3FCD91:ABM_THEME_COLOR_64758B,5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
     Txt(dc,g_statusText[0]?g_statusText:(g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER"),statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
     int glow=(int)(14.0+5.0*(0.5+0.5*sin((double)g_visualPulse*0.045)));
-    COLORREF edge=Blend(RGB(30,48,53),RGB(55,127,117),glow);
-    Panel(dc,frame,RGB(6,10,17),edge,20);
-    GradientRect(dc,R_VIDEO,RGB(7,15,26),RGB(4,8,15));
+    COLORREF edge=Blend(ABM_THEME_COLOR_1E3035,ABM_THEME_COLOR_377F75,glow);
+    Panel(dc,frame,ABM_THEME_COLOR_060A11,edge,20);
+    GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
@@ -1055,7 +1055,7 @@ static void DrawUI(HDC dc,RECT client) {
         int tileX=R_VIDEO.left+42;
         int tileY=R_VIDEO.top+(areaH-cover)/2;
         RECT tile={tileX,tileY,tileX+cover,tileY+cover};
-        Panel(dc,tile,RGB(13,20,32),RGB(72,119,178),19);
+        Panel(dc,tile,ABM_THEME_COLOR_0D1420,ABM_THEME_COLOR_4877B2,19);
         ABM_D2D_DrawImageCover(&g_ui,(float)tile.left+8,(float)tile.top+8,
             (float)tile.right-8,(float)tile.bottom-8,(float)g_artworkFade/100.0f);
 
@@ -1064,11 +1064,11 @@ static void DrawUI(HDC dc,RECT client) {
         RECT title={infoX,R_VIDEO.top+areaH/2-76,R_VIDEO.right-42,R_VIDEO.top+areaH/2-25};
         RECT artist={infoX,R_VIDEO.top+areaH/2-17,R_VIDEO.right-42,R_VIDEO.top+areaH/2+16};
         RECT detail={infoX,R_VIDEO.top+areaH/2+38,R_VIDEO.right-42,R_VIDEO.top+areaH/2+64};
-        Txt(dc,L"NOW PLAYING  /  ABM AUDIO",kicker,RGB(105,190,177),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"NOW PLAYING  /  ABM AUDIO",kicker,ABM_THEME_COLOR_69BEB1,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_trackTitle[0]) Txt(dc,g_trackTitle,title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         else Txt(dc,L"Untitled track",title,C_TEXT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,RGB(191,207,229),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        else Txt(dc,L"Your personal listening session",artist,RGB(191,207,229),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        if(g_trackArtist[0]) Txt(dc,g_trackArtist,artist,ABM_THEME_COLOR_BFCFE5,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        else Txt(dc,L"Your personal listening session",artist,ABM_THEME_COLOR_BFCFE5,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         int64_t trackLength=g_player?libvlc_media_player_get_length(g_player):0;
         wchar_t duration[48]; FormatTime((int)trackLength,duration,48);
         Txt(dc,duration,detail,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -1080,7 +1080,7 @@ static void DrawUI(HDC dc,RECT client) {
             double pulse=0.22+0.78*(0.5+0.5*sin((double)g_visualPulse*0.095+i*0.47));
             int bh=5+(int)(pulse*25.0);
             RECT bar={waveX+i*(bw+gap),waveY-bh/2,waveX+i*(bw+gap)+bw,waveY+bh/2};
-            COLORREF col=Blend(RGB(43,151,145),RGB(108,184,151),i*100/(bars-1));
+            COLORREF col=Blend(ABM_THEME_COLOR_2B9791,ABM_THEME_COLOR_6CB897,i*100/(bars-1));
             RoundBox(dc,bar,col,3);
         }
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
@@ -1093,25 +1093,25 @@ static void DrawUI(HDC dc,RECT client) {
         /* Keep the copy in a dedicated left column. The teal hero panel
            begins farther right so the text never crosses its rounded edge. */
         RECT ambient={R_VIDEO.left+areaW*36/100,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
-        GradientRound(dc,ambient,RGB(10,35,39),RGB(17,27,34),34);
+        GradientRound(dc,ambient,ABM_THEME_COLOR_0A2327,ABM_THEME_COLOR_111B22,34);
         RECT glowLine={ambient.left+26,ambient.top+1,ambient.right-26,ambient.top+3};
-        GradientRect(dc,glowLine,RGB(47,171,158),RGB(112,187,150));
+        GradientRect(dc,glowLine,ABM_THEME_COLOR_2FAB9E,ABM_THEME_COLOR_70BB96);
         int leftX=R_VIDEO.left+areaW*7/100;
         int textW=areaW*27/100;
         int topY=cy-112;
         RECT eyebrowPill={leftX,topY+5,leftX+8,topY+13};
-        RoundBox(dc,eyebrowPill,RGB(75,211,190),4);
-        Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},RGB(120,190,206),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RoundBox(dc,eyebrowPill,ABM_THEME_COLOR_4BD3BE,4);
+        Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},ABM_THEME_COLOR_78BECE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT headline1={leftX,topY+42,leftX+textW,topY+91};
         RECT headline2={leftX,topY+88,leftX+textW,topY+137};
-        Txt(dc,L"Capture the feeling.",headline1,RGB(247,249,255),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        Txt(dc,L"Relive every moment.",headline2,RGB(126,199,181),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Capture the feeling.",headline1,ABM_THEME_COLOR_F7F9FF,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Relive every moment.",headline2,ABM_THEME_COLOR_7EC7B5,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail={leftX,topY+151,leftX+textW,topY+194};
-        Txt(dc,L"A refined home for music, movies and",detail,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"A refined home for music, movies and",detail,ABM_THEME_COLOR_B0C0D5,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail2={leftX,topY+177,leftX+textW,topY+218};
-        Txt(dc,L"everything you love to watch and hear.",detail2,RGB(176,192,213),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"everything you love to watch and hear.",detail2,ABM_THEME_COLOR_B0C0D5,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT hint={leftX,topY+237,leftX+textW,topY+263};
-        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,RGB(112,195,179),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,ABM_THEME_COLOR_70C3B3,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
         /* Action-led home dashboard: four real destinations replace the
            decorative album stack. Each card has a generous hit target and
@@ -1125,31 +1125,31 @@ static void DrawUI(HDC dc,RECT client) {
             for(int i=0;i<4;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
-                COLORREF edge=Blend((i==0)?RGB(68,154,143):RGB(51,79,101),RGB(104,201,184),motion);
-                RECT shadow=card;OffsetRect(&shadow,0,5);RoundBox(dc,shadow,RGB(3,8,14),13);
-                if(i==0)GradientRound(dc,card,Blend(RGB(25,119,112),RGB(37,153,139),motion),RGB(24,75,82),13);
-                else GradientRound(dc,card,Blend(RGB(20,37,53),RGB(29,58,76),motion),RGB(13,25,39),13);
+                COLORREF edge=Blend((i==0)?ABM_THEME_COLOR_449A8F:ABM_THEME_COLOR_334F65,ABM_THEME_COLOR_68C9B8,motion);
+                RECT shadow=card;OffsetRect(&shadow,0,5);RoundBox(dc,shadow,ABM_THEME_COLOR_03080E,13);
+                if(i==0)GradientRound(dc,card,Blend(ABM_THEME_COLOR_197770,ABM_THEME_COLOR_25998B,motion),ABM_THEME_COLOR_184B52,13);
+                else GradientRound(dc,card,Blend(ABM_THEME_COLOR_142535,ABM_THEME_COLOR_1D3A4C,motion),ABM_THEME_COLOR_0D1927,13);
                 ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,edge,0.85f+(float)motion*0.005f);
                 int cardW=card.right-card.left, cardH=card.bottom-card.top;
                 int iconSize=cardW<180?30:36, iconLeft=card.left+(cardW<180?10:12);
                 RECT icon={iconLeft,card.top+(cardH-iconSize)/2,iconLeft+iconSize,card.top+(cardH+iconSize)/2};
-                RoundBox(dc,icon,Blend((i==0)?RGB(39,157,143):RGB(29,56,71),RGB(44,171,154),motion),9);
-                Txt(dc,glyphs[i],icon,RGB(226,247,245),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                RoundBox(dc,icon,Blend((i==0)?ABM_THEME_COLOR_279D8F:ABM_THEME_COLOR_1D3847,ABM_THEME_COLOR_2CAB9A,motion),9);
+                Txt(dc,glyphs[i],icon,ABM_THEME_COLOR_E2F7F5,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
                 int textLeft=icon.right+10;
                 int titleTop=cardH>=70?10:6, titleBottom=cardH>=70?39:cardH/2+2;
                 int subTop=cardH>=70?38:cardH/2, subBottom=cardH>=70?cardH-8:cardH-5;
                 RECT title={textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
                 RECT sub={textLeft,card.top+subTop,card.right-8,card.top+subBottom};
-                Txt(dc,titles[i],title,RGB(244,249,255),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                Txt(dc,subs[i],sub,RGB(158,181,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,titles[i],title,ABM_THEME_COLOR_F4F9FF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,subs[i],sub,ABM_THEME_COLOR_9EB5C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             int footGap=12, footHeight=20;
             RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
-            Txt(dc,L"LOCAL LIBRARY   •   STREAMING   •   TORRENT",foot,RGB(119,169,169),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"LOCAL LIBRARY   •   STREAMING   •   TORRENT",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
     }
     RECT fs=R_FULLSCREEN;
-    RoundBox(dc,fs,RGB(20,29,42),8);
+    RoundBox(dc,fs,ABM_THEME_COLOR_141D2A,8);
     DrawLine(dc,fs.left+9,fs.top+13,fs.left+9,fs.top+7,C_TEXT,2);
     DrawLine(dc,fs.left+9,fs.top+7,fs.left+15,fs.top+7,C_TEXT,2);
     DrawLine(dc,fs.right-9,fs.top+13,fs.right-9,fs.top+7,C_TEXT,2);
@@ -1174,63 +1174,63 @@ static void DrawUI(HDC dc,RECT client) {
     FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);
     RECT elapsedLabel={R_SEEK.left,R_SEEK.top-31,R_SEEK.left+92,R_SEEK.top-9};
     RECT totalLabel={R_SEEK.right-92,R_SEEK.top-31,R_SEEK.right,R_SEEK.top-9};
-    Txt(dc,t1,elapsedLabel,RGB(205,220,230),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    Txt(dc,t2,totalLabel,RGB(135,157,177),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,t1,elapsedLabel,ABM_THEME_COLOR_CDDCE6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,t2,totalLabel,ABM_THEME_COLOR_879DB1,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     RECT track={R_SEEK.left,R_SEEK.top-2,R_SEEK.right,R_SEEK.bottom+2};
-    RoundBox(dc,track,RGB(31,48,61),5);
+    RoundBox(dc,track,ABM_THEME_COLOR_1F303D,5);
     RECT prog=track;
     prog.right=prog.left+(prog.right-prog.left)*pos/1000;
-    if(prog.right>prog.left)GradientRound(dc,prog,RGB(42,169,158),RGB(112,199,161),5);
+    if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_2AA99E,ABM_THEME_COLOR_70C7A1,5);
     int thumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
     RECT halo={thumb-11,R_SEEK.top-11,thumb+11,R_SEEK.bottom+11};
-    RoundBox(dc,halo,RGB(21,57,67),11);
+    RoundBox(dc,halo,ABM_THEME_COLOR_153943,11);
     RECT dot={thumb-5,R_SEEK.top-5,thumb+5,R_SEEK.bottom+5};
-    RoundBox(dc,dot,RGB(242,249,255),8);
-    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,8.0f,RGB(93,194,181),1.0f);
+    RoundBox(dc,dot,ABM_THEME_COLOR_F2F9FF,8);
+    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,8.0f,ABM_THEME_COLOR_5DC2B5,1.0f);
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
     RECT dock={dockLeft,client.bottom-144,dockLeft+720,client.bottom-42};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,8);
-    RoundBox(dc,dockShadow,RGB(3,7,13),32);
-    GradientRound(dc,dock,RGB(17,34,43),RGB(15,27,39),28);
+    RoundBox(dc,dockShadow,ABM_THEME_COLOR_03070D,32);
+    GradientRound(dc,dock,ABM_THEME_COLOR_11222B,ABM_THEME_COLOR_0F1B27,28);
     /* Fine top-edge light gives the transport surface a clear visual boundary. */
     RECT dockTop={dock.left+30,dock.top+1,dock.right-30,dock.top+3};
-    GradientRect(dc,dockTop,RGB(48,157,151),RGB(93,176,151));
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,RGB(59,105,109),1.0f);
+    GradientRect(dc,dockTop,ABM_THEME_COLOR_309D97,ABM_THEME_COLOR_5DB097);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_3B696D,1.0f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,RGB(37,61,69),0.65f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_253D45,0.65f);
     /* Dedicated Now Playing identity block makes the transport dock a real
        player surface rather than a floating row of generic buttons. */
     RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
-    GradientRound(dc,miniArt,RGB(28,143,139),RGB(52,112,119),14);
+    GradientRound(dc,miniArt,ABM_THEME_COLOR_1C8F8B,ABM_THEME_COLOR_347077,14);
     RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
-    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,RGB(165,218,207),0.85f);
+    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_THEME_COLOR_A5DACF,0.85f);
     if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
     else {
         int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
-        DrawLine(dc,mx-12,my+13,mx,my-14,RGB(244,250,255),2);
-        DrawLine(dc,mx,my-14,mx+13,my+13,RGB(244,250,255),2);
-        DrawLine(dc,mx-7,my+3,mx+7,my+3,RGB(244,250,255),2);
+        DrawLine(dc,mx-12,my+13,mx,my-14,ABM_THEME_COLOR_F4FAFF,2);
+        DrawLine(dc,mx,my-14,mx+13,my+13,ABM_THEME_COLOR_F4FAFF,2);
+        DrawLine(dc,mx-7,my+3,mx+7,my+3,ABM_THEME_COLOR_F4FAFF,2);
     }
     RECT nowLabel={miniArt.right+14,dock.top+12,dock.left+346,dock.top+31};
-    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,RGB(111,194,180),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,ABM_THEME_COLOR_6FC2B4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT nowTitle={miniArt.right+14,dock.top+32,dock.left+346,dock.top+59};
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
-    Txt(dc,dockTitle,nowTitle,RGB(246,249,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,dockTitle,nowTitle,ABM_THEME_COLOR_F6F9FF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-9};
-    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,RGB(151,174,199),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,ABM_THEME_COLOR_97AEC7,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
-    Fill(dc,transportDivider,RGB(45,68,71));
+    Fill(dc,transportDivider,ABM_THEME_COLOR_2D4447);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     RECT open=R_OPEN;
-    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?RGB(42,157,148):RGB(22,48,52),(g_hoverButton==HIT_OPEN)?RGB(76,174,151):RGB(39,75,72),14);
-    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?RGB(126,205,185):RGB(66,112,105),1.0f);
+    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_2A9D94:ABM_THEME_COLOR_163034,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_4CAE97:ABM_THEME_COLOR_274B48,14);
+    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_7ECDB9:ABM_THEME_COLOR_427069,1.0f);
     RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
-    Txt(dc,L"+",plus,RGB(230,242,255),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"+",plus,ABM_THEME_COLOR_E6F2FF,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
     Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
@@ -1240,48 +1240,48 @@ static void DrawUI(HDC dc,RECT client) {
     /* Slide-out media drawer: output, quick controls, search and queue. */
     /* Premium media-library surface with layered navy and an inset rim. */
     RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
-    RoundBox(dc,drawerShadow,RGB(4,8,14),26);
+    RoundBox(dc,drawerShadow,ABM_THEME_COLOR_04080E,26);
     /* Slightly lighter layered glass treatment while media is playing. */
     if(g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing)
-        GradientRound(dc,R_SIDEBAR,RGB(20,29,42),RGB(16,25,38),28);
+        GradientRound(dc,R_SIDEBAR,ABM_THEME_COLOR_141D2A,ABM_THEME_COLOR_101926,28);
     else
-        GradientRound(dc,R_SIDEBAR,RGB(19,28,41),RGB(15,23,35),28);
-    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,28.0f,RGB(67,88,111),1.0f);
+        GradientRound(dc,R_SIDEBAR,ABM_THEME_COLOR_131C29,ABM_THEME_COLOR_0F1723,28);
+    ABM_D2D_StrokeRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,(float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,28.0f,ABM_THEME_COLOR_43586F,1.0f);
     RECT drawerInset={R_SIDEBAR.left+2,R_SIDEBAR.top+2,R_SIDEBAR.right-2,R_SIDEBAR.bottom-2};
-    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,26.0f,RGB(43,63,78),0.55f);
+    ABM_D2D_StrokeRound(&g_ui,(float)drawerInset.left,(float)drawerInset.top,(float)drawerInset.right,(float)drawerInset.bottom,26.0f,ABM_THEME_COLOR_2B3F4E,0.55f);
     int accentX=R_SIDEBAR.left+18+(int)((g_visualPulse*2u)%(unsigned int)((R_SIDEBAR.right-R_SIDEBAR.left)-72));
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
-    GradientRect(dc,accent,RGB(48,169,157),RGB(104,187,151));
+    GradientRect(dc,accent,ABM_THEME_COLOR_30A99D,ABM_THEME_COLOR_68BB97);
     if(g_drawerSettingsOpen) {
     RECT sideTitle={R_SIDEBAR.left+18,R_SIDEBAR.top+64,R_SIDEBAR.right-18,R_SIDEBAR.top+82};
     Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
-    GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?RGB(37,123,112):RGB(20,49,51),(g_hoverButton==HIT_SCAN)?RGB(67,151,126):RGB(31,72,68),12);
-    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,RGB(66,132,116),0.95f);
+    GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?ABM_THEME_COLOR_257B70:ABM_THEME_COLOR_143133,(g_hoverButton==HIT_SCAN)?ABM_THEME_COLOR_43977E:ABM_THEME_COLOR_1F4844,12);
+    ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,ABM_THEME_COLOR_428474,0.95f);
     RECT scanIcon={scan.left+14,scan.top+8,scan.left+34,scan.bottom-8};
-    DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.left+2,scanIcon.bottom-7,RGB(220,236,255),2);
-    DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.right-2,scanIcon.top+8,RGB(220,236,255),2);
-    DrawLine(dc,scanIcon.right-2,scanIcon.top+8,scanIcon.right-2,scanIcon.bottom-7,RGB(220,236,255),2);
+    DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.left+2,scanIcon.bottom-7,ABM_THEME_COLOR_DCECFF,2);
+    DrawLine(dc,scanIcon.left+2,scanIcon.top+8,scanIcon.right-2,scanIcon.top+8,ABM_THEME_COLOR_DCECFF,2);
+    DrawLine(dc,scanIcon.right-2,scanIcon.top+8,scanIcon.right-2,scanIcon.bottom-7,ABM_THEME_COLOR_DCECFF,2);
     RECT scanText={scan.left+42,scan.top+2,scan.right-10,scan.bottom-2};
     Txt(dc,L"Discover devices",scanText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Fully custom Direct2D output selector. */
-    COLORREF receiverFill=g_receiverPopup?RGB(42,45,50):RGB(30,32,36); (void)receiverFill;
-    Panel(dc,receiver,g_receiverPopup?RGB(27,73,68):RGB(19,43,43),g_receiverPopup?RGB(82,166,137):RGB(57,104,91),12);
+    COLORREF receiverFill=g_receiverPopup?ABM_THEME_COLOR_2A2D32:ABM_THEME_COLOR_1E2024; (void)receiverFill;
+    Panel(dc,receiver,g_receiverPopup?ABM_THEME_COLOR_1B4944:ABM_THEME_COLOR_132B2B,g_receiverPopup?ABM_THEME_COLOR_52A689:ABM_THEME_COLOR_39685B,12);
     RECT deviceIcon={receiver.left+12,receiver.top+7,receiver.left+34,receiver.bottom-7};
-    GradientRound(dc,deviceIcon,RGB(29,130,119),RGB(48,101,103),6);
-    DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,RGB(197,205,214),2);
-    DrawLine(dc,deviceIcon.left+4,deviceIcon.bottom-5,deviceIcon.right-4,deviceIcon.bottom-5,RGB(197,205,214),2);
+    GradientRound(dc,deviceIcon,ABM_THEME_COLOR_1D8277,ABM_THEME_COLOR_306567,6);
+    DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,ABM_THEME_COLOR_C5CDD6,2);
+    DrawLine(dc,deviceIcon.left+4,deviceIcon.bottom-5,deviceIcon.right-4,deviceIcon.bottom-5,ABM_THEME_COLOR_C5CDD6,2);
     wchar_t deviceName[256]=L"Local playback";
     if(sel>0)SendMessageW(g_renderers,CB_GETLBTEXT,sel,(LPARAM)deviceName);
     RECT deviceText={receiver.left+44,receiver.top+2,receiver.right-48,receiver.bottom-2};
     Txt(dc,deviceName,deviceText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     int arrowX=receiver.right-20,arrowY=(receiver.top+receiver.bottom)/2;
-    DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,RGB(190,196,204),1.8f);
-    DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,RGB(190,196,204),1.8f);
+    DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,ABM_THEME_COLOR_BEC4CC,1.8f);
+    DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,ABM_THEME_COLOR_BEC4CC,1.8f);
 
     RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+178,R_SIDEBAR.right-18,R_SIDEBAR.top+198};
-    Txt(dc,L"QUICK ACTIONS",toolsHead,RGB(119,177,164),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"QUICK ACTIONS",toolsHead,ABM_THEME_COLOR_77B1A4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
     const wchar_t *actionIcons[4]={L"S",L"R",L"1x",L"..."};
@@ -1290,69 +1290,69 @@ static void DrawUI(HDC dc,RECT client) {
         RECT ar=actions[ai];
         POINT cursor; BOOL actionHot=FALSE;
         if(GetCursorPos(&cursor)){ScreenToClient(g_main,&cursor);actionHot=PtInRect(&ar,cursor);}
-        COLORREF fill=actionActive[ai]?RGB(27,55,65):(actionHot?RGB(30,48,59):RGB(23,32,44));
-        COLORREF edge=actionActive[ai]?RGB(65,135,143):(actionHot?RGB(70,111,125):RGB(52,69,86));
-        if(actionActive[ai])GradientRound(dc,ar,RGB(27,105,91),RGB(30,82,78),10);
+        COLORREF fill=actionActive[ai]?ABM_THEME_COLOR_1B3741:(actionHot?ABM_THEME_COLOR_1E303B:ABM_THEME_COLOR_17202C);
+        COLORREF edge=actionActive[ai]?ABM_THEME_COLOR_41878F:(actionHot?ABM_THEME_COLOR_466F7D:ABM_THEME_COLOR_344556);
+        if(actionActive[ai])GradientRound(dc,ar,ABM_THEME_COLOR_1B695B,ABM_THEME_COLOR_1E524E,10);
         else RoundBox(dc,ar,fill,10);
         ABM_D2D_StrokeRound(&g_ui,(float)ar.left,(float)ar.top,(float)ar.right,(float)ar.bottom,10.0f,edge,0.9f);
         RECT glyph={ar.left+8,ar.top+3,ar.left+31,ar.bottom-3};
-        Txt(dc,actionIcons[ai],glyph,actionActive[ai]?RGB(143,210,184):RGB(157,184,180),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,actionIcons[ai],glyph,actionActive[ai]?ABM_THEME_COLOR_8FD2B8:ABM_THEME_COLOR_9DB8B4,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT label={ar.left+34,ar.top+2,ar.right-5,ar.bottom-2};
         wchar_t speedLabel[32];
         const wchar_t *shown=actionLabels[ai];
         if(ai==2){swprintf_s(speedLabel,32,L"Speed  %.2gx",g_playbackRate);shown=speedLabel;}
-        Txt(dc,shown,label,actionActive[ai]?RGB(235,246,239):RGB(210,225,219),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,shown,label,actionActive[ai]?ABM_THEME_COLOR_EBF6EF:ABM_THEME_COLOR_D2E1DB,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
 
     }
-    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?RGB(27,67,62):RGB(25,38,45),g_drawerSettingsOpen?RGB(76,151,127):RGB(58,83,78),11);
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_19262D,g_drawerSettingsOpen?ABM_THEME_COLOR_4C977F:ABM_THEME_COLOR_3A534E,11);
     RECT settingsLabel={R_SETTINGS_BUTTON.left+14,R_SETTINGS_BUTTON.top+2,R_SETTINGS_BUTTON.right-38,R_SETTINGS_BUTTON.bottom-2};
-    Txt(dc,g_drawerSettingsOpen?L"Playback settings  ·  expanded":L"Playback settings  ·  tap to expand",settingsLabel,RGB(231,240,252),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_drawerSettingsOpen?L"Playback settings  ·  expanded":L"Playback settings  ·  tap to expand",settingsLabel,ABM_THEME_COLOR_E7F0FC,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
-    DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,RGB(190,210,234),2);
-    DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,RGB(190,210,234),2);
+    DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,ABM_THEME_COLOR_BED2EA,2);
+    DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,ABM_THEME_COLOR_BED2EA,2);
     RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+collectionTop,R_SIDEBAR.right-18,R_SIDEBAR.top+collectionTop+24};
-    Txt(dc,g_libraryTab?L"YOUR COLLECTION":L"YOUR QUEUE",listHead,RGB(132,187,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,g_libraryTab?L"YOUR COLLECTION":L"YOUR QUEUE",listHead,ABM_THEME_COLOR_84BBCF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
     RECT countR={R_SIDEBAR.right-164,listHead.top,R_CLEAR_PLAYLIST.left-8,listHead.bottom};
-    Txt(dc,count,countR,RGB(153,174,200),g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-    RoundBox(dc,R_CLEAR_PLAYLIST,g_playlistCount?RGB(49,31,43):RGB(25,30,40),8);
-    ABM_D2D_StrokeRound(&g_ui,(float)R_CLEAR_PLAYLIST.left,(float)R_CLEAR_PLAYLIST.top,(float)R_CLEAR_PLAYLIST.right,(float)R_CLEAR_PLAYLIST.bottom,8.0f,g_playlistCount?RGB(139,74,99):RGB(48,58,72),0.8f);
-    Txt(dc,L"Clear",R_CLEAR_PLAYLIST,g_playlistCount?RGB(255,190,205):RGB(115,130,151),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    DrawLine(dc,R_SIDEBAR.left+16,listHead.bottom+4,R_SIDEBAR.right-16,listHead.bottom+4,RGB(43,53,69),1);
+    Txt(dc,count,countR,ABM_THEME_COLOR_99AEC8,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    RoundBox(dc,R_CLEAR_PLAYLIST,g_playlistCount?ABM_THEME_COLOR_311F2B:ABM_THEME_COLOR_191E28,8);
+    ABM_D2D_StrokeRound(&g_ui,(float)R_CLEAR_PLAYLIST.left,(float)R_CLEAR_PLAYLIST.top,(float)R_CLEAR_PLAYLIST.right,(float)R_CLEAR_PLAYLIST.bottom,8.0f,g_playlistCount?ABM_THEME_COLOR_8B4A63:ABM_THEME_COLOR_303A48,0.8f);
+    Txt(dc,L"Clear",R_CLEAR_PLAYLIST,g_playlistCount?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_738297,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    DrawLine(dc,R_SIDEBAR.left+16,listHead.bottom+4,R_SIDEBAR.right-16,listHead.bottom+4,ABM_THEME_COLOR_2B3545,1);
 
     /* Search and filters are drawn in Direct2D; keyboard input is handled by
        the main window so no blurry native EDIT control is layered over it. */
-    Panel(dc,R_SEARCH,g_searchFocused?RGB(13,47,58):RGB(11,23,39),g_searchFocused?RGB(67,183,194):RGB(42,75,103),12);
+    Panel(dc,R_SEARCH,g_searchFocused?ABM_THEME_COLOR_0D2F3A:ABM_THEME_COLOR_0B1727,g_searchFocused?ABM_THEME_COLOR_43B7C2:ABM_THEME_COLOR_2A4B67,12);
     RECT searchGlyph={R_SEARCH.left+12,R_SEARCH.top+10,R_SEARCH.left+26,R_SEARCH.bottom-10};
-    ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,RGB(139,163,193),1.5f);
-    DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,RGB(139,163,193),1.5f);
+    ABM_D2D_StrokeRound(&g_ui,(float)searchGlyph.left,(float)searchGlyph.top,(float)searchGlyph.right,(float)searchGlyph.bottom,7,ABM_THEME_COLOR_8BA3C1,1.5f);
+    DrawLine(dc,searchGlyph.right-1,searchGlyph.bottom-1,searchGlyph.right+4,searchGlyph.bottom+4,ABM_THEME_COLOR_8BA3C1,1.5f);
     RECT searchText={R_SEARCH.left+36,R_SEARCH.top+2,R_SEARCH.right-10,R_SEARCH.bottom-2};
     Txt(dc,g_searchText[0]?g_searchText:(g_searchFocused?L"Type to search":L"Search tracks, artists, albums"),searchText,
-        g_searchText[0]?C_TEXT:RGB(135,151,172),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        g_searchText[0]?C_TEXT:ABM_THEME_COLOR_8797AC,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     RECT tabs[2]={R_TAB_QUEUE,R_TAB_LIBRARY};
     const wchar_t *tabNames[2]={L"Queue",L"Library"};
     for(int ti=0;ti<2;ti++){
         BOOL active=(g_libraryTab==ti);
-        if(active)GradientRound(dc,tabs[ti],RGB(30,111,119),RGB(34,87,101),11);
-        else RoundBox(dc,tabs[ti],RGB(13,25,42),11);
-        ABM_D2D_StrokeRound(&g_ui,(float)tabs[ti].left,(float)tabs[ti].top,(float)tabs[ti].right,(float)tabs[ti].bottom,11.0f,active?RGB(104,190,224):RGB(43,72,101),0.95f);
+        if(active)GradientRound(dc,tabs[ti],ABM_THEME_COLOR_1E6F77,ABM_THEME_COLOR_225765,11);
+        else RoundBox(dc,tabs[ti],ABM_THEME_COLOR_0D192A,11);
+        ABM_D2D_StrokeRound(&g_ui,(float)tabs[ti].left,(float)tabs[ti].top,(float)tabs[ti].right,(float)tabs[ti].bottom,11.0f,active?ABM_THEME_COLOR_68BEE0:ABM_THEME_COLOR_2B4865,0.95f);
         RECT label={tabs[ti].left+3,tabs[ti].top+1,tabs[ti].right-3,tabs[ti].bottom-1};
-        Txt(dc,tabNames[ti],label,active?RGB(238,246,255):RGB(171,187,207),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,tabNames[ti],label,active?ABM_THEME_COLOR_EEF6FF:ABM_THEME_COLOR_ABBBCF,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     RECT filters[3]={R_FILTER_ALL,R_FILTER_AUDIO,R_FILTER_VIDEO};
     const wchar_t *filterNames[3]={L"All",L"Audio",L"Video"};
     for(int fi=0;fi<3;fi++){
         BOOL active=g_mediaFilter==fi;
-        if(active)GradientRound(dc,filters[fi],RGB(30,111,119),RGB(34,87,101),8);
-        else RoundBox(dc,filters[fi],RGB(15,28,46),8);
+        if(active)GradientRound(dc,filters[fi],ABM_THEME_COLOR_1E6F77,ABM_THEME_COLOR_225765,8);
+        else RoundBox(dc,filters[fi],ABM_THEME_COLOR_0F1C2E,8);
         RECT label={filters[fi].left+2,filters[fi].top,filters[fi].right-2,filters[fi].bottom};
-        Txt(dc,filterNames[fi],label,active?RGB(244,248,255):RGB(158,174,194),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,filterNames[fi],label,active?ABM_THEME_COLOR_F4F8FF:ABM_THEME_COLOR_9EAEC2,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
-    RoundBox(dc,R_GROUP,RGB(18,34,51),8);
+    RoundBox(dc,R_GROUP,ABM_THEME_COLOR_122233,8);
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
-    Txt(dc,groupLabel,R_GROUP,RGB(174,195,220),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,groupLabel,R_GROUP,ABM_THEME_COLOR_AEC3DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int rowHeight=80;
     int listHeight=R_LIST.bottom-R_LIST.top;
@@ -1376,36 +1376,36 @@ static void DrawUI(HDC dc,RECT client) {
         R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
         BOOL current=(i==g_current),selected=(i==g_selected),hot=(i==g_hoverPlaylistIndex);
         /* Every queue entry is a deliberate media card, not bare text on a panel. */
-        if(current)GradientRound(dc,row,RGB(25,58,66),RGB(28,47,61),13);
-        else if(selected)GradientRound(dc,row,RGB(31,45,59),RGB(27,39,53),13);
-        else RoundBox(dc,row,hot?RGB(31,45,59):RGB(23,33,46),13);
-        ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?RGB(70,139,148):(selected?RGB(69,105,124):(hot?RGB(65,94,113):RGB(48,64,82))),current?1.25f:0.75f);
-        if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,RGB(57,178,176),RGB(77,145,160));}
+        if(current)GradientRound(dc,row,ABM_THEME_COLOR_193A42,ABM_THEME_COLOR_1C2F3D,13);
+        else if(selected)GradientRound(dc,row,ABM_THEME_COLOR_1F2D3B,ABM_THEME_COLOR_1B2735,13);
+        else RoundBox(dc,row,hot?ABM_THEME_COLOR_1F2D3B:ABM_THEME_COLOR_17212E,13);
+        ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?ABM_THEME_COLOR_468B94:(selected?ABM_THEME_COLOR_45697C:(hot?ABM_THEME_COLOR_415E71:ABM_THEME_COLOR_304052)),current?1.25f:0.75f);
+        if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,ABM_THEME_COLOR_39B2B0,ABM_THEME_COLOR_4D91A0);}
         RECT thumb={row.left+10,row.top+8,row.left+72,row.bottom-8};
-        GradientRect(dc,thumb,current?RGB(27,139,169):RGB(22+(i*13)%22,53+(i*9)%24,82+(i*7)%28),current?RGB(95,79,190):RGB(55+(i*11)%26,55+(i*7)%24,119+(i*5)%24));
-        RoundBox(dc,thumb,current?RGB(49,103,166):RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),10);
+        GradientRect(dc,thumb,current?ABM_THEME_COLOR_1B8BA9:RGB(22+(i*13)%22,53+(i*9)%24,82+(i*7)%28),current?ABM_THEME_COLOR_5F4FBE:RGB(55+(i*11)%26,55+(i*7)%24,119+(i*5)%24));
+        RoundBox(dc,thumb,current?ABM_THEME_COLOR_3167A6:RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),10);
         RECT coverInset={thumb.left+5,thumb.top+5,thumb.right-5,thumb.bottom-5};
-        ABM_D2D_StrokeRound(&g_ui,(float)coverInset.left,(float)coverInset.top,(float)coverInset.right,(float)coverInset.bottom,7.0f,RGB(145,184,218),0.65f);
+        ABM_D2D_StrokeRound(&g_ui,(float)coverInset.left,(float)coverInset.top,(float)coverInset.right,(float)coverInset.bottom,7.0f,ABM_THEME_COLOR_91B8DA,0.65f);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)thumb.left+2,(float)thumb.top+2,(float)thumb.right-2,(float)thumb.bottom-2);
         else {
             int cx=(thumb.left+thumb.right)/2,cy=(thumb.top+thumb.bottom)/2;
-            COLORREF iconColor=current?RGB(255,255,255):RGB(171,198,229);
+            COLORREF iconColor=current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_ABC6E5;
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
-            else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,RGB(182,205,232),2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,RGB(182,205,232),2);}
+            else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,ABM_THEME_COLOR_B6CDE8,2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,ABM_THEME_COLOR_B6CDE8,2);}
         }
         RECT name={row.left+82,row.top+9,row.right-84,row.top+38};
         RECT subline={row.left+82,row.top+40,row.right-84,row.bottom-7};
-        Txt(dc,leaf,name,current?RGB(255,255,255):RGB(232,239,249),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
-        Txt(dc,metaLine,subline,RGB(145,166,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,metaLine,subline,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         RECT typePill={row.right-74,row.top+24,row.right-10,row.top+49};
-        RoundBox(dc,typePill,isVideo?RGB(38,54,83):RGB(19,65,75),8);
+        RoundBox(dc,typePill,isVideo?ABM_THEME_COLOR_263653:ABM_THEME_COLOR_13414B,8);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
-        Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?RGB(164,193,239):RGB(116,215,211),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        if(current){int cx=row.right-23,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,RGB(94,183,244),2);}}
+        Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?ABM_THEME_COLOR_A4C1EF:ABM_THEME_COLOR_74D7D3,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        if(current){int cx=row.right-23,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,ABM_THEME_COLOR_5EB7F4,2);}}
         shown++;
     }
     /* Premium slim scrollbar: quiet rail, luminous gradient thumb and a
@@ -1415,7 +1415,7 @@ static void DrawUI(HDC dc,RECT client) {
     if(maxPlaylistScroll<0)maxPlaylistScroll=0;
     if(maxPlaylistScroll>0 && R_PLAYLIST_SCROLL.bottom>R_PLAYLIST_SCROLL.top) {
         RECT rail=R_PLAYLIST_SCROLL;
-        RoundBox(dc,rail,RGB(23,39,59),3);
+        RoundBox(dc,rail,ABM_THEME_COLOR_17273B,3);
         int railH=rail.bottom-rail.top;
         int thumbH=(int)((long long)railH*visible/filteredCount);
         if(thumbH<42)thumbH=42;
@@ -1424,69 +1424,69 @@ static void DrawUI(HDC dc,RECT client) {
         int thumbTop=rail.top+(maxPlaylistScroll?thumbTravel*g_playlistScroll/maxPlaylistScroll:0);
         R_PLAYLIST_THUMB=(RECT){rail.left-2,thumbTop,rail.right+2,thumbTop+thumbH};
         RECT thumbGlow=R_PLAYLIST_THUMB;InflateRect(&thumbGlow,2,1);
-        RoundBox(dc,thumbGlow,RGB(24,61,82),5);
-        GradientRect(dc,R_PLAYLIST_THUMB,RGB(40,190,211),RGB(111,105,239));
+        RoundBox(dc,thumbGlow,ABM_THEME_COLOR_183D52,5);
+        GradientRect(dc,R_PLAYLIST_THUMB,ABM_THEME_COLOR_28BED3,ABM_THEME_COLOR_6F69EF);
         RECT shine={R_PLAYLIST_THUMB.left+1,R_PLAYLIST_THUMB.top+4,R_PLAYLIST_THUMB.right-1,R_PLAYLIST_THUMB.bottom-4};
-        ABM_D2D_StrokeRound(&g_ui,(float)shine.left,(float)shine.top,(float)shine.right,(float)shine.bottom,3.0f,RGB(170,222,255),0.45f);
+        ABM_D2D_StrokeRound(&g_ui,(float)shine.left,(float)shine.top,(float)shine.right,(float)shine.bottom,3.0f,ABM_THEME_COLOR_AADEFF,0.45f);
     } else {
         R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
     }
     if(shown==0){
         RECT empty={R_LIST.left+8,R_LIST.top+18,R_LIST.right-8,R_LIST.top+76};
-        Txt(dc,g_searchText[0]?L"No matching media":L"Add media to start your library",empty,RGB(151,168,191),g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,g_searchText[0]?L"No matching media":L"Add media to start your library",empty,ABM_THEME_COLOR_97A8BF,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     if(g_receiverPopup) {
         int n=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);if(n>MAX_RENDERERS+1)n=MAX_RENDERERS+1;
         int rows=n>6?6:n;
         R_RECEIVER_LIST=(RECT){receiver.left,receiver.bottom+7,receiver.right,receiver.bottom+7+rows*36};
-        Panel(dc,R_RECEIVER_LIST,RGB(20,37,38),RGB(59,91,79),13);
+        Panel(dc,R_RECEIVER_LIST,ABM_THEME_COLOR_142526,ABM_THEME_COLOR_3B5B4F,13);
         for(int i=0;i<rows;i++) {
             RECT item={R_RECEIVER_LIST.left+6,R_RECEIVER_LIST.top+4+i*36,R_RECEIVER_LIST.right-6,R_RECEIVER_LIST.top+4+(i+1)*36};
-            if(i==sel)RoundBox(dc,item,RGB(34,69,59),8);
+            if(i==sel)RoundBox(dc,item,ABM_THEME_COLOR_22453B,8);
             wchar_t label[256]=L"";
             SendMessageW(g_renderers,CB_GETLBTEXT,i,(LPARAM)label);
             RECT tx={item.left+13,item.top,item.right-12,item.bottom};
-            Txt(dc,label,tx,i==sel?RGB(248,249,250):RGB(202,207,214),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,label,tx,i==sel?ABM_THEME_COLOR_F8F9FA:ABM_THEME_COLOR_CACFD6,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
     }
 
     if(g_drawerOpen) {
     RECT volPanel={R_SIDEBAR.left+14,R_SIDEBAR.bottom-78,R_SIDEBAR.right-14,R_SIDEBAR.bottom-12};
-    Panel(dc,volPanel,RGB(23,38,40),RGB(55,87,77),16);
+    Panel(dc,volPanel,ABM_THEME_COLOR_172628,ABM_THEME_COLOR_37574D,16);
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
      RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
-    Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"VOLUME",volLabel,ABM_THEME_COLOR_A1B7D3,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT audioBtn=R_AUDIO_BUTTON;BOOL audioActive=g_audioPopupOpen;
-    GradientRound(dc,audioBtn,audioActive?RGB(40,126,119):RGB(24,48,58),audioActive?RGB(68,174,145):RGB(38,79,91),13);
-    ABM_D2D_StrokeRound(&g_ui,(float)audioBtn.left,(float)audioBtn.top,(float)audioBtn.right,(float)audioBtn.bottom,13.0f,audioActive?RGB(123,220,188):RGB(76,137,150),1.0f);
+    GradientRound(dc,audioBtn,audioActive?ABM_THEME_COLOR_287E77:ABM_THEME_COLOR_18303A,audioActive?ABM_THEME_COLOR_44AE91:ABM_THEME_COLOR_264F5B,13);
+    ABM_D2D_StrokeRound(&g_ui,(float)audioBtn.left,(float)audioBtn.top,(float)audioBtn.right,(float)audioBtn.bottom,13.0f,audioActive?ABM_THEME_COLOR_7BDCBC:ABM_THEME_COLOR_4C8996,1.0f);
     int acx=(audioBtn.left+audioBtn.right)/2,acy=(audioBtn.top+audioBtn.bottom)/2;
-    DrawLine(dc,acx-13,acy-5,acx-7,acy-5,RGB(229,245,250),2);DrawLine(dc,acx-13,acy+5,acx-7,acy+5,RGB(229,245,250),2);
-    DrawLine(dc,acx-7,acy-5,acx+1,acy-11,RGB(229,245,250),2);DrawLine(dc,acx-7,acy+5,acx+1,acy+11,RGB(229,245,250),2);
-    DrawLine(dc,acx+5,acy-7,acx+9,acy-3,RGB(133,220,204),2);DrawLine(dc,acx+9,acy-3,acx+9,acy+3,RGB(133,220,204),2);DrawLine(dc,acx+9,acy+3,acx+5,acy+7,RGB(133,220,204),2);
+    DrawLine(dc,acx-13,acy-5,acx-7,acy-5,ABM_THEME_COLOR_E5F5FA,2);DrawLine(dc,acx-13,acy+5,acx-7,acy+5,ABM_THEME_COLOR_E5F5FA,2);
+    DrawLine(dc,acx-7,acy-5,acx+1,acy-11,ABM_THEME_COLOR_E5F5FA,2);DrawLine(dc,acx-7,acy+5,acx+1,acy+11,ABM_THEME_COLOR_E5F5FA,2);
+    DrawLine(dc,acx+5,acy-7,acx+9,acy-3,ABM_THEME_COLOR_85DCCC,2);DrawLine(dc,acx+9,acy-3,acx+9,acy+3,ABM_THEME_COLOR_85DCCC,2);DrawLine(dc,acx+9,acy+3,acx+5,acy+7,ABM_THEME_COLOR_85DCCC,2);
     if(g_audioPopupOpen) {
         int rows=g_audioDeviceCount+1;if(rows>7)rows=7;
         R_AUDIO_PANEL=(RECT){R_SIDEBAR.right-304,R_SIDEBAR.bottom-91-(rows*38+68),R_SIDEBAR.right-14,R_SIDEBAR.bottom-91};
-        Panel(dc,R_AUDIO_PANEL,RGB(13,25,39),RGB(70,126,130),17);
+        Panel(dc,R_AUDIO_PANEL,ABM_THEME_COLOR_0D1927,ABM_THEME_COLOR_467E82,17);
         RECT title={R_AUDIO_PANEL.left+16,R_AUDIO_PANEL.top+10,R_AUDIO_PANEL.right-14,R_AUDIO_PANEL.top+36};
-        Txt(dc,L"AUDIO OUTPUT",title,RGB(126,207,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"AUDIO OUTPUT",title,ABM_THEME_COLOR_7ECFBE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         for(int ai=0;ai<rows;ai++) {
             RECT item={R_AUDIO_PANEL.left+8,R_AUDIO_PANEL.top+42+ai*38,R_AUDIO_PANEL.right-8,R_AUDIO_PANEL.top+78+ai*38};R_AUDIO_ITEMS[ai]=item;
             BOOL chosen=(ai==0&&!g_audioDeviceId[0])||(ai>0&&ai-1<g_audioDeviceCount&&!strcmp(g_audioDeviceIds[ai-1],g_audioDeviceId));
-            if(chosen)RoundBox(dc,item,RGB(27,76,72),9);
+            if(chosen)RoundBox(dc,item,ABM_THEME_COLOR_1B4C48,9);
             const wchar_t *name=ai==0?L"System default":g_audioDeviceNames[ai-1];
             RECT label={item.left+14,item.top,item.right-30,item.bottom};
-            Txt(dc,name,label,chosen?RGB(244,255,251):RGB(209,224,239),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            if(chosen){int cy=(item.top+item.bottom)/2;RoundBox(dc,(RECT){item.right-22,cy-4,item.right-14,cy+4},RGB(106,225,185),5);}
+            Txt(dc,name,label,chosen?ABM_THEME_COLOR_F4FFFB:ABM_THEME_COLOR_D1E0EF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(chosen){int cy=(item.top+item.bottom)/2;RoundBox(dc,(RECT){item.right-22,cy-4,item.right-14,cy+4},ABM_THEME_COLOR_6AE1B9,5);}
         }
         RECT foot={R_AUDIO_PANEL.left+14,R_AUDIO_PANEL.bottom-26,R_AUDIO_PANEL.right-12,R_AUDIO_PANEL.bottom-7};
-        Txt(dc,L"Bluetooth pairing is managed by Windows",foot,RGB(128,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Bluetooth pairing is managed by Windows",foot,ABM_THEME_COLOR_8097AE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
     }
-    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
-    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
+    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,ABM_THEME_COLOR_22354D,6);
+    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,ABM_THEME_COLOR_2BB8DC,ABM_THEME_COLOR_7569ED);
     int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
-    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,RGB(245,248,252),8);
-    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,RGB(110,165,242),0.8f);
+    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,ABM_THEME_COLOR_F5F8FC,8);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,ABM_THEME_COLOR_6EA5F2,0.8f);
 
 
 
@@ -1496,8 +1496,8 @@ static void DrawUI(HDC dc,RECT client) {
     /* Persistent contextual toolbar strip. Its hit target descriptions are
        concise and change only when the pointer enters a real command. */
     RECT commandStrip={0,client.bottom-30,client.right,client.bottom};
-    GradientRect(dc,commandStrip,RGB(9,19,31),RGB(7,13,23));
-    Fill(dc,(RECT){0,client.bottom-30,client.right,client.bottom-29},RGB(42,75,91));
+    GradientRect(dc,commandStrip,ABM_THEME_COLOR_09131F,ABM_THEME_COLOR_070D17);
+    Fill(dc,(RECT){0,client.bottom-30,client.right,client.bottom-29},ABM_THEME_COLOR_2A4B5B);
     const wchar_t *commandHint=g_hoverChromeControl==1?L"COMMAND CENTRE  •  Browse playback, audio, library, streaming and application commands":
         g_hoverChromeControl==2?L"MEDIA LIBRARY  •  Open your queue, browse files, search media and choose a playback device":
         g_hoverButton==HIT_OPEN?L"ADD MEDIA  •  Choose audio or video files to play":
@@ -1508,7 +1508,7 @@ static void DrawUI(HDC dc,RECT client) {
         g_hoverButton==HIT_SCAN?L"DISCOVER DEVICES  •  Search your network for compatible receivers":
         g_statusText[0]?g_statusText:L"ABM AV PLAYER  •  Capture the feeling. Relive every moment.";
     RECT hint={22,client.bottom-28,client.right-18,client.bottom-3};
-    Txt(dc,commandHint,hint,RGB(159,190,207),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,commandHint,hint,ABM_THEME_COLOR_9FBECF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Bottom-edge branding removed: playback and volume surfaces own this area. */
 
@@ -1517,16 +1517,16 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_menuProgress>0) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
-        RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,RGB(4,8,14),20);
-        RECT menuGlow=menu;InflateRect(&menuGlow,2,2);RoundBox(dc,menuGlow,RGB(7,12,20),22);
-        Panel(dc,menu,RGB(12,20,32),RGB(49,76,94),18);
+        RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,ABM_THEME_COLOR_04080E,20);
+        RECT menuGlow=menu;InflateRect(&menuGlow,2,2);RoundBox(dc,menuGlow,ABM_THEME_COLOR_070C14,22);
+        Panel(dc,menu,ABM_THEME_COLOR_0C1420,ABM_THEME_COLOR_314C5E,18);
         RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+4};
-        GradientRect(dc,menuTop,RGB(54,177,168),RGB(82,205,190));
+        GradientRect(dc,menuTop,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_52CDBE);
         RECT menuHeader={menu.left+18,menu.top+9,menu.right-18,menu.top+32};
-        Txt(dc,L"COMMAND CENTRE",menuHeader,RGB(242,248,253),g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"COMMAND CENTRE",menuHeader,ABM_THEME_COLOR_F2F8FD,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT menuSub={menu.left+18,menu.top+31,menu.right-18,menu.top+48};
-        Txt(dc,L"PLAYBACK  ·  LIBRARY  ·  DEVICES  ·  APP",menuSub,RGB(133,163,184),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        DrawLine(dc,menu.left+16,menu.top+51,menu.right-16,menu.top+51,RGB(39,58,76),1);
+        Txt(dc,L"PLAYBACK  ·  LIBRARY  ·  DEVICES  ·  APP",menuSub,ABM_THEME_COLOR_85A3B8,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        DrawLine(dc,menu.left+16,menu.top+51,menu.right-16,menu.top+51,ABM_THEME_COLOR_273A4C,1);
         const wchar_t *labels[19]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
@@ -1551,45 +1551,45 @@ static void DrawUI(HDC dc,RECT client) {
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             BOOL featured=(i==11||i==12);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=featured?(i==11?RGB(13,55,61):RGB(62,39,29)):RGB(17,29,44);
-            COLORREF edge=featured?(i==11?RGB(43,126,125):RGB(139,91,59)):RGB(31,48,65);
+            COLORREF fill=featured?(i==11?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_111D2C;
+            COLORREF edge=featured?(i==11?ABM_THEME_COLOR_2B7E7D:ABM_THEME_COLOR_8B5B3B):ABM_THEME_COLOR_1F3041;
             if(hot){
-                fill=featured?(i==11?RGB(20,83,83):RGB(91,54,34)):RGB(25,55,67);
-                edge=RGB(83,181,171);
+                fill=featured?(i==11?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_193743;
+                edge=ABM_THEME_COLOR_53B5AB;
             }
             RoundBox(dc,row,fill,featured?13:9);
             ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
-                featured?13.0f:9.0f,hot?RGB(105,207,192):edge,hot?1.25f:0.8f);
+                featured?13.0f:9.0f,hot?ABM_THEME_COLOR_69CFC0:edge,hot?1.25f:0.8f);
             RECT glyph={item.left+(featured?14:10),item.top+(featured?9:5),
                         item.left+(featured?56:40),item.bottom-(featured?9:5)};
-            COLORREF glyphFill=featured?(i==11?RGB(27,119,113):RGB(137,81,45)):RGB(27,47,66);
-            if(hot)glyphFill=RGB(37,116,113);
+            COLORREF glyphFill=featured?(i==11?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_89512D):ABM_THEME_COLOR_1B2F42;
+            if(hot)glyphFill=ABM_THEME_COLOR_257471;
             RoundBox(dc,glyph,glyphFill,featured?10:8);
-            Txt(dc,icons[i],glyph,RGB(231,244,248),featured?g_headingFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,featured?g_headingFont:g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
                         item.right-112,item.bottom-(featured?6:2)};
             if(featured){
                 RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+3;
                 RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
                 Txt(dc,i==11?L"STREAMING TVs & SERVICES":L"TORRENT STREAMING",mainLabel,
-                    RGB(249,252,255),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    ABM_THEME_COLOR_F9FCFF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,i==11?L"Open services, discover TVs and cast supported video":L"Add a magnet or torrent file and stream while downloading",
-                    subLabel,RGB(187,210,220),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    subLabel,ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }else{
-                COLORREF textColor=hot?RGB(255,255,255):RGB(226,236,246);
+                COLORREF textColor=hot?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E2ECF6;
                 Txt(dc,labels[i],label,textColor,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             RECT shortcut={item.right-104,item.top+4,item.right-8,item.bottom-4};
-            RoundBox(dc,shortcut,hot?RGB(34,75,83):RGB(12,22,35),7);
+            RoundBox(dc,shortcut,hot?ABM_THEME_COLOR_224B53:ABM_THEME_COLOR_0C1623,7);
             ABM_D2D_StrokeRound(&g_ui,(float)shortcut.left,(float)shortcut.top,(float)shortcut.right,
-                (float)shortcut.bottom,7.0f,hot?RGB(65,131,131):RGB(34,51,67),0.7f);
-            Txt(dc,shortcuts[i],shortcut,hot?RGB(211,244,238):RGB(145,171,190),g_smallFont,
+                (float)shortcut.bottom,7.0f,hot?ABM_THEME_COLOR_418383:ABM_THEME_COLOR_223343,0.7f);
+            Txt(dc,shortcuts[i],shortcut,hot?ABM_THEME_COLOR_D3F4EE:ABM_THEME_COLOR_91ABBE,g_smallFont,
                 DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             /* Quiet dividers reinforce the command groups without adding
                extra hit targets or changing menu order. */
             if(i==2||i==7||i==10||i==12||i==15||i==16){
                 int y=item.bottom+1;
-                if(y<menu.bottom-5)DrawLine(dc,item.left+8,y,item.right-8,y,RGB(36,53,68),1);
+                if(y<menu.bottom-5)DrawLine(dc,item.left+8,y,item.right-8,y,ABM_THEME_COLOR_243544,1);
             }
         }
     }
@@ -2244,28 +2244,28 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
     case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){DestroyWindow(hwnd);return 0;}break;
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
-        HBRUSH bg=CreateSolidBrush(RGB(10,17,28));FillRect(dc,&rc,bg);DeleteObject(bg);
-        HPEN border=CreatePen(PS_SOLID,1,RGB(54,91,112));HGDIOBJ op=SelectObject(dc,border);
+        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_0A111C);FillRect(dc,&rc,bg);DeleteObject(bg);
+        HPEN border=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_365B70);HGDIOBJ op=SelectObject(dc,border);
         HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,0,0,rc.right,rc.bottom,18,18);
         SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
-        RECT head={1,1,rc.right-1,62};HBRUSH hb=CreateSolidBrush(RGB(16,39,54));FillRect(dc,&head,hb);DeleteObject(hb);
+        RECT head={1,1,rc.right-1,62};HBRUSH hb=CreateSolidBrush(ABM_THEME_COLOR_102736);FillRect(dc,&head,hb);DeleteObject(hb);
         SetBkMode(dc,TRANSPARENT);
         HFONT title=CreateFontW(-21,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
         HFONT meta=CreateFontW(-12,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         HFONT body=CreateFontW(-14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,RGB(242,248,255));
+        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
         RECT tr={20,10,rc.right-18,36};DrawTextW(dc,L"Recently played",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,meta);SetTextColor(dc,RGB(139,180,194));
+        SelectObject(dc,meta);SetTextColor(dc,ABM_THEME_COLOR_8BB4C2);
         wchar_t countText[64];StringCchPrintfW(countText,_countof(countText),L"%d LOCAL FILE%s  ·  SELECT TO PLAY",g_recentCount,g_recentCount==1?L"":L"S");
         RECT mr={21,36,rc.right-18,56};DrawTextW(dc,countText,-1,&mr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         for(int i=0;i<g_recentCount;i++) {
             int top=68+i*42;RECT row={10,top,rc.right-10,top+38};
-            if(i==g_recentPopupHover){HBRUSH hot=CreateSolidBrush(RGB(24,66,76));FillRect(dc,&row,hot);DeleteObject(hot);}
-            else if((i&1)==0){HBRUSH stripe=CreateSolidBrush(RGB(13,24,37));FillRect(dc,&row,stripe);DeleteObject(stripe);}
-            RECT num={20,top+2,48,top+36};SelectObject(dc,body);SetTextColor(dc,RGB(91,191,177));
+            if(i==g_recentPopupHover){HBRUSH hot=CreateSolidBrush(ABM_THEME_COLOR_18424C);FillRect(dc,&row,hot);DeleteObject(hot);}
+            else if((i&1)==0){HBRUSH stripe=CreateSolidBrush(ABM_THEME_COLOR_0D1825);FillRect(dc,&row,stripe);DeleteObject(stripe);}
+            RECT num={20,top+2,48,top+36};SelectObject(dc,body);SetTextColor(dc,ABM_THEME_COLOR_5BBFB1);
             wchar_t n[12];StringCchPrintfW(n,_countof(n),L"%02d",i+1);DrawTextW(dc,n,-1,&num,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *leaf=wcsrchr(g_recent[i],L'\\');if(!leaf)leaf=wcsrchr(g_recent[i],L'/');leaf=leaf?leaf+1:g_recent[i];
-            RECT name={54,top+2,rc.right-22,top+36};SetTextColor(dc,RGB(225,237,247));DrawTextW(dc,leaf,-1,&name,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT name={54,top+2,rc.right-22,top+36};SetTextColor(dc,ABM_THEME_COLOR_E1EDF7);DrawTextW(dc,leaf,-1,&name,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
         SelectObject(dc,old);DeleteObject(title);DeleteObject(meta);DeleteObject(body);EndPaint(hwnd,&ps);return 0;
     }
@@ -2694,16 +2694,16 @@ static void UpdateUI(void) {
     InvalidateRect(g_main,&timeText,FALSE);
 }
 static void OverlayButton(HDC dc,RECT r,int kind,BOOL primary) {
-    HBRUSH b=CreateSolidBrush(primary?RGB(247,248,250):RGB(43,46,51));
-    HPEN e=CreatePen(PS_SOLID,1,primary?RGB(247,248,250):RGB(70,74,80));
+    HBRUSH b=CreateSolidBrush(primary?ABM_THEME_COLOR_F7F8FA:ABM_THEME_COLOR_2B2E33);
+    HPEN e=CreatePen(PS_SOLID,1,primary?ABM_THEME_COLOR_F7F8FA:ABM_THEME_COLOR_464A50);
     HBRUSH ob=(HBRUSH)SelectObject(dc,b);HPEN oe=(HPEN)SelectObject(dc,e);
     Ellipse(dc,r.left,r.top,r.right,r.bottom);
     SelectObject(dc,ob);SelectObject(dc,oe);DeleteObject(b);DeleteObject(e);
     int x=(r.left+r.right)/2,y=(r.top+r.bottom)/2;
-    HPEN g=CreatePen(PS_SOLID,2,primary?RGB(20,22,25):RGB(232,235,239));oe=(HPEN)SelectObject(dc,g);
+    HPEN g=CreatePen(PS_SOLID,2,primary?ABM_THEME_COLOR_141619:ABM_THEME_COLOR_E8EBEF);oe=(HPEN)SelectObject(dc,g);
     if(kind==1){MoveToEx(dc,x-7,y-11,NULL);LineTo(dc,x+10,y);LineTo(dc,x-7,y+11);LineTo(dc,x-7,y-11);}
     else if(kind==2){MoveToEx(dc,x-5,y-10,NULL);LineTo(dc,x-5,y+10);MoveToEx(dc,x+5,y-10,NULL);LineTo(dc,x+5,y+10);}
-    else if(kind==3){RECT s={x-6,y-6,x+6,y+6};HBRUSH sb=CreateSolidBrush(primary?RGB(20,22,25):RGB(232,235,239));FillRect(dc,&s,sb);DeleteObject(sb);}
+    else if(kind==3){RECT s={x-6,y-6,x+6,y+6};HBRUSH sb=CreateSolidBrush(primary?ABM_THEME_COLOR_141619:ABM_THEME_COLOR_E8EBEF);FillRect(dc,&s,sb);DeleteObject(sb);}
     else if(kind==4){MoveToEx(dc,x+8,y-8,NULL);LineTo(dc,x-4,y);LineTo(dc,x+8,y+8);MoveToEx(dc,x-8,y-10,NULL);LineTo(dc,x-8,y+10);}
     else if(kind==5){MoveToEx(dc,x-8,y-8,NULL);LineTo(dc,x+4,y);LineTo(dc,x-8,y+8);MoveToEx(dc,x+8,y-10,NULL);LineTo(dc,x+8,y+10);}
     SelectObject(dc,oe);DeleteObject(g);
@@ -2726,9 +2726,9 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     if(!dib||!mem||!pixels){if(dib)DeleteObject(dib);if(mem)DeleteDC(mem);if(screen)ReleaseDC(NULL,screen);return;}
     HBITMAP oldBmp=(HBITMAP)SelectObject(mem,dib);
     RECT canvas={0,0,w,h};
-    HBRUSH black=CreateSolidBrush(RGB(0,0,0));FillRect(mem,&canvas,black);DeleteObject(black);
+    HBRUSH black=CreateSolidBrush(ABM_THEME_COLOR_000000);FillRect(mem,&canvas,black);DeleteObject(black);
     SetBkMode(mem,TRANSPARENT);
-    SetTextColor(mem,RGB(218,222,228));
+    SetTextColor(mem,ABM_THEME_COLOR_DADEE4);
     HFONT font=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HFONT oldFont=(HFONT)SelectObject(mem,font);
@@ -2751,20 +2751,20 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     if(timelineRight-timelineLeft<160){timelineLeft=24;timelineRight=w-24;}
     int playheadX=timelineLeft+(timelineRight-timelineLeft)*pos/1000;
     RECT tr={timelineLeft,h-116,timelineRight,h-106};
-    HBRUSH track=CreateSolidBrush(RGB(105,116,130));FillRect(mem,&tr,track);DeleteObject(track);
+    HBRUSH track=CreateSolidBrush(ABM_THEME_COLOR_697482);FillRect(mem,&tr,track);DeleteObject(track);
     RECT progress=tr;progress.right=playheadX;
-    HBRUSH played=CreateSolidBrush(RGB(40,211,185));FillRect(mem,&progress,played);DeleteObject(played);
+    HBRUSH played=CreateSolidBrush(ABM_THEME_COLOR_28D3B9);FillRect(mem,&progress,played);DeleteObject(played);
     /* A dark halo keeps the bright playhead legible over any video frame. */
-    HBRUSH halo=CreateSolidBrush(RGB(12,19,28));
+    HBRUSH halo=CreateSolidBrush(ABM_THEME_COLOR_0C131C);
     RECT haloRect={playheadX-10,h-126,playheadX+10,h-96};
     FillRect(mem,&haloRect,halo);DeleteObject(halo);
-    HBRUSH head=CreateSolidBrush(RGB(255,255,255));
+    HBRUSH head=CreateSolidBrush(ABM_THEME_COLOR_FFFFFF);
     RECT headRect={playheadX-5,h-123,playheadX+5,h-99};
     FillRect(mem,&headRect,head);DeleteObject(head);
     /* Add a fine vertical locator through the track so the position remains
        easy to distinguish even against the bright played segment. */
     RECT locator={playheadX-1,h-130,playheadX+1,h-94};
-    HBRUSH locatorBrush=CreateSolidBrush(RGB(255,255,255));
+    HBRUSH locatorBrush=CreateSolidBrush(ABM_THEME_COLOR_FFFFFF);
     FillRect(mem,&locator,locatorBrush);DeleteObject(locatorBrush);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
     RECT et={timelineLeft,h-145,timelineLeft+90,h-124};
@@ -2784,16 +2784,16 @@ static void PaintFullscreenOverlay(HWND hwnd) {
 
     /* Minimal volume label and slider; no enclosing rectangle. */
     RECT vl={w-214,h-44,w-160,h-26};
-    SetTextColor(mem,RGB(202,207,214));
+    SetTextColor(mem,ABM_THEME_COLOR_CACFD6);
     DrawTextW(mem,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT vt={w-148,h-36,w-38,h-32};
-    HBRUSH vtrack=CreateSolidBrush(RGB(86,91,98));FillRect(mem,&vt,vtrack);DeleteObject(vtrack);
+    HBRUSH vtrack=CreateSolidBrush(ABM_THEME_COLOR_565B62);FillRect(mem,&vt,vtrack);DeleteObject(vtrack);
     int volume=g_volume;if(volume<0)volume=0;if(volume>100)volume=100;
     RECT vf=vt;vf.right=vf.left+(vf.right-vf.left)*volume/100;
-    HBRUSH vfill=CreateSolidBrush(RGB(238,241,245));FillRect(mem,&vf,vfill);DeleteObject(vfill);
+    HBRUSH vfill=CreateSolidBrush(ABM_THEME_COLOR_EEF1F5);FillRect(mem,&vf,vfill);DeleteObject(vfill);
     int knobX=vf.right;
     RECT knob={knobX-5,h-41,knobX+5,h-27};
-    HBRUSH kb=CreateSolidBrush(RGB(248,249,250));FillRect(mem,&knob,kb);DeleteObject(kb);
+    HBRUSH kb=CreateSolidBrush(ABM_THEME_COLOR_F8F9FA);FillRect(mem,&knob,kb);DeleteObject(kb);
 
     SelectObject(mem,oldFont);DeleteObject(font);
 
@@ -3789,32 +3789,32 @@ static void TorrentSliderSetPoint(HWND hwnd,TorrentSliderState *s,int x){
 }
 static void TorrentSliderPaint(HWND hwnd,HDC dc,TorrentSliderState *s){
     RECT r;GetClientRect(hwnd,&r);
-    HBRUSH bg=CreateSolidBrush(RGB(12,27,43));FillRect(dc,&r,bg);DeleteObject(bg);
+    HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_0C1B2B);FillRect(dc,&r,bg);DeleteObject(bg);
     int left=14,right=r.right-104,cy=(r.top+r.bottom)/2;if(right<=left+18)return;
     int pos=TorrentSliderToPos(s->kind,s->value),thumb=left+(right-left)*pos/1000;
     /* Deep recessed rail with a luminous teal progress segment. */
     RECT track={left,cy-4,right,cy+4};
     HRGN region=CreateRoundRectRgn(track.left,track.top,track.right,track.bottom,8,8);
-    HBRUSH rail=CreateSolidBrush(RGB(28,52,69));FillRgn(dc,region,rail);DeleteObject(region);DeleteObject(rail);
+    HBRUSH rail=CreateSolidBrush(ABM_THEME_COLOR_1C3445);FillRgn(dc,region,rail);DeleteObject(region);DeleteObject(rail);
     if(thumb>left){
         RECT fill={left,cy-4,thumb,cy+4};region=CreateRoundRectRgn(fill.left,fill.top,fill.right,fill.bottom,8,8);
-        HBRUSH accent=CreateSolidBrush(RGB(49,151,143));FillRgn(dc,region,accent);DeleteObject(region);DeleteObject(accent);
-        HPEN sheen=CreatePen(PS_SOLID,1,RGB(103,218,190));HGDIOBJ op=SelectObject(dc,sheen);
+        HBRUSH accent=CreateSolidBrush(ABM_THEME_COLOR_31978F);FillRgn(dc,region,accent);DeleteObject(region);DeleteObject(accent);
+        HPEN sheen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_67DABE);HGDIOBJ op=SelectObject(dc,sheen);
         MoveToEx(dc,left+4,cy-2,NULL);LineTo(dc,max(left+4,thumb-3),cy-2);
         SelectObject(dc,op);DeleteObject(sheen);
     }
     /* Soft outer halo and a larger two-tone thumb. */
-    HBRUSH halo=CreateSolidBrush(RGB(22,65,73));HGDIOBJ ob=SelectObject(dc,halo);
+    HBRUSH halo=CreateSolidBrush(ABM_THEME_COLOR_164149);HGDIOBJ ob=SelectObject(dc,halo);
     HPEN none=(HPEN)GetStockObject(NULL_PEN);HGDIOBJ op=SelectObject(dc,none);
     Ellipse(dc,thumb-13,cy-13,thumb+13,cy+13);
     SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(halo);
-    HBRUSH knob=CreateSolidBrush(RGB(115,220,199));HPEN rim=CreatePen(PS_SOLID,1,RGB(205,255,240));
+    HBRUSH knob=CreateSolidBrush(ABM_THEME_COLOR_73DCC7);HPEN rim=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_CDFFF0);
     ob=SelectObject(dc,knob);op=SelectObject(dc,rim);
     Ellipse(dc,thumb-7,cy-7,thumb+7,cy+7);
     SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(rim);DeleteObject(knob);
     /* Value capsule is isolated from the track and always legible. */
     RECT pill={r.right-94,cy-16,r.right-2,cy+16};
-    HBRUSH pillBrush=CreateSolidBrush(RGB(17,48,64));HPEN pillPen=CreatePen(PS_SOLID,1,RGB(67,151,151));
+    HBRUSH pillBrush=CreateSolidBrush(ABM_THEME_COLOR_113040);HPEN pillPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_439797);
     ob=SelectObject(dc,pillBrush);op=SelectObject(dc,pillPen);
     RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,14,14);
     SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(pillPen);DeleteObject(pillBrush);
@@ -3825,7 +3825,7 @@ static void TorrentSliderPaint(HWND hwnd,HDC dc,TorrentSliderState *s){
     else StringCchPrintfW(valueText,_countof(valueText),L"%d GiB",s->value);
     HFONT font=CreateFontW(-12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,RGB(231,247,249));
+    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_E7F7F9);
     DrawTextW(dc,valueText,-1,&pill,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
     SelectObject(dc,old);DeleteObject(font);
 }
@@ -3935,25 +3935,25 @@ static void TorrentPaint(HWND hwnd){
     ABM_D2D_Begin(&g_torrentUi,bg);
 
     /* Cinematic branded masthead */
-    ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,RGB(15,37,57),RGB(6,17,29));
-    ABM_D2D_Fill(&g_torrentUi,0,0,w,2,RGB(34,111,122));
+    ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0F2539,ABM_THEME_COLOR_06111D);
+    ABM_D2D_Fill(&g_torrentUi,0,0,w,2,ABM_THEME_COLOR_226F7A);
     /* Match the main player's signature ABM identity: luminous A/play
        monogram, split ABM + AV PLAYER wordmark, gradient rule and tagline. */
-    ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,RGB(13,28,45));
-    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,RGB(63,151,180),1.0f);
-    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,RGB(28,157,157),RGB(52,119,126));
-    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,RGB(190,229,255),0.8f);
-    ABM_D2D_Line(&g_torrentUi,42,63,59,30,RGB(255,255,255),3.0f);
-    ABM_D2D_Line(&g_torrentUi,59,30,76,63,RGB(255,255,255),3.0f);
-    ABM_D2D_Line(&g_torrentUi,49,49,68,49,RGB(226,245,255),2.0f);
-    ABM_D2D_Line(&g_torrentUi,62,40,75,48,RGB(255,255,255),2.0f);
-    ABM_D2D_Line(&g_torrentUi,75,48,62,56,RGB(255,255,255),2.0f);
-    ABM_D2D_Line(&g_torrentUi,62,56,62,40,RGB(255,255,255),2.0f);
+    ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
+    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_3F97B4,1.0f);
+    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,ABM_THEME_COLOR_1C9D9D,ABM_THEME_COLOR_34777E);
+    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,ABM_THEME_COLOR_BEE5FF,0.8f);
+    ABM_D2D_Line(&g_torrentUi,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3.0f);
+    ABM_D2D_Line(&g_torrentUi,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3.0f);
+    ABM_D2D_Line(&g_torrentUi,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2.0f);
+    ABM_D2D_Line(&g_torrentUi,62,40,75,48,ABM_THEME_COLOR_FFFFFF,2.0f);
+    ABM_D2D_Line(&g_torrentUi,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2.0f);
+    ABM_D2D_Line(&g_torrentUi,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2.0f);
 
-    RECT r={116,8,420,49};ABM_D2D_Text(&g_torrentUi,L"ABM",r,RGB(247,250,255),3,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    r=(RECT){188,20,390,48};ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,RGB(132,205,194),4,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,RGB(54,177,168),RGB(112,190,157));
-    r=(RECT){116,60,510,83};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,RGB(157,177,201),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT r={116,8,420,49};ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,3,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=(RECT){188,20,390,48};ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_84CDC2,4,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
+    r=(RECT){116,60,510,83};ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,ABM_THEME_COLOR_9DB1C9,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Live task state is presented as a compact status chip. This is a
        read-only view of the existing engine task; it does not alter its state. */
     const wchar_t *engineState=L"ENGINE READY";
@@ -3971,21 +3971,21 @@ static void TorrentPaint(HWND hwnd){
         default:engineState=L"CONNECTED";break;
         }
     }
-    r=(RECT){w-244,23,w-22,57};ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(11,28,43));
-    ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(42,83,101),0.9f);
+    r=(RECT){w-244,23,w-22,57};ABM_D2D_Round(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,ABM_THEME_COLOR_0B1C2B);
+    ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,ABM_THEME_COLOR_2A5365,0.9f);
     ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,engineDot);
-    r=(RECT){w-211,25,w-34,55};ABM_D2D_Text(&g_torrentUi,engineState,r,RGB(180,205,219),1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=(RECT){w-211,25,w-34,55};ABM_D2D_Text(&g_torrentUi,engineState,r,ABM_THEME_COLOR_B4CDDB,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Source card: label above the edit row; no painted text beneath controls. */
     r=(RECT){m,sourceTop,w-m,sourceTop+sourceH};
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,RGB(17,39,58),RGB(10,25,40));
+    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,ABM_THEME_COLOR_11273A,ABM_THEME_COLOR_0A1928);
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,edge,1.0f);
     r=(RECT){m+14,sourceTop+3,m+250,sourceTop+22};ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Content library card */
     r=(RECT){m,contentTop,w-m,contentBottom};
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(14,31,49),RGB(9,22,36));
-    ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,RGB(34,64,83),1.0f);
+    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,ABM_THEME_COLOR_0E1F31,ABM_THEME_COLOR_091624);
+    ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,16,ABM_THEME_COLOR_224053,1.0f);
     r=(RECT){m+14,contentTop+5,m+260,contentTop+25};ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=(RECT){w-420,contentTop+5,w-m-14,contentTop+25};
     ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,0,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
@@ -3993,26 +3993,26 @@ static void TorrentPaint(HWND hwnd){
 
     /* Playback deck: status, progress and actions each have their own row. */
     r=(RECT){m,playbackY,w-m,playbackY+100};
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,RGB(17,38,56),RGB(10,25,40));
+    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,ABM_THEME_COLOR_112638,ABM_THEME_COLOR_0A1928);
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,14,edge,1.0f);
     r=(RECT){m+14,playbackY+2,m+250,playbackY+21};ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int progress=(int)SendMessageW(g_torrentBufferBar,PBM_GETPOS,0,0);
     float barL=m+14,barT=playbackY+28,barR=w-m-14;
-    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,RGB(25,48,65));
-    ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,RGB(49,75,91));
-    if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,RGB(40,151,147),RGB(102,230,190));
+    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_THEME_COLOR_193041);
+    ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,ABM_THEME_COLOR_314B5B);
+    if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_THEME_COLOR_289793,ABM_THEME_COLOR_66E6BE);
 
     /* Matched utility cards */
     r=(RECT){m,networkY,w-m,networkY+76};
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
+    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
     r=(RECT){m,cacheY,w-m,cacheY+76};
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
+    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
 
     /* Receiver dock */
     r=(RECT){m,tvY,w-m,h-12};
-    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,RGB(15,34,52),RGB(9,23,37));
+    ABM_D2D_GradientRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     ABM_D2D_StrokeRound(&g_torrentUi,r.left,r.top,r.right,r.bottom,13,edge,0.9f);
     r=(RECT){m+14,tvY+2,m+220,tvY+22};ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_End(&g_torrentUi);
@@ -4081,7 +4081,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
     BOOL hot=(item->itemState&ODS_HOTLIGHT)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
-    HBRUSH background=CreateSolidBrush(RGB(10,23,37));
+    HBRUSH background=CreateSolidBrush(ABM_THEME_COLOR_0A1725);
     FillRect(dc,&r,background);DeleteObject(background);
     RECT face=r;InflateRect(&face,-1,-1);
     HRGN clip=CreateRoundRectRgn(face.left,face.top,face.right,face.bottom,14,14);
@@ -4093,31 +4093,31 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     BOOL destructive=(id==ID_TORRENT_REMOVE||id==ID_TORRENT_CLEAR_CACHE);
     COLORREF top,bottom,iconColor,textColor,borderColor;
     if(primary){
-        top=pressed?RGB(35,160,151):RGB(24,112,111);
-        bottom=pressed?RGB(73,190,165):RGB(34,139,132);
-        iconColor=RGB(222,255,246);textColor=RGB(250,255,253);borderColor=RGB(91,206,183);
+        top=pressed?ABM_THEME_COLOR_23A097:ABM_THEME_COLOR_18706F;
+        bottom=pressed?ABM_THEME_COLOR_49BEA5:ABM_THEME_COLOR_228B84;
+        iconColor=ABM_THEME_COLOR_DEFFF6;textColor=ABM_THEME_COLOR_FAFFFD;borderColor=ABM_THEME_COLOR_5BCEB7;
     }else if(destructive){
-        top=pressed?RGB(128,57,63):RGB(65,37,47);
-        bottom=pressed?RGB(158,70,73):RGB(83,43,52);
-        iconColor=RGB(255,174,169);textColor=RGB(255,231,229);borderColor=RGB(137,77,82);
+        top=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;
+        bottom=pressed?ABM_THEME_COLOR_9E4649:ABM_THEME_COLOR_532B34;
+        iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_THEME_COLOR_894D52;
     }else{
-        top=pressed?RGB(48,94,111):RGB(17,42,59);
-        bottom=pressed?RGB(57,111,119):RGB(24,57,71);
-        iconColor=RGB(139,194,205);textColor=RGB(213,230,239);borderColor=RGB(53,91,110);
+        top=pressed?ABM_THEME_COLOR_305E6F:ABM_THEME_COLOR_112A3B;
+        bottom=pressed?ABM_THEME_COLOR_396F77:ABM_THEME_COLOR_183947;
+        iconColor=ABM_THEME_COLOR_8BC2CD;textColor=ABM_THEME_COLOR_D5E6EF;borderColor=ABM_THEME_COLOR_355B6E;
     }
-    if(hot&&!pressed&&!destructive){top=TorrentBlend(top,RGB(40,92,101),1,4);bottom=TorrentBlend(bottom,RGB(50,108,113),1,4);}
+    if(hot&&!pressed&&!destructive){top=TorrentBlend(top,ABM_THEME_COLOR_285C65,1,4);bottom=TorrentBlend(bottom,ABM_THEME_COLOR_326C71,1,4);}
     for(int y=face.top;y<face.bottom;y++){
         RECT stripe={face.left,y,face.right,y+1};
         HBRUSH line=CreateSolidBrush(TorrentBlend(top,bottom,y-face.top,max(1,face.bottom-face.top-1)));
         FillRect(dc,&stripe,line);DeleteObject(line);
     }
     RestoreDC(dc,saved);DeleteObject(clip);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?RGB(171,246,226):borderColor);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_ABF6E2:borderColor);
     HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,face.left,face.top,face.right,face.bottom,14,14);
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
     /* Fine top highlight gives the button a glass-like edge without a white rim. */
-    HPEN hi=CreatePen(PS_SOLID,1,primary?RGB(127,229,207):(destructive?RGB(132,76,81):RGB(53,91,110)));oldPen=SelectObject(dc,hi);
+    HPEN hi=CreatePen(PS_SOLID,1,primary?ABM_THEME_COLOR_7FE5CF:(destructive?ABM_THEME_COLOR_844C51:ABM_THEME_COLOR_355B6E));oldPen=SelectObject(dc,hi);
     MoveToEx(dc,face.left+9,face.top+1,NULL);LineTo(dc,face.right-9,face.top+1);
     SelectObject(dc,oldPen);DeleteObject(hi);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
@@ -4125,7 +4125,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||
        id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC){
         RECT glyphRect={r.left+1,r.top+1,r.right-1,r.bottom-1};
-        TorrentDrawButtonIcon(dc,id,glyphRect,RGB(142,226,211));
+        TorrentDrawButtonIcon(dc,id,glyphRect,ABM_THEME_COLOR_8EE2D3);
     }else{
         RECT iconRect={r.left+3,r.top+2,r.left+31,r.bottom-2};
         TorrentDrawButtonIcon(dc,id,iconRect,iconColor);
@@ -4154,7 +4154,7 @@ static void TorrentDrawControlFrame(HWND hwnd,HDC dc){
     BOOL focus=GetFocus()==hwnd;
     BOOL hot=FALSE;POINT pt;GetCursorPos(&pt);ScreenToClient(hwnd,&pt);
     hot=PtInRect(&r,pt);
-    COLORREF edge=focus?RGB(91,205,188):(hot?RGB(57,133,139):RGB(35,70,88));
+    COLORREF edge=focus?ABM_THEME_COLOR_5BCDBC:(hot?ABM_THEME_COLOR_39858B:ABM_THEME_COLOR_234658);
     HPEN pen=CreatePen(PS_SOLID,focus?2:1,edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
@@ -4181,17 +4181,17 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
                    rounded segment and teal chevron. */
                 const int arrowW=34;
                 RECT arrow={r.right-arrowW,r.top+1,r.right-1,r.bottom-1};
-                HBRUSH fill=CreateSolidBrush(RGB(17,48,65));
-                HPEN edge=CreatePen(PS_SOLID,1,RGB(43,105,119));
+                HBRUSH fill=CreateSolidBrush(ABM_THEME_COLOR_113041);
+                HPEN edge=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B6977);
                 HGDIOBJ ob=SelectObject(dc,fill),op=SelectObject(dc,edge);
                 RoundRect(dc,arrow.left,arrow.top,arrow.right,arrow.bottom,10,10);
                 SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(fill);DeleteObject(edge);
-                HPEN chevron=CreatePen(PS_SOLID,2,RGB(116,220,204));
+                HPEN chevron=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_74DCCC);
                 op=SelectObject(dc,chevron);
                 int cx=arrow.left+arrowW/2,cy=(arrow.top+arrow.bottom)/2-1;
                 MoveToEx(dc,cx-5,cy-2,NULL);LineTo(dc,cx,cy+3);LineTo(dc,cx+5,cy-2);
                 SelectObject(dc,op);DeleteObject(chevron);
-                HPEN border=CreatePen(PS_SOLID,1,(GetFocus()==hwnd)?RGB(91,205,188):RGB(35,82,101));
+                HPEN border=CreatePen(PS_SOLID,1,(GetFocus()==hwnd)?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_235265);
                 op=SelectObject(dc,border);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
                 RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
                 SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
@@ -4219,43 +4219,43 @@ static void TorrentPremiumizeControl(HWND hwnd){
 static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
     if(!d)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
-    COLORREF bg=(d->itemState&ODS_SELECTED)?RGB(20,75,83):((d->itemID&1)?RGB(12,28,44):RGB(10,24,39));
+    COLORREF bg=(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_144B53:((d->itemID&1)?ABM_THEME_COLOR_0C1C2C:ABM_THEME_COLOR_0A1827);
     HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
     if(d->itemState&ODS_SELECTED){
         RECT pill=r;InflateRect(&pill,-3,-2);
-        HBRUSH sb=CreateSolidBrush(RGB(20,68,79));HPEN sp=CreatePen(PS_SOLID,1,RGB(49,132,139));
+        HBRUSH sb=CreateSolidBrush(ABM_THEME_COLOR_14444F);HPEN sp=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_31848B);
         HGDIOBJ ob=SelectObject(dc,sb),op=SelectObject(dc,sp);
         RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,10,10);
         SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(sb);DeleteObject(sp);
         RECT marker={r.left+5,r.top+6,r.left+8,r.bottom-6};
-        HBRUSH mb=CreateSolidBrush(RGB(93,218,190));FillRect(dc,&marker,mb);DeleteObject(mb);
+        HBRUSH mb=CreateSolidBrush(ABM_THEME_COLOR_5DDABE);FillRect(dc,&marker,mb);DeleteObject(mb);
     }
     wchar_t line[1200]=L"";
     if(d->itemID!=(UINT)-1)SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
     SetBkMode(dc,TRANSPARENT);
-    SetTextColor(dc,(d->itemState&ODS_SELECTED)?RGB(247,253,255):RGB(178,201,218));
+    SetTextColor(dc,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F7FDFF:ABM_THEME_COLOR_B2C9DA);
     RECT tx=r;tx.left+=12;tx.right-=10;
     HFONT f=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HGDIOBJ old=SelectObject(dc,f);
     DrawTextW(dc,line,-1,&tx,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     SelectObject(dc,old);DeleteObject(f);
-    if(d->itemState&ODS_FOCUS){HPEN pen=CreatePen(PS_SOLID,1,RGB(65,190,165));old=SelectObject(dc,pen);
+    if(d->itemState&ODS_FOCUS){HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_41BEA5);old=SelectObject(dc,pen);
         HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));Rectangle(dc,r.left+1,r.top+1,r.right-1,r.bottom-1);
         SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(pen);}
 }
 static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
     if(!d||!d->hwndItem)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
-    COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?RGB(13,30,47):RGB(10,24,38);
+    COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?ABM_THEME_COLOR_0D1E2F:ABM_THEME_COLOR_0A1826;
     HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
     if(d->itemID!=(UINT)-1){
         if(d->itemState&ODS_SELECTED){
-            HBRUSH sb=CreateSolidBrush(RGB(25,70,83));RECT sr=r;InflateRect(&sr,-2,-1);
+            HBRUSH sb=CreateSolidBrush(ABM_THEME_COLOR_194653);RECT sr=r;InflateRect(&sr,-2,-1);
             FillRect(dc,&sr,sb);DeleteObject(sb);
         }
         wchar_t name[256]=L"";SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)name);
-        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(d->itemState&ODS_SELECTED)?RGB(245,255,255):RGB(190,213,227));
+        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3);
         RECT tr=r;tr.left+=13;tr.right-=36;
         HFONT f=CreateFontW(-14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
@@ -4265,7 +4265,7 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
     /* The combo's native drop button is covered and redrawn once by the
        control subclass after default painting. The edit item draws no arrow. */
     if(d->itemState&ODS_COMBOBOXEDIT){
-        HPEN border=CreatePen(PS_SOLID,1,RGB(29,75,91));HGDIOBJ old=SelectObject(dc,border);
+        HPEN border=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_1D4B5B);HGDIOBJ old=SelectObject(dc,border);
         HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,r.left,r.top,r.right,r.bottom,10,10);
         SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(border);
     }
@@ -4285,17 +4285,17 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=38;return TRUE;} break; }
     
     case WM_CTLCOLORDLG:
-        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(RGB(18,21,29));
+        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(ABM_THEME_COLOR_12151D);
         return (LRESULT)g_torrentSurfaceBrush;
     case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(204,226,238));SetBkMode(dc,OPAQUE);SetBkColor(dc,RGB(12,27,43));
-        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(RGB(12,27,43));
+        HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_CCE2EE);SetBkMode(dc,OPAQUE);SetBkColor(dc,ABM_THEME_COLOR_0C1B2B);
+        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(ABM_THEME_COLOR_0C1B2B);
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX: {
-        HDC dc=(HDC)wp;SetTextColor(dc,RGB(239,247,252));SetBkColor(dc,RGB(15,31,47));
-        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(RGB(15,31,47));
+        HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_EFF7FC);SetBkColor(dc,ABM_THEME_COLOR_0F1F2F);
+        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(ABM_THEME_COLOR_0F1F2F);
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CREATE: {
@@ -4506,7 +4506,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(!g_torrentInitialized){StartTorrentEngine(owner);return;}
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(RGB(10,17,29));wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_0A111D);wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr;GetWindowRect(owner,&wr);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int w=maxW<1080?maxW:1080,h=maxH<980?maxH:980;if(w<760)w=760;if(h<620)h=620;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
@@ -4582,10 +4582,10 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         RECT r={320,58,rc.right-34,108}; SelectObject(dc,title); SetTextColor(dc,ABM_UI_COLOR_TEXT); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=116;r.bottom=145;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=151;r.bottom=192;SelectObject(dc,heading);SetTextColor(dc,RGB(255,255,255));DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=151;r.bottom=192;SelectObject(dc,heading);SetTextColor(dc,ABM_THEME_COLOR_FFFFFF);DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=198;r.bottom=232;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=245;r.bottom=274;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=278;r.bottom=310;SetTextColor(dc,RGB(250,252,255));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=278;r.bottom=310;SetTextColor(dc,ABM_THEME_COLOR_FAFCFF);DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=320;r.bottom=399;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
         RECT divider={28,405,rc.right-28,407};HBRUSH line=CreateSolidBrush(ABM_UI_COLOR_BORDER);FillRect(dc,&divider,line);DeleteObject(line);
         r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
@@ -4749,7 +4749,7 @@ static void ShowHelpDialog(HWND owner) {
     if(!registered) {
         WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HelpWndProc;
         wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
-        wc.hbrBackground=CreateSolidBrush(RGB(7,12,21));wc.lpszClassName=L"ABMAVPlayerHelp";
+        wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_070C15);wc.lpszClassName=L"ABMAVPlayerHelp";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
@@ -4763,7 +4763,7 @@ static void ShowHelpDialog(HWND owner) {
         x,y,w,h,owner,NULL,inst,NULL);
     if(!dlg)return;
     BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-    {int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);
+    {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
@@ -4930,7 +4930,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  switch(msg) {
  case WM_CREATE: {
   if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
-  g_settingsEditBrush=CreateSolidBrush(RGB(11,25,40));
+  g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
   wchar_t n[32];
@@ -4981,19 +4981,19 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_settingsUiReady){
    ABM_D2D_Begin(&g_settingsUi,SETTINGS_BG);
-   ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,RGB(15,39,57),RGB(13,30,47));
-   ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,RGB(43,88,111),1.0f);
-   ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,RGB(28,157,157));
-   ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,RGB(115,210,207),1.0f);
-   SettingsText(L"⚙",39,29,72,66,RGB(255,255,255),2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"SETTINGS",92,20,420,53,RGB(247,250,255),2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
+   ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
+   ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_1C9D9D);
+   ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_73D2CF,1.0f);
+   SettingsText(L"⚙",39,29,72,66,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"SETTINGS",92,20,420,53,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsText(L"PLAYBACK  ·  AUDIO  ·  STORAGE  ·  NETWORK",94,49,550,69,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(88,L"GENERAL",L"Playback defaults",226);
    SettingsText(L"Volume (0–100)",40,140,155,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(160,155,264,188);
    SettingsText(L"Playback speed",430,140,550,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(565,155,704,190);
-   ABM_D2D_Round(&g_settingsUi,572,160,697,185,5,RGB(16,39,55));
+   ABM_D2D_Round(&g_settingsUi,572,160,697,185,5,ABM_THEME_COLOR_102737);
    SettingsText(g_settingsRateLabels[g_settingsRateIndex],579,160,670,185,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Line(&g_settingsUi,681,169,686,175,SETTINGS_ACCENT,1.8f);ABM_D2D_Line(&g_settingsUi,686,175,691,169,SETTINGS_ACCENT,1.8f);
    SettingsCheckDraw(40,202,L"Shuffle by default",g_settingsShuffle);
@@ -5020,9 +5020,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsButtonDraw(610,774,735,812,L"Save settings",TRUE);
    SettingsButtonDraw(744,774,800,812,L"Close",FALSE);
    if(g_settingsRateOpen){
-    ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,RGB(12,27,43));
-    ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,RGB(67,137,153),1.0f);
-    for(int i=0;i<7;i++){int y=191+i*26;if(i==g_settingsRateIndex)ABM_D2D_Round(&g_settingsUi,570,(float)y,699,(float)(y+25),5,RGB(25,91,88));SettingsText(g_settingsRateLabels[i],580,y,694,y+25,i==g_settingsRateIndex?RGB(255,255,255):SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
+    ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_0C1B2B);
+    ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
+    for(int i=0;i<7;i++){int y=191+i*26;if(i==g_settingsRateIndex)ABM_D2D_Round(&g_settingsUi,570,(float)y,699,(float)(y+25),5,ABM_THEME_COLOR_195B58);SettingsText(g_settingsRateLabels[i],580,y,694,y+25,i==g_settingsRateIndex?ABM_THEME_COLOR_FFFFFF:SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
    }
    ABM_D2D_End(&g_settingsUi);
   }
@@ -5046,7 +5046,7 @@ static void ShowSettingsDialog(HWND owner) {
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
- {int corners=2;COLORREF border=RGB(46,70,104),caption=RGB(10,15,25);DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+ {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
  EnableWindow(owner,FALSE);ShowWindow(g_settingsWindow,SW_SHOW);UpdateWindow(g_settingsWindow);
  MSG m;while(IsWindow(g_settingsWindow)&&GetMessageW(&m,NULL,0,0)>0){if(!IsDialogMessageW(g_settingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}
  EnableWindow(owner,TRUE);SetActiveWindow(owner);
@@ -5103,7 +5103,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_DRAWITEM:
         if(((LPDRAWITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
             LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;
-            HBRUSH bg=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(54,59,66):RGB(31,34,38));
+            HBRUSH bg=CreateSolidBrush((d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_363B42:ABM_THEME_COLOR_1F2226);
             FillRect(d->hDC,&d->rcItem,bg);
             DeleteObject(bg);
             if(d->itemID!=(UINT)-1){
@@ -5113,7 +5113,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 textRect.left+=13;
                 textRect.right-=28;
                 SetBkMode(d->hDC,TRANSPARENT);
-                SetTextColor(d->hDC,RGB(235,238,242));
+                SetTextColor(d->hDC,ABM_THEME_COLOR_EBEEF2);
                 DrawTextW(d->hDC,t,-1,&textRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             /* The native combo already paints its drop-down button.
@@ -5123,8 +5123,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         break;
     case WM_CTLCOLORLISTBOX:
-        SetTextColor((HDC)wp,RGB(235,238,242));
-        SetBkColor((HDC)wp,RGB(31,34,38));
+        SetTextColor((HDC)wp,ABM_THEME_COLOR_EBEEF2);
+        SetBkColor((HDC)wp,ABM_THEME_COLOR_1F2226);
         return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_TORRENT_PLAYER_EVENT: {
@@ -5903,7 +5903,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     /* Licensing is an independent gate; no playback, torrent or casting state is initialized before access is granted. */
     if(!ABM_LicenseCheckAndPrompt(inst,NULL)){if(SUCCEEDED(comInit))CoUninitialize();return 0;}
     InitializeCriticalSection(&g_rendererLock);
-    g_videoBrush=CreateSolidBrush(RGB(0,0,0));g_comboBrush=CreateSolidBrush(C_PANEL2);
+    g_videoBrush=CreateSolidBrush(ABM_THEME_COLOR_000000);g_comboBrush=CreateSolidBrush(C_PANEL2);
     g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
     g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
     g_headingFont=CreateFontW(30,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
@@ -6007,7 +6007,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
 #define DWMWA_CAPTION_COLOR 35
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
 #endif
-    { int corners=2; COLORREF border=RGB(46,70,104),caption=RGB(10,15,25); int backdrop=2;
+    { int corners=2; COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19; int backdrop=2;
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
