@@ -1,3 +1,14 @@
+# ABM AV Player v1.0.6 — security hardening and release alignment
+
+- Strengthened native compiler and linker protections with MSVC security checks, Control Flow Guard, ASLR, DEP, high-entropy ASLR and CET compatibility flags.
+- Hardened local trial-state validation: persisted records that are present but unreadable, invalid or inconsistent fail closed and require activation rather than silently restarting the trial.
+- Changed the embedded activation-key digest comparison to a constant-time byte comparison and added lightweight digest obfuscation. This is a reverse-engineering speed bump, not a cryptographic boundary.
+- Kept Authenticode enforcement optional and disabled by default. The normal unsigned development and distribution configuration continues to work; no code-signing certificate, publisher registration or signing workflow is required for this release.
+- Aligned the application About version, Streaming Centre About version, installer metadata, packaging guards, release publisher and vcpkg manifest to 1.0.6.
+- Existing local playback, Streaming Centre, torrent streaming, caching and casting workflows are retained.
+
+**Release validation:** Build and test the Windows application and installer on the target Windows environment before publishing. Source updates alone do not establish a successful Windows build or runtime test.
+
 # ABM AV Player v1.0.5 (licensing feature)
 
 - Added a 10-day full-feature trial that begins on first launch.
