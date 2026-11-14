@@ -177,6 +177,7 @@ static BOOL g_drawerOpen = FALSE;
 static int g_drawerProgress = 0;
 static int g_hoverPlaylistIndex = -1;
 static BOOL g_drawerSettingsOpen = FALSE;
+static int64_t g_advancedSubtitleDelayUs=0;
 static BOOL g_menuOpen = FALSE;
 static BOOL g_fullscreen = FALSE;
 /* Suppress intermediate WM_SIZE layout while Win32 restores fullscreen placement.
@@ -5012,7 +5013,7 @@ static int g_advancedSettingsPage=0;
 static int g_advancedHwMode=0,g_advancedHwDraft=0;
 static BOOL g_advancedHwEnvOverride=FALSE;
 static int g_advancedAudioOutMode=0,g_advancedAudioOutDraft=0;
-static int64_t g_advancedSubtitleDelayUs=0;
+
 static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
