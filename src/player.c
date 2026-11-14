@@ -4815,6 +4815,7 @@ static HWND g_settingsWindow;
 static BOOL g_settingsShuffle=FALSE,g_settingsRepeat=FALSE;
 static BOOL g_settingsReplayGain=FALSE,g_settingsCompressor=FALSE;
 static BOOL g_settingsRateOpen=FALSE;
+static int g_settingsThemePreset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
 static int g_settingsRateIndex=2;
 static wchar_t g_settingsMessage[256]=L"Settings are saved only when you choose Save settings.";
 
@@ -4896,6 +4897,32 @@ static void SettingsBrowseDownloads(HWND w) {
  wchar_t path[PATH_CAP]={0};
  if(ABM_PickFolder(w,L"Select permanent torrent downloads folder",path,_countof(path)))SetWindowTextW(GetDlgItem(w,6202),path);
 }
+static void LoadThemePreference(void) {
+ if(!EnsureDataDirectory())return;
+ wchar_t path[PATH_CAP];
+ swprintf_s(path,_countof(path),L"%s\\theme.ini",g_dataDir);
+ int preset=GetPrivateProfileIntW(L"Appearance",L"ColorPreset",ABM_THEME_PRESET_MIDNIGHT_TEAL,path);
+ if(preset<0||preset>=ABM_THEME_PRESET_COUNT)preset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
+ ABMThemeApplyPreset((ABMThemePreset)preset);
+ g_settingsThemePreset=preset;
+}
+static void SaveThemePreference(int preset) {
+ if(!EnsureDataDirectory()||preset<0||preset>=ABM_THEME_PRESET_COUNT)return;
+ wchar_t path[PATH_CAP],value[16];
+ swprintf_s(path,_countof(path),L"%s\\theme.ini",g_dataDir);
+ swprintf_s(value,_countof(value),L"%d",preset);
+ WritePrivateProfileStringW(L"Appearance",L"ColorPreset",value,path);
+}
+static BOOL CALLBACK ThemeInvalidateWindow(HWND hwnd,LPARAM unused) {
+ (void)unused;
+ if(IsWindow(hwnd)){SendMessageW(hwnd,WM_THEMECHANGED,0,0);InvalidateRect(hwnd,NULL,FALSE);}
+ return TRUE;
+}
+static void RefreshThemeWindows(void) {
+ EnumThreadWindows(GetCurrentThreadId(),ThemeInvalidateWindow,0);
+ ABM_Streaming_RefreshTheme();
+}
+
 static void SettingsApply(HWND w) {
  wchar_t path[PATH_CAP]={0},downloads[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0};
  GetWindowTextW(GetDlgItem(w,6201),path,_countof(path));GetWindowTextW(GetDlgItem(w,6202),downloads,_countof(downloads));GetWindowTextW(GetDlgItem(w,6204),q,_countof(q));
@@ -4932,6 +4959,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
   g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
+  g_settingsThemePreset=(int)ABMThemeCurrentPreset();
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
   wchar_t n[32];
   StringCchPrintfW(n,_countof(n),L"%d",g_volume);
@@ -4946,6 +4974,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
   return 0;
  }
+ case WM_THEMECHANGED:
+  if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
+  InvalidateRect(w,NULL,FALSE);return 0;
  case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
@@ -4957,6 +4988,17 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
+   int left=40+preset*123;
+   if(SettingsPoint(x,y,left,790,left+116,850)){
+    g_settingsThemePreset=preset;
+    ABMThemeApplyPreset((ABMThemePreset)preset);
+    SaveThemePreference(preset);
+    RefreshThemeWindows();
+    InvalidateRect(w,NULL,FALSE);
+    return 0;
+   }
+  }
   if(SettingsPoint(x,y,565,155,704,190)){g_settingsRateOpen=!g_settingsRateOpen;InvalidateRect(w,NULL,FALSE);return 0;}
   if(g_settingsRateOpen&&SettingsPoint(x,y,565,190,704,372)){int idx=(y-190)/26;if(idx>=0&&idx<7)g_settingsRateIndex=idx;g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);return 0;}
   if(SettingsPoint(x,y,38,198,300,224)){g_settingsShuffle=!g_settingsShuffle;InvalidateRect(w,NULL,FALSE);return 0;}
@@ -4968,8 +5010,8 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,655,496,780,528)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
   /* Keep hit targets aligned with the current Direct2D-rendered button rectangles. */
   if(SettingsPoint(x,y,39,681,194,714)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
-  if(SettingsPoint(x,y,610,774,735,812)){SettingsApply(w);return 0;}
-  if(SettingsPoint(x,y,744,774,800,812)){DestroyWindow(w);return 0;}
+  if(SettingsPoint(x,y,610,914,735,952)){SettingsApply(w);return 0;}
+  if(SettingsPoint(x,y,744,914,800,952)){DestroyWindow(w);return 0;}
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
@@ -5016,9 +5058,20 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsSection(666,L"UPDATES",L"Maintenance",738);
    SettingsButtonDraw(39,681,194,714,L"Check for updates",TRUE);
    SettingsText(L"Checks the latest published GitHub release.",210,682,770,713,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(g_settingsMessage,40,744,780,768,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   SettingsButtonDraw(610,774,735,812,L"Save settings",TRUE);
-   SettingsButtonDraw(744,774,800,812,L"Close",FALSE);
+   SettingsSection(748,L"COLOR THEME",L"Six coordinated palettes · changes apply immediately",872);
+   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
+    float left=(float)(40+preset*123);
+    BOOL selected=(preset==g_settingsThemePreset);
+    COLORREF accent=ABMThemePresetAccent((ABMThemePreset)preset);
+    ABM_D2D_Round(&g_settingsUi,left,790,left+116.0f,850.0f,9.0f,selected?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
+    ABM_D2D_Round(&g_settingsUi,left+7.0f,797,left+109.0f,822.0f,6.0f,accent);
+    ABM_D2D_Round(&g_settingsUi,left+7.0f,826,left+109.0f,844.0f,5.0f,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE);
+    SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+8,826,(int)left+108,844,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,790.5f,left+115.5f,849.5f,9.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
+   }
+   SettingsText(g_settingsMessage,40,878,780,902,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   SettingsButtonDraw(610,914,735,952,L"Save settings",TRUE);
+   SettingsButtonDraw(744,914,800,952,L"Close",FALSE);
    if(g_settingsRateOpen){
     ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_0C1B2B);
     ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
@@ -5041,7 +5094,7 @@ static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
- RECT wr={0,0,820,850};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
+ RECT wr={0,0,820,980};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
  int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
@@ -5054,6 +5107,9 @@ static void ShowSettingsDialog(HWND owner) {
 
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_THEMECHANGED:
+        if(g_comboBrush){DeleteObject(g_comboBrush);g_comboBrush=CreateSolidBrush(C_PANEL2);}
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_CREATE: {
         g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
@@ -5903,6 +5959,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     /* Licensing is an independent gate; no playback, torrent or casting state is initialized before access is granted. */
     if(!ABM_LicenseCheckAndPrompt(inst,NULL)){if(SUCCEEDED(comInit))CoUninitialize();return 0;}
     InitializeCriticalSection(&g_rendererLock);
+    LoadThemePreference();
     g_videoBrush=CreateSolidBrush(ABM_THEME_COLOR_000000);g_comboBrush=CreateSolidBrush(C_PANEL2);
     g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
     g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
