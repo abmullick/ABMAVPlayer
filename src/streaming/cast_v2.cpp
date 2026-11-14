@@ -180,7 +180,12 @@ void Discover() {
     if(bind(sock,(sockaddr*)&local,sizeof(local))==SOCKET_ERROR) {
         Diag(L"mDNS: bind UDP 5353 failed WSA=%d",WSAGetLastError());closesocket(sock);WSACleanup();g_stop=true;return;
     }
-    ip_mreq membership{};membership.imr_multiaddr.s_addr=inet_addr("224.0.0.251");membership.imr_interface.s_addr=htonl(INADDR_ANY);
+    in_addr multicastAddress{};
+    if(InetPtonA(AF_INET,"224.0.0.251",&multicastAddress)!=1) {
+        Diag(L"mDNS: failed to parse multicast group address");
+        closesocket(sock);WSACleanup();g_stop=true;return;
+    }
+    ip_mreq membership{};membership.imr_multiaddr=multicastAddress;membership.imr_interface.s_addr=htonl(INADDR_ANY);
     if(setsockopt(sock,IPPROTO_IP,IP_ADD_MEMBERSHIP,(const char*)&membership,sizeof(membership))==SOCKET_ERROR) {
         Diag(L"mDNS: multicast join failed WSA=%d",WSAGetLastError());closesocket(sock);WSACleanup();g_stop=true;return;
     }
@@ -189,7 +194,7 @@ void Discover() {
     int multicastTtl=255;
     setsockopt(sock,IPPROTO_IP,IP_MULTICAST_TTL,(const char*)&multicastTtl,sizeof(multicastTtl));
     g_mdnsSocket.store(sock);
-    sockaddr_in multicast{};multicast.sin_family=AF_INET;multicast.sin_port=htons(5353);multicast.sin_addr.s_addr=inet_addr("224.0.0.251");
+    sockaddr_in multicast{};multicast.sin_family=AF_INET;multicast.sin_port=htons(5353);multicast.sin_addr=multicastAddress;
     std::vector<unsigned char> query;MakeMdnsQuery(query);
     DWORD lastQuery=0;
     std::map<std::string,Receiver> knownServices;
@@ -212,7 +217,10 @@ void Discover() {
             if(g_stop.load())break;
             Diag(L"mDNS: recvfrom failed WSA=%d",e);continue;
         }
-        Diag(L"mDNS: received %d-byte packet from %S",got,inet_ntoa(from.sin_addr));
+        char fromAddress[INET_ADDRSTRLEN]{};
+        if(!InetNtopA(AF_INET,&from.sin_addr,fromAddress,(DWORD)sizeof(fromAddress)))
+            StringCchCopyA(fromAddress,_countof(fromAddress),"unknown");
+        Diag(L"mDNS: received %d-byte packet from %S",got,fromAddress);
         std::vector<MdnsRecord> records;
         ParseMdnsPacket(packet,(size_t)got,records);
         if(records.empty())Diag(L"mDNS: packet contained no supported PTR/SRV/TXT/A records");
