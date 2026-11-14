@@ -70,8 +70,9 @@ if (-not (Test-Path $installedRoot)) {
 
         Write-Log "Cache verified. Restoring the existing vcpkg_installed tree..."
         Expand-Archive -LiteralPath $cacheZip -DestinationPath $repoRoot -Force
-        if (-not (Test-Path (Join-Path $installedRoot "x64-windows\include\libtorrent\session.hpp"))) {
-            throw "The restored archive does not contain the expected libtorrent headers."
+        if (-not (Test-Path (Join-Path $installedRoot "x64-windows\include\libtorrent\session.hpp")) -or
+            -not (Test-Path (Join-Path $installedRoot "x64-windows\include\juice\juice.h"))) {
+            throw "The restored archive is missing the expected libtorrent or libjuice headers."
         }
         $cacheRestored = $true
         Write-Log "Dependency cache restored. vcpkg will validate package ABI during install."
