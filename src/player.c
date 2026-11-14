@@ -2519,7 +2519,7 @@ static void PlayIndex(int index) {
         libvlc_media_add_option(m,":compressor-release=250");
         libvlc_media_add_option(m,":compressor-makeup-gain=0");
     }
-    ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);
+    ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);AddAdvancedPerformanceOptions(m);
     BeginArtworkParse(m);
     libvlc_media_player_set_media(g_player,m);libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);libvlc_media_release(m);
     ApplyEqProfile();
