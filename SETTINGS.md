@@ -93,4 +93,4 @@ The first file stores player and torrent preferences, including the cache parent
 
 ## Color theme
 
-Settings includes six immediately applied color presets: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber and Emerald. The selected preset is persisted in `%APPDATA%\\ABMAVPlayer\\theme.ini`. Presets affect ABM-owned windows and Streaming Centre chrome; third-party provider pages retain their native appearance.
+Settings includes seven immediately applied color presets: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald and Golden Yellow. The selected preset is persisted in `%APPDATA%\\ABMAVPlayer\\theme.ini`. Presets affect ABM-owned windows and Streaming Centre chrome; third-party provider pages retain their native appearance.
