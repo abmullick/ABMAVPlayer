@@ -4,52 +4,46 @@ ABM AV Player checks the latest **published GitHub Release** for this repository
 
 https://github.com/abmullick/ABMAVPlayer/releases/latest
 
-The in-app updater expects each release to include the Windows installer asset with this exact name:
+The in-app updater expects each release to include the Windows installer asset named exactly `ABM-AV-Player-Setup.exe`. It compares the release tag with the version compiled into the application. If a newer release is found, it displays the release notes, downloads the installer over HTTPS, verifies the downloaded file against the SHA-256 digest returned by GitHub for that asset, requests Windows elevation, launches the installer, and closes the running player so the installer can replace its files.
 
-`ABM-AV-Player-Setup.exe`
+The installer uses the existing Inno Setup AppId and installation directory to upgrade the current installation. User data under AppData is stored separately from the application install directory.
 
-It compares the release tag (for example, `v1.0.3`) with the version compiled into the application. If a newer release is found, it displays the release notes, downloads the installer over HTTPS, verifies the downloaded file against the SHA-256 digest returned by GitHub for that release asset, requests Windows elevation, launches Inno Setup, and closes the running player so the installer can replace its files. No Authenticode code-signing certificate is required. The installer uses the same Inno Setup AppId and installation directory, so it upgrades the existing installation rather than creating a second product installation. User data under AppData is not part of the application install directory and is preserved.
+## Current source version: v1.0.6
 
-## Publishing a release
+The v1.0.6 source updates include native compiler/linker hardening, stricter local trial-state validation, constant-time activation digest comparison and lightweight digest obfuscation. Authenticode enforcement remains optional and disabled by default. The standard unsigned build does not require a certificate or publisher registration.
 
-1. Update `APP_VERSION` in `src/player.c` and `MyAppVersion` in `installer/ABMAVPlayer.iss` to the same new version (for example, `1.0.3`).
-2. Build and test the application on Windows.
-3. Run `prepare_installer.bat`.
-4. Build the installer with `build_installer.bat`. Confirm that `dist\ABM-AV-Player-Setup.exe` exists.
-5. Edit `RELEASE_NOTES.md` with the actual changes.
-6. Install GitHub CLI (https://cli.github.com/) and authenticate with `gh auth login`.
-7. From the repository root, run `publish_release.bat 1.0.3`.
+## Publishing v1.0.6
 
-The script creates tag `v1.0.3`, publishes a GitHub Release against `main`, and uploads the installer. The version argument must match the two version declarations updated in step 1. Version `1.0.3` is the next patch release after the already-published `v1.0.2`. Rebuild the installer after changing either version declaration; never upload an installer built with a different embedded application version.
+1. Confirm `APP_VERSION` in `src/player.c`, the Streaming Centre About version in `src/streaming/streaming_host.cpp`, `MyAppVersion` and `VersionInfoVersion` in `installer/ABMAVPlayer.iss`, and the package version in `vcpkg.json` are aligned to `1.0.6`.
+2. Build the application on Windows with the normal unsigned configuration. Do not set `ABM_REQUIRE_SIGNED_BUILD=1`; Authenticode is intentionally optional.
+3. Run the application and complete the relevant manual acceptance tests, including licensing/trial, local playback, Streaming Centre, torrent playback/download, both casting paths, and installer upgrade.
+4. Run `build_installer.bat`. It rebuilds the application, refreshes the staging directory and checks the application and staged EXE version before compiling the installer.
+5. Confirm `dist\\ABM-AV-Player-Setup.exe` exists and inspect its Windows FileVersionInfo product/file version.
+6. Review the top v1.0.6 section in `RELEASE_NOTES.md` and ensure it describes the tested release.
+7. Install GitHub CLI and authenticate with `gh auth login` on the maintainer's machine.
+8. From the repository root, run:
 
-## v1.0.3 publishing checklist
+   ```bat
+   publish_release.bat 1.0.6
+   ```
 
-- Merge the release source changes into `main` before publishing because the publishing script targets `main`.
-- Update both version declarations to `1.0.3`, then rebuild and reinstall/test the resulting installer.
-- Run `publish_release.bat 1.0.3` from the repository root. It creates the `v1.0.3` tag and uploads `dist\\ABM-AV-Player-Setup.exe`.
-- Verify that the published release has the exact installer asset name and a GitHub SHA-256 digest before announcing the update.
+The script creates tag `v1.0.6`, publishes a normal GitHub Release against `main`, and uploads `dist\\ABM-AV-Player-Setup.exe`. It refuses to publish if the installer version resource does not match 1.0.6 or if the release tag already exists.
 
-## Important release rules
+## Release requirements
 
 - Publish a normal, non-draft, non-prerelease GitHub Release. The updater uses GitHub's `releases/latest` endpoint.
 - Attach the installer as `ABM-AV-Player-Setup.exe` exactly. Renaming the asset breaks automatic update discovery.
-- Do not publish an installer until it has been tested on Windows.
-- Keep the release tag, compiled application version and Inno Setup version aligned.
+- Do not publish an installer until it has been built and tested on Windows.
+- Keep the release tag, application About version, Streaming Centre About version, installer version resources and package manifest aligned.
 - The updater does not update from arbitrary branches or pre-releases.
-- Users can always download releases manually from the Releases page.
+- Users can download releases manually from the [Releases page](https://github.com/abmullick/ABMAVPlayer/releases).
 
-## Security and limitations
+## Update integrity and signing
 
-The updater retrieves release metadata from the official GitHub API and downloads the installer from GitHub's release asset hosting over HTTPS. It asks before installing and Windows displays the normal elevation prompt. It does not silently install updates.
+The updater obtains release metadata from the official GitHub API and downloads the installer from GitHub over HTTPS. It asks before installing and Windows displays the normal elevation prompt. It does not silently install updates.
 
-The updater requires GitHub to provide a SHA-256 digest for the installer asset. It fails closed if the digest is missing or does not match; the downloaded installer is never launched after a failed integrity check. The digest is obtained from the GitHub Releases API over HTTPS and checked locally before execution. This verifies that the downloaded bytes match the asset digest GitHub reports; it does not independently authenticate the publisher in the way an Authenticode signature would. Windows SmartScreen or antivirus products may still show warnings for an unsigned installer. Users should install only releases published by the official `abmullick/ABMAVPlayer` repository.
+The updater requires GitHub to provide a SHA-256 digest for the installer asset. It fails closed if the digest is missing or does not match. This confirms that the downloaded bytes match the digest GitHub reports; it does not independently authenticate the publisher as Authenticode does. Authenticode signing is not required for v1.0.6 and remains an optional future hardening step. Windows SmartScreen or antivirus products may still show warnings for an unsigned installer. Users should install only releases published by the official `abmullick/ABMAVPlayer` repository.
 
+## Version guard behaviour
 
-## v1.0.3 installer version guard
-
-The v1.0.3 packaging scripts verify the compiled executable and staged payload by checking the About-version string embedded in the EXE. The publishing script repeats this check against `dist\ABM-AV-Player-Setup.exe` and refuses to upload an installer that still identifies itself as v1.0.2. If the About dialog shows an old version, do not publish; rebuild from the merged `main` source with `build_installer.bat`.
-
-
-### Installer version verification correction
-
-Inno Setup compresses the installed application payload inside the setup executable. The release publisher must not search the compressed setup bytes for the application's About string. The installer script stamps `VersionInfoVersion=1.0.3.0` and `VersionInfoProductVersion=1.0.3`; `publish_release.bat` verifies those PE version resources through Windows FileVersionInfo. The build script separately verifies the uncompressed application executable before staging.
+`build_installer.bat` checks the About-version string in both the freshly built executable and the staged executable before packaging. `publish_release.bat` checks the installer's PE FileVersionInfo/ProductVersion resource; it does not search inside the compressed installer payload. If any displayed or embedded version is stale, rebuild from the current `main` source and verify the result before publishing.
