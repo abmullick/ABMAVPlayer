@@ -13,7 +13,7 @@ if not exist "dist\ABM-AV-Player-Setup.exe" goto missing_installer
 if not exist "RELEASE_NOTES.md" goto missing_notes
 
 rem Verify installer PE metadata against the same canonical VERSION file.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Expected version: ' + $expected); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne $expected -or $v.FileVersion -notlike ($expected + '*')) { Write-Host 'ERROR: Installer PE version resources do not match VERSION.'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); $fileVersion=$v.FileVersion.Trim(); $productVersion=$v.ProductVersion.Trim(); Write-Host ('Expected version: ' + $expected); Write-Host ('Installer FileVersion: ' + $fileVersion); Write-Host ('Installer ProductVersion: ' + $productVersion); $validFileVersion=($fileVersion -eq $expected -or $fileVersion -eq ($expected + '.0')); if ($productVersion -ne $expected -or -not $validFileVersion) { Write-Host 'ERROR: Installer PE version resources do not match VERSION.'; exit 1 }"
 if errorlevel 1 goto wrong_installer_version
 
 where gh >nul 2>nul
