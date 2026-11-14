@@ -82,6 +82,7 @@ The root `VERSION` file is the sole editable source for the product's semantic v
 
 Run `tools\prepare_version.ps1` to generate:
 - `build\version.h` — C/C++ version macros used by the main application and Streaming Centre.
+- `build\version.rc` — Windows executable FileVersion/ProductVersion resource.
 - `build\version.iss` — Inno Setup preprocessor definition consumed by `installer\ABMAVPlayer.iss`.
 - `vcpkg.json` — generated dependency manifest based on the tracked `vcpkg.json.in` template.
 
