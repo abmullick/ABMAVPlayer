@@ -2,8 +2,9 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $installedRoot = Join-Path $repoRoot "vcpkg_installed"
-if (-not (Test-Path (Join-Path $installedRoot "x64-windows\include\libtorrent\session.hpp"))) {
-    throw "A successful x64-windows vcpkg install is required before packaging the cache."
+if (-not (Test-Path (Join-Path $installedRoot "x64-windows\include\libtorrent\session.hpp")) -or
+    -not (Test-Path (Join-Path $installedRoot "x64-windows\include\juice\juice.h"))) {
+    throw "A successful x64-windows install containing both libtorrent and the custom libjuice port is required before packaging the cache."
 }
 
 # Reuse the project's bootstrap logic so the cache metadata records the same
