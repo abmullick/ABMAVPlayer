@@ -153,7 +153,7 @@ static unsigned int g_videoGeometryPoll = 0;
 static int64_t g_lastUiTime = -1;
 static int64_t g_overlayLength = 0;
 static BOOL g_overlayPlaying = FALSE;
-static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST;
+static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST, R_AUDIO_BUTTON, R_AUDIO_PANEL, R_AUDIO_ITEMS[12];
 static RECT R_ROW[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
 static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT;
@@ -166,6 +166,12 @@ static int g_mediaFilter=0; /* 0 = All, 1 = Audio, 2 = Video */
 static int g_groupMode=0; /* 0 = Folder, 1 = Artist, 2 = Album */
 static BOOL g_hasMedia = FALSE;
 static BOOL g_receiverPopup = FALSE;
+static BOOL g_audioPopupOpen = FALSE;
+static char g_audioDeviceId[256] = "";
+static wchar_t g_audioDeviceLabel[256] = L"System default";
+static char g_audioDeviceIds[12][256];
+static wchar_t g_audioDeviceNames[12][256];
+static int g_audioDeviceCount = 0;
 static BOOL g_drawerOpen = FALSE;
 static int g_drawerProgress = 0;
 static int g_hoverPlaylistIndex = -1;
@@ -338,6 +344,8 @@ int ABM_ShowMessageBox(HWND owner,const wchar_t *message,const wchar_t *caption,
 static void PlayIndex(int index);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
+static void RefreshAudioDevices(void);
+static void ApplyAudioOutputDevice(void);
 static void ApplyEqProfile(void);
 static void ShowEqualizer(void);
 static void ApplyCustomEqualizer(void);
@@ -1447,6 +1455,31 @@ static void DrawUI(HDC dc,RECT client) {
     RECT volLabel={volPanel.left+14,volPanel.top+3,volPanel.left+82,volPanel.bottom-3};
      RECT volTrack={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
     Txt(dc,L"VOLUME",volLabel,RGB(161,183,211),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT audioBtn=R_AUDIO_BUTTON;BOOL audioActive=g_audioPopupOpen;
+    GradientRound(dc,audioBtn,audioActive?RGB(40,126,119):RGB(24,48,58),audioActive?RGB(68,174,145):RGB(38,79,91),13);
+    ABM_D2D_StrokeRound(&g_ui,(float)audioBtn.left,(float)audioBtn.top,(float)audioBtn.right,(float)audioBtn.bottom,13.0f,audioActive?RGB(123,220,188):RGB(76,137,150),1.0f);
+    int acx=(audioBtn.left+audioBtn.right)/2,acy=(audioBtn.top+audioBtn.bottom)/2;
+    DrawLine(dc,acx-13,acy-5,acx-7,acy-5,RGB(229,245,250),2);DrawLine(dc,acx-13,acy+5,acx-7,acy+5,RGB(229,245,250),2);
+    DrawLine(dc,acx-7,acy-5,acx+1,acy-11,RGB(229,245,250),2);DrawLine(dc,acx-7,acy+5,acx+1,acy+11,RGB(229,245,250),2);
+    DrawLine(dc,acx+5,acy-7,acx+9,acy-3,RGB(133,220,204),2);DrawLine(dc,acx+9,acy-3,acx+9,acy+3,RGB(133,220,204),2);DrawLine(dc,acx+9,acy+3,acx+5,acy+7,RGB(133,220,204),2);
+    if(g_audioPopupOpen) {
+        int rows=g_audioDeviceCount+1;if(rows>12)rows=12;
+        R_AUDIO_PANEL=(RECT){R_SIDEBAR.right-304,R_SIDEBAR.bottom-91-(rows*38+68),R_SIDEBAR.right-14,R_SIDEBAR.bottom-91};
+        Panel(dc,R_AUDIO_PANEL,RGB(13,25,39),RGB(70,126,130),17);
+        RECT title={R_AUDIO_PANEL.left+16,R_AUDIO_PANEL.top+10,R_AUDIO_PANEL.right-14,R_AUDIO_PANEL.top+36};
+        Txt(dc,L"AUDIO OUTPUT",title,RGB(126,207,190),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        for(int ai=0;ai<rows;ai++) {
+            RECT item={R_AUDIO_PANEL.left+8,R_AUDIO_PANEL.top+42+ai*38,R_AUDIO_PANEL.right-8,R_AUDIO_PANEL.top+78+ai*38};R_AUDIO_ITEMS[ai]=item;
+            BOOL chosen=(ai==0&&!g_audioDeviceId[0])||(ai>0&&ai-1<g_audioDeviceCount&&!strcmp(g_audioDeviceIds[ai-1],g_audioDeviceId));
+            if(chosen)RoundBox(dc,item,RGB(27,76,72),9);
+            const wchar_t *name=ai==0?L"System default":g_audioDeviceNames[ai-1];
+            RECT label={item.left+14,item.top,item.right-30,item.bottom};
+            Txt(dc,name,label,chosen?RGB(244,255,251):RGB(209,224,239),g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(chosen){int cy=(item.top+item.bottom)/2;RoundBox(dc,(RECT){item.right-22,cy-4,item.right-14,cy+4},RGB(106,225,185),5);}
+        }
+        RECT foot={R_AUDIO_PANEL.left+14,R_AUDIO_PANEL.bottom-26,R_AUDIO_PANEL.right-12,R_AUDIO_PANEL.bottom-7};
+        Txt(dc,L"Bluetooth pairing is managed by Windows",foot,RGB(128,151,174),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
     }
     RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,RGB(34,53,77),6);
     vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,RGB(43,184,220),RGB(117,105,237));
@@ -2279,6 +2312,8 @@ static void SaveAudioPreferences(void) {
     swprintf_s(value,24,L"%d",(int)(g_eqPreamp*10.0f));
     WritePrivateProfileStringW(L"Audio",L"EqPreamp",value,path);
     for(int i=0;i<10;i++){wchar_t key[24];swprintf_s(key,_countof(key),L"EqBand%d",i);swprintf_s(value,24,L"%d",(int)(g_eqBandGain[i]*10.0f));WritePrivateProfileStringW(L"Audio",key,value,path);}
+    wchar_t device[256]={0};MultiByteToWideChar(CP_UTF8,0,g_audioDeviceId,-1,device,(int)_countof(device));
+    WritePrivateProfileStringW(L"Audio",L"OutputDevice",device,path);
 }
 static void LoadAudioPreferences(void) {
     if(!EnsureDataDirectory())return;
@@ -2286,11 +2321,40 @@ static void LoadAudioPreferences(void) {
     swprintf_s(path,PATH_CAP,L"%s\\audio.ini",g_dataDir);
     g_replayGain=GetPrivateProfileIntW(L"Audio",L"ReplayGain",1,path)!=0;
     g_compressor=GetPrivateProfileIntW(L"Audio",L"Compressor",0,path)!=0;
+    wchar_t savedDevice[256]={0};GetPrivateProfileStringW(L"Audio",L"OutputDevice",L"",savedDevice,(DWORD)_countof(savedDevice),path);
+    if(savedDevice[0])WideCharToMultiByte(CP_UTF8,0,savedDevice,-1,g_audioDeviceId,(int)sizeof(g_audioDeviceId),NULL,NULL);
     g_eqProfile=GetPrivateProfileIntW(L"Audio",L"EqProfile",0,path);
     if(!((g_eqProfile>=0&&g_eqProfile<=4)||(g_eqProfile>=10&&g_eqProfile<=19)))g_eqProfile=0;
     g_eqPreamp=(float)GetPrivateProfileIntW(L"Audio",L"EqPreamp",0,path)/10.0f;
     for(int i=0;i<10;i++){wchar_t key[24];swprintf_s(key,_countof(key),L"EqBand%d",i);g_eqBandGain[i]=(float)GetPrivateProfileIntW(L"Audio",key,0,path)/10.0f;}
 }
+
+static void RefreshAudioDevices(void) {
+    g_audioDeviceCount=0;
+    if(!g_player)return;
+    libvlc_audio_output_device_t *list=libvlc_audio_output_device_enum(g_player);
+    for(libvlc_audio_output_device_t *d=list;d&&g_audioDeviceCount<11;d=d->p_next) {
+        int i=g_audioDeviceCount++;
+        g_audioDeviceIds[i][0]=0;g_audioDeviceNames[i][0]=0;
+        if(d->psz_device)strncpy_s(g_audioDeviceIds[i],sizeof(g_audioDeviceIds[i]),d->psz_device,_TRUNCATE);
+        if(d->psz_description)MultiByteToWideChar(CP_UTF8,0,d->psz_description,-1,g_audioDeviceNames[i],(int)_countof(g_audioDeviceNames[i]));
+        if(!g_audioDeviceNames[i][0])wcscpy_s(g_audioDeviceNames[i],_countof(g_audioDeviceNames[i]),L"Audio device");
+    }
+    if(list)libvlc_audio_output_device_list_release(list);
+    wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),L"System default");
+    if(g_audioDeviceId[0])for(int i=0;i<g_audioDeviceCount;i++)if(!strcmp(g_audioDeviceIds[i],g_audioDeviceId)){wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),g_audioDeviceNames[i]);break;}
+}
+static void ApplyAudioOutputDevice(void) {
+    if(!g_player||g_selectedRenderer)return;
+    libvlc_audio_output_device_set(g_player,NULL,g_audioDeviceId[0]?g_audioDeviceId:NULL);
+}
+static void SelectAudioOutput(int index) {
+    if(index<0){g_audioDeviceId[0]=0;wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),L"System default");}
+    else if(index<g_audioDeviceCount){strncpy_s(g_audioDeviceId,sizeof(g_audioDeviceId),g_audioDeviceIds[index],_TRUNCATE);wcscpy_s(g_audioDeviceLabel,_countof(g_audioDeviceLabel),g_audioDeviceNames[index]);}
+    else return;
+    ApplyAudioOutputDevice();SaveAudioPreferences();g_audioPopupOpen=FALSE;InvalidateRect(g_main,NULL,FALSE);
+}
+
 static void ApplyEqProfile(void) {
     if(!g_player)return;
     if(g_eqProfile==4){ApplyCustomEqualizer();return;}
@@ -5463,6 +5527,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){/* The header is an expand affordance, not a toggle-to-dismiss control. Once open, keep settings open; the drawer itself closes only on an outside click. */if(!g_drawerSettingsOpen){g_drawerSettingsOpen=TRUE;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
+        if(g_audioPopupOpen) {
+            int rows=g_audioDeviceCount+1;if(rows>12)rows=12;
+            if(Inside(R_AUDIO_PANEL,x,y)) {if(y>=R_AUDIO_PANEL.top+42){int item=(y-(R_AUDIO_PANEL.top+42))/38;if(item>=0&&item<rows)SelectAudioOutput(item-1);}ReleaseCapture();return 0;}
+            if(!Inside(R_AUDIO_BUTTON,x,y))g_audioPopupOpen=FALSE;
+        }
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_CLEAR_PLAYLIST,x,y)){if(g_playlistCount&&ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_LIBRARY,x,y)){g_libraryTab=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
@@ -5568,6 +5637,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;
         }
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_AUDIO_BUTTON,x,y)){RefreshAudioDevices();g_audioPopupOpen=!g_audioPopupOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
@@ -5708,7 +5778,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             return TRUE;
         }
         if(!g_fullscreen){POINT pt;GetCursorPos(&pt);ScreenToClient(hwnd,&pt);
-            if(Inside(R_MENU_BUTTON,pt.x,pt.y)||Inside(R_DRAWER_BUTTON,pt.x,pt.y)||
+            if(Inside(R_AUDIO_BUTTON,pt.x,pt.y)||Inside(R_MENU_BUTTON,pt.x,pt.y)||Inside(R_DRAWER_BUTTON,pt.x,pt.y)||
                Inside(R_OPEN,pt.x,pt.y)||Inside(R_PLAY,pt.x,pt.y)||Inside(R_STOP,pt.x,pt.y)||
                Inside(R_PREV,pt.x,pt.y)||Inside(R_NEXT,pt.x,pt.y)||Inside(R_SCAN,pt.x,pt.y)){
                 SetCursor(LoadCursorW(NULL,IDC_HAND));return TRUE;
@@ -5888,6 +5958,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){ABM_MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
+    LoadAudioPreferences();ApplyAudioOutputDevice();
     /* Failure of the optional streaming cast player must not affect local playback. */
     g_streamCastPlayer=libvlc_media_player_new(g_vlc);
     WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
