@@ -2,6 +2,7 @@
 #define COBJMACROS
 #include <winsock2.h>
 #include <windows.h>
+#include <psapi.h>
 #include <windowsx.h>
 #include <shellapi.h>
 #include <commctrl.h>
@@ -33,6 +34,7 @@
 #include <ws2tcpip.h>
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "uuid.lib")
@@ -5293,12 +5295,64 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,584,(float)left+164,628,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,584.5f,(float)left+163.5f,627.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,585,left+159,627,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     AdvancedSettingsText(L"Appearance settings apply to the next opened media. Embedded subtitle styling may override them.",322,632,1018,656,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else{
-    ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
-    ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
-    AdvancedSettingsText(L"Configuration workspace",326,264,1008,302,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(L"This section is ready for capability-backed settings.",326,310,1008,342,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(L"No playback or output behaviour is changed in this setup stage.",326,346,1008,374,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(L"Controls will be introduced section by section and connected to the playback engine.",304,408,1032,454,SETTINGS_MUTED,0,DT_LEFT|DT_TOP|DT_WORDBREAK);
+    MEMORYSTATUSEX mem={0};mem.dwLength=sizeof(mem);GlobalMemoryStatusEx(&mem);
+    SYSTEM_INFO si={0};GetNativeSystemInfo(&si);
+    wchar_t row1[256]={0},row2[256]={0},row3[256]={0},row4[256]={0},row5[256]={0};
+    const wchar_t *sectionTitle=L"Runtime overview";
+    if(g_advancedSettingsPage==0){
+     sectionTitle=L"Current playback session";
+     StringCchPrintfW(row1,_countof(row1),L"Playback: %s",g_hasMedia?(g_overlayPlaying?L"Playing":L"Loaded / paused"):L"No media loaded");
+     StringCchPrintfW(row2,_countof(row2),L"Video dimensions: %u × %u",g_videoWidth,g_videoHeight);
+     StringCchPrintfW(row3,_countof(row3),L"Volume: %d%%     Speed: %.2fx",g_volume,(double)g_playbackRate);
+     StringCchPrintfW(row4,_countof(row4),L"Playlist: %d item(s)     Current index: %d",g_playlistCount,g_current>=0?g_current+1:0);
+     StringCchPrintfW(row5,_countof(row5),L"Shuffle: %s     Repeat: %s",g_shuffle?L"On":L"Off",g_repeat?L"On":L"Off");
+    }else if(g_advancedSettingsPage==3){
+     RECT vr={0};if(g_video&&IsWindow(g_video))GetClientRect(g_video,&vr);
+     sectionTitle=L"Video output status";
+     StringCchPrintfW(row1,_countof(row1),L"Output surface: %s",g_video&&IsWindow(g_video)?L"Video window available":L"Not currently available");
+     StringCchPrintfW(row2,_countof(row2),L"Decoded video size: %u × %u",g_videoWidth,g_videoHeight);
+     StringCchPrintfW(row3,_countof(row3),L"Video client area: %ld × %ld",vr.right-vr.left,vr.bottom-vr.top);
+     StringCchCopyW(row4,_countof(row4),L"Scaling and aspect ratio are managed by the current LibVLC video output.");
+     StringCchCopyW(row5,_countof(row5),L"Display-specific controls will appear here when the renderer exposes a safe runtime option.");
+    }else if(g_advancedSettingsPage==5){
+     sectionTitle=L"Network and streaming configuration";
+     StringCchPrintfW(row1,_countof(row1),L"Torrent cache quota: %llu GiB",(unsigned long long)g_torrentCacheQuotaGiB);
+     StringCchPrintfW(row2,_countof(row2),L"Torrent download limit: %s",g_torrentDownloadLimitKiB?L"Configured (KiB/s)":L"Unlimited");
+     StringCchPrintfW(row3,_countof(row3),L"Torrent upload limit: %s",g_torrentUploadLimitKiB?L"Configured (KiB/s)":L"Unlimited");
+     StringCchPrintfW(row4,_countof(row4),L"Download limit value: %d KiB/s     Upload limit value: %d KiB/s",g_torrentDownloadLimitKiB,g_torrentUploadLimitKiB);
+     StringCchCopyW(row5,_countof(row5),L"Change bandwidth limits and cache location in Settings → Torrent & Storage.");
+    }else if(g_advancedSettingsPage==6){
+     PROCESS_MEMORY_COUNTERS pmc={0};pmc.cb=sizeof(pmc);GetProcessMemoryInfo(GetCurrentProcess(),&pmc,sizeof(pmc));
+     sectionTitle=L"System and process performance";
+     StringCchPrintfW(row1,_countof(row1),L"Logical processors: %lu",si.dwNumberOfProcessors);
+     StringCchPrintfW(row2,_countof(row2),L"Physical memory: %llu GB total",(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL*1024ULL)));
+     StringCchPrintfW(row3,_countof(row3),L"Available physical memory: %llu GB",(unsigned long long)(mem.ullAvailPhys/(1024ULL*1024ULL*1024ULL)));
+     StringCchPrintfW(row4,_countof(row4),L"ABM AV Player working set: %llu MB",(unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)));
+     StringCchPrintfW(row5,_countof(row5),L"System memory load: %lu%%",mem.dwMemoryLoad);
+    }else if(g_advancedSettingsPage==7){
+     sectionTitle=L"Current controls and playback behaviour";
+     StringCchPrintfW(row1,_countof(row1),L"Default volume: %d%%     Playback speed: %.2fx",g_volume,(double)g_playbackRate);
+     StringCchPrintfW(row2,_countof(row2),L"Shuffle: %s     Repeat: %s",g_shuffle?L"Enabled":L"Disabled",g_repeat?L"Enabled":L"Disabled");
+     StringCchPrintfW(row3,_countof(row3),L"Playlist entries: %d     Recent media entries: %d",g_playlistCount,g_recentCount);
+     StringCchCopyW(row4,_countof(row4),L"Playback, seek, volume and playlist shortcuts are handled by the main player.");
+     StringCchCopyW(row5,_countof(row5),L"Change default volume, speed, shuffle and repeat in Settings → General.");
+    }else if(g_advancedSettingsPage==8){
+     wchar_t exe[PATH_CAP]={0};GetModuleFileNameW(NULL,exe,(DWORD)_countof(exe));
+     sectionTitle=L"Application diagnostics";
+     StringCchPrintfW(row1,_countof(row1),L"Application version: %s",APP_VERSION);
+     StringCchPrintfW(row2,_countof(row2),L"Process ID: %lu     Windows architecture: %s",GetCurrentProcessId(),si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64?L"x64":si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_ARM64?L"ARM64":L"x86");
+     StringCchCopyW(row3,_countof(row3),exe);
+     StringCchCopyW(row4,_countof(row4),g_dataDir);
+     StringCchCopyW(row5,_countof(row5),L"Diagnostic paths are shown for troubleshooting. No logs or media are uploaded.");
+    }
+    ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);
+    ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
+    AdvancedSettingsText(sectionTitle,326,260,1008,298,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(row1,326,312,1008,344,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    AdvancedSettingsText(row2,326,354,1008,386,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    AdvancedSettingsText(row3,326,396,1008,428,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    AdvancedSettingsText(row4,326,438,1008,470,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    AdvancedSettingsText(row5,326,480,1008,522,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
    AdvancedSettingsText(L"Advanced controls are added in stages. Existing settings remain unchanged.",
