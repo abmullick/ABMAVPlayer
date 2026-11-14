@@ -1139,8 +1139,8 @@ static void DrawUI(HDC dc,RECT client) {
                 int textLeft=icon.right+10;
                 int titleTop=cardH>=70?10:6, titleBottom=cardH>=70?39:cardH/2+2;
                 int subTop=cardH>=70?38:cardH/2, subBottom=cardH>=70?cardH-8:cardH-5;
-                RECT title={card.left+textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
-                RECT sub={card.left+textLeft,card.top+subTop,card.right-8,card.top+subBottom};
+                RECT title={textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
+                RECT sub={textLeft,card.top+subTop,card.right-8,card.top+subBottom};
                 Txt(dc,titles[i],title,RGB(244,249,255),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,subs[i],sub,RGB(158,181,201),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
@@ -1516,7 +1516,7 @@ static void DrawUI(HDC dc,RECT client) {
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
             L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
-            L"Ctrl+Shift+U",L"",L"Ctrl+,",L"Alt+F4",L"Ctrl+I"
+            L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Alt+F4",L"Ctrl+I"
         };
         const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"×",L"i"};
         for(int i=0;i<19;i++) {
@@ -5614,6 +5614,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='S'){SavePlaylist();return 0;}
         if(ctrl && !shift && wp=='I'){ShowAboutDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='U'){ABM_CheckForUpdates(hwnd,APP_VERSION);return 0;}
+        if(ctrl && shift && wp=='L'){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);return 0;}
         if(ctrl && !shift && wp==VK_OEM_COMMA){ShowSettingsDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
