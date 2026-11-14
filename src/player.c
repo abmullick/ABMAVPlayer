@@ -3944,7 +3944,7 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentSliders[2],m+14,cacheY+25,260,46,FALSE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+290,cacheY+25,112,42,FALSE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+418,cacheY+25,168,42,FALSE);
-    MoveWindow(g_torrentOpenDownloadsButton,m+600,cacheY+25,164,42,FALSE);
+    MoveWindow(g_torrentOpenDownloadsButton,m+600,cacheY+25,190,42,FALSE);
     MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,FALSE);
     MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,FALSE);
     MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,FALSE);
