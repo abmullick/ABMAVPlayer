@@ -2,6 +2,10 @@
 setlocal EnableExtensions
 
 rem Run this script from the repository root after a successful x64 build.
+
+rem Ensure the Inno Setup version include and vcpkg manifest come from VERSION.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\prepare_version.ps1" >nul
+if errorlevel 1 (echo ERROR: Could not prepare canonical version artifacts.& exit /b 1)
 if "%VLC_DIR%"=="" set "VLC_DIR=C:\Program Files\VideoLAN\VLC"
 set "DEST=release\ABM AV Player"
 
