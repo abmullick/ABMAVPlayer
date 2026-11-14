@@ -4498,12 +4498,12 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         r.top=198;r.bottom=232;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=245;r.bottom=274;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=278;r.bottom=310;SetTextColor(dc,RGB(250,252,255));DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=322;r.bottom=372;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"A modern desktop media player built around\\nLibVLC, Direct2D and DirectWrite.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+        r.top=320;r.bottom=399;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
         RECT divider={28,405,rc.right-28,407};HBRUSH line=CreateSolidBrush(ABM_UI_COLOR_BORDER);FillRect(dc,&divider,line);DeleteObject(line);
         r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=461;r.bottom=535;SetTextColor(dc,ABM_UI_COLOR_TEXT);DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
         r.top=550;r.bottom=580;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=585;r.bottom=616;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+        r.top=585;r.bottom=616;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         r.top=628;r.bottom=656;SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
         SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
         DeleteObject(title);DeleteObject(heading);DeleteObject(body);
