@@ -180,6 +180,9 @@ static BOOL g_drawerSettingsOpen = FALSE;
 static int64_t g_advancedSubtitleDelayUs=0;
 static int g_advancedSubtitleFontSize=13; /* LibVLC relative subtitle size: 10, 13, 16, 19 */
 static int g_advancedSubtitleColor=16777215; /* RGB white */
+static BOOL g_advancedSubtitleBold=FALSE;
+static int g_advancedSubtitleOutline=4; /* 0 none, 2 thin, 4 normal, 6 thick */
+static int g_advancedSubtitleMargin=10; /* pixels from the bottom edge */
 static void ApplySubtitleAppearanceOption(libvlc_media_t *media) {
     if(!media)return;
     char option[64];
@@ -190,6 +193,15 @@ static void ApplySubtitleAppearanceOption(libvlc_media_t *media) {
     int color=g_advancedSubtitleColor;
     if(color!=16777215&&color!=16776960&&color!=65535&&color!=65280)color=16777215;
     snprintf(option,sizeof(option),":freetype-color=%d",color);
+    libvlc_media_add_option(media,option);
+    libvlc_media_add_option(media,g_advancedSubtitleBold?":freetype-bold":":no-freetype-bold");
+    int outline=g_advancedSubtitleOutline;
+    if(outline!=0&&outline!=2&&outline!=4&&outline!=6)outline=4;
+    snprintf(option,sizeof(option),":freetype-outline-thickness=%d",outline);
+    libvlc_media_add_option(media,option);
+    int margin=g_advancedSubtitleMargin;
+    if(margin!=0&&margin!=10&&margin!=25&&margin!=50)margin=10;
+    snprintf(option,sizeof(option),":sub-margin=%d",margin);
     libvlc_media_add_option(media,option);
 }
 static BOOL g_menuOpen = FALSE;
@@ -5033,6 +5045,10 @@ static const int g_subtitleFontSizes[4]={10,13,16,19};
 static const wchar_t *g_subtitleFontSizeLabels[4]={L"Small",L"Normal",L"Large",L"Larger"};
 static const int g_subtitleColors[4]={16777215,16776960,65535,65280};
 static const wchar_t *g_subtitleColorLabels[4]={L"White",L"Yellow",L"Cyan",L"Green"};
+static const int g_subtitleOutlineValues[4]={0,2,4,6};
+static const wchar_t *g_subtitleOutlineLabels[4]={L"Off",L"Thin",L"Normal",L"Thick"};
+static const int g_subtitleMarginValues[4]={0,10,25,50};
+static const wchar_t *g_subtitleMarginLabels[4]={L"Low",L"Normal",L"High",L"Higher"};
 
 static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
@@ -5074,6 +5090,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,p);if(v!=10&&v!=13&&v!=16&&v!=19)v=13;g_advancedSubtitleFontSize=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,p);if(v!=16777215&&v!=16776960&&v!=65535&&v!=65280)v=16777215;g_advancedSubtitleColor=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);g_advancedSubtitleBold=GetPrivateProfileIntW(L"Subtitles",L"Bold",0,p)!=0;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"OutlineThickness",4,p);if(v!=0&&v!=2&&v!=4&&v!=6)v=4;g_advancedSubtitleOutline=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"Margin",10,p);if(v!=0&&v!=10&&v!=25&&v!=50)v=10;g_advancedSubtitleMargin=v;}
   {wchar_t env[32]={0};if(GetEnvironmentVariableW(L"ABM_VLC_HW",env,(DWORD)_countof(env))>0){
    if(!_wcsicmp(env,L"none")){g_advancedHwDraft=1;g_advancedHwEnvOverride=TRUE;}
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
@@ -5113,35 +5132,37 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
+   if(AdvancedSettingsPoint(x,y,770,264,850,308)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,860,264,940,308)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,950,264,1032,308)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
    for(int i=0;i<4;i++){
     int left=320+i*176;
-    if(AdvancedSettingsPoint(x,y,left,638,left+164,660)){
-     g_advancedSubtitleColor=g_subtitleColors[i];
-     if(EnsureDataDirectory()){
-      wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);
-      StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleColor);
-      if(!WritePrivateProfileStringW(L"Subtitles",L"TextColor",v,p))
-       ABM_MessageBoxW(w,L"Could not save the subtitle text-color preference.",APP_NAME,MB_ICONWARNING);
-     }
-     InvalidateRect(w,NULL,FALSE);return 0;
-    }
-   }
-   for(int i=0;i<4;i++){
-    int left=320+i*176;
-    if(AdvancedSettingsPoint(x,y,left,556,left+164,604)){
+    if(AdvancedSettingsPoint(x,y,left,366,left+164,410)){
      g_advancedSubtitleFontSize=g_subtitleFontSizes[i];
-     if(EnsureDataDirectory()){
-      wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);
-      StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleFontSize);
-      if(!WritePrivateProfileStringW(L"Subtitles",L"RelativeFontSize",v,p))
-       ABM_MessageBoxW(w,L"Could not save the subtitle font-size preference.",APP_NAME,MB_ICONWARNING);
-     }
+     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleFontSize);WritePrivateProfileStringW(L"Subtitles",L"RelativeFontSize",v,p);}
+     InvalidateRect(w,NULL,FALSE);return 0;
+    }
+    if(AdvancedSettingsPoint(x,y,left,450,left+164,494)){
+     g_advancedSubtitleColor=g_subtitleColors[i];
+     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleColor);WritePrivateProfileStringW(L"Subtitles",L"TextColor",v,p);}
+     InvalidateRect(w,NULL,FALSE);return 0;
+    }
+    if(AdvancedSettingsPoint(x,y,left,584,left+164,628)){
+     g_advancedSubtitleMargin=g_subtitleMarginValues[i];
+     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleMargin);WritePrivateProfileStringW(L"Subtitles",L"Margin",v,p);}
+     InvalidateRect(w,NULL,FALSE);return 0;
+    }
+    if(AdvancedSettingsPoint(x,y,520+i*126,518,640+i*126,560)){
+     g_advancedSubtitleOutline=g_subtitleOutlineValues[i];
+     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleOutline);WritePrivateProfileStringW(L"Subtitles",L"OutlineThickness",v,p);}
      InvalidateRect(w,NULL,FALSE);return 0;
     }
    }
-   if(AdvancedSettingsPoint(x,y,770,300,850,356)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,860,300,940,356)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,950,300,1032,356)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,518,500,560)){
+    g_advancedSubtitleBold=!g_advancedSubtitleBold;
+    if(EnsureDataDirectory())WritePrivateProfileStringW(L"Subtitles",L"Bold",g_advancedSubtitleBold?L"1":L"0",({wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);p;}));
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
   }
   if(g_advancedSettingsPage==1){
    if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedHwDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
@@ -5252,32 +5273,24 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedHwMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
    }else if(g_advancedSettingsPage==4){
-    AdvancedSettingsText(L"Subtitle timing",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_advancedSettingsUi,320,270,1018,390,12,ABM_UI_COLOR_SURFACE);
-    ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,270.5f,1017.5f,389.5f,12,SETTINGS_BORDER,0.8f);
-    AdvancedSettingsText(L"Subtitle delay",344,288,650,322,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(L"Adjust subtitle timing during the current playback session.",344,326,720,362,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsButtonDraw(770,300,850,356,L"- 50 ms",FALSE);
-    AdvancedSettingsButtonDraw(860,300,940,356,L"+ 50 ms",FALSE);
-    AdvancedSettingsButtonDraw(950,300,1032,356,L"Reset",FALSE);
-    wchar_t delayText[96];double delayMs=(double)g_advancedSubtitleDelayUs/1000.0;
-    StringCchPrintfW(delayText,_countof(delayText),L"Current offset: %+.0f ms",delayMs);
-    AdvancedSettingsText(delayText,344,420,1018,456,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(g_player?L"Subtitle timing changes apply immediately to current playback.":L"Start playback to apply subtitle timing adjustments.",344,468,1018,508,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(L"Subtitle font size",322,520,1018,546,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    for(int i=0;i<4;i++){
-     int left=320+i*176;BOOL selected=(g_advancedSubtitleFontSize==g_subtitleFontSizes[i]);
-     ABM_D2D_Round(&g_advancedSettingsUi,(float)left,556,(float)left+164,604,8,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
-     ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,556.5f,(float)left+163.5f,603.5f,8,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
-     AdvancedSettingsText(g_subtitleFontSizeLabels[i],left+8,558,left+156,602,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    }
-    AdvancedSettingsText(L"Subtitle text color",322,612,1018,634,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    for(int i=0;i<4;i++){
-     int left=320+i*176;BOOL selected=(g_advancedSubtitleColor==g_subtitleColors[i]);
-     ABM_D2D_Round(&g_advancedSettingsUi,(float)left,638,(float)left+164,660,6,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
-     ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,638.5f,(float)left+163.5f,659.5f,6,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
-     AdvancedSettingsText(g_subtitleColorLabels[i],left+6,639,left+158,659,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    }
+    AdvancedSettingsText(L"Subtitle timing",322,232,1018,254,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Round(&g_advancedSettingsUi,320,258,1018,324,10,ABM_UI_COLOR_SURFACE);
+    ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,258.5f,1017.5f,323.5f,10,SETTINGS_BORDER,0.8f);
+    wchar_t delayText[64];StringCchPrintfW(delayText,_countof(delayText),L"Offset: %+.0f ms",(double)g_advancedSubtitleDelayUs/1000.0);
+    AdvancedSettingsText(delayText,338,270,570,312,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(770,268,850,312,L"- 50 ms",FALSE);
+    AdvancedSettingsButtonDraw(860,268,940,312,L"+ 50 ms",FALSE);
+    AdvancedSettingsButtonDraw(950,268,1032,312,L"Reset",FALSE);
+    AdvancedSettingsText(L"Font size",322,334,1018,358,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleFontSize==g_subtitleFontSizes[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,366,(float)left+164,410,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,366.5f,(float)left+163.5f,409.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleFontSizeLabels[i],left+5,367,left+159,409,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"Text color",322,418,1018,442,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleColor==g_subtitleColors[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,450,(float)left+164,494,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,450.5f,(float)left+163.5f,493.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleColorLabels[i],left+5,451,left+159,493,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"Text style and readability",322,494,1018,516,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(320,518,500,560,g_advancedSubtitleBold?L"Bold: On":L"Bold: Off",g_advancedSubtitleBold);
+    for(int i=0;i<4;i++){int left=520+i*126;BOOL selected=(g_advancedSubtitleOutline==g_subtitleOutlineValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,518,(float)left+120,560,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,518.5f,(float)left+119.5f,559.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleOutlineLabels[i],left+4,519,left+116,559,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"Subtitle vertical position",322,562,1018,584,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,584,(float)left+164,628,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,584.5f,(float)left+163.5f,627.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,585,left+159,627,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"Appearance settings apply to the next opened media. Embedded subtitle styling may override them.",322,632,1018,656,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else{
     ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
     ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
@@ -6443,6 +6456,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     {int savedSubtitleDelayMs=GetPrivateProfileIntW(L"Subtitles",L"DelayMs",0,hwSettingsPath);if(savedSubtitleDelayMs < -10000)savedSubtitleDelayMs=-10000;if(savedSubtitleDelayMs > 10000)savedSubtitleDelayMs=10000;g_advancedSubtitleDelayUs=(int64_t)savedSubtitleDelayMs*1000;}
     {int savedSubtitleSize=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,hwSettingsPath);if(savedSubtitleSize!=10&&savedSubtitleSize!=13&&savedSubtitleSize!=16&&savedSubtitleSize!=19)savedSubtitleSize=13;g_advancedSubtitleFontSize=savedSubtitleSize;}
     {int savedSubtitleColor=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,hwSettingsPath);if(savedSubtitleColor!=16777215&&savedSubtitleColor!=16776960&&savedSubtitleColor!=65535&&savedSubtitleColor!=65280)savedSubtitleColor=16777215;g_advancedSubtitleColor=savedSubtitleColor;}
+    g_advancedSubtitleBold=GetPrivateProfileIntW(L"Subtitles",L"Bold",0,hwSettingsPath)!=0;
+    {int v=GetPrivateProfileIntW(L"Subtitles",L"OutlineThickness",4,hwSettingsPath);if(v!=0&&v!=2&&v!=4&&v!=6)v=4;g_advancedSubtitleOutline=v;}
+    {int v=GetPrivateProfileIntW(L"Subtitles",L"Margin",10,hwSettingsPath);if(v!=0&&v!=10&&v!=25&&v!=50)v=10;g_advancedSubtitleMargin=v;}
     if(savedAudioOut==1)args[argCount++]="--aout=mmdevice";
     else if(savedAudioOut==2)args[argCount++]="--aout=directsound";
     g_vlc=libvlc_new(argCount,args);
