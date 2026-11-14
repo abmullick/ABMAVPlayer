@@ -89,3 +89,8 @@ The first file stores player and torrent preferences, including the cache parent
 - **The cache folder cannot be created:** choose a writable folder and verify that the target drive is available.
 - **The cache appears empty after changing location:** the setting changes the storage root; it does not move existing files automatically. Check the previous cache folder.
 - **Transfers are slower than expected:** verify that the download/upload limits are not set too low. A value of 0 removes the configured rate limit; it does not guarantee peer or network throughput.
+
+
+## Color theme
+
+Settings includes six immediately applied color presets: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber and Emerald. The selected preset is persisted in `%APPDATA%\\ABMAVPlayer\\theme.ini`. Presets affect ABM-owned windows and Streaming Centre chrome; third-party provider pages retain their native appearance.
