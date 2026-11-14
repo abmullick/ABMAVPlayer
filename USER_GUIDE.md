@@ -56,6 +56,82 @@ Changing the cache parent does not automatically move existing cache data. If To
 
 Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences are also stored in `audio.ini`. For the full option reference and troubleshooting, see [Application Settings](SETTINGS.md).
 
+## Advanced Settings — complete reference
+
+Open **Command Centre → Settings → Advanced…**. The left navigation contains Overview, Video & Decoding, Audio Engine, Video Output, Subtitles, Streaming & Network, Performance, Controls & Behaviour and Diagnostics. Select a category to open its page. Settings marked as immediate are saved as soon as changed; restart- or next-media requirements are noted below.
+
+### Overview
+
+Overview is a live, read-only snapshot. Its panels show the current playback state and video dimensions; volume, speed and shuffle; playlist/recent counts and current position; audio output-engine preference; network/file/live cache targets; decoder/frame options; subtitle size/bold/delay; and CPU, installed RAM and ABM AV Player working-set memory. It is not a benchmark or a complete inventory of Windows resources. Use the category pages to change preferences.
+
+### Video & Decoding
+
+Choose **Automatic**, **Software decoding**, or **Direct3D 11 Video Acceleration (D3D11VA)**, then select **Apply preference**. Automatic lets LibVLC select an available decoder; Software requests CPU decoding and is useful for GPU/driver troubleshooting; D3D11VA requests the Direct3D 11 hardware path. The preference is saved and requires an application restart. An `ABM_VLC_HW` environment variable override takes precedence over the saved choice. Actual hardware support depends on codec/profile, VLC build, GPU and driver.
+
+### Audio Engine
+
+Choose **Automatic**, **Windows Audio Session API (WASAPI)** or **DirectSound**, then **Apply preference** and restart ABM AV Player. Automatic lets LibVLC choose; WASAPI requests the Windows audio-session module; DirectSound is an alternative compatibility path. This selects the output engine; it is not an exclusive-mode/bit-perfect switch and does not add a dedicated device picker. The existing main-window Output selector remains separate.
+
+### Video Output
+
+Choose **Original**, **16:9**, **4:3** or **21:9**. A selection applies immediately through LibVLC and is saved for future playback. Aspect ratio changes display geometry, not the encoded media; letterboxing or cropping can depend on the source and output. The page also reports the video window, decoded dimensions and client area. It does not currently expose every monitor-specific scaling, colour-management or calibration control.
+
+### Subtitles
+
+- **Timing:** use −50 ms or +50 ms for 50 ms steps; Reset returns to zero. The supported range is ±10,000 ms.
+- **Font size:** choose 10, 13, 16 or 19 (LibVLC relative-size values).
+- **Text colour:** choose one of the displayed preset colours.
+- **Bold:** toggles bold subtitle text.
+- **Outline:** Off, Thin, Normal or Thick.
+- **Vertical position:** Default, 10 px, 25 px or 50 px bottom margin.
+
+Preferences are saved in the application settings file and appearance options are attached to newly opened media. Timing also updates the current player when possible. Embedded subtitle formats can carry their own styling and may override some appearance preferences.
+
+### Streaming & Network
+
+Three independent LibVLC caching targets are available:
+
+| Setting | Used for |
+|---|---|
+| Network stream caching | Network URLs and remote streams |
+| Local file caching | Local media file read-ahead |
+| Live stream caching | Live/time-sensitive streams |
+
+Click each card to cycle through **300, 1,000, 2,000 and 5,000 ms**. Values save immediately and are passed to newly opened media. Higher values can tolerate more jitter but increase startup delay and live latency; lower values can reduce delay but may increase interruptions. They are buffering targets, not guaranteed end-to-end latency. Torrent cache quota, permanent-download location and torrent bandwidth limits are changed in the main Settings window; the Advanced page only summarises those values.
+
+### Performance
+
+- **Decoder threads:** Automatic lets LibVLC choose; fixed values 2, 4 or 8 cap decoder worker-thread count. This is not a global CPU limit.
+- **Drop late frames:** allows frames that miss their display deadline to be discarded to keep playback responsive.
+- **Skip frames:** allows decoding work/frames to be skipped when decoding falls behind; visual quality may be reduced.
+
+Click the cards to cycle/toggle. Values are saved immediately and attached to newly opened media. Reopen media after changing them. The best values depend on codec, resolution, CPU/GPU and drivers; no option guarantees a performance improvement.
+
+### Controls & Behaviour
+
+Each option toggles and saves immediately:
+
+- **Confirm before exiting ABM AV Player:** show a Yes/No prompt before closing.
+- **Confirm before clearing the playlist:** ask before removing playlist entries. Source files are never deleted.
+- **Double-click video to toggle fullscreen:** enables/disables the double-click gesture on the video surface.
+
+These are interaction preferences, not keyboard-remapping controls.
+
+### Diagnostics
+
+The page reports application version and PID, logical processor count, installed/available RAM and system memory load, ABM AV Player working set and page-file usage, plus playback state, video dimensions, playlist and recent counts.
+
+- **Generate report** writes a timestamped UTF-8 text report to the ABM AV Player data folder and loads it into the read-only, scrollable preview.
+- **Open data folder** opens that folder in File Explorer.
+
+The report is local and is not automatically uploaded or sent to support. Review it before sharing because it can include machine details, executable paths, process information and playback/session state.
+
+### Persistence and activation summary
+
+Advanced preferences are stored in `%APPDATA%\\ABMAVPlayer\\settings.ini`, in sections such as `[Video]`, `[Audio]`, `[Subtitles]`, `[Streaming]`, `[Performance]` and `[Controls]`. Hardware decoding and audio output-engine changes require restart. Caching, performance and subtitle appearance options are attached to newly opened media; they are not guaranteed to reconfigure media already playing. Aspect ratio and subtitle timing can affect the current player. Controls preferences are read by their corresponding interactions. Overview is observational only.
+
+---
+
 ## Torrent Stream — add, download and play a torrent
 
 Open **Torrent Stream** from the main player's navigation. Torrent Stream runs in its own window and does not replace the main player's local playback or the Streaming Centre.
