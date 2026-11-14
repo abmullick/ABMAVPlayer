@@ -4885,7 +4885,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         DRAWITEMSTRUCT *di=(DRAWITEMSTRUCT*)lp;
         if(!di)break;
         if(di->CtlID==HELP_ID_FIND){
-            HBRUSH b=CreateSolidBrush((di->itemState&ODS_SELECTED)?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_176E68);
+            HBRUSH b=CreateSolidBrush((di->itemState&ODS_SELECTED)?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_187E74);
             FillRect(di->hDC,&di->rcItem,b);DeleteObject(b);
             SetBkMode(di->hDC,TRANSPARENT);SetTextColor(di->hDC,ABM_THEME_COLOR_F7FAFF);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpMetaFont);
@@ -4897,11 +4897,11 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
             BOOL selected=(di->itemState&ODS_SELECTED)!=0;
             RECT row=di->rcItem;InflateRect(&row,-4,-2);
-            HBRUSH b=CreateSolidBrush(selected?ABM_THEME_COLOR_173B45:ABM_THEME_COLOR_101B29);
+            HBRUSH b=CreateSolidBrush(selected?ABM_THEME_COLOR_163B48:ABM_THEME_COLOR_0F1723);
             FillRect(di->hDC,&row,b);DeleteObject(b);
             if(selected){RECT mark={row.left,row.top+7,row.left+3,row.bottom-7};b=CreateSolidBrush(ABM_THEME_COLOR_52CDE0);FillRect(di->hDC,&mark,b);DeleteObject(b);}
             SetBkMode(di->hDC,TRANSPARENT);
-            SetTextColor(di->hDC,selected?ABM_THEME_COLOR_F5FAFF:ABM_THEME_COLOR_B6C6D8);
+            SetTextColor(di->hDC,selected?ABM_THEME_COLOR_F5F8FF:ABM_THEME_COLOR_B0C0D5);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpBodyFont);
             RECT t=row;t.left+=14;t.right-=8;
             DrawTextW(di->hDC,label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
@@ -4938,9 +4938,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORLISTBOX: {
         HDC dc=(HDC)wp;
-        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_THEME_COLOR_F4F8FC);SetBkColor(dc,ABM_THEME_COLOR_172535);}
-        else if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_THEME_COLOR_DCE7F2);SetBkColor(dc,ABM_THEME_COLOR_0D1724);}
-        else {SetTextColor(dc,ABM_THEME_COLOR_B6C6D8);SetBkColor(dc,ABM_THEME_COLOR_101B29);}
+        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_THEME_COLOR_F4F8FF);SetBkColor(dc,ABM_THEME_COLOR_0B1928);}
+        else if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);SetBkColor(dc,ABM_THEME_COLOR_09101B);}
+        else {SetTextColor(dc,ABM_THEME_COLOR_B0C0D5);SetBkColor(dc,ABM_THEME_COLOR_0F1723);}
         return (LRESULT)g_helpBrush;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
