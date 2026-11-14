@@ -4,6 +4,10 @@ set "ROOT=%~dp0.."
 for %%I in ("%ROOT%") do set "ROOT=%%~fI"
 cd /d "%ROOT%"
 
+rem Ensure the vcpkg manifest is generated from the canonical VERSION file.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\prepare_version.ps1" >nul
+if errorlevel 1 (echo ERROR: Could not prepare canonical version artifacts.& exit /b 1)
+
 echo Preparing the pinned vcpkg toolchain and dependency cache...
 set "ABM_VCPKG_ROOT="
 for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_vcpkg.ps1`) do set "ABM_VCPKG_ROOT=%%V"
