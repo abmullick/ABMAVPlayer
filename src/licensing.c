@@ -32,6 +32,7 @@ typedef struct ABMLicenseDialog {
     HWND window, edit, activateButton, trialButton;
     HINSTANCE instance;
     BOOL done, allowed, trialAllowed, manual, alreadyActivated;
+    int daysLeft;
     wchar_t statusMessage[160]; COLORREF statusColor;
 } ABMLicenseDialog;
 static HBRUSH g_licenseEditBrush=NULL;
