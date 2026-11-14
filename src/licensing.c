@@ -3,6 +3,8 @@
 #include <dwmapi.h>
 #include <bcrypt.h>
 #include <wincrypt.h>
+#include <wintrust.h>
+#include <softpub.h>
 #include <shlobj.h>
 #include <strsafe.h>
 #include <stdint.h>
@@ -19,13 +21,11 @@
 #define ID_LICENSE_ACTIVATE 7102
 #define ID_LICENSE_TRIAL 7103
 
-/* SHA-256 digest of the shared 16-character universal activation key. */
-static const BYTE g_masterKeyHash[32] = {
-  0x03,0xaa,0xc1,0x01,0x27,0x20,0x54,0xc8,
-  0xb4,0x73,0x28,0xb2,0x5e,0x83,0x9d,0xab,
-  0x96,0xd8,0x2b,0xf0,0x00,0x58,0x0f,0xf1,
-  0xd4,0x31,0x33,0x84,0x67,0x5b,0x71,0x05
-};
+/* XOR-masked digest: a modest static-analysis speed bump, not cryptographic
+   protection. Authenticode verification is the release integrity boundary. */
+static const BYTE g_masterKeyHashMasked[32] = { 0xa4,0x0d,0x66,0xa6,0x80,0x87,0xf3,0x6f,0x13,0xd4,0x8f,0x15,0xf9,0x24,0x3a,0x0c,0x31,0x7f,0x8c,0x57,0xa7,0xff,0xa8,0x56,0x73,0x96,0x94,0x23,0xc0,0xfc,0xd6,0xa2 };
+#define ABM_KEY_HASH_MASK 0xA7u
+
 typedef struct ABMTrialState { DWORD magic; DWORD reserved; ULONGLONG firstUtc; ULONGLONG lastUtc; } ABMTrialState;
 #define ABM_TRIAL_MAGIC 0x314D4241u
 typedef struct ABMLicenseDialog {
@@ -82,7 +82,7 @@ done:
     if(hash)BCryptDestroyHash(hash);if(object)HeapFree(GetProcessHeap(),0,object);if(alg)BCryptCloseAlgorithmProvider(alg,0);return ok;
 }
 static BOOL ValidateMasterKey(const wchar_t *input) {
-    wchar_t normalized[64]; size_t n=0,i; BYTE digest[32];
+    wchar_t normalized[64]; size_t n=0,i; BYTE digest[32],expected[32];
     char ascii[16];
     if(!input)return FALSE;
     for(i=0;input[i]&&n<_countof(normalized)-1;i++) {
@@ -94,8 +94,12 @@ static BOOL ValidateMasterKey(const wchar_t *input) {
     }
     if(n!=16){SecureZeroMemory(normalized,sizeof(normalized));return FALSE;}
     for(i=0;i<16;i++)ascii[i]=(char)normalized[i];
+    for(i=0;i<sizeof(expected);i++)expected[i]=(BYTE)(g_masterKeyHashMasked[i]^ABM_KEY_HASH_MASK);
     BOOL hashed=Sha256((const BYTE*)ascii,16,digest);
-    BOOL valid=hashed&&memcmp(digest,g_masterKeyHash,sizeof(digest))==0;
+    /* Constant-time comparison avoids early-exit byte comparisons. */
+    BYTE diff=0;for(i=0;i<sizeof(digest);i++)diff|=(BYTE)(digest[i]^expected[i]);
+    BOOL valid=hashed&&diff==0;
+    SecureZeroMemory(expected,sizeof(expected));
     SecureZeroMemory(digest,sizeof(digest));
     SecureZeroMemory(ascii,sizeof(ascii));
     SecureZeroMemory(normalized,sizeof(normalized));
@@ -112,7 +116,9 @@ static BOOL SaveLicenseFile(const wchar_t *path,const wchar_t *token) {
 static BOOL UnprotectTrial(const BYTE *encrypted,DWORD encryptedLen,ABMTrialState *state) {
     DATA_BLOB in={(DWORD)encryptedLen,(BYTE*)encrypted},out={0};BOOL ok=FALSE;
     if(CryptUnprotectData(&in,NULL,NULL,NULL,NULL,CRYPTPROTECT_UI_FORBIDDEN,&out)&&out.cbData==sizeof(*state)){
-        memcpy(state,out.pbData,sizeof(*state));ok=state->magic==ABM_TRIAL_MAGIC;}
+        memcpy(state,out.pbData,sizeof(*state));
+        ok=state->magic==ABM_TRIAL_MAGIC && state->reserved==0 &&
+           state->firstUtc>0 && state->lastUtc>=state->firstUtc;}
     if(out.pbData){SecureZeroMemory(out.pbData,out.cbData);LocalFree(out.pbData);}return ok;
 }
 static BOOL ReadTrialFile(const wchar_t *path,ABMTrialState *state) {
@@ -134,11 +140,33 @@ static BOOL SaveTrialState(const wchar_t *file,const ABMTrialState *state) {
         if(RegSetValueExW(key,L"TrialState",0,REG_BINARY,out.pbData,out.cbData)==ERROR_SUCCESS)saved=TRUE;RegCloseKey(key);}
     SecureZeroMemory(out.pbData,out.cbData);LocalFree(out.pbData);return saved;
 }
-static BOOL LoadTrialState(const wchar_t *file,ABMTrialState *state) {
-    ABMTrialState a={0},b={0};BOOL fa=ReadTrialFile(file,&a),fb=ReadTrialRegistry(&b);
-    if(!fa&&!fb)return FALSE;
-    if(fa&&fb){state->magic=ABM_TRIAL_MAGIC;state->firstUtc=a.firstUtc<b.firstUtc?a.firstUtc:b.firstUtc;state->lastUtc=a.lastUtc>b.lastUtc?a.lastUtc:b.lastUtc;}
-    else *state=fa?a:b;return TRUE;
+static BOOL TrialArtifactsExist(const wchar_t *file,BOOL *fileExists,BOOL *registryExists) {
+    *fileExists=GetFileAttributesW(file)!=INVALID_FILE_ATTRIBUTES;
+    *registryExists=FALSE;
+    HKEY key=NULL;
+    if(RegOpenKeyExW(HKEY_CURRENT_USER,L"Software\\ABMAVPlayer\\Licensing",0,KEY_QUERY_VALUE,&key)==ERROR_SUCCESS) {
+        LONG e=RegQueryValueExW(key,L"TrialState",NULL,NULL,NULL,NULL);
+        *registryExists=(e==ERROR_SUCCESS||e==ERROR_MORE_DATA);
+        RegCloseKey(key);
+    }
+    return *fileExists||*registryExists;
+}
+static BOOL LoadTrialState(const wchar_t *file,ABMTrialState *state,BOOL *tampered) {
+    ABMTrialState a={0},b={0};BOOL fileExists=FALSE,registryExists=FALSE;
+    BOOL fa=ReadTrialFile(file,&a),fb=ReadTrialRegistry(&b);
+    *tampered=FALSE;
+    TrialArtifactsExist(file,&fileExists,&registryExists);
+    if(!fileExists&&!registryExists)return FALSE; /* genuinely first launch */
+    if((fileExists&&!fa)||(registryExists&&!fb)||(!fa&&!fb)) {
+        *tampered=TRUE;return FALSE;
+    }
+    if(fa&&fb) {
+        if(a.firstUtc!=b.firstUtc||a.lastUtc!=b.lastUtc) {
+            *tampered=TRUE;return FALSE;
+        }
+        *state=a;
+    } else *state=fa?a:b; /* one valid copy is normal if the other write failed */
+    return TRUE;
 }
 static ULONGLONG UtcNow(void) {
     FILETIME ft;ULARGE_INTEGER u;GetSystemTimeAsFileTime(&ft);u.LowPart=ft.dwLowDateTime;u.HighPart=ft.dwHighDateTime;return u.QuadPart;
@@ -272,16 +300,44 @@ static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL tr
     if(g_licenseCaptionFont){DeleteObject(g_licenseCaptionFont);g_licenseCaptionFont=NULL;}
     return d.allowed;
 }
+/* Verify the Authenticode signature of the running executable. Enable
+   ABM_REQUIRE_AUTHENTICODE only for signed release builds. This validates
+   the full EXE, including the statically linked licensing module. */
+static BOOL VerifyCurrentExecutableSignature(void) {
+#ifdef ABM_REQUIRE_AUTHENTICODE
+    wchar_t path[MAX_PATH];
+    if(!GetModuleFileNameW(NULL,path,_countof(path))||GetLastError()==ERROR_INSUFFICIENT_BUFFER)return FALSE;
+    WINTRUST_FILE_INFO fileInfo={0};fileInfo.cbStruct=sizeof(fileInfo);fileInfo.pcwszFilePath=path;
+    WINTRUST_DATA trust={0};trust.cbStruct=sizeof(trust);trust.dwUIChoice=WTD_UI_NONE;
+    trust.fdwRevocationChecks=WTD_REVOKE_NONE;trust.dwUnionChoice=WTD_CHOICE_FILE;
+    trust.pFile=&fileInfo;trust.dwStateAction=WTD_STATEACTION_VERIFY;
+    trust.dwProvFlags=WTD_CACHE_ONLY_URL_RETRIEVAL|WTD_REVOCATION_CHECK_NONE;
+    GUID policy=WINTRUST_ACTION_GENERIC_VERIFY_V2;
+    LONG status=WinVerifyTrust(NULL,&policy,&trust);
+    trust.dwStateAction=WTD_STATEACTION_CLOSE;WinVerifyTrust(NULL,&policy,&trust);
+    return status==ERROR_SUCCESS;
+#else
+    return TRUE;
+#endif
+}
 BOOL ABM_LicenseCheckAndPrompt(HINSTANCE instance,HWND owner) {
     wchar_t dir[MAX_PATH],licensePath[MAX_PATH],statePath[MAX_PATH],token[ABM_LICENSE_MAX];
+    if(!VerifyCurrentExecutableSignature())return FALSE;
     ABMTrialState state={0};ULONGLONG now;BOOL trialExists,tampered=FALSE;int daysLeft=0;
     if(!GetLicensePaths(dir,_countof(dir),licensePath,_countof(licensePath),statePath,_countof(statePath)))return FALSE;
     if(ReadLicenseFile(licensePath,token,_countof(token))&&ValidateMasterKey(token))return TRUE;
-    now=UtcNow();trialExists=LoadTrialState(statePath,&state);
-    if(!trialExists){state.magic=ABM_TRIAL_MAGIC;state.firstUtc=now;state.lastUtc=now;}
-    else if(now+2ULL*60ULL*60ULL*10000000ULL<state.lastUtc)tampered=TRUE;
-    if(now>state.lastUtc)state.lastUtc=now;
-    if(!SaveTrialState(statePath,&state))return FALSE;
+    SecureZeroMemory(token,sizeof(token));
+    now=UtcNow();trialExists=LoadTrialState(statePath,&state,&tampered);
+    if(!trialExists&&!tampered) {
+        state.magic=ABM_TRIAL_MAGIC;state.reserved=0;state.firstUtc=now;state.lastUtc=now;
+        if(!SaveTrialState(statePath,&state))return FALSE;
+    } else if(trialExists) {
+        if(now+2ULL*60ULL*60ULL*10000000ULL<state.lastUtc)tampered=TRUE;
+        if(now>state.lastUtc) {
+            state.lastUtc=now;
+            if(!SaveTrialState(statePath,&state))return FALSE;
+        }
+    }
     if(!tampered)daysLeft=TrialDaysLeft(&state,now);
     return ShowLicenseDialog(instance,owner,daysLeft,daysLeft>0&&!tampered,FALSE,FALSE);
 }
