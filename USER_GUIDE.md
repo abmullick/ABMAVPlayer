@@ -6,6 +6,19 @@ This guide covers the Windows desktop player and its separate Streaming Centre. 
 
 On first launch, ABM AV Player displays its activation window. Enter the universal 16-character activation key to unlock the full version, or start the **10-day full-feature trial**. If you start the trial first, you can activate later at any time: open the main player's **Command Centre** and choose **License & Activation**. The trial begins on the first application launch, not when the installer is downloaded. The same key works offline on every installation; no device ID or individual customer key is needed. After activation, the key is saved locally. If the customer explicitly uninstalls ABM AV Player, the saved activation is deleted; reinstalling requires the universal key to be entered again. In-place application updates retain activation. The 10-day trial record is retained across uninstall/reinstall and does not restart. Once the trial expires, the application requires the universal key before opening the player.
 
+## F1 Help Centre — search and topic navigation
+
+Press **F1** in ABM AV Player or choose Help from the relevant application menu. The Help Centre is organised as a topic index and a reading pane rather than one long page.
+
+- **Topic index:** select a subject on the left to jump directly to that section.
+- **Search:** press **Ctrl+F**, enter a word or phrase, then press **Enter** or choose **Find next**.
+- **Next match:** press **F3** to find the next occurrence. Search wraps to the beginning after reaching the end.
+- **Search feedback:** the button changes to **No match** when the current phrase is not found. Edit the query to start a new search.
+- **Reading pane:** scroll the article independently to read longer sections. Selecting a topic moves the reading position to its heading.
+- **Close:** press **Esc** or use the close control.
+
+Try searches such as `buffering`, `D3D11VA`, `subtitle delay`, `WASAPI`, `torrent cache`, `Google Cast` or `WebView2`. Search looks through the Help Centre article text; it does not search every external Markdown document or the user's media files. The repository's [USER_GUIDE.md](USER_GUIDE.md), [SETTINGS.md](SETTINGS.md) and [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) provide the expanded reference.
+
 ## 1. First launch and adding media
 
 1. Start ABM AV Player.
