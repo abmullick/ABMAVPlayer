@@ -33,6 +33,38 @@ $header = @"
 "@
 [System.IO.File]::WriteAllText((Join-Path $buildPath "version.h"), $header, $utf8NoBom)
 
+$resource = @"
+#include <windows.h>
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION $major,$minor,$patch,0
+ PRODUCTVERSION $major,$minor,$patch,0
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+ FILESUBTYPE 0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Abhisek Basu Mullick\0"
+      VALUE "FileDescription", "ABM AV Player\0"
+      VALUE "FileVersion", "$version.0\0"
+      VALUE "InternalName", "ABMAVPlayer\0"
+      VALUE "OriginalFilename", "ABMAVPlayer.exe\0"
+      VALUE "ProductName", "ABM AV Player\0"
+      VALUE "ProductVersion", "$version\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
+"@
+[System.IO.File]::WriteAllText((Join-Path $buildPath "version.rc"), $resource, $utf8NoBom)
+
 $iss = '#define ABM_VERSION "' + $version + '"' + [Environment]::NewLine
 [System.IO.File]::WriteAllText((Join-Path $buildPath "version.iss"), $iss, $utf8NoBom)
 
