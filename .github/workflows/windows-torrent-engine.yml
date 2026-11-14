@@ -38,7 +38,7 @@ jobs:
         shell: pwsh
         run: |
           & "$env:GITHUB_WORKSPACE\tools\prepare_version.ps1" | Out-Null
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "$env:GITHUB_WORKSPACE\vcpkg.json")) { throw "Version-generated vcpkg.json is missing." }
           & "$env:VCPKG_ROOT\vcpkg.exe" install
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
