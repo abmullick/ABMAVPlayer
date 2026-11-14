@@ -4901,8 +4901,8 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!di)break;
         if(di->CtlID==HELP_ID_FIND){
             RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
-            COLORREF fill=pressed?ABM_THEME_COLOR_146B64:ABM_THEME_COLOR_187E74;
-            HBRUSH b=CreateSolidBrush(fill);HPEN p=CreatePen(PS_SOLID,focused?2:1,focused?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_2A9D91);
+            COLORREF fill=pressed?ABM_THEME_COLOR_187E74:ABM_UI_COLOR_ACCENT;
+            HBRUSH b=CreateSolidBrush(fill);HPEN p=CreatePen(PS_SOLID,focused?2:1,focused?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
             HGDIOBJ ob=SelectObject(di->hDC,b),op=SelectObject(di->hDC,p);
             RoundRect(di->hDC,r.left+1,r.top+1,r.right-1,r.bottom-1,12,12);
             SelectObject(di->hDC,op);SelectObject(di->hDC,ob);DeleteObject(p);DeleteObject(b);
