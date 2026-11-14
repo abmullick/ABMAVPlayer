@@ -754,9 +754,9 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){drawerLeft,18,drawerLeft+side,drawerBottom};
     /* Collection-first drawer. Settings occupy a separate expandable region;
        all library controls are laid out below it with no negative offsets. */
-    int collectionTop=g_drawerSettingsOpen?378:82;
+    int collectionTop=g_drawerSettingsOpen?410:82;
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+66};
-    R_ADVANCED_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+310,R_SIDEBAR.right-14,R_SIDEBAR.top+354};
+    R_ADVANCED_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+310,R_SIDEBAR.left+212,R_SIDEBAR.top+350};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+104,R_SIDEBAR.right-14,R_SIDEBAR.top+140};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+148,R_SIDEBAR.right-14,R_SIDEBAR.top+188};
     R_SHUFFLE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+224,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+260};
@@ -1305,13 +1305,24 @@ static void DrawUI(HDC dc,RECT client) {
         if(ai==2){swprintf_s(speedLabel,32,L"Speed  %.2gx",g_playbackRate);shown=speedLabel;}
         Txt(dc,shown,label,actionActive[ai]?ABM_THEME_COLOR_EBF6EF:ABM_THEME_COLOR_D2E1DB,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT advancedButton=R_ADVANCED_SETTINGS_BUTTON;
-    GradientRound(dc,advancedButton,ABM_THEME_COLOR_1D4B5B,ABM_THEME_COLOR_1C9D9D,11);
-    ABM_D2D_StrokeRound(&g_ui,(float)advancedButton.left,(float)advancedButton.top,(float)advancedButton.right,(float)advancedButton.bottom,11.0f,ABM_THEME_COLOR_2B586F,1.0f);
-    RECT advancedGlyph={advancedButton.left+12,advancedButton.top+9,advancedButton.left+34,advancedButton.bottom-9};
-    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.right-3,advancedGlyph.top+3,ABM_THEME_COLOR_73D2CF,2);
-    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.left+3,advancedGlyph.bottom-3,ABM_THEME_COLOR_73D2CF,2);
-    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.bottom-3,advancedGlyph.right-3,advancedGlyph.bottom-3,ABM_THEME_COLOR_73D2CF,2);
-    RECT advancedLabel={advancedButton.left+44,advancedButton.top+2,advancedButton.right-10,advancedButton.bottom-2};
+    GradientRound(dc,advancedButton,ABM_THEME_COLOR_1D4B5B,ABM_THEME_COLOR_1C9D9D,10);
+    ABM_D2D_StrokeRound(&g_ui,(float)advancedButton.left,(float)advancedButton.top,(float)advancedButton.right,(float)advancedButton.bottom,10.0f,ABM_THEME_COLOR_2B586F,1.0f);
+    /* Compact gear icon: eight teeth around a ring with a clear centre. */
+    int gearX=advancedButton.left+22,gearY=(advancedButton.top+advancedButton.bottom)/2;
+    COLORREF gearColor=ABM_THEME_COLOR_BDE9E8;
+    DrawLine(dc,gearX,gearY-11,gearX,gearY-7,gearColor,2);
+    DrawLine(dc,gearX,gearY+7,gearX,gearY+11,gearColor,2);
+    DrawLine(dc,gearX-11,gearY,gearX-7,gearY,gearColor,2);
+    DrawLine(dc,gearX+7,gearY,gearX+11,gearY,gearColor,2);
+    DrawLine(dc,gearX-8,gearY-8,gearX-5,gearY-5,gearColor,2);
+    DrawLine(dc,gearX+5,gearY+5,gearX+8,gearY+8,gearColor,2);
+    DrawLine(dc,gearX+5,gearY-5,gearX+8,gearY-8,gearColor,2);
+    DrawLine(dc,gearX-8,gearY+8,gearX-5,gearY+5,gearColor,2);
+    HPEN gearPen=CreatePen(PS_SOLID,2,gearColor);HGDIOBJ oldGearPen=SelectObject(dc,gearPen);
+    HBRUSH gearBrush=(HBRUSH)GetStockObject(HOLLOW_BRUSH);HGDIOBJ oldGearBrush=SelectObject(dc,gearBrush);
+    Ellipse(dc,gearX-6,gearY-6,gearX+6,gearY+6);
+    SelectObject(dc,oldGearBrush);SelectObject(dc,oldGearPen);DeleteObject(gearPen);
+    RECT advancedLabel={advancedButton.left+42,advancedButton.top+2,advancedButton.right-8,advancedButton.bottom-2};
     Txt(dc,L"Advanced Settings",advancedLabel,ABM_THEME_COLOR_E5F5FA,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
     
