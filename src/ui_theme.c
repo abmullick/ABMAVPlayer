@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <math.h>
 #include "ui_theme.h"
 static const COLORREF g_defaultColors[ABM_THEME_COLOR_COUNT] = {
 RGB(0, 0, 0),
