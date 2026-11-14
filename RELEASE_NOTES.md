@@ -1,3 +1,26 @@
+# ABM AV Player v1.0.7 — Help Centre experience and release alignment
+
+## What's new
+
+- Refined the F1 Help Centre shell with ABM AV Player styling, stronger typography, clearer navigation and a more spacious search and article layout.
+- Reworked help topics to open as focused articles instead of presenting the complete guide as one continuous text block.
+- Added rich-text article formatting with a clearer heading/body hierarchy, improved paragraph spacing and application typography.
+- Added normalization for real and escaped line endings so help content can render paragraph breaks instead of displaying literal newline escape sequences.
+- Improved guide-wide search so a match can take the user to the corresponding topic and highlight the matching text.
+
+## Release and packaging alignment
+
+- Aligned the main application's About/version constant, Streaming Centre About display, Inno Setup application and PE version metadata, vcpkg manifest, installer build guards and release publisher to **1.0.7**.
+- Kept the existing Inno Setup AppId, installation directory, installer filename and AppData separation unchanged to support in-place upgrades and preserve existing user data.
+- Retained the existing unsigned distribution workflow; Authenticode enforcement remains optional and disabled by default.
+
+## Compatibility and validation
+
+- No intentional changes to the local playback, Streaming Centre provider integration, torrent engine, receiver discovery, casting, licensing model or user configuration formats are included in this release.
+- This is a source-prepared release. A successful Windows x64 build, installer creation, installation/upgrade test and feature regression pass must be completed before publishing the GitHub Release.
+
+---
+
 # ABM AV Player v1.0.6 — security hardening and release alignment
 
 - Strengthened native compiler and linker protections with MSVC security checks, Control Flow Guard, ASLR, DEP, high-entropy ASLR and CET compatibility flags.
