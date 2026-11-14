@@ -6,6 +6,7 @@
 #include <windowsx.h>
 #include <shellapi.h>
 #include <commctrl.h>
+#include <richedit.h>
 #include <commdlg.h>
 #include <uxtheme.h>
 #include <vlc/vlc.h>
@@ -4692,6 +4693,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 static HBRUSH g_helpBrush=NULL, g_helpInputBrush=NULL, g_helpArticleBrush=NULL, g_helpNavBrush=NULL;
 static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
 static HWND g_helpEdit=NULL, g_helpSearch=NULL, g_helpTopics=NULL, g_helpFindButton=NULL;
+static HMODULE g_helpRichEditModule=NULL;
 static int g_helpSearchCursor=0;
 static const wchar_t *g_helpTopicNames[]={
  L"GETTING STARTED",L"PLAYBACK AND FULLSCREEN",L"PLAYLISTS AND RECENT MEDIA",
@@ -4704,6 +4706,54 @@ static const wchar_t *g_helpTopicNames[]={
 #define HELP_ID_SEARCH 7101
 #define HELP_ID_FIND 7102
 #define HELP_ID_TOPICS 7103
+/* Format the guide as an actual article: distinct title/section hierarchy,
+   readable paragraph rhythm and consistent application typography. */
+static void HelpFormatArticle(HWND edit) {
+ if(!edit)return;
+ SendMessageW(edit,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
+ int len=GetWindowTextLengthW(edit);if(len<=0)return;
+ CHARFORMAT2W cf;ZeroMemory(&cf,sizeof(cf));cf.cbSize=sizeof(cf);
+ cf.dwMask=CFM_FACE|CFM_SIZE|CFM_COLOR|CFM_CHARSET|CFM_BOLD;
+ wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),L"Segoe UI Variable Text");
+ cf.yHeight=190;cf.crTextColor=ABM_UI_COLOR_TEXT_SECONDARY;cf.bCharSet=DEFAULT_CHARSET;
+ SendMessageW(edit,EM_SETSEL,0,-1);
+ SendMessageW(edit,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
+ PARAFORMAT2 pf;ZeroMemory(&pf,sizeof(pf));pf.cbSize=sizeof(pf);
+ pf.dwMask=PFM_SPACEAFTER|PFM_LINESPACING;
+ pf.dySpaceAfter=150;pf.bLineSpacingRule=4;pf.dyLineSpacing=285;
+ SendMessageW(edit,EM_SETPARAFORMAT,0,(LPARAM)&pf);
+ wchar_t *text=(wchar_t*)calloc((size_t)len+1,sizeof(wchar_t));if(!text)return;
+ GetWindowTextW(edit,text,len+1);
+ int pos=0;
+ while(pos<len) {
+  int end=pos;while(end<len&&text[end]!=L'\\r'&&text[end]!=L'\\n')end++;
+  int lineLen=end-pos;
+  if(lineLen>0) {
+   BOOL heading=FALSE;
+   for(int i=0;i<(int)_countof(g_helpTopicNames);i++) {
+    size_t n=wcslen(g_helpTopicNames[i]);
+    if((size_t)lineLen>=n&&_wcsnicmp(text+pos,g_helpTopicNames[i],n)==0){heading=TRUE;break;}
+   }
+   if(heading) {
+    SendMessageW(edit,EM_SETSEL,pos,end);
+    ZeroMemory(&cf,sizeof(cf));cf.cbSize=sizeof(cf);
+    cf.dwMask=CFM_FACE|CFM_SIZE|CFM_BOLD|CFM_COLOR;
+    wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),L"Segoe UI Variable Display");
+    cf.yHeight=260;cf.dwEffects=CFE_BOLD;cf.crTextColor=ABM_UI_COLOR_ACCENT_BRIGHT;
+    SendMessageW(edit,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
+    SendMessageW(edit,EM_SETSEL,pos,end);
+    ZeroMemory(&pf,sizeof(pf));pf.cbSize=sizeof(pf);
+    pf.dwMask=PFM_SPACEBEFORE|PFM_SPACEAFTER|PFM_LINESPACING;
+    pf.dySpaceBefore=220;pf.dySpaceAfter=100;pf.bLineSpacingRule=4;pf.dyLineSpacing=300;
+    SendMessageW(edit,EM_SETPARAFORMAT,0,(LPARAM)&pf);
+   }
+  }
+  while(end<len&&(text[end]==L'\\r'||text[end]==L'\\n'))end++;
+  pos=end;
+ }
+ free(text);
+ SendMessageW(edit,EM_SETSEL,0,0);
+}
 static void HelpNavigateToTopic(HWND hwnd,int index) {
  (void)hwnd;
  if(index<0||index>=(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]))||!g_helpEdit)return;
@@ -4830,10 +4880,15 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_helpTopics=CreateWindowExW(0,L"LISTBOX",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_HASSTRINGS|LBS_OWNERDRAWFIXED,
             32,198,286,500,hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
-        g_helpEdit=CreateWindowExW(0,L"EDIT",help,
-            WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY,
+        if(!g_helpRichEditModule)g_helpRichEditModule=LoadLibraryW(L"Msftedit.dll");
+        g_helpEdit=CreateWindowExW(0,L"RICHEDIT50W",help,
+            WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
             338,198,600,500,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
-        if(g_helpEdit){SendMessageW(g_helpEdit,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(24,24));}
+        if(g_helpEdit){
+            SendMessageW(g_helpEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(26,26));
+            SendMessageW(g_helpEdit,EM_SETOPTIONS,ECOOP_OR,ECO_AUTOWORDSELECTION);
+            HelpFormatArticle(g_helpEdit);
+        }
         if(g_helpSearch){SendMessageW(g_helpSearch,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpSearch,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(16,16));SetWindowSubclass(g_helpSearch,HelpSearchSubclass,1,0);}
         if(g_helpSearch)SendMessageW(g_helpSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search all help topics  ·  e.g. subtitles, buffering, D3D11VA, torrent cache");
         if(g_helpTopics){SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpTopics,LB_SETITEMHEIGHT,0,40);}
