@@ -8,8 +8,7 @@
       "features": [
         "webtorrent"
       ]
-    },
-    "libjuice"
+    }
   ],
   "overrides": [
     {
