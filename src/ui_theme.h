@@ -5,6 +5,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+typedef enum ABMThemePreset {
+    ABM_THEME_PRESET_MIDNIGHT_TEAL = 0,
+    ABM_THEME_PRESET_ARCTIC_BLUE = 1,
+    ABM_THEME_PRESET_ROYAL_VIOLET = 2,
+    ABM_THEME_PRESET_RUBY_ROSE = 3,
+    ABM_THEME_PRESET_SUNSET_AMBER = 4,
+    ABM_THEME_PRESET_EMERALD = 5,
+    ABM_THEME_PRESET_COUNT = 6
+} ABMThemePreset;
+
 typedef enum ABMThemeColorId {
     ABM_THEME_ID_000000 = 0,
     ABM_THEME_ID_020811 = 1,
@@ -565,6 +575,10 @@ typedef enum ABMThemeColorId {
 COLORREF ABMThemeColor(ABMThemeColorId id);
 BOOL ABMThemeSetColor(ABMThemeColorId id, COLORREF color);
 void ABMThemeReset(void);
+BOOL ABMThemeApplyPreset(ABMThemePreset preset);
+ABMThemePreset ABMThemeCurrentPreset(void);
+const wchar_t *ABMThemePresetName(ABMThemePreset preset);
+COLORREF ABMThemePresetAccent(ABMThemePreset preset);
 #ifdef __cplusplus
 }
 #endif
