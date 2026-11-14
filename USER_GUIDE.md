@@ -18,47 +18,46 @@ The playlist stores references to media files. Removing an item from the playlis
 
 ## 2. Application settings
 
-Open **Settings** from the Command Centre. The dedicated dark settings window follows the player's navy/blue visual theme and groups the preferences that are currently supported by the application.
+Open **Settings** from the Command Centre. Main Settings contains General, Audio, Torrent & Storage, Network, Updates and Color Theme. Choose **Advanced…** for decoder, output, subtitle, caching, performance, behaviour and diagnostics controls.
 
-Under **Color Theme**, choose one of seven application palettes: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald or Golden Yellow. The palette applies immediately and is remembered across restarts in `%APPDATA%\\ABMAVPlayer\\theme.ini`. This changes ABM AV Player's own interface; provider websites inside Streaming Centre keep their own appearance.
+### General
 
-- **General:** default volume, playback speed, shuffle and repeat.
-- **Audio:** ReplayGain normalisation and dynamic-range compressor preferences.
-- **Torrent & Storage:** torrent cache parent folder and cache quota. The engine creates a `torrent-cache` subfolder inside the selected location.
-- **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
-- **Updates:** manually check the latest published GitHub release.
+- **Volume (0–100):** changes playback loudness, not source quality. Raising 30 to 60 makes the player louder; it does not make a quiet recording cleaner. Consider the Windows/device volume as well to avoid excessive output.
+- **Playback speed (0.5x–2.0x):** 1.0x is normal; 1.25x can shorten a lecture, while 0.75x slows speech. This changes playback rate, not the media file.
+- **Shuffle by default:** On randomises the next-item selection; Off follows playlist order. It does not rearrange files on disk.
+- **Repeat current item:** On loops the current item; Off allows normal progression.
 
-Under **Settings → Torrent & Storage**, choose **Browse** beside Cache parent folder to change the cache location, or **Browse** beside Permanent downloads folder to choose where completed torrent files are stored. These are independent locations. Choose **Save settings** to persist changes. The first-run cache default is the current Windows user's Downloads known folder, followed by an `ABM AV Player` folder; the permanent downloads default is a `Torrent Downloads` subfolder beneath that location. Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy torrent cache retain their existing cache location rather than silently abandoning cached data. The Torrent window's **Open Downloads Folder** button opens the configured permanent downloads location.
+### Audio processing
 
-If the torrent engine is already running, changing its cache location takes effect after restarting ABM AV Player. Other supported settings are applied immediately where possible. The settings file is stored at `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences remain in `audio.ini`.
+- **ReplayGain normalisation:** uses usable ReplayGain metadata where supported to make tagged tracks play at more consistent perceived loudness. Untagged files may be unaffected; ABM AV Player does not analyse every file to create tags.
+- **Dynamic range compressor:** can reduce the loudness gap between quiet and loud passages, which may make dialogue easier to hear during action scenes. It can also reduce musical/film dynamics. Availability depends on the VLC runtime/plugins; it is not a guaranteed true-peak limiter.
 
-## 2. Application settings
+For reliable comparison, change one audio option, reopen the same media and compare a quiet and loud passage. Preferences are also stored in `audio.ini`.
 
-Open **Settings** from the Command Centre. The dedicated window uses the player's dark navy/blue visual theme and groups the currently supported preferences.
+### Torrent & Storage
 
-- **General:** volume (0–100), playback speed (0.5x–2.0x), shuffle and repeat.
-- **Audio:** ReplayGain normalisation and dynamic-range compressor.
-- **Torrent & Storage:** cache parent folder and quota (1–4096 GiB; default 20 GiB). The engine creates a `torrent-cache` subfolder inside the selected parent.
-- **Network:** torrent download and upload limits in KiB/s. A value of `0` means unlimited.
-- **Updates:** manually check the latest public GitHub release.
+- **Cache parent folder:** parent directory for the torrent engine's `torrent-cache` working data. Choose a drive with enough free space. Changing it does not move old cache data; if the engine is running, restart ABM AV Player to initialise the new path.
+- **Permanent downloads folder:** destination for selected/completed torrent media. It is separate from the working cache; changing it does not move existing downloads.
+- **Cache quota (1–4096 GiB; default 20 GiB):** controls how much persistent cache data may be retained. A larger quota can retain more pieces but consumes more disk capacity; it does not create peers or increase internet speed.
+- **Browse / Open folder:** select or inspect the configured directory in File Explorer.
 
-Choose **Browse** to select a cache parent folder, then **Save settings**. **Open folder** opens the selected parent in File Explorer.
+New installations base the cache on the Windows Downloads known folder: `<Downloads>\\ABM AV Player\\torrent-cache`. Existing installations with a legacy cache keep their existing location unless changed. Keep the old directory until you have confirmed the new location works and no cached data is needed.
 
-On a new installation, the cache is created under the Windows user's Downloads known folder:
+### Network — torrent bandwidth
 
-```text
-<Windows Downloads>\\ABM AV Player\\torrent-cache
-```
+Download and upload limits are in **KiB/s**. A value of **0 means unlimited**. A lower cap can leave more bandwidth for calls, browsing and other devices but slows torrent transfers; a higher cap can improve transfer speed only when peers and the connection can supply it. If a video call becomes unstable while a torrent is active, try a moderate download cap and compare. These limits apply to torrent transfers, not all PC internet traffic.
 
-Windows Known Folder resolution respects redirected Downloads locations. Existing installations with a legacy cache under `%APPDATA%\\ABMAVPlayer\\torrent-cache` retain that location unless the user chooses another.
+### Updates
 
-Changing the cache parent does not automatically move existing cache data. If Torrent Stream is already running, the active session continues using its original path; restart ABM AV Player to activate the new path. Keep the old folder if you want to preserve its cached pieces.
+**Check for updates** checks the latest published GitHub Release. The updater expects `ABM-AV-Player-Setup.exe` and verifies its SHA-256 digest before launching. An absent or mismatched digest blocks installation. Windows SmartScreen may still warn about an unsigned installer. See [RELEASES.md](RELEASES.md).
 
-Settings are saved in `%APPDATA%\\ABMAVPlayer\\settings.ini`; audio processing preferences are also stored in `audio.ini`. For the full option reference and troubleshooting, see [Application Settings](SETTINGS.md).
+### Color Theme
 
-## Advanced Settings — complete reference
+Choose Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald or Golden Yellow. The palette changes ABM AV Player-owned interface surfaces immediately and persists in `%APPDATA%\\ABMAVPlayer\\theme.ini`. It does not recolour the video or provider websites inside Streaming Centre.
 
-Open **Command Centre → Settings → Advanced…**. The left navigation contains Overview, Video & Decoding, Audio Engine, Video Output, Subtitles, Streaming & Network, Performance, Controls & Behaviour and Diagnostics. Select a category to open its page. Settings marked as immediate are saved as soon as changed; restart- or next-media requirements are noted below.
+## Advanced Settings — complete practical guide
+
+Open **Command Centre → Settings → Advanced…**. Select a page in the left navigation. The guidance below distinguishes what a setting requests from what you should actually expect to observe. Hardware, codec, VLC runtime, driver, storage and network conditions can change the result. When troubleshooting, change one setting at a time and compare the same media under similar conditions.
 
 ### Overview
 
