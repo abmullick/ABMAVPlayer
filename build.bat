@@ -1,6 +1,10 @@
 @echo off
 setlocal
 
+rem Generate all version-dependent build artifacts from the canonical VERSION file.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\prepare_version.ps1" >nul
+if errorlevel 1 goto version_prepare_failed
+
 rem Compiler and linker hardening for all native modules.
 set "CL=%CL% /GS /sdl /guard:cf"
 set "LINK=%LINK% /guard:cf /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /CETCOMPAT"
@@ -59,7 +63,7 @@ cl /nologo /W4 /O2 /utf-8 /std:c11 /TC /DUNICODE /D_UNICODE /c src\ui_theme.c /F
 if errorlevel 1 goto build_failed
 
 echo [2/13] Compiling C playback engine...
-cl /nologo /W4 /O2 /utf-8 /std:c11 /TC /DUNICODE /D_UNICODE /I"%VLC_SDK%\include" /c src\player.c /Fo:build\player.obj
+cl /nologo /W4 /O2 /utf-8 /std:c11 /TC /DUNICODE /D_UNICODE /I"%VLC_SDK%\include" /I"build" /c src\player.c /Fo:build\player.obj
 if errorlevel 1 goto build_failed
 
 echo [3/13] Compiling C++ Direct2D bridge...
@@ -71,7 +75,7 @@ cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\audio
 if errorlevel 1 goto build_failed
 
 echo [5/13] Compiling WebView2 streaming host...
-cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /I"%WEBVIEW2_SDK%\build\native\include" /c src\streaming\streaming_host.cpp /Fo:build\streaming_host.obj
+cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /I"%WEBVIEW2_SDK%\build\native\include" /I"build" /c src\streaming\streaming_host.cpp /Fo:build\streaming_host.obj
 if errorlevel 1 goto build_failed
 
 echo [6/13] Compiling DLNA/UPnP casting backend...
@@ -129,6 +133,12 @@ echo Build successful: build\ABMAVPlayer.exe
 pause
 endlocal
 exit /b 0
+
+:version_prepare_failed
+echo ERROR: Could not generate version artifacts from the canonical VERSION file.
+pause
+endlocal
+exit /b 1
 
 :build_failed
 echo.
