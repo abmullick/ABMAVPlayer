@@ -4717,34 +4717,34 @@ static wchar_t *HelpNormalizeArticle(const wchar_t *src) {
  for(size_t i=0;i<n;i++) {
   if(src[i]==L'\\'&&src[i+1]==L'r') {
    i++;if(src[i+1]==L'\\'&&src[i+2]==L'n')i+=2;
-   if(out&&dst[out-1]!=L'\\r'&&dst[out-1]!=L'\\n'){dst[out++]=L'\\r';dst[out++]=L'\\n';}
+   if(out&&dst[out-1]!=L'\r'&&dst[out-1]!=L'\n'){dst[out++]=L'\r';dst[out++]=L'\n';}
    lineStart=out;continue;
   }
   if(src[i]==L'\\'&&src[i+1]==L'n') {
-   i++;if(out&&dst[out-1]!=L'\\r'&&dst[out-1]!=L'\\n'){dst[out++]=L'\\r';dst[out++]=L'\\n';}
+   i++;if(out&&dst[out-1]!=L'\r'&&dst[out-1]!=L'\n'){dst[out++]=L'\r';dst[out++]=L'\n';}
    lineStart=out;continue;
   }
-  if(src[i]==L'\\r'||src[i]==L'\\n') {
-   if(src[i]==L'\\r'&&src[i+1]==L'\\n')i++;
-   if(out&&dst[out-1]!=L'\\r'&&dst[out-1]!=L'\\n'){dst[out++]=L'\\r';dst[out++]=L'\\n';}
+  if(src[i]==L'\r'||src[i]==L'\n') {
+   if(src[i]==L'\r'&&src[i+1]==L'\n')i++;
+   if(out&&dst[out-1]!=L'\r'&&dst[out-1]!=L'\n'){dst[out++]=L'\r';dst[out++]=L'\n';}
    lineStart=out;continue;
   }
   if((src[i]==L'.'||src[i]==L'?'||src[i]==L'!')&&src[i+1]==L' ') {
    size_t next=i+2;while(src[next]==L' ')next++;
    if((src[next]>=L'A'&&src[next]<=L'Z')||(src[next]>=L'0'&&src[next]<=L'9')) {
-    dst[out++]=src[i];dst[out++]=L'\\r';dst[out++]=L'\\n';i++;while(src[i+1]==L' ')i++;lineStart=out;continue;
+    dst[out++]=src[i];dst[out++]=L'\r';dst[out++]=L'\n';i++;while(src[i+1]==L' ')i++;lineStart=out;continue;
    }
   }
   if(src[i]==L':'&&src[i+1]==L' ') {
    size_t next=i+2;while(src[next]==L' ')next++;
    size_t prefix=out-lineStart;
    if(prefix>0&&prefix<48&&((src[next]>=L'A'&&src[next]<=L'Z')||(src[next]>=L'0'&&src[next]<=L'9'))) {
-    dst[out++]=L':';dst[out++]=L'\\r';dst[out++]=L'\\n';i++;while(src[i+1]==L' ')i++;lineStart=out;continue;
+    dst[out++]=L':';dst[out++]=L'\r';dst[out++]=L'\n';i++;while(src[i+1]==L' ')i++;lineStart=out;continue;
    }
   }
   dst[out++]=src[i];
  }
- while(out>0&&(dst[out-1]==L'\\r'||dst[out-1]==L'\\n'||dst[out-1]==L' '))out--;
+ while(out>0&&(dst[out-1]==L'\r'||dst[out-1]==L'\n'||dst[out-1]==L' '))out--;
  dst[out]=0;return dst;
 }
 /* Format the guide as an actual article: distinct title/section hierarchy,
