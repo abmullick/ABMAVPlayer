@@ -76,22 +76,20 @@ Adjust SDK paths for the local machine. The build scripts bootstrap/build the to
 
 The main executable is produced under `build\\ABMAVPlayer.exe`. Use `run.bat` for the repository runtime launch setup. The installer is staged under `dist\\ABM-AV-Player-Setup.exe` after running the installer preparation and packaging scripts.
 
-## Release version sources and packaging
+## Canonical version source and generated artifacts
 
-The current source-prepared release is **v1.0.7**. These version values are intentionally repeated because they are consumed by different toolchains:
+The root `VERSION` file is the sole editable source for the product's semantic version. Do not define a second current version in C/C++, the installer script, manifests, batch files, PowerShell scripts, About windows or documentation.
 
-| Component | Version source |
-|---|---|
-| Main application About and updater comparison | `APP_VERSION` in `src/player.c` |
-| Streaming Centre About | Version string in `src/streaming/streaming_host.cpp` |
-| Installer display version | `MyAppVersion` in `installer/ABMAVPlayer.iss` |
-| Installer executable version resource | `VersionInfoVersion` and `VersionInfoProductVersion` in the Inno Setup script |
-| Dependency manifest package metadata | `version-string` in `vcpkg.json` |
-| Build-time release guards | `build_installer.bat` |
-| Release tag, installer validation and publication | `publish_release.bat` |
-| Public release description | `RELEASE_NOTES.md` and `RELEASES.md` |
+Run `tools\prepare_version.ps1` to generate:
+- `build\version.h` — C/C++ version macros used by the main application and Streaming Centre.
+- `build\version.iss` — Inno Setup preprocessor definition consumed by `installer\ABMAVPlayer.iss`.
+- `vcpkg.json` — generated dependency manifest based on the tracked `vcpkg.json.in` template.
 
-For a version change, update every source above in the same release change. Run `build_installer.bat`, not only `build.bat`, for the release package. The installer script performs a metadata-consistency preflight, rebuilds the app, recreates staging, checks the built and staged executable versions, and then compiles the installer. The publisher validates the installer PE version and refuses an existing release tag. Never publish until the Windows acceptance and upgrade tests in [RELEASES.md](RELEASES.md) have passed.
+The generated files are build artifacts and must not be edited or committed. `vcpkg.json` and the `build\` directory are ignored by Git. The normal build, standalone torrent dependency build, CI workflow, installer builder and release publisher all regenerate from `VERSION` before consuming version-dependent files.
+
+To change the application version, edit only `VERSION`. Then run `build_installer.bat`. It regenerates the artifacts, rebuilds the application, verifies the built and staged executable versions and compiles the installer. Run `publish_release.bat` only after the Windows acceptance and upgrade tests in [RELEASES.md](RELEASES.md) have passed. The publisher reads the same canonical version to construct the Git tag and validate installer PE metadata.
+
+Historical release notes may mention their own release numbers; those are immutable release history, not active version configuration.
 
 ## Engineering workflow and guardrails
 
