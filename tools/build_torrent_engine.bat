@@ -3,16 +3,24 @@ setlocal EnableExtensions
 set "ROOT=%~dp0.."
 for %%I in ("%ROOT%") do set "ROOT=%%~fI"
 cd /d "%ROOT%"
-if "%VCPKG_ROOT%"=="" (
-  echo ERROR: Set VCPKG_ROOT to your vcpkg installation.
+
+echo Preparing the pinned vcpkg toolchain and dependency cache...
+set "VCPKG_ROOT="
+for /f "usebackq delims=" %%V in (\`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_vcpkg.ps1\`) do set "VCPKG_ROOT=%%V"
+if not defined VCPKG_ROOT (
+  echo ERROR: Could not prepare the vcpkg toolchain.
   exit /b 1
 )
-if not exist "%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" exit /b 1
+if not exist "%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" (
+  echo ERROR: vcpkg buildsystem files not found under "%VCPKG_ROOT%".
+  exit /b 1
+)
+
 echo Ensuring manifest dependencies are installed, including libtorrent WebTorrent support...
 "%VCPKG_ROOT%\vcpkg.exe" install --triplet x64-windows
 if errorlevel 1 exit /b 1
 if not exist "%ROOT%\vcpkg_installed\x64-windows\include\libtorrent\session.hpp" (
-  echo Run from the repository root: "%VCPKG_ROOT%\vcpkg.exe" install
+  echo ERROR: libtorrent headers were not installed.
   exit /b 1
 )
 where cmake >nul 2>nul
