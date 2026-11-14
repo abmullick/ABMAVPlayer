@@ -6414,6 +6414,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(savedAudioOut<0||savedAudioOut>2)savedAudioOut=0;
     g_advancedAudioOutMode=savedAudioOut;
     {int savedSubtitleDelayMs=GetPrivateProfileIntW(L"Subtitles",L"DelayMs",0,hwSettingsPath);if(savedSubtitleDelayMs < -10000)savedSubtitleDelayMs=-10000;if(savedSubtitleDelayMs > 10000)savedSubtitleDelayMs=10000;g_advancedSubtitleDelayUs=(int64_t)savedSubtitleDelayMs*1000;}
+    {int savedSubtitleSize=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,hwSettingsPath);if(savedSubtitleSize!=10&&savedSubtitleSize!=13&&savedSubtitleSize!=16&&savedSubtitleSize!=19)savedSubtitleSize=13;g_advancedSubtitleFontSize=savedSubtitleSize;}
     if(savedAudioOut==1)args[argCount++]="--aout=mmdevice";
     else if(savedAudioOut==2)args[argCount++]="--aout=directsound";
     g_vlc=libvlc_new(argCount,args);
