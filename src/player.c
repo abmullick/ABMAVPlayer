@@ -5035,6 +5035,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
+  g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
+  {wchar_t env[32]={0};if(GetEnvironmentVariableW(L"ABM_VLC_HW",env,(DWORD)_countof(env))>0){
+   if(!_wcsicmp(env,L"none")){g_advancedHwDraft=1;g_advancedHwEnvOverride=TRUE;}
+   else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
+  }}
   return 0;
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -6270,6 +6275,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     StringCchPrintfW(hwSettingsPath,_countof(hwSettingsPath),L"%s\\settings.ini",g_dataDir);
     int savedHwMode=GetPrivateProfileIntW(L"Video",L"HardwareAcceleration",0,hwSettingsPath);
     if(savedHwMode<0||savedHwMode>2)savedHwMode=0;
+    g_advancedHwMode=savedHwMode;
     wchar_t hwMode[32]=L"";
     GetEnvironmentVariableW(L"ABM_VLC_HW",hwMode,(DWORD)_countof(hwMode));
     if(!_wcsicmp(hwMode,L"none"))args[argCount++]="--avcodec-hw=none";
