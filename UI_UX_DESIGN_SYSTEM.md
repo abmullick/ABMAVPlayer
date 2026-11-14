@@ -41,7 +41,7 @@ The main issue is not a lack of styling. It is that visual decisions are duplica
 
 ## 3. Shared design tokens
 
-The initial code-level token set is in `src/ui_theme.h`. It is additive and is not yet wired into every window. Later UI steps should consume these tokens rather than introducing new local values.
+The shared runtime palette is implemented in `src/ui_theme.h` and `src/ui_theme.c`. App-owned native windows resolve their static colors through runtime tokens; the Streaming Centre welcome page resolves its CSS colors from the same palette. Provider-owned WebView2 pages retain provider styling. Procedurally generated media-art colors remain content-driven rather than interface theme colors.
 
 ### Colour palette
 
@@ -531,3 +531,13 @@ This documentation does not imply that every custom control is screen-reader acc
 ## Build note — shared theme header
 
 The Streaming Centre source includes the shared theme header relative to its source directory (`../ui_theme.h`). This reflects the repository layout where the header is stored at `src/ui_theme.h` and the translation unit is stored at `src/streaming/streaming_host.cpp`. A source update does not itself establish that the local Windows build has passed; rebuild with the documented MSVC environment after pulling `main`.
+
+
+## Runtime palette centralization — Step 1
+
+- Added `src/ui_theme.c` as the single runtime palette store. `ABMThemeColor`, `ABMThemeSetColor` and `ABMThemeReset` provide the shared token API.
+- Migrated static color literals in the main player, drawer, command centre, playback controls, torrent interface, settings/equalizer surfaces, branded dialogs, licensing window and Streaming Centre native chrome to runtime palette tokens.
+- The Streaming Centre welcome page now builds its CSS colors from the shared palette. Third-party streaming websites remain untouched.
+- Added the theme module to `build.bat` compilation and linking.
+- This step establishes the runtime-token foundation only. User-selectable presets, custom accent selection and preference persistence are subsequent work.
+- Procedural cover-art colors and semantic status colors remain distinct; playback, torrent, WebView2 and casting behavior are unchanged.
