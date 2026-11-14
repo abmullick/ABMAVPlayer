@@ -1331,7 +1331,7 @@ static void DrawUI(HDC dc,RECT client) {
                         g_drawerSettingsOpen?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_466F7D,1.1f);
     int chevronX=(chevronButton.left+chevronButton.right)/2;
     int chevronY=(chevronButton.top+chevronButton.bottom)/2;
-    COLORREF chevronColor=g_drawerSettingsOpen?ABM_THEME_COLOR_E5F6F7:ABM_THEME_COLOR_C7DCEB;
+    COLORREF chevronColor=g_drawerSettingsOpen?ABM_THEME_COLOR_E5F5FA:ABM_THEME_COLOR_BED2EA;
     if(g_drawerSettingsOpen) {
         DrawLine(dc,chevronX-8,chevronY+3,chevronX,chevronY-5,chevronColor,3);
         DrawLine(dc,chevronX,chevronY-5,chevronX+8,chevronY+3,chevronColor,3);
