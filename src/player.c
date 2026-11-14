@@ -5105,16 +5105,30 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    AdvancedSettingsText(g_advancedSettingsDescriptions[g_advancedSettingsPage],306,178,1028,216,
        SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
-   ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
-   AdvancedSettingsText(L"Configuration workspace",326,264,1008,302,
-       ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsText(L"This section is ready for capability-backed settings.",
-       326,310,1008,342,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsText(L"No playback or output behaviour is changed in this setup stage.",
-       326,346,1008,374,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsText(L"Controls will be introduced section by section and connected to the playback engine.",
-       304,408,1032,454,SETTINGS_MUTED,0,DT_LEFT|DT_TOP|DT_WORDBREAK);
+   if(g_advancedSettingsPage==1){
+    AdvancedSettingsText(L"Hardware acceleration",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    const wchar_t *hwNames[3]={L"Automatic (recommended)",L"Software decoding",L"Direct3D 11 Video Acceleration"};
+    const wchar_t *hwDesc[3]={L"Let LibVLC choose the available hardware decoder.",L"Decode on the CPU. Useful for diagnosing GPU or driver issues.",L"Request D3D11VA hardware decoding through the LibVLC video decoder."};
+    for(int i=0;i<3;i++){
+     int top=260+i*74;BOOL selected=(g_advancedHwDraft==i);
+     ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+66,9,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+65.5f,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
+     ABM_D2D_Round(&g_advancedSettingsUi,338,(float)top+22,356,(float)top+40,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE);
+     if(selected)ABM_D2D_Round(&g_advancedSettingsUi,343,(float)top+27,351,(float)top+35,4,ABM_THEME_COLOR_0D1E2F);
+     AdvancedSettingsText(hwNames[i],372,top+8,990,top+32,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsText(hwDesc[i],372,top+34,990,top+59,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
+    AdvancedSettingsText(g_advancedHwEnvOverride?L"Environment override active: ABM_VLC_HW takes precedence over this saved setting.":L"Decoder changes require an application restart. Automatic is the default.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
+    AdvancedSettingsText(g_advancedHwMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else{
+    ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
+    ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
+    AdvancedSettingsText(L"Configuration workspace",326,264,1008,302,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"This section is ready for capability-backed settings.",326,310,1008,342,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"No playback or output behaviour is changed in this setup stage.",326,346,1008,374,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Controls will be introduced section by section and connected to the playback engine.",304,408,1032,454,SETTINGS_MUTED,0,DT_LEFT|DT_TOP|DT_WORDBREAK);
+   }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
    AdvancedSettingsText(L"Advanced controls are added in stages. Existing settings remain unchanged.",
        292,674,880,724,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
