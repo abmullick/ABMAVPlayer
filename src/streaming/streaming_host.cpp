@@ -1876,6 +1876,14 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
     DwmSetWindowAttribute(window,DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
     ShowWindow(window,SW_SHOW);UpdateWindow(window);
 }
+extern "C" void ABM_Streaming_RefreshTheme(void){
+    if(!g_window || !IsWindow(g_window)) return;
+    /* Refresh only ABM-owned chrome; never navigate a provider page. */
+    if(g_activeService < 0) NavigateHome();
+    InvalidateRect(g_window,nullptr,FALSE);
+    if(g_devicePanel && IsWindow(g_devicePanel)) InvalidateRect(g_devicePanel,nullptr,FALSE);
+}
+
 extern "C" void ABM_Streaming_Close(void){
     g_mainWindow=nullptr;
     if(g_window&&IsWindow(g_window))DestroyWindow(g_window);
