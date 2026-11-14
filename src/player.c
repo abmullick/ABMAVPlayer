@@ -33,6 +33,9 @@
 #include <wincodec.h>
 #include <ws2tcpip.h>
 #include <dwmapi.h>
+
+static void ApplyAdvancedAspectRatio(void);
+static void AddAdvancedCachingOptions(libvlc_media_t *media);
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "shell32.lib")
@@ -1894,8 +1897,6 @@ static void SelectRenderer(void) {
                 }
                 ApplyAudioOutputDevice();
                 ApplySubtitleAppearanceOption(m);
-static void ApplyAdvancedAspectRatio(void);
-static void AddAdvancedCachingOptions(libvlc_media_t *media);
                 libvlc_media_player_set_media(g_player,m);ApplyAdvancedAspectRatio();
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
@@ -5149,7 +5150,6 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    int *values[3]={&g_advancedNetworkCaching,&g_advancedFileCaching,&g_advancedLiveCaching};
    const wchar_t *keys[3]={L"NetworkCachingMs",L"FileCachingMs",L"LiveCachingMs"};
    for(int n=0;n<3;n++)if(AdvancedSettingsPoint(x,y,320,260+n*104,1018,344+n*104)){
-    int idx=0;for(int j=0;j<4;j++)if(g_advancedCacheChoices[j]==*values[n])idx++;
     int current=0;for(int j=0;j<4;j++)if(g_advancedCacheChoices[j]==*values[n])current=j;
     *values[n]=g_advancedCacheChoices[(current+1)%4];
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",*values[n]);WritePrivateProfileStringW(L"Streaming",keys[n],v,p);}
