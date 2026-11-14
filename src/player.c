@@ -4998,6 +4998,9 @@ static ABM_D2D g_advancedSettingsUi;
 static BOOL g_advancedSettingsUiReady=FALSE;
 static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
+static int g_advancedHwMode=0,g_advancedHwDraft=0;
+static BOOL g_advancedHwEnvOverride=FALSE;
+static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
  L"Overview",L"Video & Decoding",L"Audio Engine",L"Video Output",
  L"Subtitles",L"Streaming & Network",L"Performance",L"Controls & Behaviour",L"Diagnostics"
@@ -6230,10 +6233,18 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
        plugin scan on every launch and makes startup unnecessarily slow. */
     int argCount=2;
     if(pluginArg[0])args[argCount++]=pluginArg;
+    /* Hardware decoding is an instance-level LibVLC startup option. */
+    EnsureDataDirectory();
+    wchar_t hwSettingsPath[PATH_CAP]={0};
+    StringCchPrintfW(hwSettingsPath,_countof(hwSettingsPath),L"%s\\settings.ini",g_dataDir);
+    int savedHwMode=GetPrivateProfileIntW(L"Video",L"HardwareAcceleration",0,hwSettingsPath);
+    if(savedHwMode<0||savedHwMode>2)savedHwMode=0;
     wchar_t hwMode[32]=L"";
     GetEnvironmentVariableW(L"ABM_VLC_HW",hwMode,(DWORD)_countof(hwMode));
     if(!_wcsicmp(hwMode,L"none"))args[argCount++]="--avcodec-hw=none";
     else if(!_wcsicmp(hwMode,L"d3d11va"))args[argCount++]="--avcodec-hw=d3d11va";
+    else if(savedHwMode==1)args[argCount++]="--avcodec-hw=none";
+    else if(savedHwMode==2)args[argCount++]="--avcodec-hw=d3d11va";
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){ABM_MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
