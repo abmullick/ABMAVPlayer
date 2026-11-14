@@ -5013,6 +5013,16 @@ static const wchar_t *g_advancedSettingsDescriptions[]={
  L"Keyboard, mouse, playlist and playback behaviour.",
  L"Playback engine information, logs and troubleshooting."
 };
+static void AdvancedSettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF color,int style,UINT flags){
+ RECT rc={l,t,r,b};ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,style,flags);
+}
+static void AdvancedSettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary){
+ COLORREF fill=primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
+ COLORREF edge=primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
+ ABM_D2D_Round(&g_advancedSettingsUi,(float)l,(float)t,(float)r,(float)b,(float)ABM_UI_RADIUS_BUTTON,fill);
+ ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)l+0.5f,(float)t+0.5f,(float)r-0.5f,(float)b-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,0.9f);
+ AdvancedSettingsText(label,l+8,t+1,r-8,b-1,ABM_UI_COLOR_TEXT,1,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+}
 static BOOL AdvancedSettingsPoint(int x,int y,int l,int t,int r,int b){
  return x>=l&&x<=r&&y>=t&&y<=b;
 }
@@ -5052,12 +5062,12 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        ABM_THEME_COLOR_2B586F,1.0f);
    ABM_D2D_Round(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_1C9D9D);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_73D2CF,1.0f);
-   SettingsText(L"⚙",39,31,73,70,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"ADVANCED SETTINGS",94,24,560,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,620,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(L"⚙",39,31,73,70,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(L"ADVANCED SETTINGS",94,24,560,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,620,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Round(&g_advancedSettingsUi,18,106,258,680,14,SETTINGS_PANEL);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,106.5f,257.5f,679.5f,14,SETTINGS_BORDER,0.8f);
-   SettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
     float top=(float)(151+i*54);
     BOOL selected=(i==g_advancedSettingsPage);
@@ -5065,30 +5075,30 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      ABM_D2D_Round(&g_advancedSettingsUi,28,top,248,top+46,9,ABM_UI_COLOR_SURFACE_BLUE);
      ABM_D2D_Round(&g_advancedSettingsUi,28,top+9,31,top+37,1.5f,ABM_UI_COLOR_ACCENT_BRIGHT);
     }
-    SettingsText(g_advancedSettingsPages[i],42,(int)top+2,237,(int)top+44,
+    AdvancedSettingsText(g_advancedSettingsPages[i],42,(int)top+2,237,(int)top+44,
        selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,
        DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }
    ABM_D2D_Round(&g_advancedSettingsUi,274,106,1062,680,14,SETTINGS_PANEL);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,274.5f,106.5f,1061.5f,679.5f,14,SETTINGS_BORDER,0.8f);
-   SettingsText(g_advancedSettingsPages[g_advancedSettingsPage],304,130,1028,174,
+   AdvancedSettingsText(g_advancedSettingsPages[g_advancedSettingsPage],304,130,1028,174,
        ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(g_advancedSettingsDescriptions[g_advancedSettingsPage],306,178,1028,216,
+   AdvancedSettingsText(g_advancedSettingsDescriptions[g_advancedSettingsPage],306,178,1028,216,
        SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,390,12,ABM_UI_COLOR_SURFACE);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,389.5f,12,SETTINGS_BORDER,0.8f);
-   SettingsText(L"Configuration workspace",326,264,1008,302,
+   AdvancedSettingsText(L"Configuration workspace",326,264,1008,302,
        ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"This section is ready for capability-backed settings.",
+   AdvancedSettingsText(L"This section is ready for capability-backed settings.",
        326,310,1008,342,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"No playback or output behaviour is changed in this setup stage.",
+   AdvancedSettingsText(L"No playback or output behaviour is changed in this setup stage.",
        326,346,1008,374,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"Controls will be introduced section by section and connected to the playback engine.",
+   AdvancedSettingsText(L"Controls will be introduced section by section and connected to the playback engine.",
        304,408,1032,454,SETTINGS_MUTED,0,DT_LEFT|DT_TOP|DT_WORDBREAK);
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   SettingsText(L"Advanced controls are added in stages. Existing settings remain unchanged.",
+   AdvancedSettingsText(L"Advanced controls are added in stages. Existing settings remain unchanged.",
        292,674,880,724,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsButtonDraw(914,694,1040,738,L"Close",FALSE);
+   AdvancedSettingsButtonDraw(914,694,1040,738,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
   }
   EndPaint(w,&ps);return 0;
