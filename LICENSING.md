@@ -11,13 +11,7 @@ The native application checks licensing before media, streaming, torrent or cast
 
 ## Publisher activation key
 
-The current universal key is:
-
-```text
-N5ENAZWDMM76RKNA
-```
-
-Keep this key private and share it only with authorized customers or distributors. The same key can activate any number of installations. Because it is a shared offline key, it can be forwarded or published and does not provide per-customer revocation, device limits or strong anti-piracy protection. A determined user may also patch the executable or inspect the validation logic.
+Keep the universal key private and share it only with authorized customers or distributors. The key is intentionally not stored in this public repository. The same key can activate any number of installations. Because it is a shared offline key, it can be forwarded or published and does not provide per-customer revocation, device limits or strong anti-piracy protection. A determined user may also patch the executable or inspect the validation logic.
 
 The application stores the accepted key locally so the customer does not need to enter it on every launch. No publisher private key, signing certificate, customer device ID, key-generation script or licensing server is required.
 
