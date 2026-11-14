@@ -5523,7 +5523,31 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      }
     /* Page 6 paints its interactive performance controls above. Do not draw
        the generic runtime-status card over those controls. */
-    if(g_advancedSettingsPage==8){
+    if(g_advancedSettingsPage==0){
+      ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);
+      ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
+      SYSTEM_INFO overviewSi={0};GetNativeSystemInfo(&overviewSi);
+      MEMORYSTATUSEX overviewMem={0};overviewMem.dwLength=sizeof(overviewMem);GlobalMemoryStatusEx(&overviewMem);
+      PROCESS_MEMORY_COUNTERS overviewPmc={0};overviewPmc.cb=sizeof(overviewPmc);GetProcessMemoryInfo(GetCurrentProcess(),&overviewPmc,sizeof(overviewPmc));
+      wchar_t overviewA[256],overviewB[256],overviewC[256],overviewD[256],overviewE[256],overviewF[256],overviewG[256],overviewH[256];
+      StringCchPrintfW(overviewA,_countof(overviewA),L"%s  ·  %u × %u",g_hasMedia?(g_overlayPlaying?L"Playing":L"Loaded / paused"):L"No media loaded",g_videoWidth,g_videoHeight);
+      StringCchPrintfW(overviewB,_countof(overviewB),L"Volume %d%%  ·  Speed %.2fx  ·  %s",g_volume,(double)g_playbackRate,g_shuffle?L"Shuffle on":L"Shuffle off");
+      StringCchPrintfW(overviewC,_countof(overviewC),L"Playlist %d items  ·  Recent %d  ·  Current #%d",g_playlistCount,g_recentCount,g_current>=0?g_current+1:0);
+      StringCchPrintfW(overviewD,_countof(overviewD),L"Output engine: %s",g_advancedAudioOutMode==1?L"WASAPI":g_advancedAudioOutMode==2?L"DirectSound":L"Automatic");
+      StringCchPrintfW(overviewE,_countof(overviewE),L"Cache targets: Network %d ms  ·  File %d ms  ·  Live %d ms",g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching);
+      StringCchPrintfW(overviewF,_countof(overviewF),L"Decoder threads: %s  ·  Drop late: %s  ·  Skip: %s",g_advancedDecoderThreads==0?L"Auto":g_advancedDecoderThreads==2?L"2":g_advancedDecoderThreads==4?L"4":L"8",g_advancedDropLateFrames?L"On":L"Off",g_advancedSkipFrames?L"On":L"Off");
+      StringCchPrintfW(overviewG,_countof(overviewG),L"Subtitles: %d px  ·  %s  ·  Delay %+.0f ms",g_advancedSubtitleFontSize,g_advancedSubtitleBold?L"Bold":L"Regular",(double)g_advancedSubtitleDelayUs/1000.0);
+      StringCchPrintfW(overviewH,_countof(overviewH),L"System: %lu CPU threads  ·  %llu GB RAM  ·  ABM AV Player %llu MB",overviewSi.dwNumberOfProcessors,(unsigned long long)(overviewMem.ullTotalPhys/(1024ULL*1024ULL*1024ULL)),(unsigned long long)(overviewPmc.WorkingSetSize/(1024ULL*1024ULL)));
+      const wchar_t *overviewTitles[8]={L"PLAYBACK SESSION",L"PLAYBACK CONTROLS",L"PLAYLIST & LIBRARY",L"AUDIO ENGINE",L"STREAMING & NETWORK",L"VIDEO PERFORMANCE",L"SUBTITLE CONFIGURATION",L"SYSTEM RESOURCES"};
+      const wchar_t *overviewValues[8]={overviewA,overviewB,overviewC,overviewD,overviewE,overviewF,overviewG,overviewH};
+      for(int oi=0;oi<8;oi++){
+       int col=oi%2,row=oi/2,left=320+col*354,top=260+row*94;
+       ABM_D2D_Round(&g_advancedSettingsUi,(float)left,(float)top,(float)(left+340),(float)(top+82),8,ABM_UI_COLOR_SURFACE_RAISED);
+       ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,(float)top+0.5f,(float)(left+339.5f),(float)(top+81.5f),8,SETTINGS_BORDER,0.7f);
+       AdvancedSettingsText(overviewTitles[oi],left+14,top+8,left+326,top+30,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+       AdvancedSettingsText(overviewValues[oi],left+14,top+34,left+326,top+70,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK|DT_END_ELLIPSIS);
+      }
+    }else if(g_advancedSettingsPage==8){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
       AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsText(row1,326,294,1008,320,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -5545,9 +5569,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   AdvancedSettingsText(L"Settings are saved automatically. Playback-engine and buffering options apply when the next media item opens.",
-       292,674,880,724,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsButtonDraw(914,694,1040,738,L"Close",FALSE);
+   AdvancedSettingsText(L"Changes are saved automatically. Engine and buffering changes apply to newly opened media.",
+       292,686,866,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   AdvancedSettingsButtonDraw(914,690,1040,736,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
   }
   EndPaint(w,&ps);return 0;
