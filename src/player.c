@@ -1162,7 +1162,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
     {
-    int collectionTop=g_drawerSettingsOpen?326:82;
+    int collectionTop=g_drawerSettingsOpen?438:82;
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Timeline: a dedicated, readable seek row above the transport dock.
