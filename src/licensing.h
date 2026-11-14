@@ -6,6 +6,8 @@ extern "C" {
 #endif
 /* TRUE means the universal activation key is valid or the 10-day trial is active. */
 BOOL ABM_LicenseCheckAndPrompt(HINSTANCE instance, HWND owner);
+/* Opens the in-app License & Activation window. TRUE only when newly activated. */
+BOOL ABM_LicenseShowActivation(HINSTANCE instance, HWND owner);
 #ifdef __cplusplus
 }
 #endif
