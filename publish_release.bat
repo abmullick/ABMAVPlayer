@@ -15,7 +15,7 @@ if not exist "RELEASE_NOTES.md" goto missing_notes
 rem Inno Setup compresses the application payload, so do not search the
 rem installer bytes for the About string. Verify the installer PE version
 rem resource, which is stamped by VersionInfoVersion/ProductVersion in the ISS.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne '1.0.6' -and $v.FileVersion -notlike '1.0.5*') { Write-Host 'ERROR: Installer PE version resource is not 1.0.5. Rebuild with the updated installer script.'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne '1.0.6' -and $v.FileVersion -notlike '1.0.6*') { Write-Host 'ERROR: Installer PE version resource is not 1.0.6. Rebuild with the updated installer script.'; exit 1 }"
 if errorlevel 1 goto wrong_installer_version
 
 where gh >nul 2>nul
