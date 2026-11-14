@@ -4876,6 +4876,39 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         DrawTextW(dc,L"TIP   Ctrl+F search   •   Find next / F3 next match   •   Select a topic to jump",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
     }
+    case WM_MEASUREITEM: {
+        MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp;
+        if(mi&&mi->CtlID==HELP_ID_TOPICS){mi->itemHeight=34;return TRUE;}
+        break;
+    }
+    case WM_DRAWITEM: {
+        DRAWITEMSTRUCT *di=(DRAWITEMSTRUCT*)lp;
+        if(!di)break;
+        if(di->CtlID==HELP_ID_FIND){
+            HBRUSH b=CreateSolidBrush((di->itemState&ODS_SELECTED)?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_176E68);
+            FillRect(di->hDC,&di->rcItem,b);DeleteObject(b);
+            SetBkMode(di->hDC,TRANSPARENT);SetTextColor(di->hDC,ABM_THEME_COLOR_F7FAFF);
+            HFONT f=(HFONT)SelectObject(di->hDC,g_helpMetaFont);
+            DrawTextW(di->hDC,L"SEARCH",-1,&di->rcItem,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(di->hDC,f);return TRUE;
+        }
+        if(di->CtlID==HELP_ID_TOPICS){
+            wchar_t label[256]={0};
+            if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
+            BOOL selected=(di->itemState&ODS_SELECTED)!=0;
+            RECT row=di->rcItem;InflateRect(&row,-4,-2);
+            HBRUSH b=CreateSolidBrush(selected?ABM_THEME_COLOR_173B45:ABM_THEME_COLOR_101B29);
+            FillRect(di->hDC,&row,b);DeleteObject(b);
+            if(selected){RECT mark={row.left,row.top+7,row.left+3,row.bottom-7};b=CreateSolidBrush(ABM_THEME_COLOR_52CDE0);FillRect(di->hDC,&mark,b);DeleteObject(b);}
+            SetBkMode(di->hDC,TRANSPARENT);
+            SetTextColor(di->hDC,selected?ABM_THEME_COLOR_F5FAFF:ABM_THEME_COLOR_B6C6D8);
+            HFONT f=(HFONT)SelectObject(di->hDC,g_helpBodyFont);
+            RECT t=row;t.left+=14;t.right-=8;
+            DrawTextW(di->hDC,label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
+            SelectObject(di->hDC,f);return TRUE;
+        }
+        break;
+    }
     case WM_COMMAND: {
         int id=LOWORD(wp),code=HIWORD(wp);
         if(id==HELP_ID_FIND&&code==BN_CLICKED){BOOL found=HelpFindNext(hwnd);SetWindowTextW(g_helpFindButton,found?L"Find next":L"No match");SetFocus(g_helpSearch);return 0;}
@@ -4904,7 +4937,10 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORLISTBOX: {
-        HDC dc=(HDC)wp;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);
+        HDC dc=(HDC)wp;
+        if((HWND)lp==g_helpSearch){SetTextColor(dc,ABM_THEME_COLOR_F4F8FC);SetBkColor(dc,ABM_THEME_COLOR_172535);}
+        else if((HWND)lp==g_helpEdit){SetTextColor(dc,ABM_THEME_COLOR_DCE7F2);SetBkColor(dc,ABM_THEME_COLOR_0D1724);}
+        else {SetTextColor(dc,ABM_THEME_COLOR_B6C6D8);SetBkColor(dc,ABM_THEME_COLOR_101B29);}
         return (LRESULT)g_helpBrush;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
