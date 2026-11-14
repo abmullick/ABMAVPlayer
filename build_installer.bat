@@ -100,6 +100,6 @@ endlocal
 exit /b 1
 
 :wrong_staged_version
-echo ERROR: Installer payload does not contain application version 1.0.5.
+echo ERROR: Installer payload does not contain application version 1.0.6.
 endlocal
 exit /b 1
