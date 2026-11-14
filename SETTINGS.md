@@ -1,96 +1,141 @@
-# ABM AV Player — Application Settings
+# ABM AV Player — Application Settings Reference
 
-The Command Centre's **Settings** item opens a dedicated Windows settings window. Its dark navy background, teal/blue accents and Segoe UI typography are designed to match the main ABM AV Player interface.
+This reference describes the controls currently exposed by the Windows application. Main Settings and Advanced Settings are separate surfaces.
 
-## Open Settings
+## Open the settings windows
 
-1. Open the Command Centre from the main player.
-2. Select **Settings**.
-3. Change the required options.
-4. Select **Save settings**. Use **Close** to dismiss the window.
+- **Main Settings:** Command Centre → Settings. Use it for general defaults, audio processing, torrent storage, bandwidth and colour theme.
+- **Advanced Settings:** choose **Advanced…** in the main Settings window. Pages: Overview, Video & Decoding, Audio Engine, Video Output, Subtitles, Streaming & Network, Performance, Controls & Behaviour and Diagnostics.
 
-## General
+A status line is not necessarily an editable control. Overview and diagnostic metrics are read-only.
 
-| Option | Behaviour |
+## Main Settings
+
+### General
+
+| Option | Meaning |
 |---|---|
-| Volume | Sets the player's volume from 0 to 100. |
-| Playback speed | Sets the playback rate from 0.5x to 2.0x. |
+| Volume | Default player volume, 0–100. |
+| Playback speed | Default rate, 0.5x–2.0x. |
 | Shuffle by default | Saves the preferred shuffle state. |
 | Repeat current item | Saves the preferred repeat state. |
 
-## Audio
+### Audio processing
 
-| Option | Behaviour |
+| Option | Meaning |
 |---|---|
-| ReplayGain normalisation | Enables/disables ReplayGain processing where supported by media metadata and the VLC runtime. |
-| Dynamic range compressor | Enables/disables the audio dynamic-range compressor. |
+| ReplayGain normalisation | Uses track-mode ReplayGain where supported and usable ReplayGain metadata exists. It is not a general volume leveller for untagged files. |
+| Dynamic range compressor | Enables/disables the VLC compressor processing option. Effect availability depends on the VLC runtime/plugins. |
 
-Audio processing preferences are stored in `audio.ini` under the application data directory.
+Audio processing preferences are also stored in `audio.ini`.
 
-## Torrent & Storage
+### Torrent & Storage
 
-| Option | Behaviour |
+| Option | Meaning |
 |---|---|
-| Cache parent folder | Selects the parent directory for torrent data. The engine creates and uses a `torrent-cache` subfolder within it. |
-| Browse | Opens the Windows folder picker. |
-| Open folder | Opens the currently selected cache parent in File Explorer. |
-| Cache quota | Sets the persistent cache quota in GiB, from 1 to 4096. The default is 20 GiB. |
+| Cache parent folder | Parent directory in which the torrent engine creates its `torrent-cache` working directory. |
+| Permanent downloads folder | Destination for selected/completed torrent media; separate from the working cache. |
+| Cache quota | Persistent cache quota, 1–4096 GiB; default 20 GiB. |
+| Browse / Open folder | Select or open the configured directory in File Explorer. |
 
-### Default location and existing installations
+A new installation uses the Windows Downloads known folder as the basis for `<Downloads>\\ABM AV Player\\torrent-cache`. Existing installations with a legacy cache retain that location unless changed. Changing the path does not move existing data. If the torrent engine has started, restart ABM AV Player to initialise it with the new cache path.
 
-On a new installation, the cache parent is created under the current Windows user's **Downloads known folder**:
+### Network
 
-```text
-<Windows Downloads>\ABM AV Player\torrent-cache
-```
+Download and upload limits constrain torrent transfer rates in KiB/s. Enter `0` for unlimited. A limit does not guarantee throughput; peers, trackers, routing and remote upload capacity remain external factors.
 
-The Windows Known Folder API is used, so redirected Downloads folders (including folders redirected to another drive or a supported cloud location) are respected.
+### Updates
 
-If an existing installation already has the legacy cache under `%APPDATA%\ABMAVPlayer\torrent-cache`, ABM AV Player retains that cache location rather than silently switching to an empty folder.
+**Check for updates** checks the latest published GitHub Release. The updater expects `ABM-AV-Player-Setup.exe`, downloads over HTTPS and verifies SHA-256 before launching. See [RELEASES.md](RELEASES.md).
 
-### Changing the cache location
+### Color Theme
 
-1. Open **Settings** → **Torrent & Storage**.
-2. Select **Browse** and choose the new cache parent folder.
-3. Select **Save settings**.
-4. If Torrent Stream is already running, close and restart ABM AV Player before using the new location.
+Seven presets: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald and Golden Yellow. The palette applies immediately to ABM-owned interface surfaces and persists in `%APPDATA%\\ABMAVPlayer\\theme.ini`. Provider websites keep their own styling.
 
-Changing the configured location does **not** automatically move or copy existing cache data. Existing files remain in the previous folder. If you need to preserve and reuse those pieces, keep the old cache folder or arrange a safe migration while the torrent engine is stopped.
+## Advanced Settings
 
-The currently running torrent engine continues using the cache path with which it was initialized. The new path is used on the next application launch.
+### Overview
 
-## Network
+Read-only live summary of playback and video dimensions, volume/speed/shuffle, playlist/recent counts and position, audio output-engine preference, caching targets, decoder/frame options, subtitle size/bold/delay, CPU count, installed RAM and process working set.
 
-| Option | Behaviour |
-|---|---|
-| Download limit | Maximum torrent download rate in KiB/s. |
-| Upload limit | Maximum torrent upload rate in KiB/s. |
+### Video & Decoding
 
-Enter `0` for unlimited transfer rate. Limits are saved and applied when the torrent engine starts; if the engine is already running, Save settings applies the new limits to that session.
+| Choice | Meaning | Activation |
+|---|---|---|
+| Automatic | LibVLC selects an available decoder. | Save and restart. |
+| Software decoding | Requests CPU decoding. | Save and restart. |
+| D3D11VA | Requests Direct3D 11 Video Acceleration. | Save and restart. |
 
-## Updates
+Saved under `[Video] HardwareAcceleration`. `ABM_VLC_HW` environment override takes precedence. Hardware support depends on codec/profile, VLC build, GPU and driver.
 
-**Check for updates** checks the latest public GitHub release. The normal update workflow asks before downloading and verifies the installer SHA-256 digest before launching it.
+### Audio Engine
+
+| Choice | Meaning | Activation |
+|---|---|---|
+| Automatic | LibVLC chooses the output module. | Save and restart. |
+| WASAPI | Requests Windows Audio Session API output. | Save and restart. |
+| DirectSound | Requests DirectSound output. | Save and restart. |
+
+Saved under `[Audio] OutputEngine`. This is not an exclusive-mode/bit-perfect option or a new device picker.
+
+### Video Output
+
+Aspect ratio: Original, 16:9, 4:3 or 21:9. Saved under `[Video] AspectRatio` and applied through LibVLC. It affects display geometry, not source media. The status area reports video window availability, decoded dimensions and client area. Per-monitor calibration, full colour management and every renderer-specific scaling option are not exposed.
+
+### Subtitles
+
+| Control | Values | Meaning |
+|---|---|---|
+| Timing | −50 ms / +50 ms / Reset | Adjusts subtitle delay in 50 ms steps, within ±10 seconds. |
+| Font size | 10 / 13 / 16 / 19 | LibVLC relative subtitle font-size values. |
+| Text colour | White / Yellow / Cyan / Green | Supported preset colours. |
+| Bold | On / Off | Requests bold text. |
+| Outline | Off / Thin / Normal / Thick | Outline thickness. |
+| Vertical position | Default / 10 / 25 / 50 px | Subtitle bottom margin. |
+
+Appearance options are attached to newly opened media; embedded subtitle styling may override them. Timing also updates the current player when possible.
+
+### Streaming & Network
+
+Network, file and live caching each cycle through 300, 1,000, 2,000 and 5,000 ms. These LibVLC buffering targets are passed to newly opened media. More buffering can absorb jitter but increase startup delay/latency; less buffering can reduce delay but increase interruptions. Torrent quota and torrent bandwidth limits are configured in the main Settings window.
+
+### Performance
+
+| Control | Values | Effect |
+|---|---|---|
+| Decoder threads | Automatic / 2 / 4 / 8 | LibVLC decoder worker-thread selection/cap for newly opened media. |
+| Drop late frames | Enabled / Disabled | Permits late frames to be dropped for responsiveness. |
+| Skip frames | Enabled / Disabled | Permits frame skipping when decoding falls behind; visual quality may be reduced. |
+
+These are not global CPU caps and do not guarantee better performance. Reopen media after changing them.
+
+### Controls & Behaviour
+
+- Confirm before exiting ABM AV Player.
+- Confirm before clearing the playlist; source files are not deleted.
+- Double-click video to toggle fullscreen.
+
+Each preference is saved immediately under `[Controls]`.
+
+### Diagnostics
+
+Live metrics include application version/PID, logical processors, installed/available RAM, system memory load, process working set/page-file usage, playback state, video dimensions, playlist count and recent count. **Generate report** writes a timestamped local TXT report and loads it into the read-only, scrollable preview. **Open data folder** opens the directory. No automatic upload occurs; review the report before sharing.
 
 ## Configuration files
 
-Application settings are persisted under:
+| File | Purpose |
+|---|---|
+| `%APPDATA%\\ABMAVPlayer\\settings.ini` | General, torrent, video, audio-engine, subtitle, streaming, performance and controls preferences. |
+| `%APPDATA%\\ABMAVPlayer\\audio.ini` | Audio processing preferences. |
+| `%APPDATA%\\ABMAVPlayer\\theme.ini` | Selected ABM interface theme preset. |
 
-```text
-%APPDATA%\ABMAVPlayer\settings.ini
-%APPDATA%\ABMAVPlayer\audio.ini
-```
-
-The first file stores player and torrent preferences, including the cache parent folder, cache quota and bandwidth limits. The second stores audio processing preferences.
+Prefer the UI over manual INI editing. If editing manually, close the application and make a backup. Invalid values may be normalised to defaults.
 
 ## Troubleshooting
 
-- **The new cache path is not active yet:** restart ABM AV Player if Torrent Stream was already initialized when you saved the setting.
-- **The cache folder cannot be created:** choose a writable folder and verify that the target drive is available.
-- **The cache appears empty after changing location:** the setting changes the storage root; it does not move existing files automatically. Check the previous cache folder.
-- **Transfers are slower than expected:** verify that the download/upload limits are not set too low. A value of 0 removes the configured rate limit; it does not guarantee peer or network throughput.
-
-
-## Color theme
-
-Settings includes seven immediately applied color presets: Midnight Teal, Arctic Blue, Royal Violet, Ruby Rose, Sunset Amber, Emerald and Golden Yellow. The selected preset is persisted in `%APPDATA%\\ABMAVPlayer\\theme.ini`. Presets affect ABM-owned windows and Streaming Centre chrome; third-party provider pages retain their native appearance.
+- Hardware choice not active: restart and check whether `ABM_VLC_HW` overrides it.
+- Audio output change not active: restart ABM AV Player.
+- New torrent cache path not active: restart the application; the engine initialises its cache path at startup.
+- Excessive buffering: lower the relevant cache target, noting that unstable networks may interrupt more often.
+- Playback stutter: compare decoder modes and change one Performance option at a time; reopen media.
+- Empty diagnostic preview: generate again; otherwise use Open data folder to inspect the saved TXT report.
