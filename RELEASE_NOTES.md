@@ -1,4 +1,4 @@
-# ABM AV Player v1.0.7 — Help Centre experience and release alignment
+# ABM AV Player — Help Centre experience and release alignment
 
 ## What's new
 
@@ -10,14 +10,14 @@
 
 ## Release and packaging alignment
 
-- Aligned the main application's About/version constant, Streaming Centre About display, Inno Setup application and PE version metadata, vcpkg manifest, installer build guards and release publisher to **1.0.7**.
+- Aligned the main application's About/version constant, Streaming Centre About display, Inno Setup application and PE version metadata, vcpkg manifest, installer build guards and release publisher to the canonical version defined in `VERSION`.
 - Kept the existing Inno Setup AppId, installation directory, installer filename and AppData separation unchanged to support in-place upgrades and preserve existing user data.
 - Retained the existing unsigned distribution workflow; Authenticode enforcement remains optional and disabled by default.
 
 ## Compatibility and validation
 
 - No intentional changes to the local playback, Streaming Centre provider integration, torrent engine, receiver discovery, casting, licensing model or user configuration formats are included in this release.
-- This is a source-prepared release. A successful Windows x64 build, installer creation, installation/upgrade test and feature regression pass must be completed before publishing the GitHub Release.
+- The release number is read from the repository's canonical `VERSION` file. This is a source-prepared release. A successful Windows x64 build, installer creation, installation/upgrade test and feature regression pass must be completed before publishing the GitHub Release.
 
 ---
 
