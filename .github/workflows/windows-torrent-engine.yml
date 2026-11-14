@@ -9,7 +9,9 @@ on:
     paths:
       - "src/torrent/**"
       - "tools/build_torrent_engine.bat"
-      - "vcpkg.json"
+      - "VERSION"
+      - "vcpkg.json.in"
+      - "tools/prepare_version.ps1"
       - ".github/workflows/windows-torrent-engine.yml"
   pull_request:
     paths:
