@@ -194,6 +194,7 @@ static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
 static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_FULLSCREEN;
+static RECT R_ADVANCED_SETTINGS_BUTTON;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
 static float g_eqPreamp=0.0f;
@@ -753,8 +754,9 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){drawerLeft,18,drawerLeft+side,drawerBottom};
     /* Collection-first drawer. Settings occupy a separate expandable region;
        all library controls are laid out below it with no negative offsets. */
-    int collectionTop=g_drawerSettingsOpen?326:82;
+    int collectionTop=g_drawerSettingsOpen?378:82;
     R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+66};
+    R_ADVANCED_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+310,R_SIDEBAR.right-14,R_SIDEBAR.top+354};
     R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+104,R_SIDEBAR.right-14,R_SIDEBAR.top+140};
     R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+148,R_SIDEBAR.right-14,R_SIDEBAR.top+188};
     R_SHUFFLE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+224,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+260};
@@ -1302,8 +1304,17 @@ static void DrawUI(HDC dc,RECT client) {
         const wchar_t *shown=actionLabels[ai];
         if(ai==2){swprintf_s(speedLabel,32,L"Speed  %.2gx",g_playbackRate);shown=speedLabel;}
         Txt(dc,shown,label,actionActive[ai]?ABM_THEME_COLOR_EBF6EF:ABM_THEME_COLOR_D2E1DB,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    RECT advancedButton=R_ADVANCED_SETTINGS_BUTTON;
+    GradientRound(dc,advancedButton,ABM_THEME_COLOR_163D45,ABM_THEME_COLOR_1D5260,11);
+    ABM_D2D_StrokeRound(&g_ui,(float)advancedButton.left,(float)advancedButton.top,(float)advancedButton.right,(float)advancedButton.bottom,11.0f,ABM_THEME_COLOR_4E9B9D,1.0f);
+    RECT advancedGlyph={advancedButton.left+12,advancedButton.top+9,advancedButton.left+34,advancedButton.bottom-9};
+    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.right-3,advancedGlyph.top+3,ABM_THEME_COLOR_BDE9E8,2);
+    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.left+3,advancedGlyph.bottom-3,ABM_THEME_COLOR_BDE9E8,2);
+    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.bottom-3,advancedGlyph.right-3,advancedGlyph.bottom-3,ABM_THEME_COLOR_BDE9E8,2);
+    RECT advancedLabel={advancedButton.left+44,advancedButton.top+2,advancedButton.right-10,advancedButton.bottom-2};
+    Txt(dc,L"Advanced Settings",advancedLabel,ABM_THEME_COLOR_E5F5FA,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
-
+    
     }
     Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_17202C,g_drawerSettingsOpen?ABM_THEME_COLOR_4C977F:ABM_THEME_COLOR_344556,13);
     RECT headerIcon={R_SETTINGS_BUTTON.left+12,R_SETTINGS_BUTTON.top+11,R_SETTINGS_BUTTON.left+42,R_SETTINGS_BUTTON.bottom-11};
@@ -5841,6 +5852,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             SetCapture(hwnd);return 0;
         }
         if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}}
+        if(g_drawerOpen&&g_drawerSettingsOpen&&!g_fullscreen&&Inside(R_ADVANCED_SETTINGS_BUTTON,x,y)){ShowAdvancedSettingsDialog(hwnd);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
         if(g_audioPopupOpen) {
