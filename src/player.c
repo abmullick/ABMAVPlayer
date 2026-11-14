@@ -1894,6 +1894,8 @@ static void SelectRenderer(void) {
                 }
                 ApplyAudioOutputDevice();
                 ApplySubtitleAppearanceOption(m);
+static void ApplyAdvancedAspectRatio(void);
+static void AddAdvancedCachingOptions(libvlc_media_t *media);
                 libvlc_media_player_set_media(g_player,m);ApplyAdvancedAspectRatio();
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
@@ -2515,7 +2517,7 @@ static void PlayIndex(int index) {
         libvlc_media_add_option(m,":compressor-release=250");
         libvlc_media_add_option(m,":compressor-makeup-gain=0");
     }
-    ApplySubtitleAppearanceOption(m);
+    ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);
     BeginArtworkParse(m);
     libvlc_media_player_set_media(g_player,m);libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);libvlc_media_release(m);
     ApplyEqProfile();
@@ -5041,6 +5043,15 @@ static BOOL g_advancedSettingsUiReady=FALSE;
 static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
 static int g_advancedAspectMode=0;
+static int g_advancedNetworkCaching=1000,g_advancedFileCaching=300,g_advancedLiveCaching=1000;
+static const int g_advancedCacheChoices[4]={300,1000,2000,5000};
+static const wchar_t *g_advancedCacheLabels[4]={L"300 ms",L"1,000 ms",L"2,000 ms",L"5,000 ms"};
+static void AddAdvancedCachingOptions(libvlc_media_t *media){
+ if(!media)return;char opt[64];
+ sprintf_s(opt,sizeof(opt),":network-caching=%d",g_advancedNetworkCaching);libvlc_media_add_option(media,opt);
+ sprintf_s(opt,sizeof(opt),":file-caching=%d",g_advancedFileCaching);libvlc_media_add_option(media,opt);
+ sprintf_s(opt,sizeof(opt),":live-caching=%d",g_advancedLiveCaching);libvlc_media_add_option(media,opt);
+}
 static const wchar_t *g_advancedAspectLabels[4]={L"Original (source)",L"16:9 widescreen",L"4:3 classic",L"21:9 ultrawide"};
 static void ApplyAdvancedAspectRatio(void);
 static void ApplyAdvancedAspectRatio(void){
@@ -5098,9 +5109,10 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
-  g_advancedHwDraft=
-  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Video",L"AspectRatio",0,p);g_advancedAspectMode=(v>=0&&v<=3)?v:0;ApplyAdvancedAspectRatio();}g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
+  g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Video",L"AspectRatio",0,p);g_advancedAspectMode=(v>=0&&v<=3)?v:0;ApplyAdvancedAspectRatio();}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Streaming",L"NetworkCachingMs",1000,p);g_advancedNetworkCaching=(v==300||v==1000||v==2000||v==5000)?v:1000;v=GetPrivateProfileIntW(L"Streaming",L"FileCachingMs",300,p);g_advancedFileCaching=(v==300||v==1000||v==2000||v==5000)?v:300;v=GetPrivateProfileIntW(L"Streaming",L"LiveCachingMs",1000,p);g_advancedLiveCaching=(v==300||v==1000||v==2000||v==5000)?v:1000;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,p);if(v!=10&&v!=13&&v!=16&&v!=19)v=13;g_advancedSubtitleFontSize=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,p);if(v!=16777215&&v!=16776960&&v!=65535&&v!=65280)v=16777215;g_advancedSubtitleColor=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);g_advancedSubtitleBold=GetPrivateProfileIntW(L"Subtitles",L"Bold",0,p)!=0;}
@@ -5120,7 +5132,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
-  if(g_advancedSettingsPage==2){  if(g_advancedSettingsPage==3){
+  if(g_advancedSettingsPage==3){
    for(int n=0;n<4;n++){
     int top=260+n*74;
     if(AdvancedSettingsPoint(x,y,320,top,1018,top+66)){
@@ -5133,8 +5145,18 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
    }
   }
-
-   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
+  if(g_advancedSettingsPage==5){
+   int *values[3]={&g_advancedNetworkCaching,&g_advancedFileCaching,&g_advancedLiveCaching};
+   const wchar_t *keys[3]={L"NetworkCachingMs",L"FileCachingMs",L"LiveCachingMs"};
+   for(int n=0;n<3;n++)if(AdvancedSettingsPoint(x,y,320,260+n*104,1018,344+n*104)){
+    int idx=0;for(int j=0;j<4;j++)if(g_advancedCacheChoices[j]==*values[n])idx++;
+    int current=0;for(int j=0;j<4;j++)if(g_advancedCacheChoices[j]==*values[n])current=j;
+    *values[n]=g_advancedCacheChoices[(current+1)%4];
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",*values[n]);WritePrivateProfileStringW(L"Streaming",keys[n],v,p);}
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
+  }
+  if(g_advancedSettingsPage==2){   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,320,334,1018,400)){g_advancedAudioOutDraft=1;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,320,408,1018,474)){g_advancedAudioOutDraft=2;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
@@ -5283,6 +5305,20 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(L"Your selected playback device remains managed by the existing Output selector.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedAudioOutMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else if(g_advancedSettingsPage==5){
+    AdvancedSettingsText(L"Stream buffering",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    int cacheValues[3]={g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching};
+    const wchar_t *cacheNames[3]={L"Network stream caching",L"Local file caching",L"Live stream caching"};
+    const wchar_t *cacheDesc[3]={L"Buffer before playback for network URLs and remote streams.",L"Read-ahead buffer used when opening local media files.",L"Buffer target for live and time-sensitive streams."};
+    for(int n=0;n<3;n++){
+     int top=260+n*104;int selected=0;for(int j=0;j<4;j++)if(g_advancedCacheChoices[j]==cacheValues[n])selected=j;
+     ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+92,9,ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+91.5f,9,SETTINGS_BORDER,0.8f);
+     AdvancedSettingsText(cacheNames[n],340,top+8,720,top+34,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsText(cacheDesc[n],340,top+39,760,top+68,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsButtonDraw(820,top+22,996,top+68,g_advancedCacheLabels[selected],TRUE);
+    }
+    AdvancedSettingsText(L"Click a value to cycle through 300, 1,000, 2,000 and 5,000 ms. Applies when the next media item opens.",322,584,1018,624,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==3){
     AdvancedSettingsText(L"Video aspect ratio",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int n=0;n<4;n++){
@@ -5388,7 +5424,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(row5,326,480,1008,522,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   AdvancedSettingsText(L"Advanced controls are added in stages. Existing settings remain unchanged.",
+   AdvancedSettingsText(L"Settings are saved automatically. Buffering changes apply to the next opened media.",
        292,674,880,724,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    AdvancedSettingsButtonDraw(914,694,1040,738,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
@@ -5772,7 +5808,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     libvlc_media_player_stop(g_player);
                     g_hasMedia=FALSE;g_current=-1;
                     ApplyAudioOutputDevice();
-                    ApplySubtitleAppearanceOption(media);
+                    ApplySubtitleAppearanceOption(media);AddAdvancedCachingOptions(media);
                     libvlc_media_player_set_media(g_player,media);
                     libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                     BeginArtworkParse(media);
