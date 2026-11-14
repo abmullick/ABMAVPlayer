@@ -1460,7 +1460,7 @@ static void DrawUI(HDC dc,RECT client) {
         ABM_D2D_StrokeRound(&g_ui,(float)coverInset.left,(float)coverInset.top,(float)coverInset.right,(float)coverInset.bottom,7.0f,ABM_THEME_COLOR_91B8DA,0.65f);
         if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)rowThumb.left+2,(float)rowThumb.top+2,(float)rowThumb.right-2,(float)rowThumb.bottom-2);
         else {
-            int cx=(thumb.left+thumb.right)/2,cy=(thumb.top+thumb.bottom)/2;
+            int cx=(rowThumb.left+rowThumb.right)/2,cy=(rowThumb.top+rowThumb.bottom)/2;
             COLORREF iconColor=current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_ABC6E5;
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,ABM_THEME_COLOR_B6CDE8,2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,ABM_THEME_COLOR_B6CDE8,2);}
