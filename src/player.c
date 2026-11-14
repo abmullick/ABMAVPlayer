@@ -4694,7 +4694,8 @@ static HBRUSH g_helpBrush=NULL, g_helpInputBrush=NULL, g_helpArticleBrush=NULL, 
 static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
 static HWND g_helpEdit=NULL, g_helpSearch=NULL, g_helpTopics=NULL, g_helpFindButton=NULL;
 static HMODULE g_helpRichEditModule=NULL;
-static int g_helpSearchCursor=0;
+static const wchar_t *g_helpDocument=NULL;
+static int g_helpArticleStart=0,g_helpArticleLength=0,g_helpSearchCursor=0;
 static const wchar_t *g_helpTopicNames[]={
  L"GETTING STARTED",L"PLAYBACK AND FULLSCREEN",L"PLAYLISTS AND RECENT MEDIA",
  L"LICENSE & ACTIVATION",L"APPLICATION SETTINGS",L"AUDIO, VIDEO AND SUBTITLES",
@@ -4756,13 +4757,23 @@ static void HelpFormatArticle(HWND edit) {
 }
 static void HelpNavigateToTopic(HWND hwnd,int index) {
  (void)hwnd;
- if(index<0||index>=(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]))||!g_helpEdit)return;
- int len=GetWindowTextLengthW(g_helpEdit);if(len<=0)return;
- wchar_t *text=(wchar_t*)calloc((size_t)len+1,sizeof(wchar_t));if(!text)return;
- GetWindowTextW(g_helpEdit,text,len+1);
- wchar_t *found=wcsstr(text,g_helpTopicNames[index]);
- if(found){int pos=(int)(found-text);SendMessageW(g_helpEdit,EM_SETSEL,pos,pos);SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);SetFocus(g_helpEdit);}
- free(text);
+ if(index<0||index>=(int)_countof(g_helpTopicNames)||!g_helpEdit||!g_helpDocument)return;
+ const wchar_t *start=wcsstr(g_helpDocument,g_helpTopicNames[index]);
+ if(!start)return;
+ const wchar_t *end=g_helpDocument+wcslen(g_helpDocument);
+ for(int i=0;i<(int)_countof(g_helpTopicNames);i++) {
+  const wchar_t *next=wcsstr(start+wcslen(g_helpTopicNames[index]),g_helpTopicNames[i]);
+  if(next&&next<end&&next<end)end=next;
+ }
+ g_helpArticleStart=(int)(start-g_helpDocument);
+ g_helpArticleLength=(int)(end-start);
+ wchar_t *article=(wchar_t*)calloc((size_t)g_helpArticleLength+1,sizeof(wchar_t));if(!article)return;
+ wmemcpy(article,start,(size_t)g_helpArticleLength);article[g_helpArticleLength]=0;
+ SetWindowTextW(g_helpEdit,article);
+ free(article);
+ HelpFormatArticle(g_helpEdit);
+ SendMessageW(g_helpEdit,EM_SETSEL,0,0);
+ SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);
 }
 static BOOL HelpFindNext(HWND hwnd);
 static LRESULT CALLBACK HelpSearchSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref) {
@@ -4772,21 +4783,31 @@ static LRESULT CALLBACK HelpSearchSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM l
 }
 static BOOL HelpFindNext(HWND hwnd) {
  (void)hwnd;
- if(!g_helpSearch||!g_helpEdit)return FALSE;
+ if(!g_helpSearch||!g_helpEdit||!g_helpDocument)return FALSE;
  wchar_t query[256]={0};GetWindowTextW(g_helpSearch,query,(int)_countof(query));
  if(!query[0])return FALSE;
- int len=GetWindowTextLengthW(g_helpEdit);if(len<=0)return FALSE;
- wchar_t *text=(wchar_t*)calloc((size_t)len+1,sizeof(wchar_t));if(!text)return FALSE;
- GetWindowTextW(g_helpEdit,text,len+1);
+ int len=(int)wcslen(g_helpDocument);if(len<=0)return FALSE;
  int start=g_helpSearchCursor;if(start<0||start>=len)start=0;
- wchar_t *found=NULL;size_t qlen=wcslen(query);
- for(int pass=0;pass<2&&!found;pass++){
+ const wchar_t *found=NULL;size_t qlen=wcslen(query);
+ for(int pass=0;pass<2&&!found;pass++) {
   int begin=pass?0:start,end=pass?start:len;
-  for(int i=begin;i<end;i++)if((size_t)(end-i)>=qlen&&_wcsnicmp(text+i,query,qlen)==0){found=text+i;break;}
+  for(int i=begin;i<end;i++)if((size_t)(end-i)>=qlen&&_wcsnicmp(g_helpDocument+i,query,qlen)==0){found=g_helpDocument+i;break;}
  }
- BOOL ok=FALSE;
- if(found){int pos=(int)(found-text),end=pos+(int)qlen;SendMessageW(g_helpEdit,EM_SETSEL,pos,end);SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);g_helpSearchCursor=end;ok=TRUE;}
- free(text);return ok;
+ if(!found)return FALSE;
+ int docPos=(int)(found-g_helpDocument),topic=-1,lastHeading=-1;
+ for(int i=0;i<(int)_countof(g_helpTopicNames);i++) {
+  const wchar_t *h=wcsstr(g_helpDocument,g_helpTopicNames[i]);
+  if(h&&(int)(h-g_helpDocument)<=docPos&&(int)(h-g_helpDocument)>lastHeading){lastHeading=(int)(h-g_helpDocument);topic=i;}
+ }
+ if(topic>=0) {
+  SendMessageW(g_helpTopics,LB_SETCURSEL,topic,0);
+  HelpNavigateToTopic(hwnd,topic);
+ }
+ int articlePos=docPos-g_helpArticleStart;
+ SendMessageW(g_helpEdit,EM_SETSEL,articlePos,articlePos+(int)qlen);
+ SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);
+ g_helpSearchCursor=docPos+(int)qlen;
+ return TRUE;
 }
 static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
@@ -4880,8 +4901,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_helpTopics=CreateWindowExW(0,L"LISTBOX",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_HASSTRINGS|LBS_OWNERDRAWFIXED,
             32,198,286,500,hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
+        g_helpDocument=help;
         if(!g_helpRichEditModule)g_helpRichEditModule=LoadLibraryW(L"Msftedit.dll");
-        g_helpEdit=CreateWindowExW(0,L"RICHEDIT50W",help,
+        g_helpEdit=CreateWindowExW(0,L"RICHEDIT50W",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
             338,198,600,500,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
         if(g_helpEdit){
@@ -4896,6 +4918,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         for(int ti=0;ti<(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]));ti++)
             SendMessageW(g_helpTopics,LB_ADDSTRING,0,(LPARAM)g_helpTopicNames[ti]);
         SendMessageW(g_helpTopics,LB_SETCURSEL,0,0);
+        HelpNavigateToTopic(hwnd,0);
         RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
         return 0;
     }
