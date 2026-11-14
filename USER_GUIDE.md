@@ -14,7 +14,7 @@ Press **F1** in ABM AV Player or choose Help from the relevant application menu.
 - **Search:** press **Ctrl+F**, enter a word or phrase, then press **Enter** or choose **Find next**.
 - **Next match:** press **F3** to find the next occurrence. Search wraps to the beginning after reaching the end.
 - **Search feedback:** the button changes to **No match** when the current phrase is not found. Edit the query to start a new search.
-- **Reading pane:** scroll the article independently to read longer sections. Selecting a topic moves the reading position to its heading.
+- **Reading pane:** each selected topic opens as its own article. Topic headings are visually distinct from body text, paragraphs are separated for easier reading, and longer articles scroll independently. Selecting another topic replaces the current article rather than moving through one concatenated guide.
 - **Close:** press **Esc** or use the close control.
 
 Try searches such as `buffering`, `D3D11VA`, `subtitle delay`, `WASAPI`, `torrent cache`, `Google Cast` or `WebView2`. Search looks through the Help Centre article text; it does not search every external Markdown document or the user's media files. The repository's [USER_GUIDE.md](USER_GUIDE.md), [SETTINGS.md](SETTINGS.md) and [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) provide the expanded reference.
