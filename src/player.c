@@ -4714,6 +4714,7 @@ static void HelpNavigateToTopic(HWND hwnd,int index) {
  if(found){int pos=(int)(found-text);SendMessageW(g_helpEdit,EM_SETSEL,pos,pos);SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);SetFocus(g_helpEdit);}
  free(text);
 }
+static BOOL HelpFindNext(HWND hwnd);
 static LRESULT CALLBACK HelpSearchSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref) {
  (void)id;(void)ref;
  if(msg==WM_KEYDOWN&&wp==VK_RETURN){HelpFindNext(GetParent(edit));return 0;}
