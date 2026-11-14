@@ -2,20 +2,20 @@
 setlocal EnableExtensions
 
 rem Publish the already-built Windows installer as a GitHub Release.
-rem Usage: publish_release.bat 1.0.5
+rem Usage: publish_release.bat 1.0.6
 
 if "%~1"=="" goto usage
 set "VERSION=%~1"
 set "TAG=v%VERSION%"
 
-if not "%VERSION%"=="1.0.5" goto invalid_version
+if not "%VERSION%"=="1.0.6" goto invalid_version
 if not exist "dist\ABM-AV-Player-Setup.exe" goto missing_installer
 if not exist "RELEASE_NOTES.md" goto missing_notes
 
 rem Inno Setup compresses the application payload, so do not search the
 rem installer bytes for the About string. Verify the installer PE version
 rem resource, which is stamped by VersionInfoVersion/ProductVersion in the ISS.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne '1.0.5' -and $v.FileVersion -notlike '1.0.5*') { Write-Host 'ERROR: Installer PE version resource is not 1.0.5. Rebuild with the updated installer script.'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne '1.0.6' -and $v.FileVersion -notlike '1.0.5*') { Write-Host 'ERROR: Installer PE version resource is not 1.0.5. Rebuild with the updated installer script.'; exit 1 }"
 if errorlevel 1 goto wrong_installer_version
 
 where gh >nul 2>nul
@@ -38,12 +38,12 @@ exit /b 0
 
 :usage
 echo Usage: publish_release.bat VERSION
-echo Example: publish_release.bat 1.0.5
+echo Example: publish_release.bat 1.0.6
 endlocal
 exit /b 2
 
 :invalid_version
-echo ERROR: This script is currently prepared for version 1.0.5 only.
+echo ERROR: This script is currently prepared for version 1.0.6 only.
 endlocal
 exit /b 2
 
@@ -58,8 +58,8 @@ endlocal
 exit /b 1
 
 :wrong_installer_version
-echo ERROR: Installer PE version resource does not identify v1.0.5.
-echo Rebuild using the updated installer/ABMAVPlayer.iss, then verify About shows Version 1.0.5.
+echo ERROR: Installer PE version resource does not identify v1.0.6.
+echo Rebuild using the updated installer/ABMAVPlayer.iss, then verify About shows Version 1.0.6.
 endlocal
 exit /b 1
 
