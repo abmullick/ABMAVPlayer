@@ -21,7 +21,9 @@ ABM AV Player includes a 10-day full-feature trial and offline activation with o
 
 ## User documentation
 
-- [User Guide](USER_GUIDE.md): Getting started, playback, playlists, audio processing, subtitles, casting, shortcuts and troubleshooting.
+- [User Guide](USER_GUIDE.md): Getting started, playback, all workflows and detailed Advanced Settings explanations.
+- [Application Settings Reference](SETTINGS.md): complete main/advanced option reference, effects, activation timing and configuration files.
+- [Developer Guide](DEVELOPER_GUIDE.md): architecture, modules, build workflow, configuration and verification checklist.
 - [Google Cast and network receiver guide](CASTING.md): Runtime requirements, receiver discovery and network troubleshooting.
 - [Streaming Centre](STREAMING.md): WebView2 setup, account sessions, DRM limitations and troubleshooting.
 - [Torrent Stream design](TORRENT_STREAM.md): magnet/torrent ingestion, progressive playback, caching, bandwidth controls and implementation phases.
