@@ -753,14 +753,14 @@ static void UpdateLayout(HWND hwnd) {
     R_SIDEBAR=(RECT){drawerLeft,18,drawerLeft+side,drawerBottom};
     /* Collection-first drawer. Settings occupy a separate expandable region;
        all library controls are laid out below it with no negative offsets. */
-    int collectionTop=g_drawerSettingsOpen?286:82;
-    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+16,R_SIDEBAR.right-16,R_SIDEBAR.top+58};
-    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+84,R_SIDEBAR.right-14,R_SIDEBAR.top+118};
-    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+126,R_SIDEBAR.right-14,R_SIDEBAR.top+162};
-    R_SHUFFLE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+204,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+240};
-    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+204,R_SIDEBAR.right-16,R_SIDEBAR.top+240};
-    R_SPEED=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+246,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+282};
-    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+246,R_SIDEBAR.right-16,R_SIDEBAR.top+282};
+    int collectionTop=g_drawerSettingsOpen?326:82;
+    R_SETTINGS_BUTTON=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+14,R_SIDEBAR.right-16,R_SIDEBAR.top+66};
+    R_SCAN=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+104,R_SIDEBAR.right-14,R_SIDEBAR.top+140};
+    R_RECEIVER=(RECT){R_SIDEBAR.left+14,R_SIDEBAR.top+148,R_SIDEBAR.right-14,R_SIDEBAR.top+188};
+    R_SHUFFLE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+224,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+260};
+    R_REPEAT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+224,R_SIDEBAR.right-16,R_SIDEBAR.top+260};
+    R_SPEED=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+266,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-5,R_SIDEBAR.top+302};
+    R_RECENT=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+5,R_SIDEBAR.top+266,R_SIDEBAR.right-16,R_SIDEBAR.top+302};
     R_SEARCH=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+collectionTop+34,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+76};
     R_TAB_QUEUE=(RECT){R_SIDEBAR.left+16,R_SIDEBAR.top+collectionTop+86,R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2-4,R_SIDEBAR.top+collectionTop+126};
     R_TAB_LIBRARY=(RECT){R_SIDEBAR.left+(R_SIDEBAR.right-R_SIDEBAR.left)/2+4,R_SIDEBAR.top+collectionTop+86,R_SIDEBAR.right-16,R_SIDEBAR.top+collectionTop+126};
@@ -1160,7 +1160,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,fs.right-9,fs.bottom-7,fs.right-15,fs.bottom-7,C_TEXT,2);
 
     {
-    int collectionTop=g_drawerSettingsOpen?286:82;
+    int collectionTop=g_drawerSettingsOpen?326:82;
     RECT receiver=R_RECEIVER;
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Timeline: a dedicated, readable seek row above the transport dock.
@@ -1253,8 +1253,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT accent={accentX,R_SIDEBAR.top+1,accentX+54,R_SIDEBAR.top+3};
     GradientRect(dc,accent,ABM_THEME_COLOR_30A99D,ABM_THEME_COLOR_68BB97);
     if(g_drawerSettingsOpen) {
-    RECT sideTitle={R_SIDEBAR.left+18,R_SIDEBAR.top+64,R_SIDEBAR.right-18,R_SIDEBAR.top+82};
-    Txt(dc,L"PLAYBACK OUTPUT",sideTitle,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT sideTitle={R_SIDEBAR.left+18,R_SIDEBAR.top+78,R_SIDEBAR.right-18,R_SIDEBAR.top+96};
+    Txt(dc,L"OUTPUT ROUTING",sideTitle,ABM_THEME_COLOR_77B1A4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT scan=R_SCAN;
     GradientRound(dc,scan,(g_hoverButton==HIT_SCAN)?ABM_THEME_COLOR_257B70:ABM_THEME_COLOR_143133,(g_hoverButton==HIT_SCAN)?ABM_THEME_COLOR_43977E:ABM_THEME_COLOR_1F4844,12);
     ABM_D2D_StrokeRound(&g_ui,(float)scan.left,(float)scan.top,(float)scan.right,(float)scan.bottom,12.0f,ABM_THEME_COLOR_428474,0.95f);
@@ -1280,8 +1280,8 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,arrowX-4,arrowY-2,arrowX,arrowY+2,ABM_THEME_COLOR_BEC4CC,1.8f);
     DrawLine(dc,arrowX,arrowY+2,arrowX+4,arrowY-2,ABM_THEME_COLOR_BEC4CC,1.8f);
 
-    RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+178,R_SIDEBAR.right-18,R_SIDEBAR.top+198};
-    Txt(dc,L"QUICK ACTIONS",toolsHead,ABM_THEME_COLOR_77B1A4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+198,R_SIDEBAR.right-18,R_SIDEBAR.top+218};
+    Txt(dc,L"QUICK CONTROLS",toolsHead,ABM_THEME_COLOR_77B1A4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
     const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat?L"Repeat on":L"Repeat",L"Speed",L"Recent"};
     const wchar_t *actionIcons[4]={L"S",L"R",L"1x",L"..."};
@@ -1305,12 +1305,22 @@ static void DrawUI(HDC dc,RECT client) {
     }
 
     }
-    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_19262D,g_drawerSettingsOpen?ABM_THEME_COLOR_4C977F:ABM_THEME_COLOR_3A534E,11);
-    RECT settingsLabel={R_SETTINGS_BUTTON.left+14,R_SETTINGS_BUTTON.top+2,R_SETTINGS_BUTTON.right-38,R_SETTINGS_BUTTON.bottom-2};
-    Txt(dc,g_drawerSettingsOpen?L"Playback settings  ·  expanded":L"Playback settings  ·  tap to expand",settingsLabel,ABM_THEME_COLOR_E7F0FC,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_173B3B:ABM_THEME_COLOR_172332,g_drawerSettingsOpen?ABM_THEME_COLOR_4C977F:ABM_THEME_COLOR_344D60,13);
+    RECT headerIcon={R_SETTINGS_BUTTON.left+12,R_SETTINGS_BUTTON.top+11,R_SETTINGS_BUTTON.left+42,R_SETTINGS_BUTTON.bottom-11};
+    GradientRound(dc,headerIcon,ABM_THEME_COLOR_1C8178,ABM_THEME_COLOR_285D68,8);
+    DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+6,headerIcon.bottom-8,ABM_THEME_COLOR_E5F6F7,2);
+    DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+14,headerIcon.top+8,ABM_THEME_COLOR_E5F6F7,2);
+    DrawLine(dc,headerIcon.left+6,headerIcon.bottom-8,headerIcon.left+14,headerIcon.bottom-8,ABM_THEME_COLOR_E5F6F7,2);
+    RECT settingsTitle={R_SETTINGS_BUTTON.left+54,R_SETTINGS_BUTTON.top+6,R_SETTINGS_BUTTON.right-46,R_SETTINGS_BUTTON.top+29};
+    Txt(dc,L"Playback & Output",settingsTitle,ABM_THEME_COLOR_F3F8FF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    wchar_t outputSummary[256]=L"Local playback";
+    int selectedOutput=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
+    if(selectedOutput>0)SendMessageW(g_renderers,CB_GETLBTEXT,(WPARAM)selectedOutput,(LPARAM)outputSummary);
+    RECT settingsSub={R_SETTINGS_BUTTON.left+55,R_SETTINGS_BUTTON.top+28,R_SETTINGS_BUTTON.right-48,R_SETTINGS_BUTTON.bottom-4};
+    Txt(dc,outputSummary,settingsSub,ABM_THEME_COLOR_8FB8C2,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
-    DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,ABM_THEME_COLOR_BED2EA,2);
-    DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,ABM_THEME_COLOR_BED2EA,2);
+    if(g_drawerSettingsOpen){DrawLine(dc,chevronX-4,chevronY+2,chevronX,chevronY-2,ABM_THEME_COLOR_BED2EA,2);DrawLine(dc,chevronX,chevronY-2,chevronX+4,chevronY+2,ABM_THEME_COLOR_BED2EA,2);}
+    else {DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,ABM_THEME_COLOR_BED2EA,2);DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,ABM_THEME_COLOR_BED2EA,2);}
     RECT listHead={R_SIDEBAR.left+18,R_SIDEBAR.top+collectionTop,R_SIDEBAR.right-18,R_SIDEBAR.top+collectionTop+24};
     Txt(dc,g_libraryTab?L"YOUR COLLECTION":L"YOUR QUEUE",listHead,ABM_THEME_COLOR_84BBCF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
@@ -5619,7 +5629,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_dragPlaylistScroll=TRUE;g_playlistScrollGrabY=y;g_playlistScrollStart=g_playlistScroll;
             SetCapture(hwnd);return 0;
         }
-        if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){/* The header is an expand affordance, not a toggle-to-dismiss control. Once open, keep settings open; the drawer itself closes only on an outside click. */if(!g_drawerSettingsOpen){g_drawerSettingsOpen=TRUE;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}ReleaseCapture();return 0;}}
+        if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
         if(g_audioPopupOpen) {
