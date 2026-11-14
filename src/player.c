@@ -1865,6 +1865,7 @@ static void SelectRenderer(void) {
                 }
                 ApplyAudioOutputDevice();
                 libvlc_media_player_set_media(g_player,m);
+                libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
                 int playResult=libvlc_media_player_play(g_player);
                 libvlc_media_release(m);
@@ -2485,7 +2486,7 @@ static void PlayIndex(int index) {
         libvlc_media_add_option(m,":compressor-makeup-gain=0");
     }
     BeginArtworkParse(m);
-    libvlc_media_player_set_media(g_player,m);libvlc_media_release(m);
+    libvlc_media_player_set_media(g_player,m);libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);libvlc_media_release(m);
     ApplyEqProfile();
     if(libvlc_media_player_play(g_player)!=0){
         g_hasMedia=FALSE;g_pendingResume=FALSE;ResetArtwork();
@@ -5089,9 +5090,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
-   if(AdvancedSettingsPoint(x,y,770,300,850,356)){g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,860,300,940,356)){g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,950,300,1032,356)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,770,300,850,356)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,860,300,940,356)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,950,300,1032,356)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==1){
    if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedHwDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
@@ -5608,6 +5609,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     g_hasMedia=FALSE;g_current=-1;
                     ApplyAudioOutputDevice();
                     libvlc_media_player_set_media(g_player,media);
+                    libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                     BeginArtworkParse(media);
                     BOOL eventsAttached=TorrentAttachPlayerEvents();
                     int result=libvlc_media_player_play(g_player);
@@ -6374,6 +6376,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     int savedAudioOut=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,hwSettingsPath);
     if(savedAudioOut<0||savedAudioOut>2)savedAudioOut=0;
     g_advancedAudioOutMode=savedAudioOut;
+    {int savedSubtitleDelayMs=GetPrivateProfileIntW(L"Subtitles",L"DelayMs",0,hwSettingsPath);if(savedSubtitleDelayMs < -10000)savedSubtitleDelayMs=-10000;if(savedSubtitleDelayMs > 10000)savedSubtitleDelayMs=10000;g_advancedSubtitleDelayUs=(int64_t)savedSubtitleDelayMs*1000;}
     if(savedAudioOut==1)args[argCount++]="--aout=mmdevice";
     else if(savedAudioOut==2)args[argCount++]="--aout=directsound";
     g_vlc=libvlc_new(argCount,args);
