@@ -2742,7 +2742,7 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         case 2:RemovePlaylistItem(g_selected);break;
         case 3:MovePlaylistItem(g_selected,g_selected-1);break;
         case 4:MovePlaylistItem(g_selected,g_selected+1);break;
-        case 5:if(ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONWARNING)==IDYES)ClearPlaylist();break;
+        case 5:if(!g_advancedConfirmClearPlaylist||ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONWARNING)==IDYES)ClearPlaylist();break;
         case 6:SavePlaylist();break;
     }
 }
@@ -5042,6 +5042,9 @@ static void SettingsApply(HWND w) {
    page surfaces only; engine controls are added in later, capability-backed steps. */
 static ABM_D2D g_advancedSettingsUi;
 static BOOL g_advancedSettingsUiReady=FALSE;
+static BOOL g_advancedConfirmExit=TRUE;
+static BOOL g_advancedConfirmClearPlaylist=TRUE;
+static BOOL g_advancedDoubleClickFullscreen=TRUE;
 static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
 static int g_advancedAspectMode=0;
@@ -5170,6 +5173,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",*values[n]);WritePrivateProfileStringW(L"Streaming",keys[n],v,p);}
     InvalidateRect(w,NULL,FALSE);return 0;
    }
+  }
+  if(g_advancedSettingsPage==7){
+   BOOL *values[3]={&g_advancedConfirmExit,&g_advancedConfirmClearPlaylist,&g_advancedDoubleClickFullscreen};
+   const wchar_t *keys[3]={L"ConfirmExit",L"ConfirmClearPlaylist",L"DoubleClickFullscreen"};
+   for(int n=0;n<3;n++)if(AdvancedSettingsPoint(x,y,320,260+n*112,1018,356+n*112)){*values[n]=!*values[n];if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Controls",keys[n],*values[n]?L"1":L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==6){
    if(AdvancedSettingsPoint(x,y,320,260,1018,326)){
@@ -5377,6 +5385,13 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(g_advancedHwEnvOverride?L"Environment override active: ABM_VLC_HW takes precedence over this saved setting.":L"Decoder changes require an application restart. Automatic is the default.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedHwMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else if(g_advancedSettingsPage==7){
+    AdvancedSettingsText(L"Confirmation and interaction",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    const wchar_t *labels[3]={L"Confirm before exiting ABM AV Player",L"Confirm before clearing the playlist",L"Double-click video to toggle fullscreen"};
+    const wchar_t *helps[3]={L"Show a confirmation prompt before closing the application.",L"Ask before removing all playlist entries. Source files are never deleted.",L"Use a double-click on the video area to enter or leave fullscreen."};
+    BOOL values[3]={g_advancedConfirmExit,g_advancedConfirmClearPlaylist,g_advancedDoubleClickFullscreen};
+    for(int n=0;n<3;n++){int top=260+n*112;ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+96,9,ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+95.5f,9,SETTINGS_BORDER,0.8f);AdvancedSettingsText(labels[n],340,top+10,790,top+38,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(helps[n],340,top+43,790,top+80,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);AdvancedSettingsButtonDraw(830,top+24,996,top+68,values[n]?L"Enabled":L"Disabled",values[n]);}
+    AdvancedSettingsText(L"Preferences are saved immediately and apply to the next matching interaction.",322,612,1018,642,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==4){
     AdvancedSettingsText(L"Subtitle timing",322,232,1018,254,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_advancedSettingsUi,320,258,1018,324,10,ABM_UI_COLOR_SURFACE);
@@ -5423,7 +5438,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,440.5f,1017.5f,505.5f,9,SETTINGS_BORDER,0.8f);
      AdvancedSettingsText(L"Skip frames when decoding falls behind",340,450,730,496,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
      AdvancedSettingsButtonDraw(820,452,996,494,g_advancedSkipFrames?L"Enabled":L"Disabled",g_advancedSkipFrames);
-     AdvancedSettingsText(L"Changes are saved immediately and take effect when the next media item opens. Higher thread counts may increase CPU use.",322,536,1018,604,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+     AdvancedSettingsText(L"Decoder threads: Automatic lets LibVLC choose; fixed counts cap decoder worker threads. Drop late frames discards frames that miss their display deadline to keep playback responsive. Skip frames reduces decoding work when the decoder falls behind; visual quality may be reduced. Changes apply to newly opened media.",322,536,1018,632,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
     }else if(g_advancedSettingsPage==3){
      RECT vr={0};if(g_video&&IsWindow(g_video))GetClientRect(g_video,&vr);
      sectionTitle=L"Video output status";
@@ -5477,7 +5492,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   AdvancedSettingsText(L"Settings are saved automatically. Buffering changes apply to the next opened media.",
+   AdvancedSettingsText(L"Settings are saved automatically. Playback-engine and buffering options apply when the next media item opens.",
        292,674,880,724,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    AdvancedSettingsButtonDraw(914,694,1040,738,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
@@ -5696,6 +5711,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ShowWindow(g_renderers,SW_HIDE);
         libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
+    case WM_CLOSE:
+        if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
+        DestroyWindow(hwnd);return 0;
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
     case WM_ARTWORK_READY: if((libvlc_media_t *)wp==g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
     case WM_ARTWORK_DOWNLOAD_READY: {
@@ -6369,7 +6387,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_VIDEO,x,y)){ShowPlaybackContextMenu(hwnd,x,y);return 0;}
         break;
     }
-    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(!g_fullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){PlayIndex(g_visibleRows[ri]);return 0;} return 0; }
+    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(g_advancedDoubleClickFullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){PlayIndex(g_visibleRows[ri]);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
         int playlistHot=-1;
@@ -6630,7 +6648,10 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     int savedAudioOut=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,hwSettingsPath);
     if(savedAudioOut<0||savedAudioOut>2)savedAudioOut=0;
     g_advancedAudioOutMode=savedAudioOut;
-    {int savedSubtitleDelayMs=GetPrivateProfileIntW(L"Subtitles",L"DelayMs",0,hwSettingsPath);if(savedSubtitleDelayMs < -10000)savedSubtitleDelayMs=-10000;if(savedSubtitleDelayMs > 10000)savedSubtitleDelayMs=10000;g_advancedSubtitleDelayUs=(int64_t)savedSubtitleDelayMs*1000;}
+    g_advancedConfirmExit=GetPrivateProfileIntW(L"Controls",L"ConfirmExit",1,hwSettingsPath)!=0;
+  g_advancedConfirmClearPlaylist=GetPrivateProfileIntW(L"Controls",L"ConfirmClearPlaylist",1,hwSettingsPath)!=0;
+  g_advancedDoubleClickFullscreen=GetPrivateProfileIntW(L"Controls",L"DoubleClickFullscreen",1,hwSettingsPath)!=0;
+  {int savedSubtitleDelayMs=GetPrivateProfileIntW(L"Subtitles",L"DelayMs",0,hwSettingsPath);if(savedSubtitleDelayMs < -10000)savedSubtitleDelayMs=-10000;if(savedSubtitleDelayMs > 10000)savedSubtitleDelayMs=10000;g_advancedSubtitleDelayUs=(int64_t)savedSubtitleDelayMs*1000;}
     {int savedSubtitleSize=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,hwSettingsPath);if(savedSubtitleSize!=10&&savedSubtitleSize!=13&&savedSubtitleSize!=16&&savedSubtitleSize!=19)savedSubtitleSize=13;g_advancedSubtitleFontSize=savedSubtitleSize;}
     {int savedSubtitleColor=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,hwSettingsPath);if(savedSubtitleColor!=16777215&&savedSubtitleColor!=16776960&&savedSubtitleColor!=65535&&savedSubtitleColor!=65280)savedSubtitleColor=16777215;g_advancedSubtitleColor=savedSubtitleColor;}
     g_advancedSubtitleBold=GetPrivateProfileIntW(L"Subtitles",L"Bold",0,hwSettingsPath)!=0;
