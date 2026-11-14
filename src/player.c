@@ -5011,6 +5011,8 @@ static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
 static int g_advancedHwMode=0,g_advancedHwDraft=0;
 static BOOL g_advancedHwEnvOverride=FALSE;
+static int g_advancedAudioOutMode=0,g_advancedAudioOutDraft=0;
+static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
  L"Overview",L"Video & Decoding",L"Audio Engine",L"Video Output",
@@ -5047,6 +5049,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
   g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
   {wchar_t env[32]={0};if(GetEnvironmentVariableW(L"ABM_VLC_HW",env,(DWORD)_countof(env))>0){
    if(!_wcsicmp(env,L"none")){g_advancedHwDraft=1;g_advancedHwEnvOverride=TRUE;}
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
@@ -5058,6 +5061,31 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    int top=112+i*54;
    if(AdvancedSettingsPoint(x,y,22,top,254,top+46)){
     g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
+   }
+  }
+  if(g_advancedSettingsPage==2){
+   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,334,1018,400)){g_advancedAudioOutDraft=1;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,408,1018,474)){g_advancedAudioOutDraft=2;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
+    if(EnsureDataDirectory()){
+     wchar_t path[PATH_CAP],value[16];StringCchPrintfW(path,_countof(path),L"%s\\settings.ini",g_dataDir);
+     StringCchPrintfW(value,_countof(value),L"%d",g_advancedAudioOutDraft);
+     if(WritePrivateProfileStringW(L"Audio",L"OutputEngine",value,path)){
+      g_advancedAudioOutMode=g_advancedAudioOutDraft;
+      StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Audio output preference saved.");
+      InvalidateRect(w,NULL,FALSE);
+      if(ABM_MessageBoxW(w,L"The audio output engine preference has been saved. Restart ABM AV Player now to activate it?",L"Restart ABM AV Player",MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2)==IDYES){
+       wchar_t exePath[PATH_CAP]={0};DWORD exeLen=GetModuleFileNameW(NULL,exePath,(DWORD)_countof(exePath));
+       if(exeLen>0&&exeLen<_countof(exePath)){
+        HINSTANCE launched=ShellExecuteW(NULL,L"open",exePath,NULL,NULL,SW_SHOWNORMAL);
+        if((INT_PTR)launched>32){HWND mainWindow=g_main;DestroyWindow(w);if(mainWindow&&IsWindow(mainWindow))PostMessageW(mainWindow,WM_CLOSE,0,0);return 0;}
+       }
+       StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Saved, but restart could not be started. Please close and reopen ABM AV Player.");
+      }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Saved. Restart ABM AV Player later to activate this output engine.");
+     }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Could not save the audio output preference.");
+    }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Could not access the ABM AV Player settings folder.");
+    InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
   if(g_advancedSettingsPage==1){
@@ -5136,7 +5164,23 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    AdvancedSettingsText(g_advancedSettingsDescriptions[g_advancedSettingsPage],306,178,1028,216,
        SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   if(g_advancedSettingsPage==1){
+   if(g_advancedSettingsPage==2){
+    AdvancedSettingsText(L"Audio output engine",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    const wchar_t *outNames[3]={L"Automatic (recommended)",L"Windows Audio Session API (WASAPI)",L"DirectSound"};
+    const wchar_t *outDesc[3]={L"Let LibVLC select the best available Windows audio output.",L"Use the Windows modern audio endpoint engine for device routing and low-latency playback.",L"Use the DirectSound output module for compatibility troubleshooting."};
+    for(int i=0;i<3;i++){
+     int top=260+i*74;BOOL selected=(g_advancedAudioOutDraft==i);
+     ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+66,9,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+65.5f,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
+     ABM_D2D_Round(&g_advancedSettingsUi,338,(float)top+22,356,(float)top+40,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE);
+     if(selected)ABM_D2D_Round(&g_advancedSettingsUi,343,(float)top+27,351,(float)top+35,4,ABM_THEME_COLOR_0D1E2F);
+     AdvancedSettingsText(outNames[i],372,top+8,990,top+32,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsText(outDesc[i],372,top+34,990,top+59,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
+    AdvancedSettingsText(L"Your selected playback device remains managed by the existing Output selector.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
+    AdvancedSettingsText(g_advancedAudioOutMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else if(g_advancedSettingsPage==1){
     AdvancedSettingsText(L"Hardware acceleration",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     const wchar_t *hwNames[3]={L"Automatic (recommended)",L"Software decoding",L"Direct3D 11 Video Acceleration"};
     const wchar_t *hwDesc[3]={L"Let LibVLC choose the available hardware decoder.",L"Decode on the CPU. Useful for diagnosing GPU or driver issues.",L"Request D3D11VA hardware decoding through the LibVLC video decoder."};
@@ -6291,7 +6335,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
 
     /* Hardware decoding defaults to LibVLC automatic selection. Override with
        ABM_VLC_HW=none for software-only troubleshooting or d3d11va to request D3D11VA. */
-    const char *args[6]={"--no-video-title-show","--quiet",NULL,NULL,NULL,NULL};
+    const char *args[8]={"--no-video-title-show","--quiet",NULL,NULL,NULL,NULL,NULL,NULL};
     /* Keep LibVLC plugin caching enabled. Disabling its cache forces a full
        plugin scan on every launch and makes startup unnecessarily slow. */
     int argCount=2;
@@ -6309,6 +6353,11 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     else if(!_wcsicmp(hwMode,L"d3d11va"))args[argCount++]="--avcodec-hw=d3d11va";
     else if(savedHwMode==1)args[argCount++]="--avcodec-hw=none";
     else if(savedHwMode==2)args[argCount++]="--avcodec-hw=d3d11va";
+    int savedAudioOut=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,hwSettingsPath);
+    if(savedAudioOut<0||savedAudioOut>2)savedAudioOut=0;
+    g_advancedAudioOutMode=savedAudioOut;
+    if(savedAudioOut==1)args[argCount++]="--aout=mmdevice";
+    else if(savedAudioOut==2)args[argCount++]="--aout=directsound";
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){ABM_MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
