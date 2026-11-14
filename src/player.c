@@ -1894,7 +1894,7 @@ static void SelectRenderer(void) {
                 }
                 ApplyAudioOutputDevice();
                 ApplySubtitleAppearanceOption(m);
-                libvlc_media_player_set_media(g_player,m);
+                libvlc_media_player_set_media(g_player,m);ApplyAdvancedAspectRatio();
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
                 ApplyEqProfile();
                 int playResult=libvlc_media_player_play(g_player);
@@ -5040,6 +5040,15 @@ static ABM_D2D g_advancedSettingsUi;
 static BOOL g_advancedSettingsUiReady=FALSE;
 static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
+static int g_advancedAspectMode=0;
+static const wchar_t *g_advancedAspectLabels[4]={L"Original (source)",L"16:9 widescreen",L"4:3 classic",L"21:9 ultrawide"};
+static void ApplyAdvancedAspectRatio(void){
+ if(!g_player)return;
+ const char *ratios[4]={NULL,"16:9","4:3","21:9"};
+ int mode=g_advancedAspectMode;if(mode<0||mode>3)mode=0;
+ libvlc_video_set_aspect_ratio(g_player,ratios[mode]);
+}
+
 static int g_advancedHwMode=0,g_advancedHwDraft=0;
 static BOOL g_advancedHwEnvOverride=FALSE;
 static int g_advancedAudioOutMode=0,g_advancedAudioOutDraft=0;
@@ -5088,7 +5097,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
-  g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
+  g_advancedHwDraft=
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Video",L"AspectRatio",0,p);g_advancedAspectMode=(v>=0&&v<=3)?v:0;ApplyAdvancedAspectRatio();}g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Audio",L"OutputEngine",0,p);if(v<0||v>2)v=0;g_advancedAudioOutMode=v;g_advancedAudioOutDraft=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"RelativeFontSize",13,p);if(v!=10&&v!=13&&v!=16&&v!=19)v=13;g_advancedSubtitleFontSize=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"TextColor",16777215,p);if(v!=16777215&&v!=16776960&&v!=65535&&v!=65280)v=16777215;g_advancedSubtitleColor=v;}
@@ -5109,7 +5119,20 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     g_advancedSettingsPage=i;InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
-  if(g_advancedSettingsPage==2){
+  if(g_advancedSettingsPage==2){  if(g_advancedSettingsPage==3){
+   for(int n=0;n<4;n++){
+    int top=260+n*74;
+    if(AdvancedSettingsPoint(x,y,320,top,1018,top+66)){
+     g_advancedAspectMode=n;ApplyAdvancedAspectRatio();
+     if(EnsureDataDirectory()){
+      wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",n);
+      WritePrivateProfileStringW(L"Video",L"AspectRatio",v,p);
+     }
+     InvalidateRect(w,NULL,FALSE);return 0;
+    }
+   }
+  }
+
    if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,320,334,1018,400)){g_advancedAudioOutDraft=1;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,320,408,1018,474)){g_advancedAudioOutDraft=2;InvalidateRect(w,NULL,FALSE);return 0;}
@@ -5259,6 +5282,15 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(L"Your selected playback device remains managed by the existing Output selector.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedAudioOutMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else if(g_advancedSettingsPage==3){
+    AdvancedSettingsText(L"Video aspect ratio",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int n=0;n<4;n++){
+     int top=260+n*74;BOOL selected=(g_advancedAspectMode==n);
+     ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+66,9,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
+     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+65.5f,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);
+     AdvancedSettingsText(g_advancedAspectLabels[n],344,top+12,990,top+54,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
+    AdvancedSettingsText(L"Changes apply immediately and are saved for future playback.",322,580,1018,620,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==1){
     AdvancedSettingsText(L"Hardware acceleration",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     const wchar_t *hwNames[3]={L"Automatic (recommended)",L"Software decoding",L"Direct3D 11 Video Acceleration"};
