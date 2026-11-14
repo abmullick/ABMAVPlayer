@@ -638,29 +638,35 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             }
             RECT product={322,98,rc.right-28,138};
             Text(dc,L"ABM AV Player",product,RGBc(255,255,255),25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creatorLabel={322,157,rc.right-28,180};
+            RECT tagline={322,140,rc.right-28,163};
+            Text(dc,L"Capture the feeling. Relive every moment.",tagline,RGBc(112,211,202),13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creatorLabel={322,174,rc.right-28,197};
             Text(dc,L"THE CREATOR",creatorLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creator={322,187,rc.right-28,220};
+            RECT creator={322,204,rc.right-28,237};
             Text(dc,L"Abhisek Basu Mullick",creator,RGBc(255,255,255),19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT role={322,227,rc.right-28,254};
+            RECT role={322,244,rc.right-28,271};
             Text(dc,L"Founder & Developer",role,RGBc(232,241,250),15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-            RECT contactLabel={322,275,rc.right-28,298};
+            RECT contactLabel={322,290,rc.right-28,313};
             Text(dc,L"CONTACT",contactLabel,RGBc(68,204,209),11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT email={322,306,rc.right-28,333};
+            RECT email={322,321,rc.right-28,348};
             Text(dc,L"abmullick@gmail.com",email,RGBc(246,250,255),15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT description={322,347,rc.right-28,397};
-            Text(dc,L"A modern desktop media player built around\nLibVLC, Direct2D and DirectWrite.",description,RGBc(226,238,249),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT version={322,410,rc.right-28,436};
+            RECT description={322,362,rc.right-28,412};
+            Text(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,RGBc(226,238,249),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT version={322,420,rc.right-28,446};
             Text(dc,L"Version 1.0.2   |   © 2026 Abhisek Basu Mullick",version,RGBc(174,198,219),12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,RGBc(35,62,82));
-            RECT tributeTitle={32,470,rc.right-32,495};
+            RECT featuresTitle={32,470,rc.right-32,495};
+            Text(dc,L"KEY FEATURES",featuresTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT features={32,500,rc.right-32,592};
+            Text(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,RGBc(235,243,250),13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT tributeTitle={32,610,rc.right-32,635};
             Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT tribute={32,501,rc.right-32,555};
+            RECT tribute={32,640,rc.right-32,700};
             Text(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,RGBc(235,243,250),14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT stackTitle={32,575,rc.right-32,600};
+            RECT stackTitle={32,720,rc.right-32,745};
             Text(dc,L"BUILT WITH",stackTitle,RGBc(68,204,209),11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT stack={32,606,rc.right-32,640};
-            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,RGBc(221,233,245),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT stack={32,750,rc.right-32,790};
+            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,RGBc(221,233,245),13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }else{
             const int left=32,right=rc.right-32;
             RECT intro={left,91,right,125};
@@ -711,7 +717,7 @@ void ShowStreamingInfo(bool about){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
-    int width=about?900:900,height=about?760:760;
+    int width=900,height=about?900:760;
     RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
     int x=owner.left+(owner.right-owner.left-width)/2;
     int y=owner.top+(owner.bottom-owner.top-height)/2;
