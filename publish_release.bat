@@ -1,25 +1,19 @@
 @echo off
 setlocal EnableExtensions
 
-rem Publish the already-built Windows installer as a GitHub Release.
-rem Usage: publish_release.bat 1.0.7
-
-if "%~1"=="" goto usage
-set "VERSION=%~1"
+rem The canonical VERSION file is the only source of the release number.
+if not "%~1"=="" goto unexpected_argument
+set "ABM_VERSION="
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare_version.ps1`) do set "ABM_VERSION=%%V"
+if not defined ABM_VERSION goto version_metadata_mismatch
+set "VERSION=%ABM_VERSION%"
 set "TAG=v%VERSION%"
 
-if not "%VERSION%"=="1.0.7" goto invalid_version
 if not exist "dist\ABM-AV-Player-Setup.exe" goto missing_installer
 if not exist "RELEASE_NOTES.md" goto missing_notes
 
-rem Refuse to publish if source metadata or the release-notes heading is stale.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected='%VERSION%'; $app=[IO.File]::ReadAllText('src\player.c'); $stream=[IO.File]::ReadAllText('src\streaming\streaming_host.cpp'); $iss=[IO.File]::ReadAllText('installer\ABMAVPlayer.iss'); $manifest=Get-Content 'vcpkg.json' -Raw | ConvertFrom-Json; $notes=[IO.File]::ReadAllText('RELEASE_NOTES.md'); $av=[regex]::Match($app,'APP_VERSION L[^0-9]*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $sv=[regex]::Match($stream,'Version ([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $iv=[regex]::Match($iss,'MyAppVersion[^0-9]*([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value; $pe=[regex]::Match($iss,'VersionInfoVersion=([0-9]+\.[0-9]+\.[0-9]+)\.0').Groups[1].Value; $mv=$manifest.'version-string'; $heading='# ABM AV Player v' + $expected; Write-Host ('App=' + $av + '; Streaming=' + $sv + '; Installer=' + $iv + '; PE=' + $pe + '; vcpkg=' + $mv); if ($av -ne $expected -or $sv -ne $expected -or $iv -ne $expected -or $pe -ne $expected -or $mv -ne $expected -or -not $notes.StartsWith($heading)) { Write-Host 'ERROR: Source versions or release notes do not match the requested release version.'; exit 1 }"
-if errorlevel 1 goto version_metadata_mismatch
-
-rem Inno Setup compresses the application payload, so do not search the
-rem installer bytes for the About string. Verify the installer PE version
-rem resource, which is stamped by VersionInfoVersion/ProductVersion in the ISS.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne '1.0.7' -and $v.FileVersion -notlike '1.0.7*') { Write-Host 'ERROR: Installer PE version resource is not 1.0.7. Rebuild with the updated installer script.'; exit 1 }"
+rem Verify installer PE metadata against the same canonical VERSION file.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$expected=(Get-Content 'VERSION' -Raw).Trim(); $p=(Resolve-Path 'dist\ABM-AV-Player-Setup.exe').Path; $v=[Diagnostics.FileVersionInfo]::GetVersionInfo($p); Write-Host ('Expected version: ' + $expected); Write-Host ('Installer FileVersion: ' + $v.FileVersion); Write-Host ('Installer ProductVersion: ' + $v.ProductVersion); if ($v.ProductVersion -ne $expected -or $v.FileVersion -notlike ($expected + '*')) { Write-Host 'ERROR: Installer PE version resources do not match VERSION.'; exit 1 }"
 if errorlevel 1 goto wrong_installer_version
 
 where gh >nul 2>nul
@@ -40,16 +34,17 @@ echo Release published: https://github.com/abmullick/ABMAVPlayer/releases/tag/%T
 endlocal
 exit /b 0
 
-:usage
-echo Usage: publish_release.bat VERSION
-echo Example: publish_release.bat 1.0.7
+:unexpected_argument
+echo ERROR: Do not pass a version argument. The release version is read from VERSION.
+echo Usage: publish_release.bat
 endlocal
 exit /b 2
 
-:invalid_version
-echo ERROR: This script is currently prepared for version 1.0.7 only.
+:version_metadata_mismatch
+echo ERROR: Could not generate release artifacts from VERSION.
+echo Check VERSION, tools\prepare_version.ps1 and vcpkg.json.in.
 endlocal
-exit /b 2
+exit /b 1
 
 :missing_installer
 echo ERROR: dist\ABM-AV-Player-Setup.exe not found. Run build_installer.bat first.
@@ -61,15 +56,9 @@ echo ERROR: RELEASE_NOTES.md not found.
 endlocal
 exit /b 1
 
-:version_metadata_mismatch
-echo ERROR: Source version metadata or RELEASE_NOTES.md does not match %VERSION%.
-echo Run the guarded build and align all release metadata before publishing.
-endlocal
-exit /b 1
-
 :wrong_installer_version
-echo ERROR: Installer PE version resource does not identify v1.0.7.
-echo Rebuild using the updated installer/ABMAVPlayer.iss, then verify About shows Version 1.0.7.
+echo ERROR: Installer PE version does not match the canonical VERSION file.
+echo Rebuild with build_installer.bat before publishing.
 endlocal
 exit /b 1
 
