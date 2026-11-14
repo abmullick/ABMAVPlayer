@@ -5042,6 +5042,7 @@ static HWND g_advancedSettingsWindow=NULL;
 static int g_advancedSettingsPage=0;
 static int g_advancedAspectMode=0;
 static const wchar_t *g_advancedAspectLabels[4]={L"Original (source)",L"16:9 widescreen",L"4:3 classic",L"21:9 ultrawide"};
+static void ApplyAdvancedAspectRatio(void);
 static void ApplyAdvancedAspectRatio(void){
  if(!g_player)return;
  const char *ratios[4]={NULL,"16:9","4:3","21:9"};
