@@ -1305,19 +1305,19 @@ static void DrawUI(HDC dc,RECT client) {
     }
 
     }
-    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_173B3B:ABM_THEME_COLOR_172332,g_drawerSettingsOpen?ABM_THEME_COLOR_4C977F:ABM_THEME_COLOR_344D60,13);
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_17202C,g_drawerSettingsOpen?ABM_THEME_COLOR_4C977F:ABM_THEME_COLOR_344556,13);
     RECT headerIcon={R_SETTINGS_BUTTON.left+12,R_SETTINGS_BUTTON.top+11,R_SETTINGS_BUTTON.left+42,R_SETTINGS_BUTTON.bottom-11};
-    GradientRound(dc,headerIcon,ABM_THEME_COLOR_1C8178,ABM_THEME_COLOR_285D68,8);
-    DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+6,headerIcon.bottom-8,ABM_THEME_COLOR_E5F6F7,2);
-    DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+14,headerIcon.top+8,ABM_THEME_COLOR_E5F6F7,2);
-    DrawLine(dc,headerIcon.left+6,headerIcon.bottom-8,headerIcon.left+14,headerIcon.bottom-8,ABM_THEME_COLOR_E5F6F7,2);
+    GradientRound(dc,headerIcon,ABM_THEME_COLOR_1C7D77,ABM_THEME_COLOR_285C65,8);
+    DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+6,headerIcon.bottom-8,ABM_THEME_COLOR_E5F5FA,2);
+    DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+14,headerIcon.top+8,ABM_THEME_COLOR_E5F5FA,2);
+    DrawLine(dc,headerIcon.left+6,headerIcon.bottom-8,headerIcon.left+14,headerIcon.bottom-8,ABM_THEME_COLOR_E5F5FA,2);
     RECT settingsTitle={R_SETTINGS_BUTTON.left+54,R_SETTINGS_BUTTON.top+6,R_SETTINGS_BUTTON.right-46,R_SETTINGS_BUTTON.top+29};
-    Txt(dc,L"Playback & Output",settingsTitle,ABM_THEME_COLOR_F3F8FF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"Playback & Output",settingsTitle,ABM_THEME_COLOR_F4F8FF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t outputSummary[256]=L"Local playback";
     int selectedOutput=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     if(selectedOutput>0)SendMessageW(g_renderers,CB_GETLBTEXT,(WPARAM)selectedOutput,(LPARAM)outputSummary);
     RECT settingsSub={R_SETTINGS_BUTTON.left+55,R_SETTINGS_BUTTON.top+28,R_SETTINGS_BUTTON.right-48,R_SETTINGS_BUTTON.bottom-4};
-    Txt(dc,outputSummary,settingsSub,ABM_THEME_COLOR_8FB8C2,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,outputSummary,settingsSub,ABM_THEME_COLOR_8BB4C2,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     int chevronX=R_SETTINGS_BUTTON.right-22,chevronY=(R_SETTINGS_BUTTON.top+R_SETTINGS_BUTTON.bottom)/2;
     if(g_drawerSettingsOpen){DrawLine(dc,chevronX-4,chevronY+2,chevronX,chevronY-2,ABM_THEME_COLOR_BED2EA,2);DrawLine(dc,chevronX,chevronY-2,chevronX+4,chevronY+2,ABM_THEME_COLOR_BED2EA,2);}
     else {DrawLine(dc,chevronX-4,chevronY-2,chevronX,chevronY+2,ABM_THEME_COLOR_BED2EA,2);DrawLine(dc,chevronX,chevronY+2,chevronX+4,chevronY-2,ABM_THEME_COLOR_BED2EA,2);}
