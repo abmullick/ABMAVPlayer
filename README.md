@@ -9,7 +9,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 [**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)
 
-**Current release:** ABM AV Player v1.0.4 · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+**Current source version:** ABM AV Player v1.0.6 · [All releases](https://github.com/abmullick/ABMAVPlayer/releases) · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
 
 Download the installer, run it, and follow the setup instructions. The installer is provided through GitHub Releases. See [RELEASES.md](RELEASES.md) for release and update information.
 
@@ -70,7 +70,7 @@ Selected files are stored under the configured Windows `Torrent Downloads` direc
 
 Torrent Stream has its own TV discovery and DLNA casting controls. When the user explicitly selects **Cast to TV**, the player serves the same persistent download over a temporary authenticated private-LAN HTTP listener. The TV decodes the original media; PC-side transcoding is not included. **Stop TV** stops the receiver and temporary listener without deleting or pausing the torrent task. Main-player casting and Streaming Centre receiver selection remain independent.
 
-The v1.0.3 source update has been built into a Windows installer and installed for maintainer testing. Real-world peer availability, receiver/codec compatibility and network/firewall behaviour remain environment-dependent; see [TORRENT_STREAM.md](TORRENT_STREAM.md) for implementation details and outstanding acceptance tests. No torrent search/catalogue is included.
+Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability, receiver/codec compatibility and network/firewall behaviour remain environment-dependent; see [TORRENT_STREAM.md](TORRENT_STREAM.md) for implementation details and outstanding acceptance tests. No torrent search/catalogue is included.
 
 ### Media and playback
 - Open local audio and video files; drag files from File Explorer into the player.
