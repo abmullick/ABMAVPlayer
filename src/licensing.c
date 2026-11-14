@@ -43,12 +43,18 @@ static void LicenseDrawText(HDC dc,const wchar_t *text,RECT r,COLORREF color,HFO
 }
 static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
     BOOL primary=d->CtlID==ID_LICENSE_ACTIVATE,hot=(d->itemState&ODS_SELECTED)!=0,focus=(d->itemState&ODS_FOCUS)!=0;
+    /* Owner-drawn BUTTON controls retain a native class background in the
+       unpainted corner pixels. Paint those pixels with the dialog surface
+       first, then draw the rounded ABM button over it. */
+    HBRUSH surface=CreateSolidBrush(RGB(6,10,18));
+    FillRect(d->hDC,&d->rcItem,surface);
+    DeleteObject(surface);
     HBRUSH brush=CreateSolidBrush(primary?(hot?RGB(42,157,148):RGB(29,125,119)):(hot?RGB(31,54,72):RGB(22,36,52)));
     HPEN pen=CreatePen(PS_SOLID,focus?2:1,focus?RGB(99,225,205):(primary?RGB(67,178,166):RGB(52,77,98)));
     HGDIOBJ ob=SelectObject(d->hDC,brush),op=SelectObject(d->hDC,pen);
-    RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,12,12);
-    /* Focus is shown by the rounded accent pen above; avoid the native
-       rectangular focus rectangle which breaks the premium button shape. */
+    RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,14,14);
+    /* Focus is shown by the rounded accent pen above; no native rectangular
+       focus rectangle or default-button border is used. */
     SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(brush);DeleteObject(pen);
     wchar_t label[64]=L"";
     GetWindowTextW(d->hwndItem,label,_countof(label));
