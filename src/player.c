@@ -1305,12 +1305,12 @@ static void DrawUI(HDC dc,RECT client) {
         if(ai==2){swprintf_s(speedLabel,32,L"Speed  %.2gx",g_playbackRate);shown=speedLabel;}
         Txt(dc,shown,label,actionActive[ai]?ABM_THEME_COLOR_EBF6EF:ABM_THEME_COLOR_D2E1DB,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT advancedButton=R_ADVANCED_SETTINGS_BUTTON;
-    GradientRound(dc,advancedButton,ABM_THEME_COLOR_163D45,ABM_THEME_COLOR_1D5260,11);
-    ABM_D2D_StrokeRound(&g_ui,(float)advancedButton.left,(float)advancedButton.top,(float)advancedButton.right,(float)advancedButton.bottom,11.0f,ABM_THEME_COLOR_4E9B9D,1.0f);
+    GradientRound(dc,advancedButton,ABM_THEME_COLOR_1D4B5B,ABM_THEME_COLOR_1C9D9D,11);
+    ABM_D2D_StrokeRound(&g_ui,(float)advancedButton.left,(float)advancedButton.top,(float)advancedButton.right,(float)advancedButton.bottom,11.0f,ABM_THEME_COLOR_2B586F,1.0f);
     RECT advancedGlyph={advancedButton.left+12,advancedButton.top+9,advancedButton.left+34,advancedButton.bottom-9};
-    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.right-3,advancedGlyph.top+3,ABM_THEME_COLOR_BDE9E8,2);
-    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.left+3,advancedGlyph.bottom-3,ABM_THEME_COLOR_BDE9E8,2);
-    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.bottom-3,advancedGlyph.right-3,advancedGlyph.bottom-3,ABM_THEME_COLOR_BDE9E8,2);
+    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.right-3,advancedGlyph.top+3,ABM_THEME_COLOR_73D2CF,2);
+    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.top+3,advancedGlyph.left+3,advancedGlyph.bottom-3,ABM_THEME_COLOR_73D2CF,2);
+    DrawLine(dc,advancedGlyph.left+3,advancedGlyph.bottom-3,advancedGlyph.right-3,advancedGlyph.bottom-3,ABM_THEME_COLOR_73D2CF,2);
     RECT advancedLabel={advancedButton.left+44,advancedButton.top+2,advancedButton.right-10,advancedButton.bottom-2};
     Txt(dc,L"Advanced Settings",advancedLabel,ABM_THEME_COLOR_E5F5FA,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
