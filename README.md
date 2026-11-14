@@ -150,7 +150,7 @@ ABM AV Player includes an in-app update checker connected to the public GitHub R
 ### For maintainers
 
 - A release must be published on GitHub and include an installer asset named exactly `ABM-AV-Player-Setup.exe`; the updater cannot find an installer attached under a different name.
-- Maintain the release number only in the root `VERSION` file. `tools/prepare_version.ps1` generates the C/C++ header, Inno Setup include and vcpkg manifest from it. Do not edit generated `build/version.h`, `build/version.iss` or `vcpkg.json`; they are build artifacts. `build_installer.bat` regenerates them and validates the built/staged executable versions.
+- Maintain the release number only in the root `VERSION` file. `tools/prepare_version.ps1` generates the C/C++ header, Inno Setup include and vcpkg manifest from it. Do not edit generated `build/version.h`, `build/version.rc`, `build/version.iss` or `vcpkg.json`; they are build artifacts. `build_installer.bat` regenerates them and validates the built/staged executable versions.
 - Build and test the application and installer on Windows before publishing.
 - The `publish_release.bat` script uses GitHub CLI. **Only the maintainer publishing the release** needs GitHub CLI installed and authenticated with `gh auth login`. This authentication is not used by the application or required by end users.
 - See [RELEASES.md](RELEASES.md) for the complete publishing procedure and release requirements.
