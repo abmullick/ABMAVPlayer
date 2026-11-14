@@ -1165,7 +1165,8 @@ BOOL ABMThemeApplyPreset(ABMThemePreset preset) {
     if((unsigned)preset>=(unsigned)ABM_THEME_PRESET_COUNT)return FALSE;
     for(i=0;i<(unsigned)ABM_THEME_COLOR_COUNT;i++) {
         COLORREF color=g_defaultColors[i];
-        if(i!=(unsigned)ABM_THEME_ID_4DC499 && i!=(unsigned)ABM_THEME_ID_F2B14F &&
+        if(preset!=ABM_THEME_PRESET_MIDNIGHT_TEAL &&
+           i!=(unsigned)ABM_THEME_ID_4DC499 && i!=(unsigned)ABM_THEME_ID_F2B14F &&
            i!=(unsigned)ABM_THEME_ID_DC4B55 && i!=(unsigned)ABM_THEME_ID_FF911C)
             color=ABMThemeTransformColor(color,g_presetAccentHue[preset]);
         InterlockedExchange((volatile LONG *)&g_themeColors[i],(LONG)color);
