@@ -3912,9 +3912,9 @@ static void TorrentLayout(HWND hwnd) {
     if(contentBottom<contentTop+100)contentBottom=contentTop+100;
     const int playbackY=contentBottom+12,networkY=playbackY+112;
     const int cacheY=networkY+84,tvY=cacheY+84;
-    MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-254,36,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-232,sourceTop+23,104,42,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-116,sourceTop+23,104,42,FALSE);
+    MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-272,36,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-250,sourceTop+23,104,42,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-134,sourceTop+23,122,42,FALSE);
     MoveWindow(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,FALSE);
     MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),FALSE);
     MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,FALSE);
@@ -3943,8 +3943,8 @@ static void TorrentLayout(HWND hwnd) {
     for(int si=4;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
     MoveWindow(g_torrentSliders[2],m+14,cacheY+25,260,46,FALSE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+290,cacheY+25,112,42,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+418,cacheY+25,142,42,FALSE);
-    MoveWindow(g_torrentOpenDownloadsButton,m+574,cacheY+25,190,42,FALSE);
+    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+418,cacheY+25,168,42,FALSE);
+    MoveWindow(g_torrentOpenDownloadsButton,m+600,cacheY+25,164,42,FALSE);
     MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,FALSE);
     MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,FALSE);
     MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,FALSE);
@@ -4166,9 +4166,9 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
         RECT glyphRect={r.left+1,r.top+1,r.right-1,r.bottom-1};
         TorrentDrawButtonIcon(dc,id,glyphRect,ABM_THEME_COLOR_8EE2D3);
     }else{
-        RECT iconRect={r.left+2,r.top+2,r.left+24,r.bottom-2};
+        RECT iconRect={r.left+2,r.top+2,r.left+20,r.bottom-2};
         TorrentDrawButtonIcon(dc,id,iconRect,iconColor);
-        RECT textRect={r.left+23,r.top+2,r.right-3,r.bottom-2};
+        RECT textRect={r.left+19,r.top+2,r.right-3,r.bottom-2};
         TorrentButtonText(dc,caption,textRect,textColor);
     }
 }
