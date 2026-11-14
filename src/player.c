@@ -4831,6 +4831,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             255,145,620,540,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
         if(g_helpEdit)SendMessageW(g_helpEdit,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
         if(g_helpSearch){SendMessageW(g_helpSearch,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SetWindowSubclass(g_helpSearch,HelpSearchSubclass,1,0);}
+        if(g_helpSearch)SendMessageW(g_helpSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search help: buffering, subtitles, D3D11VA, torrent cache...");
         if(g_helpTopics)SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
         if(g_helpFindButton)SendMessageW(g_helpFindButton,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
         for(int ti=0;ti<(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]));ti++)
