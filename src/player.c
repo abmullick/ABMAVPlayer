@@ -4691,7 +4691,47 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 
 static HBRUSH g_helpBrush=NULL;
 static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
-static HWND g_helpEdit=NULL;
+static HWND g_helpEdit=NULL, g_helpSearch=NULL, g_helpTopics=NULL, g_helpFindButton=NULL;
+static int g_helpSearchCursor=0;
+static const wchar_t *g_helpTopicNames[]={
+ L"GETTING STARTED",L"PLAYBACK AND FULLSCREEN",L"PLAYLISTS AND RECENT MEDIA",
+ L"LICENSE & ACTIVATION",L"APPLICATION SETTINGS",L"AUDIO, VIDEO AND SUBTITLES",
+ L"ADVANCED EQUALIZER AND AUDIO PROCESSING",L"NOW PLAYING AND VISUALIZER",
+ L"LOCAL PLAYBACK OUTPUT",L"STREAMING CENTRE",L"STREAMING BROWSER CONTROLS",
+ L"UPDATES",L"TORRENT STREAM",L"INTERFACE MENUS",L"ACCESSIBILITY, DISPLAY AND MOTION",
+ L"SUPPORTED MEDIA AND REQUIREMENTS",L"ADVANCED SETTINGS",L"KEYBOARD SHORTCUTS",L"TROUBLESHOOTING"
+};
+#define HELP_ID_SEARCH 7101
+#define HELP_ID_FIND 7102
+#define HELP_ID_TOPICS 7103
+static void HelpNavigateToTopic(HWND hwnd,int index) {
+ (void)hwnd;
+ if(index<0||index>=(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]))||!g_helpEdit)return;
+ int len=GetWindowTextLengthW(g_helpEdit);if(len<=0)return;
+ wchar_t *text=(wchar_t*)calloc((size_t)len+1,sizeof(wchar_t));if(!text)return;
+ GetWindowTextW(g_helpEdit,text,len+1);
+ wchar_t *found=wcsstr(text,g_helpTopicNames[index]);
+ if(found){int pos=(int)(found-text);SendMessageW(g_helpEdit,EM_SETSEL,pos,pos);SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);SetFocus(g_helpEdit);}
+ free(text);
+}
+static BOOL HelpFindNext(HWND hwnd) {
+ (void)hwnd;
+ if(!g_helpSearch||!g_helpEdit)return FALSE;
+ wchar_t query[256]={0};GetWindowTextW(g_helpSearch,query,(int)_countof(query));
+ if(!query[0])return FALSE;
+ int len=GetWindowTextLengthW(g_helpEdit);if(len<=0)return FALSE;
+ wchar_t *text=(wchar_t*)calloc((size_t)len+1,sizeof(wchar_t));if(!text)return FALSE;
+ GetWindowTextW(g_helpEdit,text,len+1);
+ int start=g_helpSearchCursor;if(start<0||start>=len)start=0;
+ wchar_t *found=NULL;size_t qlen=wcslen(query);
+ for(int pass=0;pass<2&&!found;pass++){
+  int begin=pass?0:start,end=pass?start:len;
+  for(int i=begin;i<end;i++)if((size_t)(end-i)>=qlen&&_wcsnicmp(text+i,query,qlen)==0){found=text+i;break;}
+ }
+ BOOL ok=FALSE;
+ if(found){int pos=(int)(found-text),end=pos+(int)qlen;SendMessageW(g_helpEdit,EM_SETSEL,pos,end);SendMessageW(g_helpEdit,EM_SCROLLCARET,0,0);g_helpSearchCursor=end;ok=TRUE;}
+ free(text);return ok;
+}
 static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
@@ -4770,15 +4810,37 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(15,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        g_helpEdit=CreateWindowExW(0,L"EDIT",help,
+        /* Searchable Help Centre: query field, topic index and article pane. */
+        g_helpSearch=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",
+            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,24,101,570,30,hwnd,
+            (HMENU)HELP_ID_SEARCH,GetModuleHandleW(NULL),NULL);
+        g_helpFindButton=CreateWindowExW(0,L"BUTTON",L"Find next",
+            WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,604,101,104,30,hwnd,
+            (HMENU)HELP_ID_FIND,GetModuleHandleW(NULL),NULL);
+        g_helpTopics=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",
+            WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_HASSTRINGS,
+            24,145,220,540,hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
+        g_helpEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",help,
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY,
-            24,105,820,540,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
+            255,145,620,540,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
         if(g_helpEdit)SendMessageW(g_helpEdit,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
+        if(g_helpSearch)SendMessageW(g_helpSearch,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
+        if(g_helpTopics)SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
+        if(g_helpFindButton)SendMessageW(g_helpFindButton,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
+        for(int ti=0;ti<(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]));ti++)
+            SendMessageW(g_helpTopics,LB_ADDSTRING,0,(LPARAM)g_helpTopicNames[ti]);
+        SendMessageW(g_helpTopics,LB_SETCURSEL,0,0);
+        RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
         return 0;
     }
     case WM_SIZE: {
         int w=LOWORD(lp),h=HIWORD(lp);
-        if(g_helpEdit)MoveWindow(g_helpEdit,24,105,w-48,h-165,TRUE);
+        int contentH=h-165;if(contentH<180)contentH=180;
+        int left=24,top=145,topicW=220,gap=12;
+        if(g_helpSearch)MoveWindow(g_helpSearch,left,101,w-360,30,TRUE);
+        if(g_helpFindButton)MoveWindow(g_helpFindButton,w-332,101,104,30,TRUE);
+        if(g_helpTopics)MoveWindow(g_helpTopics,left,top,topicW,contentH,TRUE);
+        if(g_helpEdit)MoveWindow(g_helpEdit,left+topicW+gap,top,w-(left+topicW+gap)-24,contentH,TRUE);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
     }
@@ -4804,9 +4866,20 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SelectObject(dc,oldPen);DeleteObject(line);
         SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);
         RECT footText={26,rc.bottom-42,rc.right-24,rc.bottom-12};
-        DrawTextW(dc,L"TIP   Press F1 to open this guide   •   Scroll to explore all features",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        DrawTextW(dc,L"TIP   Ctrl+F search   •   Find next / F3 next match   •   Select a topic to jump",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
     }
+    case WM_COMMAND: {
+        int id=LOWORD(wp),code=HIWORD(wp);
+        if(id==HELP_ID_FIND&&code==BN_CLICKED){HelpFindNext(hwnd);SetFocus(g_helpSearch);return 0;}
+        if(id==HELP_ID_SEARCH&&code==EN_CHANGE){g_helpSearchCursor=0;return 0;}
+        if(id==HELP_ID_TOPICS&&code==LBN_SELCHANGE){int sel=(int)SendMessageW(g_helpTopics,LB_GETCURSEL,0,0);HelpNavigateToTopic(hwnd,sel);return 0;}
+        break;
+    }
+    case WM_HOTKEY:
+        if(wp==1){SetFocus(g_helpSearch);SendMessageW(g_helpSearch,EM_SETSEL,0,-1);return 0;}
+        if(wp==2){HelpFindNext(hwnd);return 0;}
+        break;
     case WM_NCHITTEST: {
         LRESULT hit=DefWindowProcW(hwnd,msg,wp,lp);
         if(hit==HTCLIENT) {
@@ -4828,7 +4901,8 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
     case WM_DESTROY:
-        g_helpEdit=NULL;
+        UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
+        g_helpEdit=NULL;g_helpSearch=NULL;g_helpTopics=NULL;g_helpFindButton=NULL;
         return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
