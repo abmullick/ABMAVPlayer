@@ -142,6 +142,7 @@ static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
 static libvlc_media_t *g_artMedia=NULL;
 static volatile LONG g_artworkGeneration=0;
+static LONG g_artworkCallbackGeneration=0;
 static BOOL g_artworkLoaded=FALSE;
 static int g_artworkFade=100;
 static wchar_t g_trackTitle[256]=L"";
@@ -456,7 +457,9 @@ static int EaseToward(int current,int target,int responsePercent) {
 static void ResetArtwork(void) {
     if (g_artMedia) {
         libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
-        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,NULL);
+        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,
+                            (void *)(INT_PTR)g_artworkCallbackGeneration);
+        g_artworkCallbackGeneration=0;
         libvlc_media_parse_stop(g_artMedia);
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
@@ -474,8 +477,10 @@ static void BeginArtworkParse(libvlc_media_t *media) {
         libvlc_media_release(g_artMedia);g_artMedia=NULL;
         return;
     }
+    g_artworkCallbackGeneration=generation;
     if(libvlc_media_parse_with_options(g_artMedia,libvlc_media_parse_local,5000)!=0) {
         libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,(void *)(INT_PTR)generation);
+        g_artworkCallbackGeneration=0;
         libvlc_media_release(g_artMedia);g_artMedia=NULL;
     }
 }
