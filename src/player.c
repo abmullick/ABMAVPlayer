@@ -1463,7 +1463,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,acx-7,acy-5,acx+1,acy-11,RGB(229,245,250),2);DrawLine(dc,acx-7,acy+5,acx+1,acy+11,RGB(229,245,250),2);
     DrawLine(dc,acx+5,acy-7,acx+9,acy-3,RGB(133,220,204),2);DrawLine(dc,acx+9,acy-3,acx+9,acy+3,RGB(133,220,204),2);DrawLine(dc,acx+9,acy+3,acx+5,acy+7,RGB(133,220,204),2);
     if(g_audioPopupOpen) {
-        int rows=g_audioDeviceCount+1;if(rows>12)rows=12;
+        int rows=g_audioDeviceCount+1;if(rows>7)rows=7;
         R_AUDIO_PANEL=(RECT){R_SIDEBAR.right-304,R_SIDEBAR.bottom-91-(rows*38+68),R_SIDEBAR.right-14,R_SIDEBAR.bottom-91};
         Panel(dc,R_AUDIO_PANEL,RGB(13,25,39),RGB(70,126,130),17);
         RECT title={R_AUDIO_PANEL.left+16,R_AUDIO_PANEL.top+10,R_AUDIO_PANEL.right-14,R_AUDIO_PANEL.top+36};
@@ -2334,7 +2334,7 @@ static void RefreshAudioDevices(void) {
     g_audioDeviceCount=0;
     if(!g_player)return;
     libvlc_audio_output_device_t *list=libvlc_audio_output_device_enum(g_player);
-    for(libvlc_audio_output_device_t *d=list;d&&g_audioDeviceCount<11;d=d->p_next) {
+    for(libvlc_audio_output_device_t *d=list;d&&g_audioDeviceCount<6;d=d->p_next) {
         int i=g_audioDeviceCount++;
         g_audioDeviceIds[i][0]=0;g_audioDeviceNames[i][0]=0;
         if(d->psz_device)strncpy_s(g_audioDeviceIds[i],sizeof(g_audioDeviceIds[i]),d->psz_device,_TRUNCATE);
