@@ -41,6 +41,7 @@ BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd);
 BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *canvas);
 BOOL ABM_D2D_CanvasBegin(ABM_D2D_CANVAS *canvas, HDC dc, const RECT *bounds);
 BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *canvas);
+void ABM_D2D_CanvasFill(ABM_D2D_CANVAS *canvas, float l, float t, float r, float b, COLORREF color);
 void ABM_D2D_CanvasFillRound(ABM_D2D_CANVAS *canvas, float l, float t, float r, float b, float radius, COLORREF color);
 void ABM_D2D_CanvasStrokeRound(ABM_D2D_CANVAS *canvas, float l, float t, float r, float b, float radius, COLORREF color, float width);
 void ABM_D2D_CanvasText(ABM_D2D_CANVAS *canvas, const wchar_t *text, RECT rect, COLORREF color, int style, UINT flags);
