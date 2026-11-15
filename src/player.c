@@ -5820,7 +5820,6 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==9){
-   if(AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,1000,532,1020,620)){int trackY=y-532;g_advancedVlcFirstPlugin=(trackY*5)/88;if(g_advancedVlcFirstPlugin>4)g_advancedVlcFirstPlugin=4;InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==8){
