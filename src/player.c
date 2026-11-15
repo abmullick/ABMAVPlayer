@@ -4355,9 +4355,8 @@ static wchar_t TorrentButtonGlyph(int id){
     }
 }
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
-    if(!item||!item->hwndItem||!g_torrentButtonCanvasReady)return;
+    if(!item||!item->hwndItem)return;
     RECT r=item->rcItem;
-    if(!ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,item->hDC,&r))return;
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
     BOOL hot=(item->itemState&ODS_HOTLIGHT)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
@@ -4369,22 +4368,33 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     else if(destructive){fill=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_THEME_COLOR_894D52;}
     else{fill=pressed?ABM_THEME_COLOR_305E6F:ABM_THEME_COLOR_112A3B;iconColor=ABM_THEME_COLOR_8BC2CD;textColor=ABM_THEME_COLOR_D5E6EF;borderColor=ABM_THEME_COLOR_355B6E;}
     if(hot&&!pressed&&!destructive)fill=TorrentBlend(fill,ABM_THEME_COLOR_285C65,18,100);
-    ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_THEME_COLOR_0A1725);
-    RECT face=r;InflateRect(&face,-1,-1);
-    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
-    ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_THEME_COLOR_ABF6E2:borderColor,focused?2.0f:1.0f);
     BOOL numeric=(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC);
-    wchar_t glyph[2]={TorrentButtonGlyph(id),0};
-    RECT iconRect;
-    if(numeric){iconRect.left=r.left+1;iconRect.top=r.top+1;iconRect.right=r.right-1;iconRect.bottom=r.bottom-1;}
-    else{iconRect.left=r.left+2;iconRect.top=r.top+2;iconRect.right=r.left+20;iconRect.bottom=r.bottom-2;}
-    ABM_D2D_CanvasText(&g_torrentButtonCanvas,glyph,iconRect,numeric?ABM_THEME_COLOR_8EE2D3:iconColor,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    if(!numeric){
-        wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-        RECT textRect={r.left+21,r.top+1,r.right-3,r.bottom-1};
-        ABM_D2D_CanvasText(&g_torrentButtonCanvas,caption,textRect,textColor,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    wchar_t caption[128]=L"";if(!numeric)GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
+    if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,item->hDC,&r)){
+        ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_THEME_COLOR_0A1725);
+        RECT face=r;InflateRect(&face,-1,-1);
+        ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
+        ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_THEME_COLOR_ABF6E2:borderColor,focused?2.0f:1.0f);
+        wchar_t glyph[2]={TorrentButtonGlyph(id),0};RECT iconRect;
+        if(numeric){iconRect.left=r.left+1;iconRect.top=r.top+1;iconRect.right=r.right-1;iconRect.bottom=r.bottom-1;}
+        else{iconRect.left=r.left+2;iconRect.top=r.top+2;iconRect.right=r.left+20;iconRect.bottom=r.bottom-2;}
+        ABM_D2D_CanvasText(&g_torrentButtonCanvas,glyph,iconRect,numeric?ABM_THEME_COLOR_8EE2D3:iconColor,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        if(!numeric){RECT textRect={r.left+21,r.top+1,r.right-3,r.bottom-1};ABM_D2D_CanvasText(&g_torrentButtonCanvas,caption,textRect,textColor,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);}
+        ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);return;
     }
-    ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
+    HDC dc=item->hDC;HBRUSH outer=CreateSolidBrush(ABM_THEME_COLOR_0A1725);FillRect(dc,&r,outer);DeleteObject(outer);
+    RECT face=r;InflateRect(&face,-1,-1);
+    HBRUSH faceBrush=CreateSolidBrush(fill);HPEN edge=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_ABF6E2:borderColor);
+    HGDIOBJ oldBrush=SelectObject(dc,faceBrush),oldPen=SelectObject(dc,edge);
+    RoundRect(dc,face.left,face.top,face.right,face.bottom,ABM_UI_RADIUS_BUTTON*2,ABM_UI_RADIUS_BUTTON*2);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(faceBrush);DeleteObject(edge);
+    if(!numeric){
+        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,textColor);
+        RECT textRect={r.left+21,r.top+1,r.right-3,r.bottom-1};
+        HGDIOBJ oldFont=SelectObject(dc,g_smallFont?g_smallFont:GetStockObject(DEFAULT_GUI_FONT));
+        DrawTextW(dc,caption,-1,&textRect,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        SelectObject(dc,oldFont);
+    }
 }
 static HBRUSH g_torrentSurfaceBrush=NULL;
 static HBRUSH g_torrentControlBrush=NULL;
