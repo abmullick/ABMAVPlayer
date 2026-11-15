@@ -5225,7 +5225,13 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_helpSearch){SendMessageW(g_helpSearch,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpSearch,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(16,16));SetWindowSubclass(g_helpSearch,HelpSearchSubclass,1,0);}
         if(g_helpSearch)SendMessageW(g_helpSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search all help topics  ·  e.g. subtitles, buffering, D3D11VA, torrent cache");
-        if(g_helpTopics){SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);SendMessageW(g_helpTopics,LB_SETITEMHEIGHT,0,40);}
+        if(g_helpTopics){
+            SendMessageW(g_helpTopics,WM_SETFONT,(WPARAM)g_helpBodyFont,TRUE);
+            SendMessageW(g_helpTopics,LB_SETITEMHEIGHT,0,40);
+            SetWindowTheme(g_helpTopics,L"DarkMode_Explorer",NULL);
+        }
+        if(g_helpSearch)SetWindowTheme(g_helpSearch,L"DarkMode_Explorer",NULL);
+        if(g_helpEdit)SetWindowTheme(g_helpEdit,L"DarkMode_Explorer",NULL);
         if(g_helpFindButton)SendMessageW(g_helpFindButton,WM_SETFONT,(WPARAM)g_helpMetaFont,TRUE);
         for(int ti=0;ti<(int)(sizeof(g_helpTopicNames)/sizeof(g_helpTopicNames[0]));ti++)
             SendMessageW(g_helpTopics,LB_ADDSTRING,0,(LPARAM)g_helpTopicNames[ti]);
@@ -5287,14 +5293,20 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             RECT label=r;InflateRect(&label,-8,-2);ABM_D2D_CanvasText(&g_helpCanvas,caption,label,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
         }
-        if(di->CtlID==HELP_ID_TOPICS&&g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
+        if(di->CtlID==HELP_ID_TOPICS&&g_helpCanvasReady){
             wchar_t label[256]={0};if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
-            BOOL selected=(di->itemState&ODS_SELECTED)!=0;RECT row=di->rcItem;InflateRect(&row,-6,-2);
-            ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:ABM_UI_COLOR_SURFACE);
-            RECT textRect=row;textRect.left+=12;textRect.right-=8;
-            ABM_D2D_CanvasText(&g_helpCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            if(di->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
-            ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
+            BOOL selected=(di->itemState&ODS_SELECTED)!=0;
+            /* BindDC clips to rcItem; draw in item-local coordinates. Reusing
+               rcItem.top here offsets each row twice, hiding every row after the first. */
+            RECT bounds={0,0,di->rcItem.right-di->rcItem.left,di->rcItem.bottom-di->rcItem.top};
+            if(ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
+                RECT row=bounds;InflateRect(&row,-6,-2);
+                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:ABM_UI_COLOR_SURFACE);
+                RECT textRect=row;textRect.left+=12;textRect.right-=8;
+                ABM_D2D_CanvasText(&g_helpCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                if(di->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
+                ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
+            }
         }
         if(di->CtlID==HELP_ID_FIND){
             RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
@@ -5423,6 +5435,13 @@ static void ShowAboutDialog(HWND owner) {
         L"About ABM AV Player",WS_CAPTION|WS_SYSMENU|WS_POPUP,
         x,y,w,h,owner,NULL,inst,NULL);
     if(!dlg)return;
+    /* Match the dark caption, border and rounded frame used by the Main Player. */
+    BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+    {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
+     DwmSetWindowAttribute(dlg,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+     DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+     DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+    SetWindowPos(dlg,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
     EnableWindow(owner,FALSE); ShowWindow(dlg,SW_SHOW); UpdateWindow(dlg);
     MSG m; while(IsWindow(dlg) && GetMessageW(&m,NULL,0,0)>0) {
         if(!IsDialogMessageW(dlg,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
