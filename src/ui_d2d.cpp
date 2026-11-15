@@ -83,12 +83,16 @@ extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
     if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
         reinterpret_cast<IUnknown **>(&wf)))) { ABM_D2D_CanvasDestroy(c); return FALSE; }
     c->writeFactory = wf;
-    IDWriteTextFormat *body = nullptr, *icon = nullptr;
-    if (!MakeFormat(wf, L"Segoe UI Variable Text", 12.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &body) ||
-        !MakeFormat(wf, L"Segoe MDL2 Assets", 16.0f, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
-        SafeRelease(&body); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
+    IDWriteTextFormat *body = nullptr, *small = nullptr, *heading = nullptr, *icon = nullptr;
+    if (!MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
+        !MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &small) ||
+        !MakeFormat(wf, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
+        !MakeFormat(wf, L"Segoe MDL2 Assets", ABM_UI_FONT_SIZE_ICON, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
+        SafeRelease(&body); SafeRelease(&small); SafeRelease(&heading); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
     }
-    c->body = body; c->iconFormat = icon;
+    c->body = body; c->smallFormat = small; c->heading = heading; c->iconFormat = icon;
+    IDWriteInlineObject *ellipsis = nullptr;
+    if (SUCCEEDED(wf->CreateEllipsisTrimmingSign(static_cast<IDWriteTextFormat *>(c->smallFormat), &ellipsis))) c->ellipsis = ellipsis;
     D2D1_RENDER_TARGET_PROPERTIES rp = D2D1::RenderTargetProperties(
         D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
         96.0f, 96.0f, D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE, D2D1_FEATURE_LEVEL_DEFAULT);
@@ -130,10 +134,19 @@ extern "C" void ABM_D2D_CanvasStrokeRound(ABM_D2D_CANVAS *c,float l,float t,floa
 }
 extern "C" void ABM_D2D_CanvasText(ABM_D2D_CANVAS *c,const wchar_t *value,RECT rect,COLORREF color,int style,UINT flags) {
     if (!c || !c->drawing || !value || !value[0]) return;
-    IDWriteTextFormat *fmt=static_cast<IDWriteTextFormat *>(style==1?c->iconFormat:c->body);
+    IDWriteTextFormat *fmt=static_cast<IDWriteTextFormat *>(
+        style==ABM_D2D_TEXT_ICON?c->iconFormat:style==ABM_D2D_TEXT_SMALL?c->smallFormat:
+        style==ABM_D2D_TEXT_HEADING?c->heading:c->body);
     fmt->SetTextAlignment((flags&DT_CENTER)?DWRITE_TEXT_ALIGNMENT_CENTER:((flags&DT_RIGHT)?DWRITE_TEXT_ALIGNMENT_TRAILING:DWRITE_TEXT_ALIGNMENT_LEADING));
     fmt->SetParagraphAlignment((flags&DT_VCENTER)?DWRITE_PARAGRAPH_ALIGNMENT_CENTER:DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
     fmt->SetWordWrapping((flags&DT_SINGLELINE)?DWRITE_WORD_WRAPPING_NO_WRAP:DWRITE_WORD_WRAPPING_WRAP);
+    if ((flags&DT_END_ELLIPSIS) && c->ellipsis) {
+        DWRITE_TRIMMING trimming={DWRITE_TRIMMING_GRANULARITY_CHARACTER,0,0};
+        fmt->SetTrimming(&trimming,static_cast<IDWriteInlineObject *>(c->ellipsis));
+    } else {
+        DWRITE_TRIMMING trimming={DWRITE_TRIMMING_GRANULARITY_NONE,0,0};
+        fmt->SetTrimming(&trimming,nullptr);
+    }
     CanvasBrush(c)->SetColor(ToD2D(color));
     D2D1_RECT_F box=D2D1::RectF((float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom);
     CanvasTarget(c)->DrawText(value,(UINT32)wcslen(value),fmt,box,CanvasBrush(c),D2D1_DRAW_TEXT_OPTIONS_CLIP,DWRITE_MEASURING_MODE_NATURAL);
@@ -142,7 +155,10 @@ extern "C" void ABM_D2D_CanvasDestroy(ABM_D2D_CANVAS *c) {
     if (!c) return;
     SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&c->brush));
     SafeRelease(reinterpret_cast<ID2D1DCRenderTarget **>(&c->target));
+    SafeRelease(reinterpret_cast<IDWriteInlineObject **>(&c->ellipsis));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->body));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->smallFormat));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->heading));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->iconFormat));
     SafeRelease(reinterpret_cast<IDWriteFactory **>(&c->writeFactory));
     SafeRelease(reinterpret_cast<ID2D1Factory **>(&c->factory));
@@ -173,11 +189,11 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
        deliberate hierarchy: readable body copy, compact utility labels and
        confident display text without the heavy, oversized feel of a generic
        gaming UI. Segoe UI Variable falls back cleanly on older Windows builds. */
-    if (!MakeFormat(writeFactory, L"Segoe UI Variable Text", 16.5f, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Text", 12.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 28.0f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Display", 30.0f, DWRITE_FONT_WEIGHT_BOLD, &brandMain) ||
-        !MakeFormat(writeFactory, L"Segoe UI Variable Text", 18.0f, DWRITE_FONT_WEIGHT_MEDIUM, &brandSuffix)) {
+    if (!MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
+        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
+        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
+        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_DISPLAY, DWRITE_FONT_WEIGHT_BOLD, &brandMain) ||
+        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_TEXT, 18.0f, DWRITE_FONT_WEIGHT_MEDIUM, &brandSuffix)) {
         SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
         SafeRelease(&brandMain); SafeRelease(&brandSuffix);
         ABM_D2D_Destroy(ui);
