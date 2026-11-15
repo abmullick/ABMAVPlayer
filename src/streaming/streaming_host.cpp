@@ -295,15 +295,19 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
 }
 
-void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
-    /* Match Torrent Stream's premium icon treatment exactly: crisp Segoe
-       MDL2 vector glyphs, normal weight, caller-sized, transparent background. */
-    HFONT font=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+HFONT GetCachedIconFont(int px){
+    static HFONT icon16=NULL,icon17=NULL;
+    HFONT *slot=(px<=16)?&icon16:&icon17;
+    if(!*slot)*slot=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
         L"Segoe MDL2 Assets");
-    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
+    return *slot?*slot:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+}
+void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
+    HGDIOBJ old=SelectObject(dc,GetCachedIconFont(px));
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     wchar_t s[2]={glyph,0};DrawTextW(dc,s,1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-    SelectObject(dc,old);DeleteObject(font);
+    SelectObject(dc,old);
 }
 wchar_t DeviceButtonGlyph(HWND button){
     if(button==g_deviceRefresh||button==g_deviceAppStatus)return 0xE72C; /* Refresh */
@@ -325,15 +329,15 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
         primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_185B52):
         (pressed?ABM_THEME_COLOR_234B5E:ABM_THEME_COLOR_142A3C);
     COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_THEME_COLOR_41BEA5:ABM_THEME_COLOR_305B71;
-    Rounded(dc,r,fill,9);
+    Rounded(dc,r,fill,8);
     HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_63E1CD:edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,9,9);
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,8,8);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
     RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
-    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),ABM_THEME_COLOR_91E5D5,17);
+    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),ABM_THEME_COLOR_91E5D5,16);
     RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
-    Text(dc,caption,label,ABM_THEME_COLOR_E5F4FA,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Text(dc,caption,label,ABM_THEME_COLOR_E5F4FA,13,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     if(!item||item->itemID==(UINT)-1)return;
