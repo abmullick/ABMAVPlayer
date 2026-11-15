@@ -5235,6 +5235,7 @@ static BOOL g_settingsShuffle=FALSE,g_settingsRepeat=FALSE;
 static BOOL g_settingsReplayGain=FALSE,g_settingsCompressor=FALSE;
 static BOOL g_settingsRateOpen=FALSE;
 static int g_settingsThemePreset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
+static HFONT g_settingsControlFont=NULL;
 static int g_settingsRateIndex=2;
 static wchar_t g_settingsMessage[256]=L"Settings are saved only when you choose Save settings.";
 
@@ -6011,6 +6012,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         const int x[]={166,39,39,244,206,558},y[]={157,397,458,512,644,644};
         const int cx[]={92,600,600,100,130,130},cy[]={29,30,30,29,29,29};
         for(int i=0;i<6;i++){HWND c=GetDlgItem(w,ids[i]);if(c)SetWindowPos(c,NULL,ABM_DpiScale(x[i],dpi),ABM_DpiScale(y[i],dpi),ABM_DpiScale(cx[i],dpi),ABM_DpiScale(cy[i],dpi),SWP_NOZORDER|SWP_NOACTIVATE);}
+        if(g_settingsControlFont)DeleteObject(g_settingsControlFont);
+        g_settingsControlFont=CreateFontW(-ABM_DpiScale(14,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        for(int i=0;i<6;i++){HWND c=GetDlgItem(w,ids[i]);if(c&&g_settingsControlFont)SendMessageW(c,WM_SETFONT,(WPARAM)g_settingsControlFont,TRUE);}
         InvalidateRect(w,NULL,FALSE);
         return 0;
     }
@@ -6023,6 +6027,8 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   g_settingsThemePreset=(int)ABMThemeCurrentPreset();
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
   wchar_t n[32];
+  UINT dpi=ABM_DpiGetForWindow(w);
+  g_settingsControlFont=CreateFontW(-ABM_DpiScale(14,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
   StringCchPrintfW(n,_countof(n),L"%d",g_volume);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(166,ABM_DpiGetForWindow(w)),ABM_DpiScale(157,ABM_DpiGetForWindow(w)),ABM_DpiScale(92,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6207,NULL,NULL);
   CreateWindowExW(0,L"EDIT",g_torrentCacheBaseDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(39,ABM_DpiGetForWindow(w)),ABM_DpiScale(397,ABM_DpiGetForWindow(w)),ABM_DpiScale(600,ABM_DpiGetForWindow(w)),ABM_DpiScale(30,ABM_DpiGetForWindow(w)),w,(HMENU)6201,NULL,NULL);
@@ -6033,6 +6039,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(206,ABM_DpiGetForWindow(w)),ABM_DpiScale(644,ABM_DpiGetForWindow(w)),ABM_DpiScale(130,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(558,ABM_DpiGetForWindow(w)),ABM_DpiScale(644,ABM_DpiGetForWindow(w)),ABM_DpiScale(130,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6206,NULL,NULL);
+  {const int ids[]={6207,6201,6202,6204,6205,6206};for(int i=0;i<6;i++){HWND c=GetDlgItem(w,ids[i]);if(c&&g_settingsControlFont)SendMessageW(c,WM_SETFONT,(WPARAM)g_settingsControlFont,TRUE);}}
   return 0;
  }
  case WM_THEMECHANGED:
@@ -6155,6 +6162,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   g_settingsWindow=NULL;
   if(g_settingsUiReady){ABM_D2D_Destroy(&g_settingsUi);g_settingsUiReady=FALSE;}
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=NULL;}
+  if(g_settingsControlFont){DeleteObject(g_settingsControlFont);g_settingsControlFont=NULL;}
   return 0;
  }
  return DefWindowProcW(w,msg,wp,lp);
@@ -6163,7 +6171,8 @@ static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
- RECT wr={0,0,820,1020};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
+ UINT ownerDpi=ABM_DpiGetForWindow(owner);
+ RECT wr={0,0,ABM_DpiScale(820,ownerDpi),ABM_DpiScale(1020,ownerDpi)};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
  int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
