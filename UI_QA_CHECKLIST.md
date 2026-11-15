@@ -42,6 +42,8 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Playback surface: video remains correctly sized and is not displaced by UI animation.
 - [ ] Playlist drawer and recent-media surface: no clipping, stale selection or off-screen popup.
 - [ ] Settings and Torrent Stream windows: controls remain reachable and labels do not overlap.
+- [ ] Advanced Settings: all ten navigation entries are visible and clickable; the VLC Runtime & Codecs page fits without colliding with the footer at 100%, 125%, 150% and 200% scaling.
+- [ ] VLC Runtime & Codecs: loaded LibVLC version/path and plugin directory are accurate; selected plugin-file presence matches the installed runtime; Refresh scan updates the results.
 - [ ] Streaming Centre: title bar, device panel, receiver/app lists and WebView2 region remain aligned.
 - [ ] Branded dialogs and custom menus: fit within the work area at every screen edge; long text and long menus remain usable.
 - [ ] Move windows between monitors with different scaling factors; record any size or coordinate jump. System-aware DPI is not equivalent to per-monitor-v2 support.
