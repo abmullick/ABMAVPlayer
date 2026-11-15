@@ -60,6 +60,21 @@ std::wstring FromUtf8(const std::string &s) {
 void CopyText(wchar_t *dst,size_t cap,const std::wstring &s) {
     if(dst&&cap) wcsncpy_s(dst,cap,s.c_str(),_TRUNCATE);
 }
+bool IsRecoverableTorrentError(const lt::error_code &ec) {
+    if(!ec)return false;
+    /* Only retry failures that can plausibly clear after network conditions
+       change. Metadata, hash, path and storage errors deliberately remain
+       terminal and are never cleared by the recovery monitor. */
+    return ec==lt::errors::timed_out ||
+           ec==lt::errors::timed_out_inactivity ||
+           ec==lt::errors::timed_out_no_handshake ||
+           ec==lt::errors::http_error ||
+           ec==lt::errors::tracker_failure ||
+           ec==lt::errors::invalid_hostname ||
+           ec==lt::errors::port_blocked ||
+           ec==lt::errors::too_many_connections ||
+           ec==lt::errors::no_router;
+}
 struct Task {
     uint64_t id=0;
     lt::torrent_handle handle;
@@ -76,6 +91,7 @@ struct Task {
     std::chrono::steady_clock::time_point last_network_activity=std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point next_recovery_attempt{};
     int recovery_attempts=0;
+    bool recoverable_error_pending=false;
     int64_t last_wanted_done=-1;
     std::atomic<bool> removed{false};
 };
@@ -858,13 +874,21 @@ private:
                     if(!t.handle.is_valid())continue;
                     try {
                         auto snapshot=t.handle.status();
-                        if(snapshot.errc)t.error=FromUtf8(snapshot.errc.message());
+                        const bool recoverableError=IsRecoverableTorrentError(snapshot.errc);
+                        if(snapshot.errc) {
+                            t.error=FromUtf8(snapshot.errc.message());
+                            t.recoverable_error_pending=recoverableError;
+                        } else if(t.recoverable_error_pending) {
+                            /* The transient error has cleared; remove only the
+                               recovery-owned diagnostic, not unrelated UI errors. */
+                            t.error.clear();
+                            t.recoverable_error_pending=false;
+                        }
 
-                        /* A tracker can remain silent or a peer connection can
-                           disappear without producing a terminal torrent error.
-                           Detect that condition independently for each task and
-                           request fresh announces with bounded exponential
-                           backoff. Never override libtorrent's actual error. */
+                        /* Tracker silence, peer loss and selected transient
+                           network errors share one bounded recovery schedule.
+                           Permanent metadata/hash/storage errors are never
+                           cleared or retried. */
                         const auto taskNow=std::chrono::steady_clock::now();
                         const bool paused=static_cast<bool>(snapshot.flags & lt::torrent_flags::paused);
                         const bool complete=snapshot.state==lt::torrent_status::finished ||
@@ -874,9 +898,12 @@ private:
                             t.last_wanted_done=snapshot.total_wanted_done;
                             t.last_network_activity=taskNow;
                             t.recovery_attempts=0;
+                            t.recoverable_error_pending=false;
                             t.next_recovery_attempt=taskNow+std::chrono::seconds(30);
+                            if(!snapshot.errc)t.error.clear();
                         }
-                        if(!paused && !complete && !snapshot.errc &&
+                        if(!paused && !complete &&
+                           (!snapshot.errc || recoverableError) &&
                            taskNow>=t.next_recovery_attempt) {
                             const auto idleFor=taskNow-t.last_network_activity;
                             const auto stallThreshold=snapshot.num_peers<=0
@@ -884,6 +911,14 @@ private:
                                 : std::chrono::seconds(90);
                             if(idleFor>=stallThreshold) {
                                 try {
+                                    if(recoverableError) {
+                                        /* clear_error() restarts a torrent in
+                                           libtorrent's error state. Restrict it
+                                           to the explicit transient allow-list. */
+                                        t.handle.clear_error();
+                                        t.recoverable_error_pending=false;
+                                        t.error.clear();
+                                    }
                                     t.handle.force_reannounce();
                                     /* Private torrents must use only their
                                        explicitly configured private trackers. */
@@ -892,7 +927,7 @@ private:
                                        session_->is_dht_running())
                                         t.handle.force_dht_announce();
                                 } catch(...) {
-                                    /* A failed announce request is retried
+                                    /* A failed recovery request is retried
                                        later; it must not terminate the task. */
                                 }
                                 ++t.recovery_attempts;
