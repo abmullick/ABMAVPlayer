@@ -74,6 +74,23 @@ static BOOL MakeFormat(IDWriteFactory *factory, const wchar_t *family,
 static ID2D1DCRenderTarget *CanvasTarget(ABM_D2D_CANVAS *c) { return static_cast<ID2D1DCRenderTarget *>(c->target); }
 static ID2D1SolidColorBrush *CanvasBrush(ABM_D2D_CANVAS *c) { return static_cast<ID2D1SolidColorBrush *>(c->brush); }
 
+static BOOL CanvasCreateTarget(ABM_D2D_CANVAS *c) {
+    if (!c || !c->factory || c->target) return c && c->target;
+    D2D1_RENDER_TARGET_PROPERTIES rp=D2D1::RenderTargetProperties(
+        D2D1_RENDER_TARGET_TYPE_DEFAULT,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_PREMULTIPLIED),
+        96.0f,96.0f,D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE,D2D1_FEATURE_LEVEL_DEFAULT);
+    ID2D1DCRenderTarget *target=nullptr;
+    if(FAILED(static_cast<ID2D1Factory *>(c->factory)->CreateDCRenderTarget(&rp,&target)))return FALSE;
+    target->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
+    ID2D1SolidColorBrush *brush=nullptr;
+    if(FAILED(target->CreateSolidColorBrush(D2D1::ColorF(1,1,1,1),&brush))){
+        target->Release();return FALSE;
+    }
+    c->target=target;c->brush=brush;
+    return TRUE;
+}
+
 extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
     if (!c) return FALSE;
     ZeroMemory(c, sizeof(*c));
@@ -94,21 +111,11 @@ extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
     c->body = body; c->smallFormat = small; c->heading = heading; c->iconFormat = icon;
     IDWriteInlineObject *ellipsis = nullptr;
     if (SUCCEEDED(wf->CreateEllipsisTrimmingSign(static_cast<IDWriteTextFormat *>(c->smallFormat), &ellipsis))) c->ellipsis = ellipsis;
-    D2D1_RENDER_TARGET_PROPERTIES rp = D2D1::RenderTargetProperties(
-        D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
-        96.0f, 96.0f, D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE, D2D1_FEATURE_LEVEL_DEFAULT);
-    ID2D1DCRenderTarget *target = nullptr;
-    if (FAILED(factory->CreateDCRenderTarget(&rp, &target))) { ABM_D2D_CanvasDestroy(c); return FALSE; }
-    target->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
-    ID2D1SolidColorBrush *brush = nullptr;
-    if (FAILED(target->CreateSolidColorBrush(D2D1::ColorF(1,1,1,1), &brush))) {
-        target->Release(); ABM_D2D_CanvasDestroy(c); return FALSE;
-    }
-    c->target = target; c->brush = brush;
+    if(!CanvasCreateTarget(c)){ABM_D2D_CanvasDestroy(c);return FALSE;}
     return TRUE;
 }
 extern "C" BOOL ABM_D2D_CanvasBegin(ABM_D2D_CANVAS *c, HDC dc, const RECT *bounds) {
-    if (!c || !c->target || !dc || !bounds || c->drawing) return FALSE;
+    if (!c || !dc || !bounds || c->drawing || !CanvasCreateTarget(c)) return FALSE;
     if (FAILED(CanvasTarget(c)->BindDC(dc, bounds))) return FALSE;
     CanvasTarget(c)->BeginDraw(); c->drawing = TRUE; return TRUE;
 }
@@ -116,6 +123,11 @@ extern "C" BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *c) {
     if (!c || !c->target || !c->drawing) return FALSE;
     c->drawing = FALSE;
     HRESULT hr = CanvasTarget(c)->EndDraw();
+    if(hr==D2DERR_RECREATE_TARGET){
+        SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&c->brush));
+        SafeRelease(reinterpret_cast<ID2D1DCRenderTarget **>(&c->target));
+        return FALSE;
+    }
     return SUCCEEDED(hr);
 }
 extern "C" void ABM_D2D_CanvasLine(ABM_D2D_CANVAS *c,float x1,float y1,float x2,float y2,COLORREF color,float width) {
