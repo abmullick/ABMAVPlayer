@@ -5572,7 +5572,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         SCROLLINFO si={sizeof(si),SIF_RANGE|SIF_PAGE|SIF_POS,0,679,(UINT)page,g_advancedSettingsScrollY,0};
         SetScrollInfo(w,SB_VERT,&si,TRUE);int maxPos=680-page;if(maxPos<0)maxPos=0;
         if(g_advancedSettingsScrollY>maxPos)g_advancedSettingsScrollY=maxPos;
-        UINT dpi=ABM_DpiGetForWindow(w);int pageW=ABM_DpiUnscale(LOWORD(lp),dpi);if(pageW<1)pageW=1;
+        int pageW=ABM_DpiUnscale(LOWORD(lp),dpi);if(pageW<1)pageW=1;
         SCROLLINFO sx={sizeof(sx),SIF_RANGE|SIF_PAGE|SIF_POS,0,1079,(UINT)pageW,g_advancedSettingsScrollX,0};
         SetScrollInfo(w,SB_HORZ,&sx,TRUE);int maxX=1080-pageW;if(maxX<0)maxX=0;
         if(g_advancedSettingsScrollX>maxX)g_advancedSettingsScrollX=maxX;
@@ -6167,7 +6167,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp)+g_settingsScrollY;
-  for(int preset=preset<ABM_THEME_PRESET_COUNT;preset++){
+  for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
    int left=40+col*185,top=822+row*46;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
