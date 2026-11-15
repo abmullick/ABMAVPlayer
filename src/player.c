@@ -179,7 +179,7 @@ static int g_mediaFilter=0; /* 0 = All, 1 = Audio, 2 = Video */
 static int g_groupMode=0; /* 0 = Folder, 1 = Artist, 2 = Album */
 static BOOL g_hasMedia = FALSE;
 static libvlc_event_manager_t *g_vlcPlaybackEventManager=NULL;
-static libvlc_event_type_t g_vlcPlaybackAttachedEvents[8];
+static libvlc_event_type_t g_vlcPlaybackAttachedEvents[9];
 static int g_vlcPlaybackAttachedCount=0;
 static volatile LONG g_vlcPlaybackEventFlags=0;
 #define ABM_VLC_EVT_PLAYING       0x0001
@@ -190,6 +190,7 @@ static volatile LONG g_vlcPlaybackEventFlags=0;
 #define ABM_VLC_EVT_ES_ADDED      0x0020
 #define ABM_VLC_EVT_ES_DELETED    0x0040
 #define ABM_VLC_EVT_MEDIA_CHANGED 0x0080
+#define ABM_VLC_EVT_ES_SELECTED  0x0100
 static BOOL g_receiverPopup = FALSE;
 static BOOL g_audioPopupOpen = FALSE;
 static char g_audioDeviceId[256] = "";
@@ -5711,7 +5712,6 @@ static BOOL g_vlcMediaPlayingObserved=FALSE,g_vlcMediaErrorObserved=FALSE,g_vlcT
 static BOOL g_vlcPlaybackSessionSuccessful=FALSE,g_vlcDecoderModuleIdentified=FALSE;
 static int g_vlcSelectedAudioId=-1,g_vlcSelectedVideoId=-1,g_vlcSelectedSubtitleId=-1;
 static int64_t g_vlcLastObservedTime=-1;
-static DWORD g_vlcPlayingObservedTick=0;
 static wchar_t g_vlcDecoderModule[128]=L"Not exposed by LibVLC public API";
 static void VlcPlaybackEvent(const libvlc_event_t *event,void *opaque) {
  (void)opaque;if(!event)return;LONG bit=0;
@@ -5723,6 +5723,7 @@ static void VlcPlaybackEvent(const libvlc_event_t *event,void *opaque) {
   case libvlc_MediaPlayerEncounteredError:bit=ABM_VLC_EVT_ERROR;break;
   case libvlc_MediaPlayerESAdded:bit=ABM_VLC_EVT_ES_ADDED;break;
   case libvlc_MediaPlayerESDeleted:bit=ABM_VLC_EVT_ES_DELETED;break;
+  case libvlc_MediaPlayerESSelected:bit=ABM_VLC_EVT_ES_SELECTED;break;
   case libvlc_MediaPlayerMediaChanged:bit=ABM_VLC_EVT_MEDIA_CHANGED;break;
   default:break;
  }
@@ -5731,7 +5732,7 @@ static void VlcPlaybackEvent(const libvlc_event_t *event,void *opaque) {
 static BOOL VlcAttachPlaybackEvents(void) {
  if(g_vlcPlaybackEventManager)return TRUE;if(!g_player)return FALSE;
  libvlc_event_manager_t *manager=libvlc_media_player_event_manager(g_player);if(!manager)return FALSE;
- static const libvlc_event_type_t types[]={libvlc_MediaPlayerPlaying,libvlc_MediaPlayerPaused,libvlc_MediaPlayerStopped,libvlc_MediaPlayerEndReached,libvlc_MediaPlayerEncounteredError,libvlc_MediaPlayerESAdded,libvlc_MediaPlayerESDeleted,libvlc_MediaPlayerMediaChanged};
+ static const libvlc_event_type_t types[]={libvlc_MediaPlayerPlaying,libvlc_MediaPlayerPaused,libvlc_MediaPlayerStopped,libvlc_MediaPlayerEndReached,libvlc_MediaPlayerEncounteredError,libvlc_MediaPlayerESAdded,libvlc_MediaPlayerESDeleted,libvlc_MediaPlayerESSelected,libvlc_MediaPlayerMediaChanged};
  g_vlcPlaybackAttachedCount=0;
  for(int i=0;i<(int)_countof(types);i++){if(libvlc_event_attach(manager,types[i],VlcPlaybackEvent,NULL)!=0){for(int j=0;j<g_vlcPlaybackAttachedCount;j++)libvlc_event_detach(manager,g_vlcPlaybackAttachedEvents[j],VlcPlaybackEvent,NULL);g_vlcPlaybackAttachedCount=0;return FALSE;}g_vlcPlaybackAttachedEvents[g_vlcPlaybackAttachedCount++]=types[i];}
  g_vlcPlaybackEventManager=manager;return TRUE;
@@ -5743,7 +5744,7 @@ static void VlcDetachPlaybackEvents(void) {
 static void VlcCodecVerificationReset(void) {
  g_vlcTrackEvidenceCount=0;g_vlcMediaPath[0]=0;StringCchCopyW(g_vlcContainer,_countof(g_vlcContainer),L"Unknown");
  g_vlcMediaPlayingObserved=FALSE;g_vlcMediaErrorObserved=FALSE;g_vlcTrackSnapshotReady=FALSE;g_vlcPlaybackSessionSuccessful=FALSE;
- g_vlcSelectedAudioId=g_vlcSelectedVideoId=g_vlcSelectedSubtitleId=-1;g_vlcLastObservedTime=-1;g_vlcPlayingObservedTick=0;
+ g_vlcSelectedAudioId=g_vlcSelectedVideoId=g_vlcSelectedSubtitleId=-1;g_vlcLastObservedTime=-1;
  InterlockedExchange(&g_vlcPlaybackEventFlags,0);
  StringCchCopyW(g_vlcDecoderModule,_countof(g_vlcDecoderModule),L"Not exposed by LibVLC public API");g_vlcDecoderModuleIdentified=FALSE;
  StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"WAITING — start media to identify streams and active tracks");
@@ -5767,20 +5768,18 @@ static void VlcCodecVerificationPoll(void) {
  if(!g_player||!g_hasMedia)return;
  LONG events=InterlockedExchange(&g_vlcPlaybackEventFlags,0);
  if(events&ABM_VLC_EVT_ERROR)g_vlcMediaErrorObserved=TRUE;
- if(events&ABM_VLC_EVT_PLAYING){g_vlcMediaPlayingObserved=TRUE;if(!g_vlcPlayingObservedTick)g_vlcPlayingObservedTick=GetTickCount();}
- if(events&(ABM_VLC_EVT_ES_ADDED|ABM_VLC_EVT_ES_DELETED))g_vlcTrackSnapshotReady=FALSE;
+ if(events&ABM_VLC_EVT_PLAYING)g_vlcMediaPlayingObserved=TRUE;
+ if(events&(ABM_VLC_EVT_ES_ADDED|ABM_VLC_EVT_ES_DELETED|ABM_VLC_EVT_ES_SELECTED))g_vlcTrackSnapshotReady=FALSE;
  if(events&ABM_VLC_EVT_MEDIA_CHANGED){g_vlcTrackSnapshotReady=FALSE;g_vlcTrackEvidenceCount=0;}
  libvlc_state_t state=libvlc_media_player_get_state(g_player);
  if(state==libvlc_Error)g_vlcMediaErrorObserved=TRUE;
- if(state==libvlc_Playing&&!g_vlcMediaPlayingObserved){g_vlcMediaPlayingObserved=TRUE;if(!g_vlcPlayingObservedTick)g_vlcPlayingObservedTick=GetTickCount();}
+ if(state==libvlc_Playing)g_vlcMediaPlayingObserved=TRUE;
  if(g_vlcMediaPlayingObserved&&!g_vlcTrackSnapshotReady)VlcCaptureTrackEvidence();
  VlcRefreshSelectedTracks();
  int64_t now=libvlc_media_player_get_time(g_player);
  if(g_vlcMediaPlayingObserved&&now>=0&&g_vlcLastObservedTime>=0&&now>g_vlcLastObservedTime)g_vlcPlaybackSessionSuccessful=TRUE;
  if(now>=0)g_vlcLastObservedTime=now;
  if((events&ABM_VLC_EVT_ENDED)&&g_vlcMediaPlayingObserved)g_vlcPlaybackSessionSuccessful=TRUE;
- BOOL hasAudio=FALSE,hasVideo=FALSE,selectedAudio=FALSE,selectedVideo=FALSE;
- for(unsigned int i=0;i<g_vlcTrackEvidenceCount;i++){ABM_VlcTrackEvidence *e=&g_vlcTrackEvidence[i];if(e->type==libvlc_track_audio){hasAudio=TRUE;if(e->selected)selectedAudio=TRUE;}if(e->type==libvlc_track_video){hasVideo=TRUE;if(e->selected)selectedVideo=TRUE;}}
  if(g_vlcMediaErrorObserved)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PLAYBACK ERROR — LibVLC reported EncounteredError");
  else if(g_vlcPlaybackSessionSuccessful)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"SESSION SUCCESS — Playing event/state and media time progression observed");
  else if(g_vlcMediaPlayingObserved&&g_vlcTrackSnapshotReady)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PLAYING — tracks detected; waiting for media time progression");
