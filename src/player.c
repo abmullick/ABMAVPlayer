@@ -4373,9 +4373,14 @@ static void TorrentDrawControlFrame(HWND hwnd,HDC dc){
     BOOL hot=FALSE;POINT pt;GetCursorPos(&pt);ScreenToClient(hwnd,&pt);
     hot=PtInRect(&r,pt);
     COLORREF edge=focus?ABM_THEME_COLOR_5BCDBC:(hot?ABM_THEME_COLOR_39858B:ABM_THEME_COLOR_234658);
+    if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
+        ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,0.5f,0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,ABM_UI_RADIUS_CONTROL,edge,focus?2.0f:1.0f);
+        ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
+        return;
+    }
     HPEN pen=CreatePen(PS_SOLID,focus?2:1,edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
+    RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,ABM_UI_RADIUS_CONTROL*2,ABM_UI_RADIUS_CONTROL*2);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
 }
 static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,
