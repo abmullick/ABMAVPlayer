@@ -297,9 +297,9 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasEnd(&g_abmDialogCanvas);
         }else{
             HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_090F19);FillRect(dc,&rc,bg);DeleteObject(bg);
-            SetBkMode(dc,TRANSPARENT);HFONT old=(HFONT)SelectObject(dc,g_headingFont);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
+            SetBkMode(dc,TRANSPARENT);HFONT old=(HFONT)SelectObject(dc,g_headingFont?g_headingFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT));SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
             RECT cap={22,8,rc.right-20,46};DrawTextW(dc,d->caption&&*d->caption?d->caption:L"ABM AV Player",-1,&cap,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            SelectObject(dc,g_font);SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);RECT msg={44,68,rc.right-24,rc.bottom-74};
+            SelectObject(dc,g_font?g_font:(HFONT)GetStockObject(DEFAULT_GUI_FONT));SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);RECT msg={44,68,rc.right-24,rc.bottom-74};
             DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
             for(int i=0;i<d->buttonCount;i++){RECT b=d->buttons[i];SetTextColor(dc,ABM_THEME_COLOR_F7FAFF);DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&b,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
             SelectObject(dc,old);
@@ -314,7 +314,7 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
     ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;d.focusedButton=d.defaultButton;
-    int width=560,height=220;HDC measure=GetDC(NULL);HGDIOBJ previousFont=measure?SelectObject(measure,g_font):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
+    int width=560,height=220;HDC measure=GetDC(NULL);HFONT measureFont=g_font?g_font:(HFONT)GetStockObject(DEFAULT_GUI_FONT);HGDIOBJ previousFont=measure?SelectObject(measure,measureFont):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
