@@ -283,19 +283,16 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     return DefWindowProcW(w,msg,wp,lp);
 }
 static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL trialAllowed,BOOL manual,BOOL alreadyActivated) {
-    static BOOL registered=FALSE;WNDCLASSEXW wc={0};ABMLicenseDialog d={0};RECT work={0},wr={0},ownerRect={0};
+    static BOOL registered=FALSE;WNDCLASSEXW wc={0};ABMLicenseDialog d={0};RECT bounds={0};
     int width=620,height=470;HWND w;BOOL ownerEnabled=owner&&IsWindowEnabled(owner);
     if(!registered){wc.cbSize=sizeof(wc);wc.lpfnWndProc=LicenseWndProc;wc.hInstance=instance;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
         wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.Licensing";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return FALSE;registered=TRUE;}
     d.instance=instance;d.daysLeft=daysLeft;d.trialAllowed=trialAllowed;d.manual=manual;d.alreadyActivated=alreadyActivated;
     DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP;
-    AdjustWindowRectEx(&wr,style,FALSE,WS_EX_DLGMODALFRAME);width=wr.right-wr.left+620;height=wr.bottom-wr.top+470;
-    if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
-    SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
-    int x=ownerRect.left+(ownerRect.right-ownerRect.left-width)/2,y=ownerRect.top+(ownerRect.bottom-ownerRect.top-height)/2;
-    if(x<work.left+8)x=work.left+8;if(y<work.top+8)y=work.top+8;
-    if(x+width>work.right-8)x=work.right-width-8;if(y+height>work.bottom-8)y=work.bottom-height-8;
+    ABM_DpiMakeCenteredRect(owner,650,520,&bounds);
+    width=bounds.right-bounds.left;height=bounds.bottom-bounds.top;
+    int x=bounds.left,y=bounds.top;
     w=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayer.Licensing",L"ABM AV Player — License & Activation",
         style,x,y,width,height,owner,NULL,instance,&d);if(!w)return FALSE;
     {BOOL dark=TRUE;int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_060A12;

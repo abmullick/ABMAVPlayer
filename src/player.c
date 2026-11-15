@@ -332,6 +332,8 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
     UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(560,dpi),height=ABM_DpiScale(220,dpi);HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-ABM_DpiScale(15,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,ABM_DpiUnscale(width-ABM_DpiScale(90,dpi),dpi),0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=ABM_DpiScale(ABM_DpiUnscale(measured.bottom,dpi)+150,dpi);if(height>ABM_DpiScale(560,dpi))height=ABM_DpiScale(560,dpi);RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
+    RECT dialogBounds={x,y,x+width,y+height};ABM_DpiClampRectToWorkArea(owner,&dialogBounds);
+    x=dialogBounds.left;y=dialogBounds.top;width=dialogBounds.right-dialogBounds.left;height=dialogBounds.bottom-dialogBounds.top;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
     if(!w)return d.result;
     RECT client={0};GetClientRect(w,&client);int logicalW=ABM_DpiUnscale(client.right,dpi),logicalH=ABM_DpiUnscale(client.bottom,dpi);int bw=104,bh=36,gap=12,right=logicalW-22,bottom=logicalH-20;
@@ -403,10 +405,9 @@ static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int coun
     if(!items||count<=0)return 0;static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMMenuProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerActionMenu";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return 0;registered=TRUE;}
     ABMMenuState d={owner,items,count,-1,0,0,FALSE};POINT pt={x,y};ClientToScreen(owner,&pt);
-    UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(380,dpi),height=ABM_DpiScale(54+count*36+8,dpi);RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
-    if(height>work.bottom-work.top-24)height=work.bottom-work.top-24;
-    if(pt.x+width>work.right)pt.x=work.right-width;if(pt.y+height>work.bottom)pt.y=work.bottom-height;
-    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+    UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(380,dpi),height=ABM_DpiScale(54+count*36+8,dpi);
+    RECT menuBounds={pt.x,pt.y,pt.x+width,pt.y+height};ABM_DpiClampRectToWorkArea(owner,&menuBounds);
+    pt.x=menuBounds.left;pt.y=menuBounds.top;width=menuBounds.right-menuBounds.left;height=menuBounds.bottom-menuBounds.top;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerActionMenu",L"",WS_POPUP|WS_BORDER,pt.x,pt.y,width,height,owner,NULL,inst,&d);
     if(!w)return 0;g_abmActiveMenu=&d;ShowWindow(w,SW_SHOW);SetForegroundWindow(w);SetFocus(w);InvalidateRect(w,NULL,TRUE);
     MSG msg;while(!d.done&&IsWindow(w)){BOOL got=GetMessageW(&msg,NULL,0,0);if(got<=0)break;if(!IsDialogMessageW(w,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}
@@ -2429,10 +2430,8 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
     }
     POINT pt={x,y};ClientToScreen(hwnd,&pt);
     UINT dpi=ABM_DpiGetForWindow(hwnd);int width=ABM_DpiScale(520,dpi),height=ABM_DpiScale(68+g_recentCount*42+10,dpi);
-    RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
-    if(pt.x+width>work.right)pt.x=work.right-width;
-    if(pt.y+height>work.bottom)pt.y=work.bottom-height;
-    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+    RECT popupBounds={pt.x,pt.y,pt.x+width,pt.y+height};ABM_DpiClampRectToWorkArea(hwnd,&popupBounds);
+    pt.x=popupBounds.left;pt.y=popupBounds.top;width=popupBounds.right-popupBounds.left;height=popupBounds.bottom-popupBounds.top;
     HWND popup=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerRecentPopup",L"Recently played",
         WS_POPUP,pt.x,pt.y,width,height,hwnd,NULL,inst,NULL);
     if(!popup)return;
@@ -3172,7 +3171,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         RECT wr={0};GetWindowRect(hwnd,&wr);SetWindowPos(hwnd,NULL,0,0,ABM_DpiScale(520,dpi),ABM_DpiScale(68+g_recentCount*42+10,dpi),SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
-    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(680,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(405,dpi);return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,420,280);return 0;}
     case WM_ACTIVATE:
         if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
         return 0;
@@ -3271,10 +3270,8 @@ static void ShowEqualizer(void) {
         if(!g_eqWindow){ABM_MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
         SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);
     }
-    RECT owner;GetWindowRect(g_main,&owner);
-    UINT dpi=ABM_DpiGetForWindow(g_main);int ew=ABM_DpiScale(680,dpi),eh=ABM_DpiScale(405,dpi);
-    int x=owner.left+(owner.right-owner.left-ew)/2;
-    int y=owner.top+(owner.bottom-owner.top-eh)/2;
+    RECT bounds={0};ABM_DpiMakeCenteredRect(g_main,680,405,&bounds);
+    int ew=bounds.right-bounds.left,eh=bounds.bottom-bounds.top,x=bounds.left,y=bounds.top;
     SetWindowPos(g_eqWindow,HWND_TOPMOST,x,y,ew,eh,SWP_SHOWWINDOW);
     ShowWindow(g_eqWindow,SW_SHOWNORMAL);SetForegroundWindow(g_eqWindow);SetFocus(g_eqWindow);
     InvalidateRect(g_eqWindow,NULL,TRUE);
@@ -4461,7 +4458,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         TorrentLayout(hwnd);
         RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
-    case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mm->ptMinTrackSize.x=ABM_DpiScale(900,dpi);mm->ptMinTrackSize.y=ABM_DpiScale(760,dpi);return 0; }
+    case WM_GETMINMAXINFO: { ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,640,500);return 0; }
     case WM_ERASEBKGND: return 1;
     
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
@@ -4691,8 +4688,8 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_0A111D);wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);UINT dpi=ABM_DpiGetForWindow(owner);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int targetW=ABM_DpiScale(1080,dpi),targetH=ABM_DpiScale(980,dpi);int w=maxW<targetW?maxW:targetW,h=maxH<targetH?maxH:targetH;if(w<ABM_DpiScale(760,dpi))w=ABM_DpiScale(760,dpi);if(h<ABM_DpiScale(620,dpi))h=ABM_DpiScale(620,dpi);
-    int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
+    RECT bounds={0};ABM_DpiMakeCenteredRect(owner,1080,980,&bounds);
+    int w=bounds.right-bounds.left,h=bounds.bottom-bounds.top,x=bounds.left,y=bounds.top;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
 }
@@ -4741,7 +4738,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ABM_DpiApplySuggestedRect(hwnd,lp);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
-    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(900,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(760,dpi);return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,800,680);return 0;}
     case WM_CREATE: {
         g_aboutPortrait=LoadAboutPortrait();
         return 0;
@@ -5081,7 +5078,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
         return 0;
     }
-    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(760,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(620,dpi);return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,600,440);return 0;}
     case WM_SIZE: {
         UINT dpi=ABM_DpiGetForWindow(hwnd);
         int w=ABM_DpiUnscale(LOWORD(lp),dpi),h=ABM_DpiUnscale(HIWORD(lp),dpi);
@@ -5230,17 +5227,8 @@ static void ShowHelpDialog(HWND owner) {
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    UINT ownerDpi=ABM_DpiGetForWindow(owner);
-    int w=ABM_DpiScale(1120,ownerDpi),h=ABM_DpiScale(840,ownerDpi);
-    RECT ownerRect;GetWindowRect(owner,&ownerRect);
-    HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
-    if(GetMonitorInfoW(mon,&mi)){
-        int maxW=mi.rcWork.right-mi.rcWork.left-48,maxH=mi.rcWork.bottom-mi.rcWork.top-48;
-        if(w>maxW)w=maxW;if(h>maxH)h=maxH;
-    }
-    int x=ownerRect.left+(ownerRect.right-ownerRect.left-w)/2;
-    int y=ownerRect.top+(ownerRect.bottom-ownerRect.top-h)/2;
-    if(x<ownerRect.left)x=ownerRect.left+12;if(y<ownerRect.top)y=ownerRect.top+12;
+    RECT bounds={0};ABM_DpiMakeCenteredRect(owner,1120,840,&bounds);
+    int w=bounds.right-bounds.left,h=bounds.bottom-bounds.top,x=bounds.left,y=bounds.top;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerHelp",
         L"ABM AV Player - Help Centre",WS_POPUP|WS_THICKFRAME,
         x,y,w,h,owner,NULL,inst,NULL);
@@ -5267,10 +5255,8 @@ static void ShowAboutDialog(HWND owner) {
         if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    UINT dpi=ABM_DpiGetForWindow(owner);
-    RECT wr={0,0,ABM_DpiScale(900,dpi),ABM_DpiScale(760,dpi)}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
-    int w=wr.right-wr.left,h=wr.bottom-wr.top;
-    int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
+    RECT wr={0};ABM_DpiMakeCenteredRect(owner,900,760,&wr);
+    int w=wr.right-wr.left,h=wr.bottom-wr.top,x=wr.left,y=wr.top;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerAbout",
         L"About ABM AV Player",WS_CAPTION|WS_SYSMENU|WS_POPUP,
         x,y,w,h,owner,NULL,inst,NULL);
@@ -5301,6 +5287,7 @@ static BOOL g_settingsReplayGain=FALSE,g_settingsCompressor=FALSE;
 static BOOL g_settingsRateOpen=FALSE;
 static int g_settingsThemePreset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
 static HFONT g_settingsControlFont=NULL;
+static int g_settingsScrollY=0;
 static int g_settingsRateIndex=2;
 static wchar_t g_settingsMessage[256]=L"Settings are saved only when you choose Save settings.";
 
@@ -5442,6 +5429,7 @@ static void SettingsApply(HWND w) {
    page surfaces only; engine controls are added in later, capability-backed steps. */
 static ABM_D2D g_advancedSettingsUi;
 static BOOL g_advancedSettingsUiReady=FALSE;
+static int g_advancedSettingsScrollY=0,g_advancedSettingsScrollX=0;
 static BOOL g_advancedConfirmExit=TRUE;
 static BOOL g_advancedDoubleClickFullscreen=TRUE;
 static HWND g_advancedSettingsWindow=NULL;
@@ -5558,7 +5546,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     pointer coordinates once, at the window-procedure boundary. */
  if(msg==WM_LBUTTONDOWN){
   UINT dpi=ABM_DpiGetForWindow(w);
-  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
+  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi)+g_advancedSettingsScrollX,y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)+g_advancedSettingsScrollY;
   lp=MAKELPARAM((short)x,(short)y);
  }
  switch(msg){
@@ -5578,13 +5566,39 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         InvalidateRect(w,NULL,FALSE);
         return 0;
     }
-    case WM_SIZE:
+    case WM_SIZE:{
         if(g_advancedSettingsUiReady)ABM_D2D_Resize(&g_advancedSettingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
-        return 0;
+        UINT dpi=ABM_DpiGetForWindow(w);int page=ABM_DpiUnscale(HIWORD(lp),dpi);if(page<1)page=1;
+        SCROLLINFO si={sizeof(si),SIF_RANGE|SIF_PAGE|SIF_POS,0,679,(UINT)page,g_advancedSettingsScrollY,0};
+        SetScrollInfo(w,SB_VERT,&si,TRUE);int maxPos=680-page;if(maxPos<0)maxPos=0;
+        if(g_advancedSettingsScrollY>maxPos)g_advancedSettingsScrollY=maxPos;
+        int pageW=ABM_DpiUnscale(LOWORD(lp),dpi);if(pageW<1)pageW=1;
+        SCROLLINFO sx={sizeof(sx),SIF_RANGE|SIF_PAGE|SIF_POS,0,1079,(UINT)pageW,g_advancedSettingsScrollX,0};
+        SetScrollInfo(w,SB_HORZ,&sx,TRUE);int maxX=1080-pageW;if(maxX<0)maxX=0;
+        if(g_advancedSettingsScrollX>maxX)g_advancedSettingsScrollX=maxX;
+        InvalidateRect(w,NULL,FALSE);return 0;
+    }
+    case WM_VSCROLL:{
+        SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_VERT,&si);int next=g_advancedSettingsScrollY;
+        switch(LOWORD(wp)){case SB_LINEUP:next-=48;break;case SB_LINEDOWN:next+=48;break;case SB_PAGEUP:next-=(int)si.nPage;break;case SB_PAGEDOWN:next+=(int)si.nPage;break;case SB_THUMBTRACK:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=680;break;}
+        int maxPos=680-(int)si.nPage;if(maxPos<0)maxPos=0;if(next<0)next=0;if(next>maxPos)next=maxPos;
+        if(next!=g_advancedSettingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_advancedSettingsScrollY-next,dpi);g_advancedSettingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
+    }
+    case WM_HSCROLL:{
+        SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_HORZ,&si);int next=g_advancedSettingsScrollX;
+        switch(LOWORD(wp)){case SB_LINELEFT:next-=48;break;case SB_LINERIGHT:next+=48;break;case SB_PAGELEFT:next-=(int)si.nPage;break;case SB_PAGERIGHT:next+=(int)si.nPage;break;case SB_THUMBTRACK:next=si.nTrackPos;break;case SB_LEFT:next=0;break;case SB_RIGHT:next=1080;break;}
+        int maxPos=1080-(int)si.nPage;if(maxPos<0)maxPos=0;if(next<0)next=0;if(next>maxPos)next=maxPos;
+        if(next!=g_advancedSettingsScrollX){UINT dpi=ABM_DpiGetForWindow(w);int dx=ABM_DpiScale(g_advancedSettingsScrollX-next,dpi);g_advancedSettingsScrollX=next;ScrollWindowEx(w,dx,0,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_HORZ,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
+    }
+    case WM_MOUSEWHEEL:{
+        int delta=GET_WHEEL_DELTA_WPARAM(wp),next=g_advancedSettingsScrollY-(delta/WHEEL_DELTA)*144;
+        SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_VERT,&si);int maxPos=680-(int)si.nPage;if(maxPos<0)maxPos=0;
+        if(next<0)next=0;if(next>maxPos)next=maxPos;
+        if(next!=g_advancedSettingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_advancedSettingsScrollY-next,dpi);g_advancedSettingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
+    }
     case WM_GETMINMAXINFO: {
-        MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);
-        mi->ptMinTrackSize.x=ABM_DpiScale(900,dpi);
-        mi->ptMinTrackSize.y=ABM_DpiScale(680,dpi);
+        MINMAXINFO *mi=(MINMAXINFO*)lp;
+        ABM_DpiClampMinTrack(w,mi,760,540);
         return 0;
     }
  case WM_CREATE:
@@ -5777,6 +5791,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_advancedSettingsUiReady){
    ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
+   ABM_D2D_SetTransform(&g_advancedSettingsUi,1.0f,1.0f,(float)-g_advancedSettingsScrollX,(float)-g_advancedSettingsScrollY);
    ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
        ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
@@ -6037,14 +6052,11 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
   registered=TRUE;
  }
- UINT ownerDpi=ABM_DpiGetForWindow(owner);
- RECT wr={0,0,ABM_DpiScale(1080,ownerDpi),ABM_DpiScale(780,ownerDpi)};
- AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
- int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
- int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
+ RECT wr={0};ABM_DpiMakeCenteredRect(owner,1080,780,&wr);
+ int ww=wr.right-wr.left,hh=wr.bottom-wr.top,x=wr.left,y=wr.top;
  g_advancedSettingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,
   L"ABMAVPlayerAdvancedSettings",L"ABM AV Player — Advanced Settings",
-  WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
+  WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VSCROLL|WS_HSCROLL,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_advancedSettingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_advancedSettingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
@@ -6110,8 +6122,41 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_THEMECHANGED:
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   InvalidateRect(w,NULL,FALSE);return 0;
- case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
- case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);mi->ptMinTrackSize.x=ABM_DpiScale(820,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(980,dpi);return 0;}
+ case WM_SIZE:{
+  if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
+  UINT dpi=ABM_DpiGetForWindow(w);int page=ABM_DpiUnscale(HIWORD(lp),dpi);
+  if(page<1)page=1;
+  SCROLLINFO si={sizeof(si),SIF_RANGE|SIF_PAGE|SIF_POS,0,1019,(UINT)page,(int)g_settingsScrollY,0};
+  SetScrollInfo(w,SB_VERT,&si,TRUE);
+  int maxPos=1020-page;if(maxPos<0)maxPos=0;if(g_settingsScrollY>maxPos)g_settingsScrollY=maxPos;
+  InvalidateRect(w,NULL,FALSE);return 0;
+ }
+ case WM_VSCROLL:{
+  SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_VERT,&si);
+  int next=g_settingsScrollY;
+  switch(LOWORD(wp)){
+   case SB_LINEUP:next-=48;break;case SB_LINEDOWN:next+=48;break;
+   case SB_PAGEUP:next-=(int)si.nPage;break;case SB_PAGEDOWN:next+=(int)si.nPage;break;
+   case SB_THUMBTRACK:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=1020;break;
+  }
+  int maxPos=1020-(int)si.nPage;if(maxPos<0)maxPos=0;
+  if(next<0)next=0;if(next>maxPos)next=maxPos;
+  if(next!=g_settingsScrollY){
+   UINT dpi=ABM_DpiGetForWindow(w);int delta=ABM_DpiScale(g_settingsScrollY-next,dpi);
+   g_settingsScrollY=next;
+   ScrollWindowEx(w,0,delta,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);
+   si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);
+   InvalidateRect(w,NULL,FALSE);
+  }return 0;
+ }
+ case WM_MOUSEWHEEL:{
+  int delta=GET_WHEEL_DELTA_WPARAM(wp);int next=g_settingsScrollY-(delta/WHEEL_DELTA)*144;
+  SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_VERT,&si);
+  int maxPos=1020-(int)si.nPage;if(maxPos<0)maxPos=0;
+  if(next<0)next=0;if(next>maxPos)next=maxPos;
+  if(next!=g_settingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_settingsScrollY-next,dpi);g_settingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
+ }
+ case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,840,520);return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
   HDC dc=(HDC)wp;
@@ -6121,7 +6166,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   return (LRESULT)g_settingsEditBrush;
  }
  case WM_LBUTTONDOWN:{
-  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp)+g_settingsScrollY;
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
    int left=40+col*185,top=822+row*46;
@@ -6160,6 +6205,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_settingsUiReady){
    ABM_D2D_Begin(&g_settingsUi,SETTINGS_BG);
+   ABM_D2D_SetTransform(&g_settingsUi,1.0f,1.0f,0.0f,(float)-g_settingsScrollY);
    ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
    ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_1C9D9D);
@@ -6236,10 +6282,9 @@ static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
- UINT ownerDpi=ABM_DpiGetForWindow(owner);
- RECT wr={0,0,ABM_DpiScale(820,ownerDpi),ABM_DpiScale(1020,ownerDpi)};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
- int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
- g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
+ RECT wr={0};ABM_DpiMakeCenteredRect(owner,840,760,&wr);
+ int ww=wr.right-wr.left,hh=wr.bottom-wr.top;int x=wr.left,y=wr.top;
+ g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VSCROLL,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
@@ -6318,7 +6363,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
-    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; UINT dpi=ABM_DpiGetForWindow(hwnd); mi->ptMinTrackSize.x=ABM_DpiScale(1000,dpi); mi->ptMinTrackSize.y=ABM_DpiScale(650,dpi); return 0; }
+    case WM_GETMINMAXINFO: { ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,760,480); return 0; }
     case WM_MEASUREITEM:
         if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
             ((LPMEASUREITEMSTRUCT)lp)->itemHeight=30;
@@ -7247,8 +7292,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!RegisterClassW(&wc))return 1;
     WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
     if(!RegisterClassW(&owc))return 1;
-    UINT initialDpi=ABM_DpiGetSystem();
-    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,ABM_DpiScale(1440,initialDpi),ABM_DpiScale(900,initialDpi),NULL,NULL,inst,NULL);
+    RECT mainBounds={0};ABM_DpiMakeCenteredRect(NULL,1440,900,&mainBounds);
+    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+        mainBounds.left,mainBounds.top,mainBounds.right-mainBounds.left,mainBounds.bottom-mainBounds.top,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
     if(wc.hIcon)SendMessageW(hwnd,WM_SETICON,ICON_SMALL,(LPARAM)wc.hIcon);
     g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
