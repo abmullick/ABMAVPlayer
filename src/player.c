@@ -13,6 +13,7 @@
 #include <vlc/libvlc_renderer_discoverer.h>
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
+#include "ui_dpi.h"
 #include "ui_theme.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
@@ -6123,10 +6124,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         /* Windows supplies the correctly positioned/sized outer rectangle for
            the destination monitor. Apply it before recalculating child/video
            geometry so the client area is measured at the new monitor DPI. */
-        const RECT *suggested=(const RECT*)lp;
-        if(suggested)SetWindowPos(hwnd,NULL,suggested->left,suggested->top,
-            suggested->right-suggested->left,suggested->bottom-suggested->top,
-            SWP_NOZORDER|SWP_NOACTIVATE);
+        ABM_DpiApplySuggestedRect(hwnd,lp);
         g_videoBoundsValid=FALSE;
         UpdateLayout(hwnd);
         RECT client{};GetClientRect(hwnd,&client);
@@ -6144,7 +6142,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
-    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=1000; mi->ptMinTrackSize.y=650; return 0; }
+    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; UINT dpi=ABM_DpiGetForWindow(hwnd); mi->ptMinTrackSize.x=ABM_DpiScale(1000,dpi); mi->ptMinTrackSize.y=ABM_DpiScale(650,dpi); return 0; }
     case WM_MEASUREITEM:
         if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
             ((LPMEASUREITEMSTRUCT)lp)->itemHeight=30;
@@ -7070,7 +7068,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!RegisterClassW(&wc))return 1;
     WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
     if(!RegisterClassW(&owc))return 1;
-    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1440,900,NULL,NULL,inst,NULL);
+    UINT initialDpi=ABM_DpiGetSystem();
+    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,ABM_DpiScale(1440,initialDpi),ABM_DpiScale(900,initialDpi),NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
     if(wc.hIcon)SendMessageW(hwnd,WM_SETICON,ICON_SMALL,(LPARAM)wc.hIcon);
     g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
