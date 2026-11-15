@@ -128,6 +128,15 @@ extern "C" void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height) {
     }
 }
 
+extern "C" void ABM_D2D_SetTransform(ABM_D2D *ui,float scaleX,float scaleY,float offsetX,float offsetY) {
+    if(!ui || !ui->target) return;
+    if(scaleX<=0.0f) scaleX=1.0f;
+    if(scaleY<=0.0f) scaleY=1.0f;
+    D2D1_MATRIX_3X2_F transform=D2D1::Matrix3x2F::Scale(scaleX,scaleY)*
+        D2D1::Matrix3x2F::Translation(offsetX,offsetY);
+    Target(ui)->SetTransform(transform);
+}
+
 extern "C" void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear) {
     if (!ui || !EnsureTarget(ui)) return;
     Target(ui)->BeginDraw();
