@@ -5994,34 +5994,52 @@ static void ShowAdvancedSettingsDialog(HWND owner){
 
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
+ /* Settings layout and hit targets use 96-DPI logical coordinates. */
+ if(msg==WM_LBUTTONDOWN){
+  UINT dpi=ABM_DpiGetForWindow(w);
+  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
+  lp=MAKELPARAM((short)x,(short)y);
+ }
  switch(msg) {
-    case WM_DPICHANGED:
+    case WM_DPICHANGED: {
         ABM_DpiApplySuggestedRect(w,lp);
+        UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(w);
+        ABM_D2D_SetDpi(&g_settingsUi,dpi,dpi);
+        RECT client={0};GetClientRect(w,&client);
+        ABM_D2D_Resize(&g_settingsUi,(UINT)client.right,(UINT)client.bottom);
+        const int ids[]={6207,6201,6202,6204,6205,6206};
+        const int x[]={166,39,39,244,206,558},y[]={157,397,458,512,644,644};
+        const int cx[]={92,600,600,100,130,130},cy[]={29,30,30,29,29,29};
+        for(int i=0;i<6;i++){HWND c=GetDlgItem(w,ids[i]);if(c)SetWindowPos(c,NULL,ABM_DpiScale(x[i],dpi),ABM_DpiScale(y[i],dpi),ABM_DpiScale(cx[i],dpi),ABM_DpiScale(cy[i],dpi),SWP_NOZORDER|SWP_NOACTIVATE);}
         InvalidateRect(w,NULL,FALSE);
         return 0;
+    }
  case WM_CREATE: {
-  if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
+  if(!ABM_D2D_Init(&g_settingsUi,w))return -1;
+  {UINT dpi=ABM_DpiGetForWindow(w);ABM_D2D_SetDpi(&g_settingsUi,dpi,dpi);}
+  g_settingsUiReady=TRUE;
   g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
   g_settingsThemePreset=(int)ABMThemeCurrentPreset();
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
   wchar_t n[32];
   StringCchPrintfW(n,_countof(n),L"%d",g_volume);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,166,157,92,29,w,(HMENU)6207,NULL,NULL);
-  CreateWindowExW(0,L"EDIT",g_torrentCacheBaseDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,39,397,600,30,w,(HMENU)6201,NULL,NULL);
-  CreateWindowExW(0,L"EDIT",g_torrentDownloadDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,39,458,600,30,w,(HMENU)6202,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(166,ABM_DpiGetForWindow(w)),ABM_DpiScale(157,ABM_DpiGetForWindow(w)),ABM_DpiScale(92,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6207,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",g_torrentCacheBaseDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(39,ABM_DpiGetForWindow(w)),ABM_DpiScale(397,ABM_DpiGetForWindow(w)),ABM_DpiScale(600,ABM_DpiGetForWindow(w)),ABM_DpiScale(30,ABM_DpiGetForWindow(w)),w,(HMENU)6201,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",g_torrentDownloadDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(39,ABM_DpiGetForWindow(w)),ABM_DpiScale(458,ABM_DpiGetForWindow(w)),ABM_DpiScale(600,ABM_DpiGetForWindow(w)),ABM_DpiScale(30,ABM_DpiGetForWindow(w)),w,(HMENU)6202,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%llu",(unsigned long long)g_torrentCacheQuotaGiB);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,244,512,100,29,w,(HMENU)6204,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(244,ABM_DpiGetForWindow(w)),ABM_DpiScale(512,ABM_DpiGetForWindow(w)),ABM_DpiScale(100,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6204,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentDownloadLimitKiB);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,644,130,29,w,(HMENU)6205,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(206,ABM_DpiGetForWindow(w)),ABM_DpiScale(644,ABM_DpiGetForWindow(w)),ABM_DpiScale(130,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,644,130,29,w,(HMENU)6206,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,ABM_DpiScale(558,ABM_DpiGetForWindow(w)),ABM_DpiScale(644,ABM_DpiGetForWindow(w)),ABM_DpiScale(130,ABM_DpiGetForWindow(w)),ABM_DpiScale(29,ABM_DpiGetForWindow(w)),w,(HMENU)6206,NULL,NULL);
   return 0;
  }
  case WM_THEMECHANGED:
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   InvalidateRect(w,NULL,FALSE);return 0;
- case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);mi->ptMinTrackSize.x=ABM_DpiScale(820,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(980,dpi);return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
   HDC dc=(HDC)wp;
