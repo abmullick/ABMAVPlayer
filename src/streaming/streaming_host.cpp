@@ -53,6 +53,8 @@ using Microsoft::WRL::Callback;
 using Microsoft::WRL::ComPtr;
 
 namespace {
+ABM_D2D_CANVAS g_streamButtonCanvas{};
+bool g_streamButtonCanvasReady=false;
 struct ManagedWorker {
     std::thread thread;
     std::shared_ptr<std::atomic<bool>> finished;
@@ -332,6 +334,19 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
         primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_185B52):
         (pressed?ABM_THEME_COLOR_234B5E:ABM_THEME_COLOR_142A3C);
     COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_THEME_COLOR_41BEA5:ABM_THEME_COLOR_305B71;
+    if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r)){
+        ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,8.0f,fill);
+        ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,
+            (float)r.right-0.5f,(float)r.bottom-0.5f,8.0f,
+            focused?ABM_THEME_COLOR_63E1CD:edge,focused?2.0f:1.0f);
+        wchar_t glyph[2]={DeviceButtonGlyph(item->hwndItem),0};
+        RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
+        RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_THEME_COLOR_91E5D5,1,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
+        return;
+    }
     Rounded(dc,r,fill,8);
     HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_63E1CD:edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
@@ -1449,6 +1464,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_CREATE:{
         g_window=hwnd;
+        g_streamButtonCanvasReady=ABM_D2D_CanvasInit(&g_streamButtonCanvas)!=FALSE;
         CreateDevicePanel(hwnd);
         SetTimer(hwnd,ID_STREAM_DEVICE_TIMER,400,nullptr);
         LoadServiceLogos();
@@ -1928,6 +1944,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         g_webView.Reset();g_controller.Reset();g_environment.Reset();
         g_webViewRecoveryPending=false;g_webViewRecoveryAttempts=0;
         ReleaseServiceLogos();
+        g_streamButtonCanvasReady=false;
+        ABM_D2D_CanvasDestroy(&g_streamButtonCanvas);
         ReleaseCachedTextFonts();
         if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
