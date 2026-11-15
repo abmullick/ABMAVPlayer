@@ -576,3 +576,46 @@ The Streaming Centre source includes the shared theme header relative to its sou
 ## 9. Implementation status and migration gate
 
 The canonical DirectWrite role contract is implemented. This is a foundation milestone, not a claim that every window is visually identical. Help Centre, Streaming Centre, Settings, Advanced Settings, Torrent Stream, About and auxiliary dialogs still require control-by-control migration and runtime screenshot comparison. Provider-owned WebView2 content is explicitly excluded. A window is complete only after its ABM-owned text, icons, buttons, inputs, borders, focus/hover/pressed/disabled states and DPI behaviour have been checked against the Main Player at 100%, 125%, 150% and 200% scaling.
+
+
+## Step 13 — Torrent Stream design-system migration
+
+**Source implementation commits:**
+- `855a4f973e5be834604a522b6f6ddc919d2e42fe` — canonical rendering, typography and layout
+- `aea5295854291f031ecf7f291801aac66a9259e4` — control states, semantic tokens and native title-bar chrome
+- `6c458e890e9e204f8e7d8bb170e7ead59a67a0d1` — DirectWrite rendering for application-owned labels
+
+### Source-level changes
+
+- Torrent's main-window repaint now uses the Main Player's clipped Direct2D paint pattern (`ABM_D2D_BeginClip` with `PAINTSTRUCT::rcPaint`) and retries after a failed render-target end.
+- The Torrent sliders now render their rail, fill, thumb, value capsule, text and keyboard-focus outline through the shared Direct2D/DirectWrite canvas. The prior GDI slider painting and GDI value text have been removed.
+- The ABM / AV PLAYER wordmark now uses the Main Player's exact typography roles and brand suffix rectangle: heading role for ABM, body role for AV PLAYER, with the same baseline geometry.
+- The native magnet EDIT uses the Main Player body family and size. The native edit implementation is deliberately retained for caret, selection, clipboard, IME and Windows accessibility behaviour.
+- Torrent's live task summary, playback status, download/upload labels and cache labels are now painted by the parent Direct2D surface using canonical DirectWrite roles. Their STATIC HWNDs remain as hidden text-state holders so existing status updates and task logic are not rewritten.
+- Corrected two source-level layout collisions: the live task summary no longer occupies the content heading row, and playback status no longer overlaps the playback heading/progress rail.
+- Owner-drawn Torrent buttons now include an explicit disabled treatment and consume shared semantic text, surface, border, accent and focus tokens. File-list and TV-selector drawing also use the shared semantic palette.
+- The Torrent top-level window now uses the shared dark caption, border and rounded-corner treatment.
+
+### Explicit boundaries
+
+- No torrent engine, task lifecycle, magnet ingestion, download, cache, buffering, playback, DLNA discovery or casting code was intentionally changed.
+- Native EDIT input remains a native Windows text-rendering surface by design; replacing it would require a separately tested editable control that preserves IME, selection, clipboard, keyboard and accessibility semantics.
+- Windows uses the application's existing system-aware DPI mode. This step does not claim per-monitor-v2 DPI support or prove that the fixed-coordinate Torrent layout is correct at every scale.
+- Some defensive GDI fallback drawing remains in owner-draw/control code for renderer-failure paths. The normal Torrent window path initializes the shared canvas before creating those controls.
+
+### Validation status
+
+- [x] Source migration committed to `main`.
+- [x] Main Player brand typography roles and geometry reused.
+- [x] Main Player clipped Direct2D repaint pattern adopted.
+- [x] Slider value text moved to canonical DirectWrite.
+- [x] Application-owned Torrent status and utility labels moved to DirectWrite.
+- [x] Content/playback label collisions corrected in source.
+- [x] Shared semantic control states and dark title-bar chrome adopted.
+- [ ] Build with the local Windows MSVC toolchain.
+- [ ] Compare Main Player and Torrent screenshots at 100%, 125%, 150% and 200%.
+- [ ] Verify focus, disabled, hover, pressed, selected, empty, loading, error and long-text states.
+- [ ] Verify resizing/maximize/restore and minimum-size behaviour.
+- [ ] Run the complete Torrent functional regression checklist.
+
+Do not call Torrent Stream fully visually validated until the unchecked Windows build and runtime comparisons pass.
