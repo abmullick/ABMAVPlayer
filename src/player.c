@@ -6171,7 +6171,6 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_CREATE: {
   if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
   g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
-  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit)SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);}
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
   g_settingsThemePreset=(int)ABMThemeCurrentPreset();
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
@@ -6186,6 +6185,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
+  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit)SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);}
   return 0;
  }
  case WM_THEMECHANGED:
