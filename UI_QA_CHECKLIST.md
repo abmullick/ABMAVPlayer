@@ -212,7 +212,7 @@ Source implementation committed:
 - Direct2D painting uses a client-pixel translation for the scroll offset. Native EDIT controls move with the same offset; pointer hit-testing is translated back into virtual content coordinates.
 - Mouse-wheel scrolling works over the window and is forwarded from native edit fields. Page Up/Down and Ctrl+Home/End provide keyboard scrolling.
 - When a native edit field receives focus, the viewport scrolls it into view.
-- A per-monitor `WM_DPICHANGED` handler applies the suggested rectangle, clamps it to the nearest monitor work area and refreshes the render target/scroll ranges. Reopening an existing Settings window also clamps it inside its current monitor work area.
+- A `WM_DPICHANGED` handler applies the suggested rectangle when Windows delivers that message, clamps it to the nearest monitor work area and refreshes the render target/scroll ranges. Reopening an existing Settings window also clamps it inside its current monitor work area. This window-level handler does not change the application-wide DPI-awareness mode; mixed-DPI monitor transitions remain subject to the existing system-aware DPI policy and must be runtime-tested.
 - Settings values, save logic, theme selection and existing control coordinates remain unchanged; the content is now a scrollable virtual surface rather than a tall fixed-height window.
 
 Windows runtime validation remains mandatory:
