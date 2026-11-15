@@ -5807,7 +5807,7 @@ static void ScanVlcRuntime(void){
  if(g_vlcPluginDirectoryFound){wchar_t pattern[PATH_CAP]={0};StringCchPrintfW(pattern,_countof(pattern),L"%s\\*",pluginDir);WIN32_FIND_DATAW fd;HANDLE find=FindFirstFileW(pattern,&fd);if(find!=INVALID_HANDLE_VALUE){do{if(!(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)||fd.cFileName[0]==L'.')continue;ScanVlcPluginCategory(pluginDir,fd.cFileName);if(g_vlcPluginInventoryTruncated)break;}while(FindNextFileW(find,&fd));FindClose(find);}}
  g_vlcRuntimeTested=(g_vlc!=NULL&&g_player!=NULL&&version&&*version);
  StringCchCopyW(g_vlcRuntimeTestDetail,_countof(g_vlcRuntimeTestDetail),g_vlcRuntimeTested?L"PASS — LibVLC instance and local player initialized":L"NOT TESTED — runtime/player initialization unavailable");
- VlcCodecVerificationPoll();g_vlcPlaybackVerified=(g_vlcMediaPlayingObserved&&g_vlcTrackSnapshotReady&&!g_vlcMediaErrorObserved);
+ VlcCodecVerificationPoll();g_vlcPlaybackVerified=(g_vlcPlaybackSessionSuccessful&&!g_vlcMediaErrorObserved);
 }
 static void UpdateVlcReportText(void){
  if(!g_advancedVlcReportEdit)return;wchar_t *r=(wchar_t*)calloc(65536,sizeof(wchar_t));if(!r)return;unsigned int loaded=0;for(unsigned int i=0;i<g_vlcPluginCount;i++)if(g_vlcPlugins[i].loadedInProcess)loaded++;
@@ -6531,7 +6531,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         ShowWindow(g_renderers,SW_HIDE);
-        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);VlcAttachPlaybackEvents();SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_CLOSE:
         if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
@@ -7322,6 +7322,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
     case WM_DESTROY:
+        VlcDetachPlaybackEvents();
         TorrentDetachPlayerEvents();
         if(g_torrentStreamThread||g_torrentStreamRequest)TorrentCancelStreamPreparation();
         if(g_torrentTvStreamThread) {
