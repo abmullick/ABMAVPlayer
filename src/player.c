@@ -332,6 +332,8 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
     UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(560,dpi),height=ABM_DpiScale(220,dpi);HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-ABM_DpiScale(15,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,ABM_DpiUnscale(width-ABM_DpiScale(90,dpi),dpi),0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=ABM_DpiScale(ABM_DpiUnscale(measured.bottom,dpi)+150,dpi);if(height>ABM_DpiScale(560,dpi))height=ABM_DpiScale(560,dpi);RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
+    RECT dialogBounds={x,y,x+width,y+height};ABM_DpiClampRectToWorkArea(owner,&dialogBounds);
+    x=dialogBounds.left;y=dialogBounds.top;width=dialogBounds.right-dialogBounds.left;height=dialogBounds.bottom-dialogBounds.top;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
     if(!w)return d.result;
     RECT client={0};GetClientRect(w,&client);int logicalW=ABM_DpiUnscale(client.right,dpi),logicalH=ABM_DpiUnscale(client.bottom,dpi);int bw=104,bh=36,gap=12,right=logicalW-22,bottom=logicalH-20;
@@ -403,10 +405,9 @@ static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int coun
     if(!items||count<=0)return 0;static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMMenuProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerActionMenu";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return 0;registered=TRUE;}
     ABMMenuState d={owner,items,count,-1,0,0,FALSE};POINT pt={x,y};ClientToScreen(owner,&pt);
-    UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(380,dpi),height=ABM_DpiScale(54+count*36+8,dpi);RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
-    if(height>work.bottom-work.top-24)height=work.bottom-work.top-24;
-    if(pt.x+width>work.right)pt.x=work.right-width;if(pt.y+height>work.bottom)pt.y=work.bottom-height;
-    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+    UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(380,dpi),height=ABM_DpiScale(54+count*36+8,dpi);
+    RECT menuBounds={pt.x,pt.y,pt.x+width,pt.y+height};ABM_DpiClampRectToWorkArea(owner,&menuBounds);
+    pt.x=menuBounds.left;pt.y=menuBounds.top;width=menuBounds.right-menuBounds.left;height=menuBounds.bottom-menuBounds.top;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerActionMenu",L"",WS_POPUP|WS_BORDER,pt.x,pt.y,width,height,owner,NULL,inst,&d);
     if(!w)return 0;g_abmActiveMenu=&d;ShowWindow(w,SW_SHOW);SetForegroundWindow(w);SetFocus(w);InvalidateRect(w,NULL,TRUE);
     MSG msg;while(!d.done&&IsWindow(w)){BOOL got=GetMessageW(&msg,NULL,0,0);if(got<=0)break;if(!IsDialogMessageW(w,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}
@@ -2429,10 +2430,8 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
     }
     POINT pt={x,y};ClientToScreen(hwnd,&pt);
     UINT dpi=ABM_DpiGetForWindow(hwnd);int width=ABM_DpiScale(520,dpi),height=ABM_DpiScale(68+g_recentCount*42+10,dpi);
-    RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
-    if(pt.x+width>work.right)pt.x=work.right-width;
-    if(pt.y+height>work.bottom)pt.y=work.bottom-height;
-    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+    RECT popupBounds={pt.x,pt.y,pt.x+width,pt.y+height};ABM_DpiClampRectToWorkArea(hwnd,&popupBounds);
+    pt.x=popupBounds.left;pt.y=popupBounds.top;width=popupBounds.right-popupBounds.left;height=popupBounds.bottom-popupBounds.top;
     HWND popup=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerRecentPopup",L"Recently played",
         WS_POPUP,pt.x,pt.y,width,height,hwnd,NULL,inst,NULL);
     if(!popup)return;
