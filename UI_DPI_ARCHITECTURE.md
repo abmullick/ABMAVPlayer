@@ -71,3 +71,10 @@ The current Direct2D bridge historically fixes the HWND render target at 96 DPI 
 - Test startup on a system where Per-Monitor V2 is unavailable to confirm the runtime fallback path.
 
 Do not mark the DPI work release-complete until the visual and interaction matrix passes on Windows.
+
+
+## Advanced Settings logical-DPI migration
+
+The Advanced Settings window now uses the shared per-monitor DPI architecture for its Direct2D surface. Its 1080 × 780 design coordinates remain in 96-DPI logical units; the top-level window dimensions and minimum tracking size are scaled for the owner monitor, and the Direct2D render target receives the active window DPI. Pointer coordinates are converted to logical units before navigation and option hit-testing. The diagnostic preview EDIT child is positioned and sized in physical pixels and its Consolas font is recreated at the destination DPI when the window moves between monitors. WM_SIZE resizes the render target using the physical client dimensions.
+
+This is the first Advanced Settings DPI pass. Other legacy/native child surfaces and the standard Settings window remain separate migration work; do not treat the entire application as fully DPI-migrated until those passes and runtime checks are complete.
