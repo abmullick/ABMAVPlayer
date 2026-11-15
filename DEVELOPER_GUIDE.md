@@ -45,7 +45,7 @@ Because much of the interface is custom-painted, adding a setting normally requi
 | Performance | Decoder thread count, drop-late-frames and skip-frames options; attached to newly opened media. |
 | Controls & Behaviour | Exit confirmation, clear-playlist confirmation and double-click fullscreen preferences; wired to main-window behaviour. |
 | Diagnostics | Live system/process/playback metrics, local timestamped TXT report, read-only preview and data-folder access. |
-| VLC Runtime & Codecs | Read-only inspection of the loaded LibVLC version/module path, resolved plugin directory and selected decoder-related plugin DLL presence. |
+| VLC Runtime & Codecs | Read-only audit of the loaded LibVLC version/module path, plugin DLL inventory by category, in-process module mapping, LibVLC/player initialization and observed current-media playback state. The four evidence levels are deliberately distinct; presence or module mapping is not proof of codec playback support. |
 
 Advanced preferences are persisted in `%APPDATA%\\ABMAVPlayer\\settings.ini`, grouped into INI sections such as `[Video]`, `[Audio]`, `[Subtitles]`, `[Streaming]`, `[Performance]` and `[Controls]`. Audio processing and theme selection also use `audio.ini` and `theme.ini`. Do not create a second source of truth for an existing preference.
 
@@ -56,7 +56,7 @@ Advanced preferences are persisted in `%APPDATA%\\ABMAVPlayer\\settings.ini`, gr
 - Subtitle appearance, caching and performance options are added to media objects as media are opened; an already-playing media object is not guaranteed to be retroactively reconfigured.
 - Subtitle timing also updates the current player when possible.
 - Controls preferences are loaded into application state and consumed by their matching interactions.
-- Diagnostics are observational. Report generation writes locally and does not upload. VLC Runtime & Codecs inspects the loaded library and selected plugin-file presence; it is not a codec certification test.
+- Diagnostics are observational. Report generation writes locally and does not upload. VLC Runtime & Codecs inventories plugin DLLs, reports in-process module mappings, confirms LibVLC/player initialization and records whether the current media reached Playing when refreshed. Plugin loading is on demand; the playback indicator is session-level evidence, not a per-codec certification.
 
 See [SETTINGS.md](SETTINGS.md) for the user-facing values and semantics.
 
