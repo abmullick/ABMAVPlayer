@@ -671,3 +671,14 @@ Do not mark these windows fully migrated or visually validated until the outstan
 - Owner-drawn buttons, file-list rows and TV selector rows continue to use the same shared DirectWrite canvas formats. GDI text paths are retained only as defensive fallback paths if Direct2D canvas drawing cannot start; they are not the normal rendering path.
 - Native editable controls remain native for caret, selection, IME, clipboard and accessibility behaviour, with their font sourced from the shared ABM text tokens.
 - This is a source-level typography consistency correction. Windows compilation and side-by-side runtime comparison against Main Player are still required before visual parity can be signed off.
+
+
+## Settings custom scrollbar implementation — follow-up
+
+- Replaced the Settings window's `WS_HSCROLL` / `WS_VSCROLL` native non-client scrollbars with custom-painted Direct2D tracks and thumbs. The window no longer requests native horizontal or vertical scrollbar chrome.
+- Both axes derive their thumb length and position from the virtual content size, available viewport and current scroll offset. Thumb dragging and track clicks update the same Settings scroll state used by wheel and keyboard navigation.
+- The thumb has a distinct active teal treatment while dragging. Mouse capture is released/reset on mouse-up, cancellation and capture changes.
+- Track and thumb colors use existing `ABM_THEME_COLOR_*` definitions from `src/ui_theme.h`; palette identifiers must be checked against that shared header before use. Do not introduce per-window palette globals or duplicate theme values.
+- Native edit fields remain native by design; the custom scrollbar treatment does not replace text-entry, selection, IME, clipboard or accessibility behaviour.
+- Source commits: `460dfb1` (custom scrollbar implementation), `fc1afb8` (drag lifecycle hardening), `97b5f9d` (corrected undefined palette identifiers).
+- Source-level documentation is updated; MSVC build and Windows interaction/visual verification are still required. Do not mark the scrollbar work runtime-validated until tested at multiple window sizes and display scales.
