@@ -20,12 +20,15 @@ typedef struct ABM_D2D {
     void *brush;
     HWND hwnd;
     BOOL clipActive;
+    UINT dpiX;
+    UINT dpiY;
     void *wicFactory;
     void *image;
 } ABM_D2D;
 
 BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd);
 void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height);
+void ABM_D2D_SetDpi(ABM_D2D *ui, UINT dpiX, UINT dpiY);
 void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear);
 BOOL ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip);
 BOOL ABM_D2D_End(ABM_D2D *ui);
