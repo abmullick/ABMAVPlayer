@@ -5679,7 +5679,8 @@ static wchar_t g_vlcRuntimeVersion[96]=L"Not detected";
 static wchar_t g_vlcRuntimePath[PATH_CAP]=L"Not detected";
 static wchar_t g_vlcPluginPath[PATH_CAP]=L"Not detected";
 static BOOL g_vlcRuntimeLoaded=FALSE,g_vlcPluginDirectoryFound=FALSE;
-static int g_advancedVlcFirstPlugin=0;
+static HWND g_advancedVlcReportEdit=NULL;
+static HBRUSH g_advancedVlcReportBrush=NULL;
 static BOOL g_vlcPluginFound[8]={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
 static const wchar_t *g_vlcPluginNames[8]={
  L"Core FFmpeg decoder (avcodec)",L"AV1 decoder (dav1d)",L"AV1 decoder (AOM)",
@@ -5725,6 +5726,15 @@ static void ScanVlcRuntime(void){
    DWORD attrs=GetFileAttributesW(filePath);g_vlcPluginFound[i]=(attrs!=INVALID_FILE_ATTRIBUTES&&!(attrs&FILE_ATTRIBUTE_DIRECTORY));
   }
  }
+}
+static void UpdateVlcReportText(void){
+ if(!g_advancedVlcReportEdit)return;
+ wchar_t report[4096]={0};size_t used=0;
+ StringCchPrintfW(report,_countof(report),L"LibVLC runtime: %s\r\nVersion: %s\r\nLoaded module: %s\r\nPlugin directory: %s\r\nPlugin directory status: %s\r\n\r\nDECODER PLUGIN INVENTORY\r\n",g_vlcRuntimeLoaded?L"Loaded in this process":L"Not loaded",g_vlcRuntimeVersion,g_vlcRuntimePath,g_vlcPluginPath,g_vlcPluginDirectoryFound?L"Found":L"Not found");
+ used=wcslen(report);
+ for(int i=0;i<8&&used<_countof(report)-1;i++){if(FAILED(StringCchPrintfW(report+used,_countof(report)-used,L"%s  —  %s\r\n",g_vlcPluginNames[i],g_vlcPluginFound[i]?L"File found":L"Not found")))break;used=wcslen(report);}
+ StringCchCatW(report,_countof(report),L"\r\nNOTE: File presence is an inventory check, not proof of successful decoding. Actual codec, profile, driver and hardware support must be tested with media.");
+ SetWindowTextW(g_advancedVlcReportEdit,report);SendMessageW(g_advancedVlcReportEdit,EM_SETSEL,0,0);SendMessageW(g_advancedVlcReportEdit,EM_SCROLLCARET,0,0);
 }
 static void AdvancedSettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF color,int style,UINT flags){
  RECT rc={l,t,r,b};ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,style,flags);
@@ -5781,6 +5791,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   ScanVlcRuntime();
   g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
   g_advancedDiagnosticFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
+   g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
+   g_advancedVlcReportEdit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL|ES_WANTRETURN,326,532,684,112,w,(HMENU)6409,GetModuleHandleW(NULL),NULL);
+   if(g_advancedVlcReportEdit){SendMessageW(g_advancedVlcReportEdit,WM_SETFONT,(WPARAM)g_font,TRUE);SendMessageW(g_advancedVlcReportEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(10,10));SetWindowTheme(g_advancedVlcReportEdit,L"DarkMode_Explorer",NULL);ShowWindow(g_advancedVlcReportEdit,SW_HIDE);UpdateVlcReportText();}
   g_advancedDiagnosticEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"Generate a diagnostic report to preview its contents here.",
    WS_CHILD|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
    326,514,684,132,w,(HMENU)6408,GetModuleHandleW(NULL),NULL);
@@ -5809,7 +5822,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    /* Match the exact row origin used by the navigation renderer. */
    int top=151+i*50;
    if(AdvancedSettingsPoint(x,y,22,top,254,top+44)){
-    g_advancedSettingsPage=i;if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,i==8?SW_SHOW:SW_HIDE);if(i==9)ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;
+    g_advancedSettingsPage=i;if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,i==8?SW_SHOW:SW_HIDE);if(g_advancedVlcReportEdit)ShowWindow(g_advancedVlcReportEdit,i==9?SW_SHOW:SW_HIDE);if(i==9){ScanVlcRuntime();UpdateVlcReportText();}InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
   if(g_advancedSettingsPage==3){
@@ -6193,16 +6206,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       AdvancedSettingsText(L"Decoder-related plugin files  ·  presence check only",326,506,1008,530,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       /* Four visible rows keep the inventory within the card. Scroll with the
          wheel or click the compact track to inspect all eight decoder entries. */
-      for(int visible=0;visible<4;visible++){
-       int pi=g_advancedVlcFirstPlugin+visible;
-       int col=pi%2,left=326+col*342,top=532+visible*21;
-       if(pi>=8)break;
-       AdvancedSettingsText(g_vlcPluginNames[pi],left,top,left+260,top+19,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-       AdvancedSettingsText(g_vlcPluginFound[pi]?L"File found":L"Not found",left+260,top,left+332,top+19,g_vlcPluginFound[pi]?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-      }
-      ABM_D2D_Round(&g_advancedSettingsUi,1008,532,1016,616,4,ABM_UI_COLOR_SURFACE_RAISED);
-      ABM_D2D_Round(&g_advancedSettingsUi,1008,532+(float)g_advancedVlcFirstPlugin*11.0f,1016,576+(float)g_advancedVlcFirstPlugin*11.0f,4,ABM_UI_COLOR_ACCENT);
-      AdvancedSettingsText(L"Presence is not proof of successful decoding. VLC may support a format through other modules; profile, driver and hardware support must be tested with media.",326,620,1008,646,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+       AdvancedSettingsText(L"Select report text and press Ctrl+C to copy. Scroll to inspect the complete inventory and runtime paths.",326,506,1008,530,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+       ABM_D2D_Round(&g_advancedSettingsUi,320,530,1018,648,8,ABM_UI_COLOR_SURFACE_RAISED);
+       ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,530.5f,1017.5f,647.5f,8,SETTINGS_BORDER,0.8f);
     }else if(g_advancedSettingsPage==8){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
       AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -6233,14 +6239,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   EndPaint(w,&ps);return 0;
  }
  case WM_CLOSE:DestroyWindow(w);return 0;
-  case WM_CTLCOLOREDIT:{
-   HDC dc=(HDC)wp;SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);SetBkMode(dc,OPAQUE);
-   if(!g_advancedDiagnosticBrush)g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
-   return (LRESULT)g_advancedDiagnosticBrush;
-  }
+  case WM_CTLCOLOREDIT:{HDC dc=(HDC)wp;if((HWND)lp==g_advancedVlcReportEdit){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);SetBkMode(dc,OPAQUE);if(!g_advancedVlcReportBrush)g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);return (LRESULT)g_advancedVlcReportBrush;}SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);SetBkMode(dc,OPAQUE);if(!g_advancedDiagnosticBrush)g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);return (LRESULT)g_advancedDiagnosticBrush;}
  case WM_DESTROY:
   g_advancedSettingsWindow=NULL;
-   if(g_advancedDiagnosticEdit){DestroyWindow(g_advancedDiagnosticEdit);g_advancedDiagnosticEdit=NULL;}
+   if(g_advancedVlcReportEdit){DestroyWindow(g_advancedVlcReportEdit);g_advancedVlcReportEdit=NULL;}if(g_advancedVlcReportBrush){DeleteObject(g_advancedVlcReportBrush);g_advancedVlcReportBrush=NULL;}
+  if(g_advancedDiagnosticEdit){DestroyWindow(g_advancedDiagnosticEdit);g_advancedDiagnosticEdit=NULL;}
    if(g_advancedDiagnosticFont){DeleteObject(g_advancedDiagnosticFont);g_advancedDiagnosticFont=NULL;}
    if(g_advancedDiagnosticBrush){DeleteObject(g_advancedDiagnosticBrush);g_advancedDiagnosticBrush=NULL;}
   if(g_advancedSettingsUiReady){ABM_D2D_Destroy(&g_advancedSettingsUi);g_advancedSettingsUiReady=FALSE;}
