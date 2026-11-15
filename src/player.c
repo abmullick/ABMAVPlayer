@@ -4905,6 +4905,8 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 }
 
 static HBRUSH g_helpBrush=NULL, g_helpInputBrush=NULL, g_helpArticleBrush=NULL, g_helpNavBrush=NULL;
+static ABM_D2D_CANVAS g_helpCanvas;
+static BOOL g_helpCanvasReady=FALSE;
 static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
 static HWND g_helpEdit=NULL, g_helpSearch=NULL, g_helpTopics=NULL, g_helpFindButton=NULL;
 static HMODULE g_helpRichEditModule=NULL;
@@ -5073,6 +5075,7 @@ static BOOL HelpFindNext(HWND hwnd) {
 static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
+        g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
         const wchar_t *help=
             L"ABM AV PLAYER  |  COMPLETE USER GUIDE\r\n"
             L"\r\n"
@@ -5197,38 +5200,28 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
-        HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
-        RECT header={0,0,rc.right,104};HBRUSH head=CreateSolidBrush(ABM_UI_COLOR_SURFACE_BLUE);FillRect(dc,&header,head);DeleteObject(head);
-        RECT accent={0,101,rc.right,104};HBRUSH accentBrush=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
-        SetBkMode(dc,TRANSPARENT);
-        HFONT old=(HFONT)SelectObject(dc,g_helpTitleFont);SetTextColor(dc,ABM_UI_COLOR_TEXT);
-        RECT title={32,12,rc.right-70,52};DrawTextW(dc,L"Help Centre",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
-        RECT kicker={34,55,rc.right-70,78};DrawTextW(dc,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",-1,&kicker,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,g_helpBodyFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
-        RECT intro={34,82,rc.right-70,101};DrawTextW(dc,L"Find answers, learn features and understand the practical impact of settings.",-1,&intro,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        /* Search field and content cards are painted by the application, not default control chrome. */
-        HBRUSH card=CreateSolidBrush(ABM_UI_COLOR_SURFACE);HPEN edge=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);
-        HGDIOBJ ob=SelectObject(dc,card),op=SelectObject(dc,edge);
-        RoundRect(dc,24,116,rc.right-24,178,12,12);
-        RoundRect(dc,24,188,324,rc.bottom-62,12,12);
-        RoundRect(dc,334,188,rc.right-24,rc.bottom-62,12,12);
-        SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(edge);DeleteObject(card);
-        RECT close={rc.right-54,20,rc.right-18,56};
-        HBRUSH closeBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);HGDIOBJ closeOld=SelectObject(dc,closeBrush);
-        RoundRect(dc,close.left,close.top,close.right,close.bottom,10,10);SelectObject(dc,closeOld);DeleteObject(closeBrush);
-        HPEN pen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT_SECONDARY);HGDIOBJ oldPen=SelectObject(dc,pen);
-        MoveToEx(dc,close.left+13,close.top+12,NULL);LineTo(dc,close.right-13,close.bottom-12);
-        MoveToEx(dc,close.right-13,close.top+12,NULL);LineTo(dc,close.left+13,close.bottom-12);
-        SelectObject(dc,oldPen);DeleteObject(pen);
-        RECT footer={0,rc.bottom-48,rc.right,rc.bottom};HBRUSH foot=CreateSolidBrush(ABM_UI_COLOR_SURFACE);FillRect(dc,&footer,foot);DeleteObject(foot);
-        HPEN line=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);oldPen=SelectObject(dc,line);
-        MoveToEx(dc,0,rc.bottom-48,NULL);LineTo(dc,rc.right,rc.bottom-48);
-        SelectObject(dc,oldPen);DeleteObject(line);
-        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);
-        RECT footText={26,rc.bottom-42,rc.right-24,rc.bottom-12};
-        DrawTextW(dc,L"TIP   Ctrl+F search   •   Find next / F3 next match   •   Select a topic to jump",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
+        if(g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)rc.right,104,ABM_UI_COLOR_SURFACE_BLUE);
+            ABM_D2D_CanvasFill(&g_helpCanvas,0,101,(float)rc.right,104,ABM_UI_COLOR_ACCENT);
+            RECT title={32,12,rc.right-70,52};ABM_D2D_CanvasText(&g_helpCanvas,L"Help Centre",title,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT kicker={34,55,rc.right-70,78};ABM_D2D_CanvasText(&g_helpCanvas,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",kicker,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT intro={34,82,rc.right-70,101};ABM_D2D_CanvasText(&g_helpCanvas,L"Find answers, learn features and understand the practical impact of settings.",intro,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            ABM_D2D_CanvasFillRound(&g_helpCanvas,24,116,(float)rc.right-24,178,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,24.5f,116.5f,(float)rc.right-24.5f,177.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
+            ABM_D2D_CanvasFillRound(&g_helpCanvas,24,188,324,(float)rc.bottom-62,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,24.5f,188.5f,323.5f,(float)rc.bottom-62.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
+            ABM_D2D_CanvasFillRound(&g_helpCanvas,334,188,(float)rc.right-24,(float)rc.bottom-62,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,334.5f,188.5f,(float)rc.right-24.5f,(float)rc.bottom-62.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
+            RECT close={rc.right-54,20,rc.right-18,56};ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)close.left,(float)close.top,(float)close.right,(float)close.bottom,(float)ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_SURFACE_RAISED);
+            ABM_D2D_CanvasLine(&g_helpCanvas,(float)close.left+13,(float)close.top+12,(float)close.right-13,(float)close.bottom-12,ABM_UI_COLOR_TEXT_SECONDARY,2.0f);
+            ABM_D2D_CanvasLine(&g_helpCanvas,(float)close.right-13,(float)close.top+12,(float)close.left+13,(float)close.bottom-12,ABM_UI_COLOR_TEXT_SECONDARY,2.0f);
+            ABM_D2D_CanvasFill(&g_helpCanvas,0,(float)rc.bottom-48,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasLine(&g_helpCanvas,0,(float)rc.bottom-48,(float)rc.right,(float)rc.bottom-48,ABM_UI_COLOR_BORDER,1.0f);
+            RECT foot={26,rc.bottom-42,rc.right-24,rc.bottom-12};ABM_D2D_CanvasText(&g_helpCanvas,L"TIP   Ctrl+F search   •   Find next / F3 next match   •   Select a topic to jump",foot,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            ABM_D2D_CanvasEnd(&g_helpCanvas);
+        }else{HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);}
+        EndPaint(hwnd,&ps);return 0;
     }
     case WM_MEASUREITEM: {
         MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp;
@@ -5238,6 +5231,23 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_DRAWITEM: {
         DRAWITEMSTRUCT *di=(DRAWITEMSTRUCT*)lp;
         if(!di)break;
+        if(di->CtlID==HELP_ID_FIND&&g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
+            RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
+            ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,(float)ABM_UI_RADIUS_BUTTON,pressed?ABM_THEME_COLOR_187E74:ABM_UI_COLOR_ACCENT);
+            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)r.left+1.5f,(float)r.top+1.5f,(float)r.right-1.5f,(float)r.bottom-1.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG,focused?2.0f:1.0f);
+            wchar_t caption[64]=L"SEARCH";if(g_helpFindButton)GetWindowTextW(g_helpFindButton,caption,(int)_countof(caption));
+            RECT label=r;InflateRect(&label,-8,-2);ABM_D2D_CanvasText(&g_helpCanvas,caption,label,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
+        }
+        if(di->CtlID==HELP_ID_TOPICS&&g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
+            wchar_t label[256]={0};if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
+            BOOL selected=(di->itemState&ODS_SELECTED)!=0;RECT row=di->rcItem;InflateRect(&row,-6,-2);
+            ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:ABM_UI_COLOR_SURFACE);
+            RECT textRect=row;textRect.left+=12;textRect.right-=8;
+            ABM_D2D_CanvasText(&g_helpCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(di->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
+            ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
+        }
         if(di->CtlID==HELP_ID_FIND){
             RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
             COLORREF fill=pressed?ABM_THEME_COLOR_187E74:ABM_UI_COLOR_ACCENT;
@@ -5305,6 +5315,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
     case WM_DESTROY:
+        if(g_helpCanvasReady){g_helpCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_helpCanvas);}
         UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
         if(g_helpSearch)RemoveWindowSubclass(g_helpSearch,HelpSearchSubclass,1);
         g_helpEdit=NULL;g_helpSearch=NULL;g_helpTopics=NULL;g_helpFindButton=NULL;
