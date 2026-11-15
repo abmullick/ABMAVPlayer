@@ -329,17 +329,17 @@ void LayoutDevicePanel(){
        clipped/covered by the browser. Keep the full app-control row inside. */
     SetWindowPos(g_devicePanel,HWND_TOP,x,y,516,520,SWP_NOACTIVATE|SWP_SHOWWINDOW);
     /* Controls share the Streaming Centre parent so WM_COMMAND is handled here. */
-    SetWindowPos(g_deviceTitle,nullptr,x+18,y+12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceHint,nullptr,x+18,y+38,480,118,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceList,nullptr,x+18,y+166,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceRefresh,nullptr,x+342,y+166,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceSelect,nullptr,x+342,y+209,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceApps,nullptr,x+342,y+252,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceAppCombo,nullptr,x+18,y+340,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceLaunch,nullptr,x+342,y+340,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceAppStop,nullptr,x+342,y+383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceAppStatus,nullptr,x+342,y+426,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
-    SetWindowPos(g_deviceClose,nullptr,x+342,y+469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceTitle,nullptr,18,12,480,24,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceHint,nullptr,18,38,480,118,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceList,nullptr,18,166,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceRefresh,nullptr,342,166,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceSelect,nullptr,342,209,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceApps,nullptr,342,252,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceAppCombo,nullptr,18,340,310,160,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceLaunch,nullptr,342,340,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceAppStop,nullptr,342,383,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceAppStatus,nullptr,342,426,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(g_deviceClose,nullptr,342,469,156,34,SWP_NOZORDER|SWP_NOACTIVATE);
 }
 bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
@@ -463,38 +463,38 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_OWNERDRAW,0,0,516,430,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|SS_OWNERDRAW,0,0,516,520,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceList=CreateWindowExW(0,L"LISTBOX",L"",
-        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
     g_deviceRefresh=CreateWindowExW(0,L"BUTTON",L"Refresh devices",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_REFRESH,GetModuleHandleW(nullptr),nullptr);
     g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_SELECT,GetModuleHandleW(nullptr),nullptr);
     g_deviceApps=CreateWindowExW(0,L"BUTTON",L"Check TV apps",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APPS,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppCombo=CreateWindowExW(0,L"LISTBOX",L"",
-        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_TABSTOP,0,0,10,160,parent,
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_TABSTOP,0,0,10,160,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_COMBO,GetModuleHandleW(nullptr),nullptr);
     g_deviceLaunch=CreateWindowExW(0,L"BUTTON",L"Launch app",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LAUNCH,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
     SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
     SendMessageW(g_deviceHint,WM_SETFONT,(WPARAM)GetCachedTextFont(10,500),TRUE);
