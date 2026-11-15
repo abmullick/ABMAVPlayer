@@ -4551,7 +4551,7 @@ static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
         if(d->itemID!=(UINT)-1)SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
         RECT tx=r;tx.left+=12;tx.right-=10;
         ABM_D2D_CanvasText(&g_torrentButtonCanvas,line,tx,(d->itemState&ODS_SELECTED)?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_FOCUS,1.0f);
+        if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_FOCUS,1.8f);
         ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
         return;
     }
@@ -5319,13 +5319,17 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_SIZE: {
         int w=LOWORD(lp),h=HIWORD(lp);
-        int contentH=h-226;if(contentH<190)contentH=190;
-        int margin=32,top=146,topicW=(w<900?240:286),gap=20;
-        int searchButtonW=132,searchY=74,searchH=40;
-        if(g_helpSearch)MoveWindow(g_helpSearch,margin,searchY,w-(margin*2)-searchButtonW-14,searchH,TRUE);
+        int margin=24,searchButtonW=(w<620?104:132),searchY=74,searchH=40;
+        int searchWidth=w-(margin*2)-searchButtonW-12;if(searchWidth<120)searchWidth=120;
+        if(g_helpSearch)MoveWindow(g_helpSearch,margin,searchY,searchWidth,searchH,TRUE);
         if(g_helpFindButton)MoveWindow(g_helpFindButton,w-margin-searchButtonW,searchY,searchButtonW,searchH,TRUE);
-        if(g_helpTopics)MoveWindow(g_helpTopics,margin,top,topicW,contentH,TRUE);
-        if(g_helpEdit)MoveWindow(g_helpEdit,margin+topicW+gap,top,w-(margin+topicW+gap)-margin,contentH,TRUE);
+        if(w<760){int topicH=h<620?116:156,topicY=132,articleY=topicY+topicH+12,articleH=h-articleY-58;if(articleH<120)articleH=120;
+            if(g_helpTopics)MoveWindow(g_helpTopics,margin,topicY,w-margin*2,topicH,TRUE);
+            if(g_helpEdit)MoveWindow(g_helpEdit,margin,articleY,w-margin*2,articleH,TRUE);
+        }else{int contentH=h-226;if(contentH<150)contentH=150;int top=146,topicW=(w<900?220:270),gap=16;
+            if(g_helpTopics)MoveWindow(g_helpTopics,margin,top,topicW,contentH,TRUE);
+            if(g_helpEdit)MoveWindow(g_helpEdit,margin+topicW+gap,top,w-(margin+topicW+gap)-margin,contentH,TRUE);
+        }
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
     }
@@ -5379,13 +5383,13 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(di->CtlID==HELP_ID_TOPICS&&g_helpCanvasReady){
             wchar_t label[256]={0};if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
-            BOOL selected=(di->itemState&ODS_SELECTED)!=0;
+            BOOL selected=(di->itemState&ODS_SELECTED)!=0,hot=(di->itemState&ODS_HOTLIGHT)!=0;
             /* BindDC clips to rcItem; draw in item-local coordinates. Reusing
                rcItem.top here offsets each row twice, hiding every row after the first. */
             RECT bounds={0,0,di->rcItem.right-di->rcItem.left,di->rcItem.bottom-di->rcItem.top};
             if(ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
                 RECT row=bounds;InflateRect(&row,-6,-2);
-                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:ABM_UI_COLOR_SURFACE);
+                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:(hot?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE));
                 RECT textRect=row;textRect.left+=12;textRect.right-=8;
                 ABM_D2D_CanvasText(&g_helpCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 if(di->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
@@ -5578,9 +5582,13 @@ static void SettingsEditFrame(int l,int t,int r,int b) {
                      (float)r-0.5f,(float)b-0.5f,
                      (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_BORDER_STRONG,0.9f);
 }
+static int g_settingsHoverX=-1,g_settingsHoverY=-1,g_advancedHoverX=-1,g_advancedHoverY=-1;
+static BOOL g_settingsMousePressed=FALSE,g_advancedMousePressed=FALSE;
+static BOOL ABM_PointInRect(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static void SettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary) {
- COLORREF fill=primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
- COLORREF edge=primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
+ BOOL hot=ABM_PointInRect(g_settingsHoverX,g_settingsHoverY,l,t,r,b),down=hot&&g_settingsMousePressed;
+ COLORREF fill=down?ABM_UI_COLOR_SURFACE_BLUE:hot?(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE_BLUE):(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
+ COLORREF edge=hot?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
  ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
                (float)ABM_UI_RADIUS_BUTTON,fill);
  ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
@@ -5890,8 +5898,9 @@ static void AdvancedSettingsText(const wchar_t *text,int l,int t,int r,int b,COL
  ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,role,flags);
 }
 static void AdvancedSettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary){
- COLORREF fill=primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
- COLORREF edge=primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
+ BOOL hot=ABM_PointInRect(g_advancedHoverX,g_advancedHoverY,l,t,r,b),down=hot&&g_advancedMousePressed;
+ COLORREF fill=down?ABM_UI_COLOR_SURFACE_BLUE:hot?(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE_BLUE):(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
+ COLORREF edge=hot?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
  ABM_D2D_Round(&g_advancedSettingsUi,(float)l,(float)t,(float)r,(float)b,(float)ABM_UI_RADIUS_BUTTON,fill);
  ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)l+0.5f,(float)t+0.5f,(float)r-0.5f,(float)b-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,0.9f);
  AdvancedSettingsText(label,l+8,t+1,r-8,b-1,ABM_UI_COLOR_TEXT,1,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -5967,7 +5976,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
   }}
   return 0;
- case WM_LBUTTONDOWN:{
+ case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);if(x!=g_advancedHoverX||y!=g_advancedHoverY){g_advancedHoverX=x;g_advancedHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
+ case WM_MOUSELEAVE:g_advancedHoverX=g_advancedHoverY=-1;g_advancedMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_LBUTTONDOWN:{g_advancedMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
    /* Match the exact row origin used by the navigation renderer. */
@@ -6120,6 +6131,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   return 0;
  }
  case WM_LBUTTONUP:{
+  g_advancedMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   if(g_advancedSettingsPage==9&&AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();UpdateVlcReportText();InvalidateRect(w,NULL,FALSE);return 0;}
   break;
@@ -6470,7 +6482,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   SetBkMode(dc,OPAQUE);
   return (LRESULT)g_settingsEditBrush;
  }
- case WM_LBUTTONDOWN:{
+ case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
+ case WM_MOUSELEAVE:g_settingsHoverX=g_settingsHoverY=-1;g_settingsMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_LBUTTONDOWN:{g_settingsMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
@@ -6502,6 +6516,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
+ case WM_LBUTTONUP:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);break;
  case WM_KEYDOWN:
   if(wp==VK_ESCAPE){if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}else DestroyWindow(w);return 0;}
   if((GetKeyState(VK_CONTROL)&0x8000)&&wp=='S'){SettingsApply(w);return 0;}
