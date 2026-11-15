@@ -469,3 +469,12 @@ For current manual verification steps, see [Final UI QA Checklist](UI_QA_CHECKLI
 ### Visual behaviour
 
 Home dashboard action cards have restrained hover feedback while the dashboard is idle. The animation is decorative only; it does not change playback, media decoding, casting or torrent transfers. Motion settles when playback or other suppressing interface states are active.
+
+
+### Codec-aware playback verification
+
+Open **Advanced Settings → VLC Runtime & Codecs** while media is playing, then refresh the report. ABM now samples the local LibVLC player during its normal UI polling cycle. For the current media session it records whether LibVLC reached `Playing`, requests the media's elementary-stream metadata, and lists the reported video, audio and subtitle stream IDs, codec descriptions and FourCC values. The diagnostic export includes the same evidence.
+
+A result is marked **VERIFIED** only when the media reached `Playing` and LibVLC returned elementary-stream metadata. If playback starts but track metadata is unavailable, verification remains incomplete. A LibVLC error is reported as a failed session. The container shown is inferred from the filename extension and is explicitly a hint, not proof of which demuxer VLC selected.
+
+This is session- and media-aware evidence, not a claim that every alternate track was decoded. The public LibVLC API used here does not expose the internal decoder module selected for each stream. Test additional files to build evidence across codecs and containers; one successful file does not certify all files using the same extension.
