@@ -4297,18 +4297,6 @@ static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);
     DeleteObject(brush);DeleteObject(pen);
 }
-/* Button typography mirrors the main player's compact semibold UI style.
-   Fonts are cached for the Torrent window lifetime, not allocated per repaint. */
-static HFONT g_torrentButtonFont=NULL;
-static HFONT g_torrentButtonIconFont=NULL;
-static HFONT TorrentGetButtonFont(BOOL icon){
-    HFONT *slot=icon?&g_torrentButtonIconFont:&g_torrentButtonFont;
-    if(!*slot)*slot=CreateFontW(icon?-17:-13,0,0,0,icon?FW_NORMAL:FW_SEMIBOLD,
-        FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
-        icon?L"Segoe MDL2 Assets":ABM_UI_FONT_FAMILY_TEXT);
-    return *slot?*slot:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
-}
 static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
     return RGB((GetRValue(a)*(maxT-t)+GetRValue(b)*t)/maxT,
                (GetGValue(a)*(maxT-t)+GetGValue(b)*t)/maxT,
@@ -4731,8 +4719,6 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ABM_D2D_CanvasDestroy(&g_torrentButtonCanvas);
         ABM_D2D_Destroy(&g_torrentUi);
         if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
-        if(g_torrentButtonFont){DeleteObject(g_torrentButtonFont);g_torrentButtonFont=NULL;}
-        if(g_torrentButtonIconFont){DeleteObject(g_torrentButtonIconFont);g_torrentButtonIconFont=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;g_torrentOpenDownloadsButton=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
     }
