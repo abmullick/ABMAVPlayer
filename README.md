@@ -16,6 +16,7 @@ The source version can be ahead of the latest published installer while a releas
 ### Current release highlights
 
 - Refined the F1 Help Centre presentation with application-matched visual styling and clearer navigation and search controls.
+- Updated the in-app Settings article and user/developer guides for the resizable Settings viewport and custom ABM-themed scrollbars; native Windows scrollbar chrome has been removed from that window.
 - Improved help article presentation with topic-focused views, richer heading/body typography, paragraph spacing and normalization of escaped line breaks across topics.
 - Aligned the main application, Streaming Centre, installer metadata, packaging guards, release publisher and vcpkg manifest to the version in `VERSION`.
 - Preserved the existing installer identity and per-user application data location so an in-place upgrade can retain existing user data.
