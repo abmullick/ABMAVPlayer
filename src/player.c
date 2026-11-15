@@ -5329,6 +5329,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
     }
+    case WM_ERASEBKGND:return 1;
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
         if(g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,dc,&rc)){
@@ -5451,6 +5452,10 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_helpCanvasReady){g_helpCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_helpCanvas);}
         UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
         if(g_helpSearch)RemoveWindowSubclass(g_helpSearch,HelpSearchSubclass,1);
+        if(g_helpBrush){DeleteObject(g_helpBrush);g_helpBrush=NULL;}
+        if(g_helpInputBrush){DeleteObject(g_helpInputBrush);g_helpInputBrush=NULL;}
+        if(g_helpArticleBrush){DeleteObject(g_helpArticleBrush);g_helpArticleBrush=NULL;}
+        if(g_helpNavBrush){DeleteObject(g_helpNavBrush);g_helpNavBrush=NULL;}
         g_helpEdit=NULL;g_helpSearch=NULL;g_helpTopics=NULL;g_helpFindButton=NULL;
         return 0;
     }
@@ -6125,6 +6130,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    InvalidateRect(w,NULL,FALSE);return 0;
   }
   break;
+ case WM_ERASEBKGND:return 1;
  case WM_PAINT:{
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_advancedSettingsUiReady){
