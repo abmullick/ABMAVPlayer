@@ -1,6 +1,6 @@
 # ABM AV Player — UI/UX Design System
 
-**Status:** Step 1 — foundation and audit  
+**Status:** Canonical typography foundation established; control migration in progress  
 **Baseline branch:** `main`  
 **Baseline commit:** `eb8cd7415cb403c9bb05244ba67ed36efc8eda89`  
 **Scope:** Visual consistency and interaction conventions only. This step does not alter playback, casting, torrent, streaming, networking, or updater behaviour.
@@ -80,6 +80,26 @@ The shared runtime palette is implemented in `src/ui_theme.h` and `src/ui_theme.
 | Brand display | 30 | Bold | ABM wordmark |
 
 Preferred families: **Segoe UI Variable Text** for UI copy and **Segoe UI Variable Display** for headings. Use platform font fallback gracefully. Avoid using all-caps for long descriptions; reserve it for short section labels.
+
+
+## 3.1 Canonical runtime typography contract
+
+The Main Player's DirectWrite typography is the authoritative runtime reference. The implementation is centralised in `src/ui_theme.h`, `src/ui_d2d.h` and `src/ui_d2d.cpp`:
+
+- `ABM_D2D_TEXT_BODY`: Segoe UI Variable Text, 16.5 px, regular.
+- `ABM_D2D_TEXT_SMALL`: Segoe UI Variable Text, 12.5 px, semibold.
+- `ABM_D2D_TEXT_HEADING`: Segoe UI Variable Display, 28 px, semibold.
+- `ABM_D2D_TEXT_BRAND_MAIN`: Segoe UI Variable Display, 30 px, bold.
+- `ABM_D2D_TEXT_BRAND_SUFFIX`: Segoe UI Variable Text, 18 px, medium.
+- `ABM_D2D_TEXT_ICON`: Segoe MDL2 Assets, 16 px, regular.
+
+Both the HWND renderer (`ABM_D2D`) and owner-draw canvas (`ABM_D2D_CANVAS`) now create their formats through the same `CreateCanonicalTextFormats` implementation and use the same semantic role identifiers. This prevents the two DirectWrite paths from silently drifting in family, size or weight. The original Main Player format values are preserved.
+
+New ABM-owned Direct2D surfaces must use these semantic roles; they must not create independent DirectWrite formats or hard-code font family, size or weight. Native GDI/EDIT/RichEdit paths are not considered migrated merely because they use the same font family. Those controls remain migration work until replaced or hosted through a renderer that preserves editing, accessibility and keyboard behaviour.
+
+## 3.2 Canonical shape and control tokens
+
+The runtime tokens in `ui_theme.h` are the source of truth for surface, input, text, accent, border, focus, spacing, control/button/card/panel radius and compact/standard/primary control heights. New controls must consume these tokens rather than declaring local radii, border colours or heights. The existing windows still contain local drawing routines; they must be migrated incrementally to shared control primitives before visual parity can be claimed.
 
 ### Spacing
 
@@ -552,3 +572,7 @@ The Streaming Centre source includes the shared theme header relative to its sou
 - Main player, open application-owned windows and Streaming Centre chrome refresh after a selection. An active third-party streaming website is never navigated or recolored.
 - Preset selection is independent of playback, audio routing, torrent cache/download behavior and casting.
 - Windows build and visual QA remain required for each preset, including text contrast, DPI scaling and active-window refresh.
+
+## 9. Implementation status and migration gate
+
+The canonical DirectWrite role contract is implemented. This is a foundation milestone, not a claim that every window is visually identical. Help Centre, Streaming Centre, Settings, Advanced Settings, Torrent Stream, About and auxiliary dialogs still require control-by-control migration and runtime screenshot comparison. Provider-owned WebView2 content is explicitly excluded. A window is complete only after its ABM-owned text, icons, buttons, inputs, borders, focus/hover/pressed/disabled states and DPI behaviour have been checked against the Main Player at 100%, 125%, 150% and 200% scaling.
