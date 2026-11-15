@@ -561,8 +561,11 @@ private:
            retain ownership of close(); shutdown only wakes their socket I/O. */
         {
             std::lock_guard<std::mutex> clients(http_clients_mutex_);
-            for(auto &worker:http_clients_)
-                if(worker.socket!=INVALID_SOCKET)shutdown(worker.socket,SD_BOTH);
+            for(auto &worker:http_clients_) {
+                if(!worker.socket)continue;
+                SOCKET client=worker.socket->load();
+                if(client!=INVALID_SOCKET)shutdown(client,SD_BOTH);
+            }
         }
         if(http_accept_thread_.joinable())http_accept_thread_.join();
         if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
@@ -607,7 +610,7 @@ private:
     struct HttpClientWorker {
         std::thread thread;
         std::shared_ptr<std::atomic<bool>> done;
-        SOCKET socket=INVALID_SOCKET;
+        std::shared_ptr<std::atomic<SOCKET>> socket;
     };
     static bool IsPrivateIPv4(uint32_t ip) {
         return (ip>>24)==10 || (ip>>20)==0xAC1 || (ip>>16)==0xC0A8;
@@ -664,10 +667,12 @@ private:
                 http_clients_.emplace_back();
                 HttpClientWorker &worker=http_clients_.back();
                 worker.done=done;
-                worker.socket=client;
-                worker.thread=std::thread([this,client,token,id,index,size,done]{
+                auto socketState=std::make_shared<std::atomic<SOCKET>>(client);
+                worker.socket=socketState;
+                worker.thread=std::thread([this,client,token,id,index,size,done,socketState]{
                     try { HandleHttpClient(client,token,id,index,size); }
                     catch(...) { closesocket(client); }
+                    socketState->store(INVALID_SOCKET);
                     done->store(true);
                 });
             } catch(...) {
