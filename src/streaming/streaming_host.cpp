@@ -337,15 +337,15 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r)){
         ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_THEME_COLOR_0C1D2D);
         RECT face=r;InflateRect(&face,-1,-1);
-        ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,8.0f,fill);
+        ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
         ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,
-            (float)r.right-0.5f,(float)r.bottom-0.5f,8.0f,
+            (float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,
             focused?ABM_THEME_COLOR_63E1CD:edge,focused?2.0f:1.0f);
         wchar_t glyph[2]={DeviceButtonGlyph(item->hwndItem),0};
         RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
         RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
         ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_THEME_COLOR_91E5D5,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
         return;
     }
