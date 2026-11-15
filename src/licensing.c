@@ -14,6 +14,7 @@
 #include <string.h>
 #include "licensing.h"
 #include "ui_theme.h"
+#include "ui_d2d.h"
 
 #define ABM_TRIAL_DAYS 10ULL
 #define ABM_TICKS_PER_DAY 864000000000ULL
@@ -37,12 +38,25 @@ typedef struct ABMLicenseDialog {
     wchar_t statusMessage[160]; COLORREF statusColor;
 } ABMLicenseDialog;
 static HBRUSH g_licenseEditBrush=NULL;
+static ABM_D2D_CANVAS g_licenseCanvas;
+static BOOL g_licenseCanvasReady=FALSE;
 static HFONT g_licenseBodyFont=NULL, g_licenseTitleFont=NULL, g_licenseCaptionFont=NULL;
 static void LicenseDrawText(HDC dc,const wchar_t *text,RECT r,COLORREF color,HFONT font,UINT flags) {
     HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     DrawTextW(dc,text,-1,&r,flags|DT_NOPREFIX);SelectObject(dc,old);
 }
 static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
+    if(g_licenseCanvasReady&&d&&ABM_D2D_CanvasBegin(&g_licenseCanvas,d->hDC,&d->rcItem)){
+        BOOL primary=d->CtlID==ID_LICENSE_ACTIVATE,hot=(d->itemState&ODS_SELECTED)!=0,focus=(d->itemState&ODS_FOCUS)!=0;
+        COLORREF fill=primary?(hot?ABM_THEME_COLOR_2A9D94:ABM_THEME_COLOR_1D7D77):(hot?ABM_THEME_COLOR_1F3648:ABM_THEME_COLOR_162434);
+        COLORREF edge=focus?ABM_THEME_COLOR_63E1CD:(primary?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_344D62);
+        ABM_D2D_CanvasFill(&g_licenseCanvas,(float)d->rcItem.left,(float)d->rcItem.top,(float)d->rcItem.right,(float)d->rcItem.bottom,ABM_THEME_COLOR_060A12);
+        ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)d->rcItem.left+1,(float)d->rcItem.top+1,(float)d->rcItem.right-1,(float)d->rcItem.bottom-1,(float)ABM_UI_RADIUS_BUTTON,fill);
+        ABM_D2D_CanvasStrokeRound(&g_licenseCanvas,(float)d->rcItem.left+0.5f,(float)d->rcItem.top+0.5f,(float)d->rcItem.right-0.5f,(float)d->rcItem.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focus?2.0f:1.0f);
+        wchar_t label[64]=L\"\";GetWindowTextW(d->hwndItem,label,_countof(label));
+        ABM_D2D_CanvasText(&g_licenseCanvas,label,d->rcItem,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasEnd(&g_licenseCanvas);return;
+    }
     BOOL primary=d->CtlID==ID_LICENSE_ACTIVATE,hot=(d->itemState&ODS_SELECTED)!=0,focus=(d->itemState&ODS_FOCUS)!=0;
     /* Owner-drawn BUTTON controls retain a native class background in the
        unpainted corner pixels. Paint those pixels with the dialog surface
@@ -188,6 +202,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_NCCREATE:
         d=(ABMLicenseDialog*)((CREATESTRUCTW*)lp)->lpCreateParams;d->window=w;SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)d);return TRUE;
     case WM_CREATE: {
+        g_licenseCanvasReady=ABM_D2D_CanvasInit(&g_licenseCanvas);
         d->edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_UPPERCASE|ES_NOHIDESEL,
             38,222,544,38,w,(HMENU)ID_LICENSE_KEY,d->instance,NULL);
         SendMessageW(d->edit,EM_LIMITTEXT,16,0);
@@ -197,9 +212,9 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         d->trialButton=CreateWindowW(L"BUTTON",(d->manual||!d->trialAllowed)?L"Close":L"Continue trial",
             WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,454,365,132,44,w,(HMENU)ID_LICENSE_TRIAL,d->instance,NULL);
         g_licenseEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
-        g_licenseBodyFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        g_licenseTitleFont=CreateFontW(-25,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        g_licenseCaptionFont=CreateFontW(-12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        g_licenseBodyFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
+        g_licenseTitleFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_HEADING),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
+        g_licenseCaptionFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_SMALL),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         if(g_licenseBodyFont)SendMessageW(d->edit,WM_SETFONT,(WPARAM)g_licenseBodyFont,TRUE);
         if(g_licenseBodyFont){SendMessageW(d->activateButton,WM_SETFONT,(WPARAM)g_licenseBodyFont,TRUE);SendMessageW(d->trialButton,WM_SETFONT,(WPARAM)g_licenseBodyFont,TRUE);}
         if(d->alreadyActivated)EnableWindow(d->edit,FALSE);
@@ -241,33 +256,33 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
-        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_060A12);FillRect(dc,&rc,bg);DeleteObject(bg);
-        RECT hero={18,16,rc.right-18,160};HBRUSH panel=CreateSolidBrush(ABM_THEME_COLOR_0E2231);FillRect(dc,&hero,panel);DeleteObject(panel);
-        HPEN accent=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_36B1A8);HGDIOBJ oldPen=SelectObject(dc,accent);
-        MoveToEx(dc,hero.left+14,hero.top+1,NULL);LineTo(dc,hero.right-14,hero.top+1);SelectObject(dc,oldPen);DeleteObject(accent);
-        HBRUSH logo=CreateSolidBrush(ABM_THEME_COLOR_1C7D77);RECT logoRc={34,36,88,90};
-        HGDIOBJ oldLogoBrush=SelectObject(dc,logo);HGDIOBJ oldLogoPen=SelectObject(dc,GetStockObject(NULL_PEN));
-        RoundRect(dc,logoRc.left,logoRc.top,logoRc.right,logoRc.bottom,13,13);
-        SelectObject(dc,oldLogoPen);SelectObject(dc,oldLogoBrush);DeleteObject(logo);
-        LicenseDrawText(dc,L"A",(RECT){34,36,88,90},ABM_THEME_COLOR_FFFFFF,g_licenseTitleFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        LicenseDrawText(dc,L"ABM AV PLAYER  /  LICENSE",(RECT){106,34,rc.right-34,56},ABM_THEME_COLOR_68CDBE,g_licenseCaptionFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        LicenseDrawText(dc,d->alreadyActivated?L"You're all set.":L"Unlock the full experience.",(RECT){106,58,rc.right-34,101},ABM_THEME_COLOR_F7FAFF,g_licenseTitleFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        const wchar_t *intro=d->manual?L"Enter your universal 16-character key to activate ABM AV Player.":
-            L"Enter your activation key now, or continue with your 10-day full-feature trial.";
-        LicenseDrawText(dc,intro,(RECT){106,105,rc.right-34,145},ABM_THEME_COLOR_B1C4D5,g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
-        LicenseDrawText(dc,L"ACTIVATION KEY",(RECT){34,184,rc.right-34,210},ABM_THEME_COLOR_84ABBB,g_licenseCaptionFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        RECT inputFrame={32,216,rc.right-32,266};
-        HBRUSH inputFill=CreateSolidBrush(ABM_THEME_COLOR_0B1928);FillRect(dc,&inputFrame,inputFill);DeleteObject(inputFill);
-        HPEN inputPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_356F7F);HGDIOBJ old=SelectObject(dc,inputPen);
-        HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,inputFrame.left,inputFrame.top,inputFrame.right,inputFrame.bottom,10,10);
-        SelectObject(dc,oldBrush);SelectObject(dc,old);DeleteObject(inputPen);
-        RECT status={32,282,rc.right-32,332};HBRUSH statusBrush=CreateSolidBrush(ABM_THEME_COLOR_0C1B28);FillRect(dc,&status,statusBrush);DeleteObject(statusBrush);
-        HBRUSH dot=CreateSolidBrush(d->alreadyActivated?ABM_THEME_COLOR_4DC499:(d->trialAllowed?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_F2B14F));
-        RECT dotRc={48,302,56,310};RoundRect(dc,dotRc.left,dotRc.top,dotRc.right,dotRc.bottom,5,5);DeleteObject(dot);
-        LicenseDrawText(dc,d->statusMessage,(RECT){68,290,rc.right-44,324},d->statusColor,g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        LicenseDrawText(dc,L"Your key is checked offline. No account or internet connection is required.",(RECT){34,338,rc.right-34,357},ABM_THEME_COLOR_748CA0,g_licenseCaptionFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        if(g_licenseCanvasReady&&ABM_D2D_CanvasBegin(&g_licenseCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_licenseCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_060A12);
+            RECT hero={18,16,rc.right-18,160};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)hero.left,(float)hero.top,(float)hero.right,(float)hero.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_0E2231);
+            ABM_D2D_CanvasLine(&g_licenseCanvas,(float)hero.left+14,(float)hero.top+1,(float)hero.right-14,(float)hero.top+1,ABM_THEME_COLOR_36B1A8,2.0f);
+            RECT logoRc={34,36,88,90};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)logoRc.left,(float)logoRc.top,(float)logoRc.right,(float)logoRc.bottom,(float)ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_1C7D77);
+            ABM_D2D_CanvasText(&g_licenseCanvas,L"A",logoRc,ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT cap={106,34,rc.right-34,56};ABM_D2D_CanvasText(&g_licenseCanvas,L"ABM AV PLAYER  /  LICENSE",cap,ABM_THEME_COLOR_68CDBE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT title={106,58,rc.right-34,101};ABM_D2D_CanvasText(&g_licenseCanvas,d->alreadyActivated?L"You're all set.":L"Unlock the full experience.",title,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            const wchar_t *intro=d->manual?L"Enter your universal 16-character key to activate ABM AV Player.":L"Enter your activation key now, or continue with your 10-day full-feature trial.";
+            RECT introRect={106,105,rc.right-34,145};ABM_D2D_CanvasText(&g_licenseCanvas,intro,introRect,ABM_THEME_COLOR_B1C4D5,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+            RECT label={34,184,rc.right-34,210};ABM_D2D_CanvasText(&g_licenseCanvas,L"ACTIVATION KEY",label,ABM_THEME_COLOR_84ABBB,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT input={32,216,rc.right-32,266};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)input.left,(float)input.top,(float)input.right,(float)input.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_0B1928);
+            ABM_D2D_CanvasStrokeRound(&g_licenseCanvas,(float)input.left+0.5f,(float)input.top+0.5f,(float)input.right-0.5f,(float)input.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_356F7F,1.0f);
+            RECT status={32,282,rc.right-32,332};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)status.left,(float)status.top,(float)status.right,(float)status.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_0C1B28);
+            COLORREF statusAccent=d->alreadyActivated?ABM_THEME_COLOR_4DC499:(d->trialAllowed?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_F2B14F);
+            ABM_D2D_CanvasFillRound(&g_licenseCanvas,48,302,56,310,4.0f,statusAccent);
+            RECT statusText={68,290,rc.right-44,324};ABM_D2D_CanvasText(&g_licenseCanvas,d->statusMessage,statusText,d->statusColor,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT foot={34,338,rc.right-34,357};ABM_D2D_CanvasText(&g_licenseCanvas,L"Your key is checked offline. No account or internet connection is required.",foot,ABM_THEME_COLOR_748CA0,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasEnd(&g_licenseCanvas);
+        }else{
+            HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_060A12);FillRect(dc,&rc,bg);DeleteObject(bg);
+            RECT title={34,36,rc.right-34,90};LicenseDrawText(dc,L"ABM AV PLAYER",title,ABM_THEME_COLOR_F7FAFF,g_licenseTitleFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT status={32,282,rc.right-32,332};LicenseDrawText(dc,d->statusMessage,status,d->statusColor,g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        }
         EndPaint(w,&ps);return 0;
     }
+    case WM_DESTROY:if(g_licenseCanvasReady){g_licenseCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_licenseCanvas);}return 0;
     case WM_CLOSE:d->done=TRUE;d->allowed=FALSE;DestroyWindow(w);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
