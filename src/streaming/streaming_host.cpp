@@ -25,6 +25,7 @@
 #include <WebView2.h>
 #include <gdiplus.h>
 #include "../ui_theme.h"
+#include "../ui_dpi.h"
 #include "version.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
@@ -647,6 +648,10 @@ void LoadInfoPortrait(){
 }
 LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        InvalidateRect(hwnd,nullptr,FALSE);
+        return 0;
     case WM_CREATE:
         LoadInfoPortrait();
         return 0;
@@ -1320,6 +1325,12 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
 }
 LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        LayoutBrowser();
+        if(g_devicePanelVisible)LayoutDevicePanel();
+        InvalidateRect(hwnd,nullptr,FALSE);
+        return 0;
     case WM_APP_DIAL_APPS_READY:{
         std::unique_ptr<DialAppProbePayload> report((DialAppProbePayload*)lp);
         if(report&&g_devicePanelVisible){
