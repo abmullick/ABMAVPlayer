@@ -663,3 +663,11 @@ Do not call Torrent Stream fully visually validated until the unchecked Windows 
 - [ ] Verify repeated open/close cycles, GDI handle stability, keyboard focus and long-text clipping.
 
 Do not mark these windows fully migrated or visually validated until the outstanding Windows build and runtime checks pass.
+
+## Torrent typography role enforcement — follow-up
+
+- Replaced numeric DirectWrite style indices in Torrent's main-window labels with the canonical `ABM_D2D_TEXT_*` role constants. This makes the role contract explicit in source and prevents accidental role drift when the shared typography enum is maintained.
+- Corrected the Torrent wordmark suffix to use `ABM_D2D_TEXT_BRAND_SUFFIX`, rather than the ordinary body role. The ABM wordmark uses `ABM_D2D_TEXT_BRAND_MAIN`; supporting labels use the shared small/body roles.
+- Owner-drawn buttons, file-list rows and TV selector rows continue to use the same shared DirectWrite canvas formats. GDI text paths are retained only as defensive fallback paths if Direct2D canvas drawing cannot start; they are not the normal rendering path.
+- Native editable controls remain native for caret, selection, IME, clipboard and accessibility behaviour, with their font sourced from the shared ABM text tokens.
+- This is a source-level typography consistency correction. Windows compilation and side-by-side runtime comparison against Main Player are still required before visual parity can be signed off.
