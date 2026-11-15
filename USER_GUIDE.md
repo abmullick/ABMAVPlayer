@@ -33,6 +33,8 @@ The playlist stores references to media files. Removing an item from the playlis
 
 Open **Settings** from the Command Centre. Main Settings contains General, Audio, Torrent & Storage, Network, Updates and Color Theme. Choose **Advanced…** for decoder, output, subtitle, caching, performance, behaviour and diagnostics controls.
 
+The Settings window can be resized. On a short display or narrow window, use the custom ABM scrollbars at the right and bottom edges: drag the thumb or click the track. The mouse wheel scrolls vertically; **Page Up / Page Down** move by a page, while **Ctrl+Home / Ctrl+End** jump to the start or end. The scrollbars follow the selected ABM theme; they are not the standard Windows scrollbar controls. Text-entry fields remain native Windows controls for normal editing, selection and clipboard support.
+
 ### General
 
 - **Volume (0–100):** changes playback loudness, not source quality. Raising 30 to 60 makes the player louder; it does not make a quiet recording cleaner. Consider the Windows/device volume as well to avoid excessive output.
