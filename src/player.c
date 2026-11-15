@@ -4759,6 +4759,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentUiReady=FALSE;
         ABM_D2D_Destroy(&g_torrentUi);
         if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
+        if(g_torrentButtonFont){DeleteObject(g_torrentButtonFont);g_torrentButtonFont=NULL;}
+        if(g_torrentButtonIconFont){DeleteObject(g_torrentButtonIconFont);g_torrentButtonIconFont=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;g_torrentOpenDownloadsButton=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
     }
