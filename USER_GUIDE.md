@@ -135,10 +135,11 @@ These are interaction preferences, not keyboard-remapping controls.
 
 The page reports application version and PID, logical processor count, installed/available RAM and system memory load, ABM AV Player working set and page-file usage, plus playback state, video dimensions, playlist and recent counts.
 
-- **Generate report** writes a timestamped UTF-8 text report to the ABM AV Player data folder and loads it into the read-only, scrollable preview.
-- **Open data folder** opens that folder in File Explorer.
+- **Generate report** creates a timestamped UTF-8 TXT file in the ABM AV Player data folder and loads it into the read-only, scrollable preview. The report records the application version, process ID, architecture, executable/data paths, loaded LibVLC version and module path, plugin directory, plugin inventory and mapped-DLL count, runtime/player initialization evidence, playback-session evidence, current media/track details where observed, system resources and player-process memory.
+- **Open data folder** opens the report/data directory in File Explorer so you can inspect or attach a report yourself.
+- **Refresh scan** on the separate VLC Runtime & Codecs page refreshes plugin/runtime/playback evidence; it is not a codec benchmark.
 
-The report is local and is not automatically uploaded or sent to support. Review it before sharing because it can include machine details, executable paths, process information and playback/session state.
+The report is local and is not automatically uploaded or sent to support. Review it before sharing: it can contain machine details, executable paths, process information, media paths and playback/session state. Diagnostics is observational; it does not tune, repair or identify the cause of a problem by itself.
 
 ### VLC Runtime & Codecs
 
