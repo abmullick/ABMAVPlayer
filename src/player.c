@@ -352,6 +352,11 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_ERASEBKGND:return 1;
+    case WM_DPICHANGED: {
+        ABM_DpiApplySuggestedRect(w,lp);UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(w);
+        RECT wr={0};GetWindowRect(w,&wr);SetWindowPos(w,NULL,0,0,ABM_DpiScale(380,dpi),ABM_DpiScale(54+d->count*36+8,dpi),SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
+        InvalidateRect(w,NULL,FALSE);return 0;
+    }
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,w,0};TrackMouseEvent(&t);UINT dpi=ABM_DpiGetForWindow(w);
         int row=(ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)-54)/36+d->first;if(row<d->first||row>=d->count||d->items[row].heading||!d->items[row].enabled)row=-1;
@@ -3167,10 +3172,12 @@ static void EqSetFromPoint(HWND hwnd,int x,int y) {
 }
 static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg){
-    case WM_DPICHANGED:
-        ABM_DpiApplySuggestedRect(hwnd,lp);
-        InvalidateRect(hwnd,NULL,FALSE);
-        return 0;
+    case WM_DPICHANGED: {
+        ABM_DpiApplySuggestedRect(hwnd,lp);UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(hwnd);
+        RECT wr={0};GetWindowRect(hwnd,&wr);SetWindowPos(hwnd,NULL,0,0,ABM_DpiScale(520,dpi),ABM_DpiScale(68+g_recentCount*42+10,dpi),SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
+    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(680,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(405,dpi);return 0;}
     case WM_ACTIVATE:
         if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
         return 0;
@@ -4739,6 +4746,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ABM_DpiApplySuggestedRect(hwnd,lp);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
+    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(900,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(760,dpi);return 0;}
     case WM_CREATE: {
         g_aboutPortrait=LoadAboutPortrait();
         return 0;
