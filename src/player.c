@@ -4739,7 +4739,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ABM_DpiApplySuggestedRect(hwnd,lp);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
-    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(900,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(760,dpi);return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,800,680);return 0;}
     case WM_CREATE: {
         g_aboutPortrait=LoadAboutPortrait();
         return 0;
@@ -5588,7 +5588,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         if(next!=g_advancedSettingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_advancedSettingsScrollY-next,dpi);g_advancedSettingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
     }
     case WM_GETMINMAXINFO: {
-        MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);
+        MINMAXINFO *mi=(MINMAXINFO*)lp;
         ABM_DpiClampMinTrack(w,mi,760,540);
         return 0;
     }
