@@ -71,6 +71,12 @@ struct Task {
     int file_count=0;
     int selected_file_index=-1;
     uint64_t selected_file_size=0;
+    /* Per-task network recovery state. All non-atomic members are accessed
+       under Engine::m_ by the monitor and public task operations. */
+    std::chrono::steady_clock::time_point last_network_activity=std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point next_recovery_attempt{};
+    int recovery_attempts=0;
+    int64_t last_wanted_done=-1;
     std::atomic<bool> removed{false};
 };
 class Engine {
@@ -853,6 +859,50 @@ private:
                     try {
                         auto snapshot=t.handle.status();
                         if(snapshot.errc)t.error=FromUtf8(snapshot.errc.message());
+
+                        /* A tracker can remain silent or a peer connection can
+                           disappear without producing a terminal torrent error.
+                           Detect that condition independently for each task and
+                           request fresh announces with bounded exponential
+                           backoff. Never override libtorrent's actual error. */
+                        const auto taskNow=std::chrono::steady_clock::now();
+                        const bool paused=(snapshot.flags & lt::torrent_flags::paused)!=0;
+                        const bool complete=snapshot.state==lt::torrent_status::finished ||
+                                            snapshot.state==lt::torrent_status::seeding;
+                        if(snapshot.total_wanted_done!=t.last_wanted_done ||
+                           snapshot.download_rate>0) {
+                            t.last_wanted_done=snapshot.total_wanted_done;
+                            t.last_network_activity=taskNow;
+                            t.recovery_attempts=0;
+                            t.next_recovery_attempt=taskNow+std::chrono::seconds(30);
+                        }
+                        if(!paused && !complete && !snapshot.errc &&
+                           taskNow>=t.next_recovery_attempt) {
+                            const auto idleFor=taskNow-t.last_network_activity;
+                            const auto stallThreshold=snapshot.num_peers<=0
+                                ? std::chrono::seconds(30)
+                                : std::chrono::seconds(90);
+                            if(idleFor>=stallThreshold) {
+                                try {
+                                    t.handle.force_reannounce();
+                                    /* Private torrents must use only their
+                                       explicitly configured private trackers. */
+                                    auto ti=t.handle.torrent_file();
+                                    if(ti && !ti->priv() && session_ &&
+                                       session_->is_dht_running())
+                                        t.handle.force_dht_announce();
+                                } catch(...) {
+                                    /* A failed announce request is retried
+                                       later; it must not terminate the task. */
+                                }
+                                ++t.recovery_attempts;
+                                const int backoffSeconds=std::min(
+                                    30 * (1 << std::min(t.recovery_attempts-1,4)),
+                                    300);
+                                t.next_recovery_attempt=taskNow+
+                                    std::chrono::seconds(backoffSeconds);
+                            }
+                        }
                         if(t.metadata_applied)continue;
                         auto ti=t.handle.torrent_file();if(!ti)continue;
                         auto const &files=ti->layout();
