@@ -4422,10 +4422,16 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
                     MoveToEx(dc,cx-5,cy-2,NULL);LineTo(dc,cx,cy+3);LineTo(dc,cx+5,cy-2);
                     SelectObject(dc,op);DeleteObject(chevron);
                 }
-                HPEN border=CreatePen(PS_SOLID,1,(GetFocus()==hwnd)?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_235265);
-                op=SelectObject(dc,border);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-                RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
-                SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
+                if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
+                    ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,0.5f,0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,
+                        ABM_UI_RADIUS_CONTROL,(GetFocus()==hwnd)?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_235265,1.0f);
+                    ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
+                }else{
+                    HPEN border=CreatePen(PS_SOLID,1,(GetFocus()==hwnd)?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_235265);
+                    HGDIOBJ op2=SelectObject(dc,border),ob2=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+                    RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,ABM_UI_RADIUS_CONTROL*2,ABM_UI_RADIUS_CONTROL*2);
+                    SelectObject(dc,ob2);SelectObject(dc,op2);DeleteObject(border);
+                }
             }
             ReleaseDC(hwnd,dc);
         }
