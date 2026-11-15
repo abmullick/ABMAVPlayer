@@ -842,6 +842,7 @@ void CastCurrentBrowserVideo(){
                     const HWND target=g_window;
                     try{
                         StartManagedWorker([target,dialIndex,service](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                             const wchar_t *aliases[3]={
                                 service==L"ZEE5"?L"ZEE5":L"SonyLIV",
                                 service==L"ZEE5"?L"Zee5":L"SonyLiv",
@@ -883,6 +884,7 @@ void CastCurrentBrowserVideo(){
                         SetStatus(L"Opening Prime Video on the selected TV… Title transfer from the desktop browser is not supported.");
                         try{
                             StartManagedWorker([target,castIndex](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                                 std::wstring message;
                                 if(ABM_CastV2_LaunchApplication((unsigned int)castIndex,L"17608BC8"))
                                     message=L"Prime Video opened on the selected TV. Choose the title using the TV remote. ABM cannot transfer the desktop browser's Amazon session or protected video; use Prime Video's official mobile Cast button for phone-to-TV playback.";
@@ -914,6 +916,7 @@ void CastCurrentBrowserVideo(){
                     SetStatus(L"Connecting to the selected TV and transferring the YouTube video…");
                     try{
                         StartManagedWorker([target,id,castIndex,dialIndex](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                             std::wstring message;
                             if(castIndex>=0){
                                 StreamingDiag(L"Starting asynchronous Google Cast YouTube handoff videoId=%s receiverIndex=%d",id.c_str(),castIndex);
@@ -1654,6 +1657,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SetStatus(L"Checking which streaming app endpoints this TV exposes…");
             try{
                 StartManagedWorker([target,dialIndex,castV2Index](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                     auto *payload=new DialAppProbePayload();
                     std::wstring &report=payload->report;
                     report=L"TV app checks (read-only):\r\n";
@@ -1760,6 +1764,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SetStatus((std::wstring(L"Requesting launch of ")+choice.label+L"…").c_str());
             try{
                 StartManagedWorker([target,choice,dialIndex,castV2Index](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                     std::wstring result;
                     bool launchConfirmed=false;
                     if(choice.castV2){
@@ -1803,6 +1808,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SetStatus(stop?L"Requesting Google Cast to stop the selected TV application…":L"Refreshing Google Cast application status…");
                 try{
                     StartManagedWorker([target,castIndex,choice,stop](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                         int code=-1;
                         if(castIndex>=0){
                             code=stop?ABM_CastV2_StopApplication((unsigned int)castIndex,choice.castAppId.c_str())
@@ -1835,6 +1841,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SetStatus(stop?L"Sending standard DIAL stop request to the TV…":L"Checking TV application state…");
             try{
                 StartManagedWorker([target,dialIndex,choice,stop](const std::shared_ptr<std::atomic<bool>>& cancel){
+                    if(cancel->load())return;
                     std::wstring message;
                     if(stop){
                         int code=ABM_Dial_StopApplication((unsigned int)dialIndex,choice.dialApp.c_str());
@@ -1878,6 +1885,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
+        g_appProbeRunning.store(false);
         StopManagedWorkers();
         ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();
         KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
