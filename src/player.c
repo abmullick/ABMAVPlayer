@@ -4343,7 +4343,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     RECT iconRect;
     if(numeric){iconRect.left=r.left+1;iconRect.top=r.top+1;iconRect.right=r.right-1;iconRect.bottom=r.bottom-1;}
     else{iconRect.left=r.left+2;iconRect.top=r.top+2;iconRect.right=r.left+20;iconRect.bottom=r.bottom-2;}
-    ABM_D2D_CanvasText(&g_torrentButtonCanvas,glyph,iconRect,numeric?ABM_THEME_COLOR_8EE2D3:iconColor,1,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_CanvasText(&g_torrentButtonCanvas,glyph,iconRect,numeric?ABM_THEME_COLOR_8EE2D3:iconColor,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     if(!numeric){
         wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
         RECT textRect={r.left+21,r.top+1,r.right-3,r.bottom-1};
