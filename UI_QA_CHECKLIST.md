@@ -138,3 +138,8 @@ For every failure, record:
 - [ ] Remaining known limitations documented.
 
 **Step 12 source status:** checklist and targeted source audit completed. All unchecked items require local Windows validation. Do not describe the UI redesign as fully QA-certified until those checks pass.
+
+
+- [ ] Advanced Settings at 100%, 125%, 150% and 200%: verify the 1080 × 780 logical design remains proportionate, navigation rows and every option hit target align, and the diagnostic preview edit/font remains aligned and readable.
+- [ ] Move Advanced Settings between monitors with different scale factors; verify suggested window bounds, Direct2D rendering, child EDIT placement/font and resize behaviour update without clipping or stale geometry.
+- [ ] Verify Advanced Settings minimum tracking size remains usable at each tested DPI and that all existing settings actions still behave identically.
