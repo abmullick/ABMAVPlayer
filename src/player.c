@@ -5673,68 +5673,48 @@ static const wchar_t *g_advancedSettingsDescriptions[]={
  L"Playback resource usage, buffering and performance controls.",
  L"Keyboard, mouse, playlist and playback behaviour.",
  L"System and player health, local reports and troubleshooting.",
- L"Bundled VLC runtime, plugin files and decoder capability indicators."
+ L"LibVLC runtime health, complete plugin inventory and evidence-based playback checks."
 };
-static wchar_t g_vlcRuntimeVersion[96]=L"Not detected";
-static wchar_t g_vlcRuntimePath[PATH_CAP]=L"Not detected";
-static wchar_t g_vlcPluginPath[PATH_CAP]=L"Not detected";
+#define ABM_VLC_PLUGIN_MAX 512
+typedef struct ABM_VlcPluginEntry { wchar_t category[48]; wchar_t name[128]; BOOL fileFound; BOOL loadedInProcess; } ABM_VlcPluginEntry;
+static ABM_VlcPluginEntry g_vlcPlugins[ABM_VLC_PLUGIN_MAX];
+static unsigned int g_vlcPluginCount=0;
+static BOOL g_vlcPluginInventoryTruncated=FALSE,g_vlcRuntimeTested=FALSE,g_vlcPlaybackVerified=FALSE;
+static wchar_t g_vlcRuntimeVersion[96]=L"Not detected",g_vlcRuntimePath[PATH_CAP]=L"Not detected",g_vlcPluginPath[PATH_CAP]=L"Not detected";
 static BOOL g_vlcRuntimeLoaded=FALSE,g_vlcPluginDirectoryFound=FALSE;
 static HWND g_advancedVlcReportEdit=NULL;
 static HBRUSH g_advancedVlcReportBrush=NULL;
-static BOOL g_vlcPluginFound[8]={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
-static const wchar_t *g_vlcPluginNames[8]={
- L"Core FFmpeg decoder (avcodec)",L"AV1 decoder (dav1d)",L"AV1 decoder (AOM)",
- L"VP8 / VP9 decoder (VPx)",L"MPEG-2 decoder",L"AAC decoder (FAAD)",
- L"FLAC decoder",L"Opus decoder"
-};
-static const wchar_t *g_vlcPluginFiles[8]={
- L"libavcodec_plugin.dll",L"libdav1d_plugin.dll",L"libaom_plugin.dll",
- L"libvpx_plugin.dll",L"libmpeg2_plugin.dll",L"libfaad_plugin.dll",
- L"libflac_plugin.dll",L"libopus_plugin.dll"
-};
+static wchar_t g_vlcRuntimeTestDetail[160]=L"Not tested";
+static wchar_t g_vlcPlaybackTestDetail[192]=L"No successful playback observed in this session";
+static void ScanVlcPluginCategory(const wchar_t *pluginDir,const wchar_t *category){
+ wchar_t pattern[PATH_CAP]={0};if(FAILED(StringCchPrintfW(pattern,_countof(pattern),L"%s\\%s\\*.dll",pluginDir,category)))return;
+ WIN32_FIND_DATAW fd;HANDLE find=FindFirstFileW(pattern,&fd);if(find==INVALID_HANDLE_VALUE)return;
+ do{if(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)continue;if(g_vlcPluginCount>=ABM_VLC_PLUGIN_MAX){g_vlcPluginInventoryTruncated=TRUE;break;}
+  ABM_VlcPluginEntry *e=&g_vlcPlugins[g_vlcPluginCount++];StringCchCopyW(e->category,_countof(e->category),category);StringCchCopyW(e->name,_countof(e->name),fd.cFileName);e->fileFound=TRUE;e->loadedInProcess=(GetModuleHandleW(fd.cFileName)!=NULL);
+ }while(FindNextFileW(find,&fd));FindClose(find);
+}
 static void ScanVlcRuntime(void){
- wchar_t modulePath[PATH_CAP]={0},directory[PATH_CAP]={0},pluginDir[PATH_CAP]={0},filePath[PATH_CAP]={0};
- HMODULE vlcModule=GetModuleHandleW(L"libvlc.dll");
- g_vlcRuntimeLoaded=(vlcModule!=NULL);
- if(vlcModule&&GetModuleFileNameW(vlcModule,modulePath,(DWORD)_countof(modulePath))>0){
-  StringCchCopyW(g_vlcRuntimePath,_countof(g_vlcRuntimePath),modulePath);
-  StringCchCopyW(directory,_countof(directory),modulePath);
-  wchar_t *slash=wcsrchr(directory,L'\\');if(slash)*slash=0;
- }else StringCchCopyW(g_vlcRuntimePath,_countof(g_vlcRuntimePath),L"LibVLC module is not loaded");
- const char *version=libvlc_get_version();
- if(version&&*version)MultiByteToWideChar(CP_UTF8,0,version,-1,g_vlcRuntimeVersion,(int)_countof(g_vlcRuntimeVersion));
- else StringCchCopyW(g_vlcRuntimeVersion,_countof(g_vlcRuntimeVersion),L"Version unavailable");
- if(directory[0]){
-  StringCchPrintfW(pluginDir,_countof(pluginDir),L"%s\\plugins",directory);
-  DWORD attrs=GetFileAttributesW(pluginDir);
-  if(attrs==INVALID_FILE_ATTRIBUTES||!(attrs&FILE_ATTRIBUTE_DIRECTORY)){
-   wchar_t envPath[PATH_CAP]={0};DWORD n=GetEnvironmentVariableW(L"VLC_PLUGIN_PATH",envPath,(DWORD)_countof(envPath));
-   if(n>0&&n<_countof(envPath))StringCchCopyW(pluginDir,_countof(pluginDir),envPath);
-  }
- }
- if(pluginDir[0]){
-  StringCchCopyW(g_vlcPluginPath,_countof(g_vlcPluginPath),pluginDir);
-  DWORD attrs=GetFileAttributesW(pluginDir);
-  g_vlcPluginDirectoryFound=(attrs!=INVALID_FILE_ATTRIBUTES&&(attrs&FILE_ATTRIBUTE_DIRECTORY));
- }else{
-  StringCchCopyW(g_vlcPluginPath,_countof(g_vlcPluginPath),L"Plugin directory not resolved");
-  g_vlcPluginDirectoryFound=FALSE;
- }
- for(int i=0;i<8;i++){
-  g_vlcPluginFound[i]=FALSE;
-  if(g_vlcPluginDirectoryFound&&SUCCEEDED(StringCchPrintfW(filePath,_countof(filePath),L"%s\\codec\\%s",pluginDir,g_vlcPluginFiles[i]))){
-   DWORD attrs=GetFileAttributesW(filePath);g_vlcPluginFound[i]=(attrs!=INVALID_FILE_ATTRIBUTES&&!(attrs&FILE_ATTRIBUTE_DIRECTORY));
-  }
- }
+ wchar_t modulePath[PATH_CAP]={0},directory[PATH_CAP]={0},pluginDir[PATH_CAP]={0};HMODULE mod=GetModuleHandleW(L"libvlc.dll");g_vlcRuntimeLoaded=(mod!=NULL);
+ if(mod&&GetModuleFileNameW(mod,modulePath,(DWORD)_countof(modulePath))>0){StringCchCopyW(g_vlcRuntimePath,_countof(g_vlcRuntimePath),modulePath);StringCchCopyW(directory,_countof(directory),modulePath);wchar_t *slash=wcsrchr(directory,L'\\');if(slash)*slash=0;}
+ else StringCchCopyW(g_vlcRuntimePath,_countof(g_vlcRuntimePath),L"LibVLC module is not loaded");
+ const char *version=libvlc_get_version();if(version&&*version)MultiByteToWideChar(CP_UTF8,0,version,-1,g_vlcRuntimeVersion,(int)_countof(g_vlcRuntimeVersion));else StringCchCopyW(g_vlcRuntimeVersion,_countof(g_vlcRuntimeVersion),L"Version unavailable");
+ if(directory[0]){StringCchPrintfW(pluginDir,_countof(pluginDir),L"%s\\plugins",directory);DWORD at=GetFileAttributesW(pluginDir);if(at==INVALID_FILE_ATTRIBUTES||!(at&FILE_ATTRIBUTE_DIRECTORY)){wchar_t env[PATH_CAP]={0};DWORD n=GetEnvironmentVariableW(L"VLC_PLUGIN_PATH",env,(DWORD)_countof(env));if(n>0&&n<_countof(env))StringCchCopyW(pluginDir,_countof(pluginDir),env);}}
+ if(pluginDir[0]){StringCchCopyW(g_vlcPluginPath,_countof(g_vlcPluginPath),pluginDir);DWORD at=GetFileAttributesW(pluginDir);g_vlcPluginDirectoryFound=(at!=INVALID_FILE_ATTRIBUTES&&(at&FILE_ATTRIBUTE_DIRECTORY));}
+ else{StringCchCopyW(g_vlcPluginPath,_countof(g_vlcPluginPath),L"Plugin directory not resolved");g_vlcPluginDirectoryFound=FALSE;}
+ g_vlcPluginCount=0;g_vlcPluginInventoryTruncated=FALSE;
+ if(g_vlcPluginDirectoryFound){wchar_t pattern[PATH_CAP]={0};StringCchPrintfW(pattern,_countof(pattern),L"%s\\*",pluginDir);WIN32_FIND_DATAW fd;HANDLE find=FindFirstFileW(pattern,&fd);if(find!=INVALID_HANDLE_VALUE){do{if(!(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)||fd.cFileName[0]==L'.')continue;ScanVlcPluginCategory(pluginDir,fd.cFileName);if(g_vlcPluginInventoryTruncated)break;}while(FindNextFileW(find,&fd));FindClose(find);}}
+ g_vlcRuntimeTested=(g_vlc!=NULL&&g_player!=NULL&&version&&*version);
+ StringCchCopyW(g_vlcRuntimeTestDetail,_countof(g_vlcRuntimeTestDetail),g_vlcRuntimeTested?L"PASS — LibVLC instance and local player initialized":L"NOT TESTED — runtime/player initialization unavailable");
+ g_vlcPlaybackVerified=FALSE;StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"NOT YET VERIFIED — play media, then refresh");
+ if(g_player&&g_hasMedia){libvlc_state_t st=libvlc_media_player_get_state(g_player);if(st==libvlc_Playing){g_vlcPlaybackVerified=TRUE;StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"VERIFIED — current media reached Playing; not a per-codec certification");}else if(st==libvlc_Error)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"FAILED — current media is in LibVLC Error state");else StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PENDING — media loaded but not Playing");}
 }
 static void UpdateVlcReportText(void){
- if(!g_advancedVlcReportEdit)return;
- wchar_t report[4096]={0};size_t used=0;
- StringCchPrintfW(report,_countof(report),L"LibVLC runtime: %s\r\nVersion: %s\r\nLoaded module: %s\r\nPlugin directory: %s\r\nPlugin directory status: %s\r\n\r\nDECODER PLUGIN INVENTORY\r\n",g_vlcRuntimeLoaded?L"Loaded in this process":L"Not loaded",g_vlcRuntimeVersion,g_vlcRuntimePath,g_vlcPluginPath,g_vlcPluginDirectoryFound?L"Found":L"Not found");
- used=wcslen(report);
- for(int i=0;i<8&&used<_countof(report)-1;i++){if(FAILED(StringCchPrintfW(report+used,_countof(report)-used,L"%s  —  %s\r\n",g_vlcPluginNames[i],g_vlcPluginFound[i]?L"File found":L"Not found")))break;used=wcslen(report);}
- StringCchCatW(report,_countof(report),L"\r\nNOTE: File presence is an inventory check, not proof of successful decoding. Actual codec, profile, driver and hardware support must be tested with media.");
- SetWindowTextW(g_advancedVlcReportEdit,report);SendMessageW(g_advancedVlcReportEdit,EM_SETSEL,0,0);SendMessageW(g_advancedVlcReportEdit,EM_SCROLLCARET,0,0);
+ if(!g_advancedVlcReportEdit)return;wchar_t *r=(wchar_t*)calloc(65536,sizeof(wchar_t));if(!r)return;unsigned int loaded=0;for(unsigned int i=0;i<g_vlcPluginCount;i++)if(g_vlcPlugins[i].loadedInProcess)loaded++;
+ StringCchPrintfW(r,65536,L"ABM VLC COMPATIBILITY AUDIT\\r\\nLibVLC: %s | Version: %s\\r\\nModule: %s\\r\\nPlugin directory: %s (%s)\\r\\n\\r\\nFOUR INDEPENDENT CHECKS\\r\\n1. File Found: %u plugin DLLs discovered\\r\\n2. Plugin Loaded: %u DLLs mapped in this ABM process\\r\\n3. Runtime Tested: %s\\r\\n4. Playback Verified: %s\\r\\n\\r\\nPLUGIN INVENTORY  [Category | DLL | File Found | Plugin Loaded]\\r\\n",g_vlcRuntimeLoaded?L"Loaded":L"Not loaded",g_vlcRuntimeVersion,g_vlcRuntimePath,g_vlcPluginPath,g_vlcPluginDirectoryFound?L"Found":L"Not found",g_vlcPluginCount,loaded,g_vlcRuntimeTestDetail,g_vlcPlaybackTestDetail);
+ size_t used=wcslen(r);for(unsigned int i=0;i<g_vlcPluginCount&&used<64000;i++){int n=_snwprintf_s(r+used,65536-used,_TRUNCATE,L"%-18s | %-42s | %s | %s\\r\\n",g_vlcPlugins[i].category,g_vlcPlugins[i].name,g_vlcPlugins[i].fileFound?L"FOUND":L"MISSING",g_vlcPlugins[i].loadedInProcess?L"LOADED":L"NOT LOADED");if(n<0)break;used+=(size_t)n;}
+ if(g_vlcPluginInventoryTruncated&&used<65000)StringCchCatW(r,65536,L"\\r\\nWARNING: Inventory capped at 512 plugin DLLs.\\r\\n");
+ if(used<65000)StringCchCatW(r,65536,L"\\r\\nINTERPRETATION\\r\\nFile Found is a filesystem check. Plugin Loaded means the DLL is mapped in this process; VLC loads plugins on demand, so NOT LOADED is not automatically a fault. Runtime Tested confirms the LibVLC instance and local player initialized; it does not execute every plugin. Playback Verified records the current media reaching Playing and is not per-codec/profile certification.\\r\\n");
+ SendMessageW(g_advancedVlcReportEdit,EM_SETLIMITTEXT,65535,0);SetWindowTextW(g_advancedVlcReportEdit,r);SendMessageW(g_advancedVlcReportEdit,EM_SETSEL,0,0);SendMessageW(g_advancedVlcReportEdit,EM_SCROLLCARET,0,0);free(r);
 }
 static void AdvancedSettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF color,int style,UINT flags){
  RECT rc={l,t,r,b};ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,style,flags);
@@ -5845,8 +5825,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
-  if(g_advancedSettingsPage==9){
-  }
+  if(g_advancedSettingsPage==9){if(AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();UpdateVlcReportText();InvalidateRect(w,NULL,FALSE);return 0;}}
   if(g_advancedSettingsPage==8){
    if(AdvancedSettingsPoint(x,y,326,442,610,478)){wchar_t report[PATH_CAP];if(GenerateAdvancedDiagnosticReport(report,_countof(report))){if(!LoadAdvancedDiagnosticPreview(report))ABM_MessageBoxW(w,L"The report was saved, but its contents could not be loaded for preview.",APP_NAME,MB_ICONWARNING);}else ABM_MessageBoxW(w,L"Could not create the diagnostic report. Check that the ABM AV Player data folder is writable.",APP_NAME,MB_ICONERROR);return 0;}
    if(AdvancedSettingsPoint(x,y,626,442,850,478)){if(EnsureDataDirectory())ShellExecuteW(w,L"open",g_dataDir,NULL,NULL,SW_SHOWNORMAL);else ABM_MessageBoxW(w,L"Could not access the ABM AV Player data folder.",APP_NAME,MB_ICONERROR);return 0;}
@@ -6203,7 +6182,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       AdvancedSettingsButtonDraw(326,466,520,502,L"Refresh scan",TRUE);
       /* Four visible rows keep the inventory within the card. Scroll with the
          wheel or click the compact track to inspect all eight decoder entries. */
-       AdvancedSettingsText(L"Select report text and press Ctrl+C to copy. Scroll to inspect the complete inventory and runtime paths.",326,506,1008,530,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+       AdvancedSettingsText(L"Four checks are independent. Plugins load on demand; play media, then Refresh scan. Ctrl+C copies the report.",326,506,1008,530,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
        ABM_D2D_Round(&g_advancedSettingsUi,320,530,1018,648,8,ABM_UI_COLOR_SURFACE_RAISED);
        ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,530.5f,1017.5f,647.5f,8,SETTINGS_BORDER,0.8f);
     }else if(g_advancedSettingsPage==8){
