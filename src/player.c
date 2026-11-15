@@ -4364,14 +4364,26 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
     BOOL hot=(item->itemState&ODS_HOTLIGHT)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
+    BOOL disabled=(item->itemState&ODS_DISABLED)!=0;
     int id=GetDlgCtrlID(item->hwndItem);
     BOOL primary=(id==ID_TORRENT_STREAM||id==ID_TORRENT_CAST_TV||id==ID_TORRENT_ADD_MAGNET);
     BOOL destructive=(id==ID_TORRENT_REMOVE||id==ID_TORRENT_CLEAR_CACHE);
     COLORREF fill,iconColor,textColor,borderColor;
-    if(primary){fill=pressed?ABM_THEME_COLOR_23A097:ABM_THEME_COLOR_18706F;iconColor=ABM_THEME_COLOR_DEFFF6;textColor=ABM_THEME_COLOR_FAFFFD;borderColor=ABM_THEME_COLOR_5BCEB7;}
-    else if(destructive){fill=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_THEME_COLOR_894D52;}
-    else{fill=pressed?ABM_THEME_COLOR_305E6F:ABM_THEME_COLOR_112A3B;iconColor=ABM_THEME_COLOR_8BC2CD;textColor=ABM_THEME_COLOR_D5E6EF;borderColor=ABM_THEME_COLOR_355B6E;}
-    if(hot&&!pressed&&!destructive)fill=TorrentBlend(fill,ABM_THEME_COLOR_285C65,18,100);
+    if(disabled){
+        fill=ABM_UI_COLOR_SURFACE_RAISED;iconColor=ABM_UI_COLOR_TEXT_DISABLED;
+        textColor=ABM_UI_COLOR_TEXT_DISABLED;borderColor=ABM_UI_COLOR_BORDER;
+        hot=FALSE;pressed=FALSE;
+    }else if(primary){
+        fill=pressed?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_18706F;
+        iconColor=ABM_UI_COLOR_TEXT;textColor=ABM_UI_COLOR_TEXT;borderColor=ABM_UI_COLOR_ACCENT_BRIGHT;
+    }else if(destructive){
+        fill=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;
+        iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_UI_COLOR_DANGER;
+    }else{
+        fill=pressed?ABM_THEME_COLOR_305E6F:ABM_UI_COLOR_SURFACE_RAISED;
+        iconColor=ABM_UI_COLOR_ACCENT_BRIGHT;textColor=ABM_UI_COLOR_TEXT_SECONDARY;borderColor=ABM_UI_COLOR_BORDER_STRONG;
+    }
+    if(hot&&!pressed&&!destructive&&!disabled)fill=TorrentBlend(fill,ABM_UI_COLOR_ACCENT_SOFT,18,100);
     BOOL numeric=(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC);
     wchar_t caption[128]=L"";if(!numeric)GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
     if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,item->hDC,&r)){
@@ -4421,7 +4433,7 @@ static void TorrentDrawControlFrame(HWND hwnd,HDC dc){
     BOOL focus=GetFocus()==hwnd;
     BOOL hot=FALSE;POINT pt;GetCursorPos(&pt);ScreenToClient(hwnd,&pt);
     hot=PtInRect(&r,pt);
-    COLORREF edge=focus?ABM_THEME_COLOR_5BCDBC:(hot?ABM_THEME_COLOR_39858B:ABM_THEME_COLOR_234658);
+    COLORREF edge=focus?ABM_UI_COLOR_FOCUS:(hot?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
     if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
         ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,0.5f,0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,ABM_UI_RADIUS_CONTROL,edge,focus?2.0f:1.0f);
         ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
@@ -4506,19 +4518,19 @@ static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
     if(!d)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
     if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
-        COLORREF bg=(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_144B53:((d->itemID&1)?ABM_THEME_COLOR_0C1C2C:ABM_THEME_COLOR_0A1827);
+        COLORREF bg=(d->itemState&ODS_SELECTED)?ABM_UI_COLOR_ACCENT_SOFT:((d->itemID&1)?ABM_UI_COLOR_SURFACE:ABM_UI_COLOR_SURFACE_BLUE);
         ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,bg);
         if(d->itemState&ODS_SELECTED){
             RECT pill=r;InflateRect(&pill,-3,-2);
-            ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_14444F);
-            ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_31848B,1.0f);
-            ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left+5.0f,(float)r.top+6.0f,(float)r.left+8.0f,(float)r.bottom-6.0f,ABM_THEME_COLOR_5DDABE);
+            ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_SURFACE_RAISED);
+            ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+            ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left+5.0f,(float)r.top+6.0f,(float)r.left+8.0f,(float)r.bottom-6.0f,ABM_UI_COLOR_ACCENT_BRIGHT);
         }
         wchar_t line[1200]=L"";
         if(d->itemID!=(UINT)-1)SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
         RECT tx=r;tx.left+=12;tx.right-=10;
-        ABM_D2D_CanvasText(&g_torrentButtonCanvas,line,tx,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F7FDFF:ABM_THEME_COLOR_B2C9DA,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_41BEA5,1.0f);
+        ABM_D2D_CanvasText(&g_torrentButtonCanvas,line,tx,(d->itemState&ODS_SELECTED)?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_FOCUS,1.0f);
         ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
         return;
     }
@@ -4549,13 +4561,13 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
     if(!d||!d->hwndItem)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
     if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
-        COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?ABM_THEME_COLOR_0D1E2F:ABM_THEME_COLOR_0A1826;
+        COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?ABM_UI_COLOR_INPUT:ABM_UI_COLOR_SURFACE_RAISED;
         ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,bg);
         if(d->itemID!=(UINT)-1){
-            if(d->itemState&ODS_SELECTED){RECT sr=r;InflateRect(&sr,-2,-1);ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)sr.left,(float)sr.top,(float)sr.right,(float)sr.bottom,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_194653);}
+            if(d->itemState&ODS_SELECTED){RECT sr=r;InflateRect(&sr,-2,-1);ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)sr.left,(float)sr.top,(float)sr.right,(float)sr.bottom,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_ACCENT_SOFT);}
             wchar_t name[256]=L"";SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)name);
             RECT tr=r;tr.left+=13;tr.right-=36;
-            ABM_D2D_CanvasText(&g_torrentButtonCanvas,name,tr,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            ABM_D2D_CanvasText(&g_torrentButtonCanvas,name,tr,(d->itemState&ODS_SELECTED)?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
         if(d->itemState&ODS_COMBOBOXEDIT)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_1D4B5B,1.0f);
         ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
@@ -4838,7 +4850,17 @@ static void ShowTorrentWindow(HWND owner) {
     RECT wr;GetWindowRect(owner,&wr);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int w=maxW<1080?maxW:1080,h=maxH<980?maxH:980;if(w<760)w=760;if(h<620)h=620;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
-    if(g_torrentWindow){HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
+    if(g_torrentWindow){
+        HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
+        if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
+        BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+        {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_THEME_COLOR_0A0F19;
+         DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+         DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+         DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+        SetWindowPos(g_torrentWindow,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
+        ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();
+    }
 }
 
 static HBITMAP g_aboutPortrait = NULL;
