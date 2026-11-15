@@ -78,3 +78,10 @@ Do not mark the DPI work release-complete until the visual and interaction matri
 The Advanced Settings window now uses the shared per-monitor DPI architecture for its Direct2D surface. Its 1080 × 780 design coordinates remain in 96-DPI logical units; the top-level window dimensions and minimum tracking size are scaled for the owner monitor, and the Direct2D render target receives the active window DPI. Pointer coordinates are converted to logical units before navigation and option hit-testing. The diagnostic preview EDIT child is positioned and sized in physical pixels and its Consolas font is recreated at the destination DPI when the window moves between monitors. WM_SIZE resizes the render target using the physical client dimensions.
 
 This is the first Advanced Settings DPI pass. Other legacy/native child surfaces and the standard Settings window remain separate migration work; do not treat the entire application as fully DPI-migrated until those passes and runtime checks are complete.
+
+
+## Standard Settings logical-DPI migration
+
+The standard Settings window now follows the same 96-DPI logical-coordinate model. Its 820 × 1020 design size and minimum tracking dimensions are scaled from the owner monitor DPI. The Direct2D target is initialized and updated with the window DPI; native EDIT child controls are created and repositioned in scaled physical pixels, and their Segoe UI font is recreated at the destination DPI. The Settings window converts pointer coordinates to logical units before applying its existing hit targets. Existing settings values, save actions, browse actions, theme preset behaviour and Advanced Settings navigation are unchanged.
+
+This pass covers the six native EDIT controls and the Direct2D-rendered Settings surface. It does not by itself certify every legacy dialog in ABM AV Player as DPI-complete; each remaining surface still requires its own migration and runtime validation.
