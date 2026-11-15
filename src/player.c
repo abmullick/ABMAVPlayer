@@ -6204,7 +6204,6 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       AdvancedSettingsText(g_vlcPluginPath,326,404,1008,426,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
       AdvancedSettingsText(g_vlcPluginDirectoryFound?L"Plugin directory found":L"Plugin directory not found",326,430,620,454,g_vlcPluginDirectoryFound?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsButtonDraw(326,466,520,502,L"Refresh scan",TRUE);
-      AdvancedSettingsText(L"Decoder-related plugin files  ·  presence check only",326,506,1008,530,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       /* Four visible rows keep the inventory within the card. Scroll with the
          wheel or click the compact track to inspect all eight decoder entries. */
        AdvancedSettingsText(L"Select report text and press Ctrl+C to copy. Scroll to inspect the complete inventory and runtime paths.",326,506,1008,530,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
