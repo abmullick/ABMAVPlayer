@@ -114,6 +114,7 @@ ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[kServiceCount]{};
 HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
+WNDPROC g_devicePanelOriginalProc=nullptr;
 HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr,g_deviceAppCombo=nullptr,g_deviceLaunch=nullptr,g_deviceAppStatus=nullptr,g_deviceAppStop=nullptr;
 bool g_devicePanelVisible=false;
 bool g_deviceSelectPulse=false,g_deviceLaunchPulse=false,g_devicePulsePhase=false;
@@ -487,11 +488,27 @@ void RefreshDevicePanel(bool force){
         SetWindowTextW(g_deviceHint,L"Searching for TVs… keep this panel open for discovery.");
     }
 }
+LRESULT CALLBACK DevicePanelProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
+    /* Child notifications and owner-draw/colour requests must be handled by
+       StreamingProc, which owns the receiver state and command handlers. */
+    if(g_window&&(msg==WM_COMMAND||msg==WM_DRAWITEM||msg==WM_MEASUREITEM||
+       msg==WM_CTLCOLORSTATIC||msg==WM_CTLCOLORLISTBOX))
+        return SendMessageW(g_window,msg,wp,lp);
+    if(msg==WM_NCDESTROY){
+        WNDPROC original=g_devicePanelOriginalProc;
+        g_devicePanelOriginalProc=nullptr;
+        SetWindowLongPtrW(hwnd,GWLP_WNDPROC,(LONG_PTR)original);
+        return original?CallWindowProcW(original,hwnd,msg,wp,lp):DefWindowProcW(hwnd,msg,wp,lp);
+    }
+    return g_devicePanelOriginalProc?CallWindowProcW(g_devicePanelOriginalProc,hwnd,msg,wp,lp)
+                                    :DefWindowProcW(hwnd,msg,wp,lp);
+}
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
         WS_POPUP|SS_OWNERDRAW,0,0,516,520,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
+    g_devicePanelOriginalProc=(WNDPROC)SetWindowLongPtrW(g_devicePanel,GWLP_WNDPROC,(LONG_PTR)DevicePanelProc);
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
