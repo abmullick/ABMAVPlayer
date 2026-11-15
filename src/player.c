@@ -1901,6 +1901,7 @@ static void PlaybackStopEngine(void) {
 }
 static BOOL PlaybackSetMedia(libvlc_media_t *media) {
     if(!PlaybackPlayerAvailable()||!media)return FALSE;
+    VlcCodecVerificationReset();
     libvlc_media_player_set_media(g_player,media);
     return TRUE;
 }
@@ -5686,6 +5687,23 @@ static HWND g_advancedVlcReportEdit=NULL;
 static HBRUSH g_advancedVlcReportBrush=NULL;
 static wchar_t g_vlcRuntimeTestDetail[160]=L"Not tested";
 static wchar_t g_vlcPlaybackTestDetail[192]=L"No successful playback observed in this session";
+
+#define ABM_VLC_TRACK_MAX 32
+typedef struct ABM_VlcTrackEvidence { int id; libvlc_track_type_t type; uint32_t codec; wchar_t description[96]; } ABM_VlcTrackEvidence;
+static ABM_VlcTrackEvidence g_vlcTrackEvidence[ABM_VLC_TRACK_MAX];
+static unsigned int g_vlcTrackEvidenceCount=0;
+static wchar_t g_vlcMediaPath[PATH_CAP]=L"",g_vlcContainer[32]=L"Unknown";
+static BOOL g_vlcMediaPlayingObserved=FALSE,g_vlcMediaErrorObserved=FALSE,g_vlcTrackSnapshotReady=FALSE;
+static void VlcCodecVerificationReset(void) {g_vlcTrackEvidenceCount=0;g_vlcMediaPath[0]=0;StringCchCopyW(g_vlcContainer,_countof(g_vlcContainer),L"Unknown");g_vlcMediaPlayingObserved=FALSE;g_vlcMediaErrorObserved=FALSE;g_vlcTrackSnapshotReady=FALSE;StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"WAITING — start media to identify streams and verify playback");}
+static void VlcFourccText(uint32_t code,wchar_t *out,size_t count) {if(!out||count<5)return;for(int i=0;i<4;i++){unsigned char c=(unsigned char)((code>>(i*8))&0xff);out[i]=(c>=32&&c<=126)?(wchar_t)c:L'.';}out[4]=0;}
+static void VlcCaptureTrackEvidence(void) {
+ if(!g_player||!g_hasMedia||g_vlcTrackSnapshotReady)return;libvlc_media_t *media=libvlc_media_player_get_media(g_player);if(!media)return;libvlc_media_retain(media);
+ libvlc_media_track_t **tracks=NULL;unsigned int count=libvlc_media_tracks_get(media,&tracks),limit=count>ABM_VLC_TRACK_MAX?ABM_VLC_TRACK_MAX:count;g_vlcTrackEvidenceCount=0;
+ for(unsigned int i=0;i<limit;i++){libvlc_media_track_t *t=tracks?tracks[i]:NULL;if(!t)continue;ABM_VlcTrackEvidence *e=&g_vlcTrackEvidence[g_vlcTrackEvidenceCount++];ZeroMemory(e,sizeof(*e));e->id=t->i_id;e->type=t->i_type;e->codec=t->i_codec;const char *d=libvlc_media_get_codec_description(t->i_type,t->i_codec);if(d&&*d)MultiByteToWideChar(CP_UTF8,0,d,-1,e->description,(int)_countof(e->description));if(!e->description[0])VlcFourccText(t->i_codec,e->description,_countof(e->description));}
+ if(tracks)libvlc_media_tracks_release(tracks,count);libvlc_media_release(media);
+ if(g_current>=0&&g_current<g_playlistCount)StringCchCopyW(g_vlcMediaPath,_countof(g_vlcMediaPath),g_playlist[g_current]);const wchar_t *dot=wcsrchr(g_vlcMediaPath,L'.');if(dot){StringCchCopyW(g_vlcContainer,_countof(g_vlcContainer),dot+1);CharLowerBuffW(g_vlcContainer,(DWORD)wcslen(g_vlcContainer));}g_vlcTrackSnapshotReady=(count>0);
+}
+static void VlcCodecVerificationPoll(void) {if(!g_player||!g_hasMedia)return;libvlc_state_t st=libvlc_media_player_get_state(g_player);if(st==libvlc_Playing){g_vlcMediaPlayingObserved=TRUE;if(!g_vlcTrackSnapshotReady)VlcCaptureTrackEvidence();}else if(st==libvlc_Error)g_vlcMediaErrorObserved=TRUE;if(g_vlcMediaErrorObserved)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"FAILED — LibVLC reported an error");else if(g_vlcMediaPlayingObserved&&g_vlcTrackSnapshotReady)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"VERIFIED — media reached Playing and elementary streams were identified");else if(g_vlcMediaPlayingObserved)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PLAYING — stream metadata unavailable; verification incomplete");else StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PENDING — waiting for LibVLC Playing state");}
 static void ScanVlcPluginCategory(const wchar_t *pluginDir,const wchar_t *category){
  wchar_t pattern[PATH_CAP]={0};if(FAILED(StringCchPrintfW(pattern,_countof(pattern),L"%s\\%s\\*.dll",pluginDir,category)))return;
  WIN32_FIND_DATAW fd;HANDLE find=FindFirstFileW(pattern,&fd);if(find==INVALID_HANDLE_VALUE)return;
@@ -5705,8 +5723,7 @@ static void ScanVlcRuntime(void){
  if(g_vlcPluginDirectoryFound){wchar_t pattern[PATH_CAP]={0};StringCchPrintfW(pattern,_countof(pattern),L"%s\\*",pluginDir);WIN32_FIND_DATAW fd;HANDLE find=FindFirstFileW(pattern,&fd);if(find!=INVALID_HANDLE_VALUE){do{if(!(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)||fd.cFileName[0]==L'.')continue;ScanVlcPluginCategory(pluginDir,fd.cFileName);if(g_vlcPluginInventoryTruncated)break;}while(FindNextFileW(find,&fd));FindClose(find);}}
  g_vlcRuntimeTested=(g_vlc!=NULL&&g_player!=NULL&&version&&*version);
  StringCchCopyW(g_vlcRuntimeTestDetail,_countof(g_vlcRuntimeTestDetail),g_vlcRuntimeTested?L"PASS — LibVLC instance and local player initialized":L"NOT TESTED — runtime/player initialization unavailable");
- g_vlcPlaybackVerified=FALSE;StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"NOT YET VERIFIED — play media, then refresh");
- if(g_player&&g_hasMedia){libvlc_state_t st=libvlc_media_player_get_state(g_player);if(st==libvlc_Playing){g_vlcPlaybackVerified=TRUE;StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"VERIFIED — current media reached Playing; not a per-codec certification");}else if(st==libvlc_Error)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"FAILED — current media is in LibVLC Error state");else StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PENDING — media loaded but not Playing");}
+ VlcCodecVerificationPoll();g_vlcPlaybackVerified=(g_vlcMediaPlayingObserved&&g_vlcTrackSnapshotReady&&!g_vlcMediaErrorObserved);
 }
 static void UpdateVlcReportText(void){
  if(!g_advancedVlcReportEdit)return;wchar_t *r=(wchar_t*)calloc(65536,sizeof(wchar_t));if(!r)return;unsigned int loaded=0;for(unsigned int i=0;i<g_vlcPluginCount;i++)if(g_vlcPlugins[i].loadedInProcess)loaded++;
@@ -6687,6 +6704,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==TIMER_ID){
+        VlcCodecVerificationPoll();
         TorrentCheckPlaybackStall();
         CheckAudioOutputAvailability();
         if (g_fullscreen) {
