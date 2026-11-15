@@ -4357,14 +4357,6 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
 }
 /* Button renderer copied from Streaming Centre's DrawDeviceButton palette,
    radius, border, pressed/focus treatment and typography. */
-static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
-    HBRUSH brush=CreateSolidBrush(color);
-    HPEN pen=CreatePen(PS_SOLID,1,color);
-    HGDIOBJ oldBrush=SelectObject(dc,brush),oldPen=SelectObject(dc,pen);
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);
-    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);
-    DeleteObject(brush);DeleteObject(pen);
-}
 static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
     return RGB((GetRValue(a)*(maxT-t)+GetRValue(b)*t)/maxT,
                (GetGValue(a)*(maxT-t)+GetGValue(b)*t)/maxT,
