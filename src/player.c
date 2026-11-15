@@ -75,7 +75,6 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define WM_TORRENT_STREAM_READY (WM_APP + 14)
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
 #define WM_TORRENT_TV_READY (WM_APP + 16)
-#define ABM_VLC_EVENT_FLAG_SHIFT 0
 #define TIMER_ID 1
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -5695,7 +5694,7 @@ static const wchar_t *g_advancedSettingsDescriptions[]={
 typedef struct ABM_VlcPluginEntry { wchar_t category[48]; wchar_t name[128]; BOOL fileFound; BOOL loadedInProcess; } ABM_VlcPluginEntry;
 static ABM_VlcPluginEntry g_vlcPlugins[ABM_VLC_PLUGIN_MAX];
 static unsigned int g_vlcPluginCount=0;
-static BOOL g_vlcPluginInventoryTruncated=FALSE,g_vlcRuntimeTested=FALSE,g_vlcPlaybackVerified=FALSE;
+static BOOL g_vlcPluginInventoryTruncated=FALSE,g_vlcRuntimeTested=FALSE;
 static wchar_t g_vlcRuntimeVersion[96]=L"Not detected",g_vlcRuntimePath[PATH_CAP]=L"Not detected",g_vlcPluginPath[PATH_CAP]=L"Not detected";
 static BOOL g_vlcRuntimeLoaded=FALSE,g_vlcPluginDirectoryFound=FALSE;
 static HWND g_advancedVlcReportEdit=NULL;
