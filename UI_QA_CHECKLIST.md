@@ -165,6 +165,7 @@ Source-level rendering lifecycle changes are committed. The following are still 
 
 - [ ] Settings: inspect every section, input, folder picker, theme swatch, playback-rate selector and action button against Main Player typography, spacing, radius, border and focus treatment.
 - [ ] Settings: test long paths, validation errors, Save settings feedback, theme changes while Settings remains open, and opening Advanced Settings.
+- [ ] Settings custom scrollbars: drag both thumbs, click before/after each thumb, scroll with wheel and keyboard, resize while scrolled, and cancel a drag by capture loss; verify the thumb tracks the actual content offset and no native scrollbar is visible.
 - [ ] Advanced Settings: visit all ten pages; check selected navigation state, option cards, radio-style choices, toggle states, diagnostic controls, VLC plugin inventory and report preview.
 - [ ] Advanced Settings: change theme while the window is open; confirm diagnostic and VLC report controls use the new palette.
 - [ ] Help: inspect search, topic list, selected topic, RichEdit article typography, paragraph rhythm, scrollbar and footer.
@@ -208,9 +209,10 @@ Validation still required: build on the documented MSVC toolchain; exercise 100%
 Source implementation committed:
 - Settings opens at a practical, shorter default client height instead of requesting a 980-pixel-tall window.
 - Initial placement is centered on the owner's nearest monitor and clamped to that monitor's work area, excluding the taskbar and docked app bars.
-- The window is resizable and uses horizontal/vertical scrollbars when the virtual Settings canvas exceeds the available client area. All existing controls—including theme presets, status text, Save and Close—remain reachable on short or narrow displays.
+- The window is resizable and uses custom ABM-painted horizontal/vertical scrollbars when the virtual Settings canvas exceeds the available client area. They use shared theme tokens, not native Windows scrollbar controls. All existing controls—including theme presets, status text, Save and Close—remain reachable on short or narrow displays.
 - Direct2D painting uses a client-pixel translation for the scroll offset. Native EDIT controls move with the same offset; pointer hit-testing is translated back into virtual content coordinates.
 - Mouse-wheel scrolling works over the window and is forwarded from native edit fields. Page Up/Down and Ctrl+Home/End provide keyboard scrolling.
+- Custom scrollbar thumb dragging, track-click positioning, active-thumb feedback and mouse-capture cancellation must be tested; confirm no native scrollbar chrome appears at the right or bottom edge.
 - When a native edit field receives focus, the viewport scrolls it into view.
 - A `WM_DPICHANGED` handler applies the suggested rectangle when Windows delivers that message, clamps it to the nearest monitor work area and refreshes the render target/scroll ranges. Reopening an existing Settings window also clamps it inside its current monitor work area. This window-level handler does not change the application-wide DPI-awareness mode; mixed-DPI monitor transitions remain subject to the existing system-aware DPI policy and must be runtime-tested.
 - Settings values, save logic, theme selection and existing control coordinates remain unchanged; the content is now a scrollable virtual surface rather than a tall fixed-height window.
