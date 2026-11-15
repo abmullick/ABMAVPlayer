@@ -545,6 +545,10 @@ void ShowDevicePanel(){
     if(!g_devicePanel)CreateDevicePanel(g_window);
     if(!g_devicePanel)return;
     g_devicePanelVisible=true;
+    /* WebView2 is an independently hosted surface and can remain above
+       ordinary Win32 child HWNDs regardless of their sibling z-order.
+       Temporarily hide it while the native receiver picker is open. */
+    if(g_controller)g_controller->put_IsVisible(FALSE);
     ShowWindow(g_devicePanel,SW_SHOW);
     HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose,g_deviceAppStatus,g_deviceAppStop};
     for(HWND control:controls)if(control)ShowWindow(control,SW_SHOW);
@@ -565,6 +569,7 @@ void HideDevicePanel(){
     KillTimer(g_window,ID_STREAM_DEVICE_TIMER);
     HWND controls[]={g_devicePanel,g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceClose,g_deviceAppStatus,g_deviceAppStop};
     for(HWND control:controls)if(control)ShowWindow(control,SW_HIDE);
+    if(g_controller)g_controller->put_IsVisible(TRUE);
 }
 
 void SetStatus(const wchar_t *message){
