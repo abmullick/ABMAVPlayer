@@ -149,3 +149,13 @@ For every failure, record:
 - [ ] Verify every Settings hit target after scaling: playback-rate dropdown, toggles, browse/open buttons, update button, theme presets, Save settings, Close and Advanced Settings.
 - [ ] Move Settings between monitors with different DPI values; verify the dialog bounds, Direct2D rendering, child EDIT positions/sizes and fonts update without drift or clipping.
 - [ ] Verify volume, cache paths, download path, quota and bandwidth fields retain their values and save exactly as before the DPI migration.
+
+
+- [ ] Torrent Stream at 100%, 125%, 150% and 200%: verify Direct2D layout, every child control, sliders, owner-drawn buttons, combo/list item heights and fonts remain aligned and usable.
+- [ ] Move Torrent Stream between monitors with different DPI; verify child HWNDs are repositioned, font is recreated, render target updates, minimum size remains sensible and torrent/casting actions are unaffected.
+- [ ] About: verify portrait, all text blocks, divider, version line and minimum size at each scale; move between monitors and check no clipping.
+- [ ] Equalizer: verify all ten band sliders, preamp, labels, preset hit targets and drag behaviour at each scale; move between monitors while open.
+- [ ] Help Centre: verify search field, Find button, topic list, rich-text article, scrollbars, row heights, title-bar drag/close hit targets and Ctrl+F/F3 at each scale and after monitor transitions.
+- [ ] Branded modal dialogs: verify Yes/No/OK button positions, keyboard focus, message wrapping and click hit targets at each scale; test long messages and both default-button choices.
+- [ ] Custom action menus and Recently Played popup: verify row hit targets, hover, keyboard navigation, scrolling, fonts and work-area edge clamping at each scale.
+- [ ] Fullscreen overlay on monitors with different DPI: verify it remains aligned to the fullscreen monitor and playback controls retain correct input routing.
