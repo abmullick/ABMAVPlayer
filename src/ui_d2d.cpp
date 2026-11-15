@@ -70,6 +70,33 @@ static BOOL MakeFormat(IDWriteFactory *factory, const wchar_t *family,
         DWRITE_FONT_STRETCH_NORMAL, size, L"en-us", out));
 }
 
+/* One authoritative format set for every ABM-owned Direct2D surface.
+   Values intentionally match the Main Player's original typography. */
+static BOOL CreateCanonicalTextFormats(
+    IDWriteFactory *factory,
+    IDWriteTextFormat **body,
+    IDWriteTextFormat **small,
+    IDWriteTextFormat **heading,
+    IDWriteTextFormat **brandMain,
+    IDWriteTextFormat **brandSuffix,
+    IDWriteTextFormat **icon) {
+    if (!factory || !body || !small || !heading || !brandMain || !brandSuffix || !icon)
+        return FALSE;
+    return
+        MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY,
+                   DWRITE_FONT_WEIGHT_NORMAL, body) &&
+        MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL,
+                   DWRITE_FONT_WEIGHT_SEMI_BOLD, small) &&
+        MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING,
+                   DWRITE_FONT_WEIGHT_SEMI_BOLD, heading) &&
+        MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_DISPLAY,
+                   DWRITE_FONT_WEIGHT_BOLD, brandMain) &&
+        MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_SECTION,
+                   DWRITE_FONT_WEIGHT_MEDIUM, brandSuffix) &&
+        MakeFormat(factory, ABM_UI_FONT_FAMILY_ICON, ABM_UI_FONT_SIZE_ICON,
+                   DWRITE_FONT_WEIGHT_NORMAL, icon);
+}
+
 
 static ID2D1DCRenderTarget *CanvasTarget(ABM_D2D_CANVAS *c) { return static_cast<ID2D1DCRenderTarget *>(c->target); }
 static ID2D1SolidColorBrush *CanvasBrush(ABM_D2D_CANVAS *c) { return static_cast<ID2D1SolidColorBrush *>(c->brush); }
@@ -104,14 +131,16 @@ extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
     if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
         reinterpret_cast<IUnknown **>(&wf)))) { ABM_D2D_CanvasDestroy(c); return FALSE; }
     c->writeFactory = wf;
-    IDWriteTextFormat *body = nullptr, *smallText = nullptr, *heading = nullptr, *icon = nullptr;
-    if (!MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallText) ||
-        !MakeFormat(wf, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
-        !MakeFormat(wf, ABM_UI_FONT_FAMILY_ICON, ABM_UI_FONT_SIZE_ICON, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
-        SafeRelease(&body); SafeRelease(&smallText); SafeRelease(&heading); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
+    IDWriteTextFormat *body = nullptr, *smallText = nullptr, *heading = nullptr;
+    IDWriteTextFormat *brandMain = nullptr, *brandSuffix = nullptr, *icon = nullptr;
+    if (!CreateCanonicalTextFormats(wf, &body, &smallText, &heading,
+                                    &brandMain, &brandSuffix, &icon)) {
+        SafeRelease(&body); SafeRelease(&smallText); SafeRelease(&heading);
+        SafeRelease(&brandMain); SafeRelease(&brandSuffix); SafeRelease(&icon);
+        ABM_D2D_CanvasDestroy(c); return FALSE;
     }
-    c->body = body; c->smallFormat = smallText; c->heading = heading; c->iconFormat = icon;
+    c->body = body; c->smallFormat = smallText; c->heading = heading;
+    c->brandMain = brandMain; c->brandSuffix = brandSuffix; c->iconFormat = icon;
     IDWriteInlineObject *ellipsis = nullptr;
     if (SUCCEEDED(wf->CreateEllipsisTrimmingSign(static_cast<IDWriteTextFormat *>(c->smallFormat), &ellipsis))) c->ellipsis = ellipsis;
     if(!CanvasCreateTarget(c)){ABM_D2D_CanvasDestroy(c);return FALSE;}
@@ -156,8 +185,11 @@ extern "C" void ABM_D2D_CanvasStrokeRound(ABM_D2D_CANVAS *c,float l,float t,floa
 extern "C" void ABM_D2D_CanvasText(ABM_D2D_CANVAS *c,const wchar_t *value,RECT rect,COLORREF color,int style,UINT flags) {
     if (!c || !c->drawing || !value || !value[0]) return;
     IDWriteTextFormat *fmt=static_cast<IDWriteTextFormat *>(
-        style==ABM_D2D_TEXT_ICON?c->iconFormat:style==ABM_D2D_TEXT_SMALL?c->smallFormat:
-        style==ABM_D2D_TEXT_HEADING?c->heading:c->body);
+        style==ABM_D2D_TEXT_ICON?c->iconFormat:
+        style==ABM_D2D_TEXT_SMALL?c->smallFormat:
+        style==ABM_D2D_TEXT_HEADING?c->heading:
+        style==ABM_D2D_TEXT_BRAND_MAIN?c->brandMain:
+        style==ABM_D2D_TEXT_BRAND_SUFFIX?c->brandSuffix:c->body);
     fmt->SetTextAlignment((flags&DT_CENTER)?DWRITE_TEXT_ALIGNMENT_CENTER:((flags&DT_RIGHT)?DWRITE_TEXT_ALIGNMENT_TRAILING:DWRITE_TEXT_ALIGNMENT_LEADING));
     fmt->SetParagraphAlignment((flags&DT_VCENTER)?DWRITE_PARAGRAPH_ALIGNMENT_CENTER:DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
     fmt->SetWordWrapping((flags&DT_SINGLELINE)?DWRITE_WORD_WRAPPING_NO_WRAP:DWRITE_WORD_WRAPPING_WRAP);
@@ -180,6 +212,8 @@ extern "C" void ABM_D2D_CanvasDestroy(ABM_D2D_CANVAS *c) {
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->body));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->smallFormat));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->heading));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->brandMain));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->brandSuffix));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->iconFormat));
     SafeRelease(reinterpret_cast<IDWriteFactory **>(&c->writeFactory));
     SafeRelease(reinterpret_cast<ID2D1Factory **>(&c->factory));
@@ -203,23 +237,16 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     ui->writeFactory = writeFactory;
 
     IDWriteTextFormat *body = nullptr, *smallFormat = nullptr, *heading = nullptr;
-    IDWriteTextFormat *brandMain = nullptr, *brandSuffix = nullptr;
-    /* Segoe UI Variable gives the interface a contemporary Windows 11
-       typographic voice; DirectWrite performs normal font fallback on older PCs. */
-    /* A tighter typographic scale gives the interface a calmer, more
-       deliberate hierarchy: readable body copy, compact utility labels and
-       confident display text without the heavy, oversized feel of a generic
-       gaming UI. Segoe UI Variable falls back cleanly on older Windows builds. */
-    if (!MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallFormat) ||
-        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
-        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_DISPLAY, DWRITE_FONT_WEIGHT_BOLD, &brandMain) ||
-        !MakeFormat(writeFactory, ABM_UI_FONT_FAMILY_TEXT, 18.0f, DWRITE_FONT_WEIGHT_MEDIUM, &brandSuffix)) {
+    IDWriteTextFormat *brandMain = nullptr, *brandSuffix = nullptr, *icon = nullptr;
+    /* Main Player and all secondary surfaces consume this exact format set. */
+    if (!CreateCanonicalTextFormats(writeFactory, &body, &smallFormat, &heading,
+                                    &brandMain, &brandSuffix, &icon)) {
         SafeRelease(&body); SafeRelease(&smallFormat); SafeRelease(&heading);
-        SafeRelease(&brandMain); SafeRelease(&brandSuffix);
+        SafeRelease(&brandMain); SafeRelease(&brandSuffix); SafeRelease(&icon);
         ABM_D2D_Destroy(ui);
         return FALSE;
     }
+    SafeRelease(&icon);
     ui->body = body; ui->smallFormat = smallFormat; ui->heading = heading;
     ui->brandMain = brandMain; ui->brandSuffix = brandSuffix;
     if (!EnsureTarget(ui)) { ABM_D2D_Destroy(ui); return FALSE; }
@@ -337,8 +364,10 @@ extern "C" void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect,
                               COLORREF color, int style, UINT flags) {
     if (!ui || !EnsureTarget(ui) || !text || !text[0]) return;
     IDWriteTextFormat *format = static_cast<IDWriteTextFormat *>(
-        style == 1 ? ui->smallFormat : (style == 2 ? ui->heading :
-        (style == 3 ? ui->brandMain : (style == 4 ? ui->brandSuffix : ui->body))));
+        style == ABM_D2D_TEXT_SMALL ? ui->smallFormat :
+        style == ABM_D2D_TEXT_HEADING ? ui->heading :
+        style == ABM_D2D_TEXT_BRAND_MAIN ? ui->brandMain :
+        style == ABM_D2D_TEXT_BRAND_SUFFIX ? ui->brandSuffix : ui->body);
     DWRITE_TEXT_ALIGNMENT align = (flags & DT_CENTER) ? DWRITE_TEXT_ALIGNMENT_CENTER :
         ((flags & DT_RIGHT) ? DWRITE_TEXT_ALIGNMENT_TRAILING : DWRITE_TEXT_ALIGNMENT_LEADING);
     DWRITE_PARAGRAPH_ALIGNMENT valign = (flags & DT_VCENTER) ?
