@@ -3576,11 +3576,10 @@ static void TorrentPlayerEvent(const libvlc_event_t *event,void *opaque) {
         float percent=event->u.media_player_buffering.new_cache;
         if(percent<0.0f)percent=0.0f;if(percent>100.0f)percent=100.0f;
         value=(LONG)(percent+0.5f);
-    } else if(event->type==libvlc_MediaPlayerTimeChanged) {
-        value=(LONG)event->u.media_player_time_changed.new_time;
-    }
-    /* x64 build: pack generation and event value into LPARAM so a message
-       already queued before stop/replacement can still be rejected safely. */
+    } 
+    /* x64 build: pack generation and the small buffering value into LPARAM.
+       TimeChanged reads the current player clock on the UI thread, avoiding
+       truncation of LibVLC's 64-bit media timestamp. */
     uint64_t payload=((uint64_t)(uint32_t)generation<<32)|(uint32_t)value;
     PostMessageW(g_main,WM_TORRENT_PLAYER_EVENT,(WPARAM)event->type,(LPARAM)(LONG_PTR)payload);
 }
@@ -3604,6 +3603,7 @@ static BOOL TorrentAttachPlayerEvents(void) {
             for(int j=0;j<g_torrentAttachedEventCount;j++)
                 libvlc_event_detach(manager,g_torrentAttachedEvents[j],TorrentPlayerEvent,callbackContext);
             g_torrentAttachedEventCount=0;
+            InterlockedIncrement(&g_torrentPlaybackGeneration);
             return FALSE;
         }
         g_torrentAttachedEvents[g_torrentAttachedEventCount++]=types[i];
@@ -6270,7 +6270,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
                 break;
             case libvlc_MediaPlayerTimeChanged: {
-                int64_t mediaTime=(int64_t)eventValue;
+                int64_t mediaTime=g_player?libvlc_media_player_get_time(g_player):-1;
                 if(g_torrentLastMediaTime<0||mediaTime!=g_torrentLastMediaTime) {
                     g_torrentLastMediaTime=mediaTime;
                     g_torrentLastProgressTick=GetTickCount64();
