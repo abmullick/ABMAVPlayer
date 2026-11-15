@@ -113,6 +113,11 @@ extern "C" BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *c) {
     HRESULT hr = CanvasTarget(c)->EndDraw();
     return SUCCEEDED(hr);
 }
+extern "C" void ABM_D2D_CanvasFill(ABM_D2D_CANVAS *c,float l,float t,float r,float b,COLORREF color) {
+    if (!c || !c->drawing || r<=l || b<=t) return;
+    CanvasBrush(c)->SetColor(ToD2D(color));
+    CanvasTarget(c)->FillRectangle(D2D1::RectF(l,t,r,b),CanvasBrush(c));
+}
 extern "C" void ABM_D2D_CanvasFillRound(ABM_D2D_CANVAS *c,float l,float t,float r,float b,float radius,COLORREF color) {
     if (!c || !c->drawing || r<=l || b<=t) return;
     D2D1_COLOR_F col=ToD2D(color); CanvasBrush(c)->SetColor(col);
