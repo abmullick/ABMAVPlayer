@@ -3270,15 +3270,15 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
             static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
             for(int i=0;i<5;i++){
                 RECT pr={30+i*126,354,145+i*126,383};
-                COLORREF fill=(g_eqPreset==i)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
-                COLORREF edge=(g_eqPreset==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER;
+                COLORREF fill=(g_eqProfile==i)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
+                COLORREF edge=(g_eqProfile==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER;
                 ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
                 ABM_D2D_CanvasStrokeRound(&g_equalizerCanvas,(float)pr.left+0.5f,(float)pr.top+0.5f,(float)pr.right-0.5f,(float)pr.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,1.0f);
                 ABM_D2D_CanvasText(&g_equalizerCanvas,presetNames[i],pr,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
             ABM_D2D_CanvasEnd(&g_equalizerCanvas);
         }else{
-            FillRectColor(dc,client,ABM_UI_COLOR_BACKGROUND);
+            HBRUSH fallbackBg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&client,fallbackBg);DeleteObject(fallbackBg);
         }
         EndPaint(hwnd,&ps);return 0;
     }
@@ -4864,7 +4864,8 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasEnd(&g_aboutCanvas);
         }else{
             SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_UI_COLOR_TEXT);
-            DrawTextW(dc,L"ABM AV Player",-1,&(RECT){320,58,rc.right-34,108},DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT titleRect={320,58,rc.right-34,108};
+            DrawTextW(dc,L"ABM AV Player",-1,&titleRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }
         EndPaint(hwnd,&ps);return 0;
     }
