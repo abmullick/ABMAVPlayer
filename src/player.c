@@ -6490,8 +6490,9 @@ static void SettingsClampToMonitor(HWND w,const RECT *suggested){
 }
 
 static LRESULT CALLBACK SettingsEditFocusSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref){
- (void)wp;(void)lp;(void)id;(void)ref;
+ (void)id;(void)ref;
  if(msg==WM_SETFOCUS||msg==WM_KILLFOCUS)InvalidateRect(GetParent(edit),NULL,FALSE);
+ if(msg==WM_MOUSEWHEEL){SendMessageW(GetParent(edit),WM_MOUSEWHEEL,wp,lp);return 0;}
  if(msg==WM_NCDESTROY)RemoveWindowSubclass(edit,SettingsEditFocusSubclass,1);
  return DefSubclassProc(edit,msg,wp,lp);
 }
@@ -6652,7 +6653,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  return DefWindowProcW(w,msg,wp,lp);
 }
 static void ShowSettingsDialog(HWND owner) {
- if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
+ if(g_settingsWindow&&IsWindow(g_settingsWindow)){RECT current;GetWindowRect(g_settingsWindow,&current);SettingsClampToMonitor(g_settingsWindow,&current);ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
  DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_HSCROLL|WS_VSCROLL|WS_CLIPCHILDREN|WS_POPUP;
