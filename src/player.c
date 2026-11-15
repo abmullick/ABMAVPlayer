@@ -665,9 +665,11 @@ static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
     HRESULT com=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);
     BOOL downloaded=DownloadArtworkSecurely(request->url,request->path,request->generation);
     if(SUCCEEDED(com))CoUninitialize();
+    BOOL posted=FALSE;
     if(IsWindow(request->target))
-        PostMessageW(request->target,WM_ARTWORK_DOWNLOAD_READY,
-                     (WPARAM)request->generation,(LPARAM)downloaded);
+        posted=PostMessageW(request->target,WM_ARTWORK_DOWNLOAD_READY,
+                            (WPARAM)request->generation,(LPARAM)downloaded);
+    if(!posted || !downloaded)DeleteFileW(request->path);
     free(request);
     return 0;
 }
@@ -6246,12 +6248,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_ARTWORK_READY: if((LONG)wp==InterlockedCompareExchange(&g_artworkGeneration,0,0) && g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
     case WM_ARTWORK_DOWNLOAD_READY: {
         LONG generation=(LONG)wp;
-        if(generation==InterlockedCompareExchange(&g_artworkGeneration,0,0) && lp && EnsureDataDirectory()) {
-            wchar_t path[PATH_CAP];
+        wchar_t path[PATH_CAP]={0};
+        if(EnsureDataDirectory())
             swprintf_s(path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)generation);
+        if(generation==InterlockedCompareExchange(&g_artworkGeneration,0,0) && lp && path[0]) {
             g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
             if(g_artworkLoaded)g_artworkFade=0;
             InvalidateRect(hwnd,NULL,FALSE);
+        } else if(path[0]) {
+            /* A newer track superseded this download before its completion
+               message was handled. Do not accumulate obsolete cover files. */
+            DeleteFileW(path);
         }
         return 0;
     }
