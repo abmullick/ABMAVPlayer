@@ -4295,15 +4295,23 @@ static void TorrentButtonRounded(HDC dc,RECT r,COLORREF color,int radius){
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);
     DeleteObject(brush);DeleteObject(pen);
 }
+/* Button typography mirrors the main player's compact semibold UI style.
+   Fonts are cached for the Torrent window lifetime, not allocated per repaint. */
+static HFONT g_torrentButtonFont=NULL;
+static HFONT g_torrentButtonIconFont=NULL;
+static HFONT TorrentGetButtonFont(BOOL icon){
+    HFONT *slot=icon?&g_torrentButtonIconFont:&g_torrentButtonFont;
+    if(!*slot)*slot=CreateFontW(icon?-17:-13,0,0,0,icon?FW_NORMAL:FW_SEMIBOLD,
+        FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
+        icon?L"Segoe MDL2 Assets":ABM_UI_FONT_FAMILY_TEXT);
+    return *slot?*slot:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+}
 static void TorrentButtonText(HDC dc,const wchar_t *value,RECT r,COLORREF color){
-    /* One shared 11px semibold type size for every Torrent Stream button.
-       Button geometry and the compact icon rail are sized to keep full labels
-       visible; never shrink individual captions or replace their endings with ellipses. */
-    HFONT font=CreateFontW(-11,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
+    HGDIOBJ old=SelectObject(dc,TorrentGetButtonFont(FALSE));
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     DrawTextW(dc,value,-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-    SelectObject(dc,old);DeleteObject(font);
+    SelectObject(dc,old);
 }
 static COLORREF TorrentBlend(COLORREF a,COLORREF b,int t,int maxT){
     return RGB((GetRValue(a)*(maxT-t)+GetRValue(b)*t)/maxT,
@@ -4332,14 +4340,11 @@ static void TorrentDrawButtonIcon(HDC dc,int id,RECT r,COLORREF color){
     case ID_TORRENT_BROWSE: glyph=0xE8B7; break;             /* Folder */
     default: glyph=0xE710; break;                            /* Add */
     }
-    HFONT font=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
-        L"Segoe MDL2 Assets");
-    HGDIOBJ old=SelectObject(dc,font);
+    HGDIOBJ old=SelectObject(dc,TorrentGetButtonFont(TRUE));
     SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
     wchar_t text[2]={glyph,0};
     DrawTextW(dc,text,1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-    SelectObject(dc,old);DeleteObject(font);
+    SelectObject(dc,old);
 }
 static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!item||!item->hwndItem)return;
@@ -4347,47 +4352,38 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     BOOL pressed=(item->itemState&ODS_SELECTED)!=0;
     BOOL hot=(item->itemState&ODS_HOTLIGHT)!=0;
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
-    HBRUSH background=CreateSolidBrush(ABM_THEME_COLOR_0A1725);
-    FillRect(dc,&r,background);DeleteObject(background);
-    RECT face=r;InflateRect(&face,-1,-1);
-    HRGN clip=CreateRoundRectRgn(face.left,face.top,face.right,face.bottom,14,14);
-    int saved=SaveDC(dc);SelectClipRgn(dc,clip);
-    /* Button hierarchy: filled mint-teal for key actions, quiet slate for
-       secondary controls, and a restrained red treatment for destructive actions. */
     int id=GetDlgCtrlID(item->hwndItem);
     BOOL primary=(id==ID_TORRENT_STREAM||id==ID_TORRENT_CAST_TV||id==ID_TORRENT_ADD_MAGNET);
     BOOL destructive=(id==ID_TORRENT_REMOVE||id==ID_TORRENT_CLEAR_CACHE);
-    COLORREF top,bottom,iconColor,textColor,borderColor;
+    /* Main-player treatment: quiet solid surfaces, restrained hover lift,
+       consistent 8px geometry and a crisp one-pixel outline. Semantic action
+       colours remain Torrent-specific and are intentionally preserved. */
+    COLORREF fill,iconColor,textColor,borderColor;
     if(primary){
-        top=pressed?ABM_THEME_COLOR_23A097:ABM_THEME_COLOR_18706F;
-        bottom=pressed?ABM_THEME_COLOR_49BEA5:ABM_THEME_COLOR_228B84;
-        iconColor=ABM_THEME_COLOR_DEFFF6;textColor=ABM_THEME_COLOR_FAFFFD;borderColor=ABM_THEME_COLOR_5BCEB7;
+        fill=pressed?ABM_THEME_COLOR_23A097:ABM_THEME_COLOR_18706F;
+        iconColor=ABM_THEME_COLOR_DEFFF6;textColor=ABM_THEME_COLOR_FAFFFD;
+        borderColor=ABM_THEME_COLOR_5BCEB7;
     }else if(destructive){
-        top=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;
-        bottom=pressed?ABM_THEME_COLOR_9E4649:ABM_THEME_COLOR_532B34;
-        iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_THEME_COLOR_894D52;
+        fill=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;
+        iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;
+        borderColor=ABM_THEME_COLOR_894D52;
     }else{
-        top=pressed?ABM_THEME_COLOR_305E6F:ABM_THEME_COLOR_112A3B;
-        bottom=pressed?ABM_THEME_COLOR_396F77:ABM_THEME_COLOR_183947;
-        iconColor=ABM_THEME_COLOR_8BC2CD;textColor=ABM_THEME_COLOR_D5E6EF;borderColor=ABM_THEME_COLOR_355B6E;
+        fill=pressed?ABM_THEME_COLOR_305E6F:ABM_THEME_COLOR_112A3B;
+        iconColor=ABM_THEME_COLOR_8BC2CD;textColor=ABM_THEME_COLOR_D5E6EF;
+        borderColor=ABM_THEME_COLOR_355B6E;
     }
-    if(hot&&!pressed&&!destructive){top=TorrentBlend(top,ABM_THEME_COLOR_285C65,1,4);bottom=TorrentBlend(bottom,ABM_THEME_COLOR_326C71,1,4);}
-    for(int y=face.top;y<face.bottom;y++){
-        RECT stripe={face.left,y,face.right,y+1};
-        HBRUSH line=CreateSolidBrush(TorrentBlend(top,bottom,y-face.top,max(1,face.bottom-face.top-1)));
-        FillRect(dc,&stripe,line);DeleteObject(line);
-    }
-    RestoreDC(dc,saved);DeleteObject(clip);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_ABF6E2:borderColor);
-    HGDIOBJ oldPen=SelectObject(dc,pen),oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,face.left,face.top,face.right,face.bottom,14,14);
-    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
-    /* Fine top highlight gives the button a glass-like edge without a white rim. */
-    HPEN hi=CreatePen(PS_SOLID,1,primary?ABM_THEME_COLOR_7FE5CF:(destructive?ABM_THEME_COLOR_844C51:ABM_THEME_COLOR_355B6E));oldPen=SelectObject(dc,hi);
-    MoveToEx(dc,face.left+9,face.top+1,NULL);LineTo(dc,face.right-9,face.top+1);
-    SelectObject(dc,oldPen);DeleteObject(hi);
+    if(hot&&!pressed&&!destructive)fill=TorrentBlend(fill,ABM_THEME_COLOR_285C65,18,100);
+    HBRUSH background=CreateSolidBrush(ABM_THEME_COLOR_0A1725);
+    FillRect(dc,&r,background);DeleteObject(background);
+    RECT face=r;InflateRect(&face,-1,-1);
+    HBRUSH faceBrush=CreateSolidBrush(fill);
+    HPEN facePen=CreatePen(PS_SOLID,focused?2:1,
+        focused?ABM_THEME_COLOR_ABF6E2:borderColor);
+    HGDIOBJ oldBrush=SelectObject(dc,faceBrush),oldPen=SelectObject(dc,facePen);
+    RoundRect(dc,face.left,face.top,face.right,face.bottom,8,8);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);
+    DeleteObject(faceBrush);DeleteObject(facePen);
     wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
-    /* A consistent icon rail preserves alignment across every button tier. */
     if(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||
        id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC){
         RECT glyphRect={r.left+1,r.top+1,r.right-1,r.bottom-1};
@@ -4395,7 +4391,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     }else{
         RECT iconRect={r.left+2,r.top+2,r.left+20,r.bottom-2};
         TorrentDrawButtonIcon(dc,id,iconRect,iconColor);
-        RECT textRect={r.left+19,r.top+2,r.right-3,r.bottom-2};
+        RECT textRect={r.left+19,r.top+1,r.right-3,r.bottom-1};
         TorrentButtonText(dc,caption,textRect,textColor);
     }
 }
@@ -4565,7 +4561,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CREATE: {
-        g_torrentUiFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        g_torrentUiFont=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
         if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
