@@ -103,7 +103,7 @@ Torrent TV casting uses an independent DLNA/UPnP MediaRenderer discovery and con
 - Connection/peer count and download/upload rates.
 - [x] Playback buffer/readiness indicator with initial buffering, in-playback buffering, stall recovery and terminal states (runtime validation pending).
 - [x] Storage location and cache usage reporting.
-- [x] Separate permanent download folder, outside the evictable cache quota.
+- [x] Separate permanent-download destination. Its managed torrent payloads count toward the overall torrent storage quota but are never automatically evicted or deleted.
 - Per-task progress and error details.
 - Clear warning that BitTorrent may upload pieces to other peers.
 - Explicit control over seeding after the selected file is complete.
