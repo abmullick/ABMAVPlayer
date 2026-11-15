@@ -6119,6 +6119,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             return 0;
         }
         break;
+    case WM_DPICHANGED: {
+        /* Windows supplies the correctly positioned/sized outer rectangle for
+           the destination monitor. Apply it before recalculating child/video
+           geometry so the client area is measured at the new monitor DPI. */
+        const RECT *suggested=(const RECT*)lp;
+        if(suggested)SetWindowPos(hwnd,NULL,suggested->left,suggested->top,
+            suggested->right-suggested->left,suggested->bottom-suggested->top,
+            SWP_NOZORDER|SWP_NOACTIVATE);
+        g_videoBoundsValid=FALSE;
+        UpdateLayout(hwnd);
+        RECT client{};GetClientRect(hwnd,&client);
+        ABM_D2D_Resize(&g_ui,(UINT)client.right,(UINT)client.bottom);
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
+    }
     case WM_SIZE: {
         /* SetWindowPlacement/SetWindowPos generate intermediate size messages
            during fullscreen transitions. Do not let those messages resize
@@ -6924,15 +6939,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 static void EnableDpiAwareness(void) {
-    /* Declare awareness before creating any HWND. System-DPI awareness keeps
-       Win32 coordinates and the hand-authored Direct2D layout in one stable
-       coordinate space, while avoiding Windows bitmap-stretching the window
-       on the primary display. Per-monitor scaling needs a full layout pass. */
+    /* Must run before COM, licensing UI, or any other HWND is created.
+       Prefer Per-Monitor V2; retain graceful fallbacks for older Windows. */
     HMODULE user32=GetModuleHandleW(L"user32.dll");
     if(user32) {
         typedef BOOL (WINAPI *SetDpiContextFn)(DPI_AWARENESS_CONTEXT);
         SetDpiContextFn setContext=(SetDpiContextFn)GetProcAddress(user32,"SetProcessDpiAwarenessContext");
-        if(setContext && setContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE))return;
+        if(setContext) {
+            if(setContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))return;
+            if(setContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE))return;
+            if(setContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE))return;
+        }
     }
     SetProcessDPIAware();
 }
