@@ -85,3 +85,16 @@ This is the first Advanced Settings DPI pass. Other legacy/native child surfaces
 The standard Settings window now follows the same 96-DPI logical-coordinate model. Its 820 × 1020 design size and minimum tracking dimensions are scaled from the owner monitor DPI. The Direct2D target is initialized and updated with the window DPI; native EDIT child controls are created and repositioned in scaled physical pixels, and their Segoe UI font is recreated at the destination DPI. The Settings window converts pointer coordinates to logical units before applying its existing hit targets. Existing settings values, save actions, browse actions, theme preset behaviour and Advanced Settings navigation are unchanged.
 
 This pass covers the six native EDIT controls and the Direct2D-rendered Settings surface. It does not by itself certify every legacy dialog in ABM AV Player as DPI-complete; each remaining surface still requires its own migration and runtime validation.
+
+
+## Utility windows, Torrent Stream and popup DPI migration
+
+The Torrent Stream manager now uses the active DPI for its Direct2D target, keeps its drawing/layout model in 96-DPI logical units, and scales child HWND placement through a single layout helper. Its child control font is recreated and reapplied on monitor transitions; minimum tracking dimensions and initial window sizing are DPI-aware.
+
+About and Equalizer now scale their GDI drawing coordinate space to the monitor DPI. Their window creation sizes and minimum tracking dimensions are DPI-aware, and Equalizer pointer input is converted to logical units before preset/slider hit-testing and dragging.
+
+The Help Centre scales its top-level dimensions, native search/topic/article controls, topic row height and child-control layout. Its custom-painted chrome uses logical GDI coordinates, and close/title hit testing is converted from physical pixels. Its search, topic navigation, article formatting and keyboard commands remain unchanged.
+
+ABM-owned modal notification dialogs, action menus and Recently Played popups now scale their top-level dimensions and custom GDI drawing to the monitor DPI. Their pointer hit testing uses logical coordinates; modal dialog button geometry is recalculated after a DPI transition. The fullscreen overlay remains a monitor-sized layered surface and is repositioned by the fullscreen owner.
+
+These changes are code-level migrations, not runtime certification. Validate mixed-DPI transitions, control focus, text clipping, popup placement near work-area edges and all interaction paths on real Windows displays before declaring the DPI pass complete.
