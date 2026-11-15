@@ -75,18 +75,18 @@ static BOOL MakeFormat(IDWriteFactory *factory, const wchar_t *family,
 static BOOL CreateCanonicalTextFormats(
     IDWriteFactory *factory,
     IDWriteTextFormat **body,
-    IDWriteTextFormat **small,
+    IDWriteTextFormat **smallFormat,
     IDWriteTextFormat **heading,
     IDWriteTextFormat **brandMain,
     IDWriteTextFormat **brandSuffix,
     IDWriteTextFormat **icon) {
-    if (!factory || !body || !small || !heading || !brandMain || !brandSuffix || !icon)
+    if (!factory || !body || !smallFormat || !heading || !brandMain || !brandSuffix || !icon)
         return FALSE;
     return
         MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY,
                    DWRITE_FONT_WEIGHT_NORMAL, body) &&
         MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL,
-                   DWRITE_FONT_WEIGHT_SEMI_BOLD, small) &&
+                   DWRITE_FONT_WEIGHT_SEMI_BOLD, smallFormat) &&
         MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING,
                    DWRITE_FONT_WEIGHT_SEMI_BOLD, heading) &&
         MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_DISPLAY,
