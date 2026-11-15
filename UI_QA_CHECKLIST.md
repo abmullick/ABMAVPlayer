@@ -180,3 +180,24 @@ Source commits:
 - `5c33e906ef20a08db3936cd36fd4211bc4342d8b`
 
 These changes are source-level only; no Windows build or runtime screenshot validation has been performed in this environment.
+
+
+
+## Settings / Advanced Settings / Help interaction refinement — source status
+
+Source changes on `main`:
+- Settings and Advanced Settings owner-drawn buttons now render pointer-hover and pressed feedback using shared surface, accent and focus tokens.
+- Settings toggles now show pointer-hover feedback; native Settings edit fields draw a shared focus outline when focused, and their focus transitions invalidate the parent so the outline stays current.
+- Mouse capture is released/reset on mouse-up, capture cancellation and capture changes so a pressed visual cannot remain stuck after an interrupted click.
+- Help search and Find controls explicitly participate in dialog tab navigation. The topic list distinguishes hover, selection and keyboard focus.
+- Help now switches to a stacked topic-list/article layout below a 760-pixel client width. Panel chrome follows the actual child-window bounds instead of fixed coordinates, so the visual cards track the responsive layout.
+- Help retains the native RichEdit reading surface for selection, copy, search highlighting and keyboard reading; its content typography continues to use the shared ABM font family and semantic size tokens.
+
+Remaining source work — do not mark these complete:
+- Custom-painted Settings and Advanced Settings cards, toggles, selectors and action surfaces are not yet first-class tab stops with a complete Tab/Shift+Tab focus sequence and Enter/Space activation. Existing arrow-key navigation in Advanced Settings is retained, but is not a substitute for full keyboard traversal.
+- Disabled-state treatment must be driven by each control's real availability; the current source pass does not invent disabled states for controls that are always enabled.
+- Settings and Advanced Settings still use fixed-coordinate canvases. Their window dimensions and content need a responsive/scrollable layout pass for short work areas and mixed-DPI monitors.
+- Main Player visual parity still requires side-by-side Windows screenshots at identical scale factors. Source token reuse is not proof of pixel-level parity.
+- No Windows compiler build or runtime screenshot verification is implied by these source commits.
+
+Validation still required: build on the documented MSVC toolchain; exercise 100%, 125%, 150% and 200% scale; resize Help below and above 760 client pixels; test mouse capture interruption; and perform keyboard-only navigation through every interactive control.
