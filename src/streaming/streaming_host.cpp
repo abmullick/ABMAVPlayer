@@ -757,10 +757,9 @@ void ShowStreamingInfo(bool about){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
-    int width=900,height=about?900:760;
-    RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
-    int x=owner.left+(owner.right-owner.left-width)/2;
-    int y=owner.top+(owner.bottom-owner.top-height)/2;
+    int height=about?900:760;RECT bounds={0};
+    ABM_DpiMakeCenteredRect(g_window,900,height,&bounds);
+    int width=bounds.right-bounds.left,x=bounds.left,y=bounds.top;
     const wchar_t *caption=about?L"About ABM AV Player":L"ABM AV Player - Streaming Help";
     g_infoWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,kInfoClassName,caption,
         WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,x,y,width,height,g_window,nullptr,instance,nullptr);
@@ -1523,7 +1522,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_MOUSELEAVE:
         g_trackingMouseLeave=false;g_hoverService=-1;g_hoverControl=-1;SetCursor(LoadCursorW(nullptr,IDC_ARROW));InvalidateRect(hwnd,nullptr,FALSE);return 0;
-    case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=960;info->ptMinTrackSize.y=720;return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,760,540);return 0;}
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -1914,8 +1913,10 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
         registered=true;
     }
     g_workersStopping.store(false);
+    RECT bounds={0};ABM_DpiMakeCenteredRect(g_mainWindow,1160,820,&bounds);
     HWND window=CreateWindowExW(0,kClassName,L"ABM AV Player - Streaming Centre",
-        WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1160,820,
+        WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,bounds.left,bounds.top,
+        bounds.right-bounds.left,bounds.bottom-bounds.top,
         nullptr,nullptr,instance,nullptr);
     if(!window){SetStatus(L"Could not create the Streaming Centre window.");return;}
     BOOL dark=TRUE;DwmSetWindowAttribute(window,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
