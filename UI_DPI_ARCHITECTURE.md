@@ -37,7 +37,7 @@ A top-level window receiving `WM_DPICHANGED` must:
 5. Recompute hit-test rectangles and popup/overlay placement.
 6. Invalidate the affected surface and restore focus/interaction state.
 
-The main player currently applies the suggested rectangle, recalculates video/layout geometry and resizes its Direct2D target. The Settings, Advanced Settings, Torrent, Help, About, Equalizer, recent popup, fullscreen overlay and Streaming Centre windows now apply the suggested rectangle and invalidate/re-run their existing size/layout paths where available.
+The main player currently applies the suggested rectangle, recalculates video/layout geometry and resizes its Direct2D target. The Settings, Advanced Settings, Torrent, Help, About, Equalizer, licensing dialog, recent popup, fullscreen overlay and Streaming Centre windows now apply the suggested rectangle and invalidate/re-run their existing size/layout paths where available.
 
 **Important:** handling the outer rectangle is not proof that every child control, font, hit target or painted element is correctly scaled. The fixed-coordinate surfaces still require dedicated migration and Windows validation.
 
