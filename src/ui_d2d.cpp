@@ -7,6 +7,7 @@
 #include <string.h>
 #include <algorithm>
 #include "ui_d2d.h"
+#include "ui_theme.h"
 
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
