@@ -866,7 +866,7 @@ private:
                            request fresh announces with bounded exponential
                            backoff. Never override libtorrent's actual error. */
                         const auto taskNow=std::chrono::steady_clock::now();
-                        const bool paused=(snapshot.flags & lt::torrent_flags::paused)!=0;
+                        const bool paused=static_cast<bool>(snapshot.flags & lt::torrent_flags::paused);
                         const bool complete=snapshot.state==lt::torrent_status::finished ||
                                             snapshot.state==lt::torrent_status::seeding;
                         if(snapshot.total_wanted_done!=t.last_wanted_done ||
