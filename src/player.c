@@ -4785,6 +4785,8 @@ static void ShowTorrentWindow(HWND owner) {
 }
 
 static HBITMAP g_aboutPortrait = NULL;
+static ABM_D2D_CANVAS g_aboutCanvas;
+static BOOL g_aboutCanvasReady=FALSE;
 
 static HBITMAP LoadAboutPortrait(void) {
     wchar_t exePath[MAX_PATH], candidate[MAX_PATH];
@@ -4826,50 +4828,53 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
         g_aboutPortrait=LoadAboutPortrait();
+        g_aboutCanvasReady=ABM_D2D_CanvasInit(&g_aboutCanvas);
         return 0;
     }
     case WM_PAINT: {
         PAINTSTRUCT ps; HDC dc=BeginPaint(hwnd,&ps);
         RECT rc; GetClientRect(hwnd,&rc);
-        HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND); FillRect(dc,&rc,bg); DeleteObject(bg);
-        RECT band={0,0,rc.right,7};
-        HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_ACCENT); FillRect(dc,&band,accent); DeleteObject(accent);
-        SetBkMode(dc,TRANSPARENT);
-        HFONT title=CreateFontW(-31,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,ABM_UI_FONT_FAMILY_TEXT);
-        HFONT heading=CreateFontW(-22,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
-        HFONT body=CreateFontW(-17,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
-        if(g_aboutPortrait) {
-            HDC mem=CreateCompatibleDC(dc); HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
-            BITMAP bm; GetObjectW(g_aboutPortrait,sizeof(bm),&bm);
-            int side=250, sw=bm.bmWidth<bm.bmHeight?bm.bmWidth:bm.bmHeight;
-            int sx=(bm.bmWidth-sw)/2, sy=(bm.bmHeight-sw)/2;
-            SetStretchBltMode(dc,HALFTONE);
-            StretchBlt(dc,34,55,side,side,mem,sx,sy,sw,sw,SRCCOPY);
-            SelectObject(mem,old); DeleteDC(mem);
-        } else {
-            RECT photo={34,55,284,305}; HBRUSH ph=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED); FillRect(dc,&photo,ph); DeleteObject(ph);
-            SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED); HFONT hint=body; SelectObject(dc,hint);
-            DrawTextW(dc,L"Add your portrait to\nassets\\owner_portrait.bmp",-1,&photo,DT_CENTER|DT_VCENTER|DT_WORDBREAK);
+        if(g_aboutCanvasReady&&ABM_D2D_CanvasBegin(&g_aboutCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_aboutCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_D2D_CanvasFill(&g_aboutCanvas,0,0,(float)rc.right,7.0f,ABM_UI_COLOR_ACCENT);
+            ABM_D2D_CanvasFill(&g_aboutCanvas,28,405,(float)rc.right-28,407,ABM_UI_COLOR_BORDER);
+            ABM_D2D_CanvasFillRound(&g_aboutCanvas,34,55,284,305,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE_RAISED);
+            ABM_D2D_CanvasEnd(&g_aboutCanvas);
+        }else{
+            HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
+            RECT band={0,0,rc.right,7};HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&band,accent);DeleteObject(accent);
         }
-        RECT r={320,58,rc.right-34,108}; SelectObject(dc,title); SetTextColor(dc,ABM_UI_COLOR_TEXT); DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=116;r.bottom=145;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=151;r.bottom=192;SelectObject(dc,heading);SetTextColor(dc,ABM_THEME_COLOR_FFFFFF);DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=198;r.bottom=232;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=245;r.bottom=274;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=278;r.bottom=310;SetTextColor(dc,ABM_THEME_COLOR_FAFCFF);DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=320;r.bottom=399;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
-        RECT divider={28,405,rc.right-28,407};HBRUSH line=CreateSolidBrush(ABM_UI_COLOR_BORDER);FillRect(dc,&divider,line);DeleteObject(line);
-        r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,body);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=461;r.bottom=535;SetTextColor(dc,ABM_UI_COLOR_TEXT);DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
-        r.top=550;r.bottom=580;SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=585;r.bottom=616;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        r.top=628;r.bottom=656;SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-        SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
-        DeleteObject(title);DeleteObject(heading);DeleteObject(body);
+        if(g_aboutPortrait) {
+            HDC mem=CreateCompatibleDC(dc);HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
+            BITMAP bm;GetObjectW(g_aboutPortrait,sizeof(bm),&bm);
+            int side=250,sw=bm.bmWidth<bm.bmHeight?bm.bmWidth:bm.bmHeight;
+            int sx=(bm.bmWidth-sw)/2,sy=(bm.bmHeight-sw)/2;
+            SetStretchBltMode(dc,HALFTONE);StretchBlt(dc,34,55,250,250,mem,sx,sy,sw,sw,SRCCOPY);
+            SelectObject(mem,old);DeleteDC(mem);
+        }
+        if(g_aboutCanvasReady&&ABM_D2D_CanvasBegin(&g_aboutCanvas,dc,&rc)){
+            RECT r={320,58,rc.right-34,108};
+            ABM_D2D_CanvasText(&g_aboutCanvas,L"ABM AV Player",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=116;r.bottom=145;ABM_D2D_CanvasText(&g_aboutCanvas,L"THE CREATOR",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=151;r.bottom=192;ABM_D2D_CanvasText(&g_aboutCanvas,L"Abhisek Basu Mullick",r,ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=198;r.bottom=232;ABM_D2D_CanvasText(&g_aboutCanvas,L"Founder & Developer",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=245;r.bottom=274;ABM_D2D_CanvasText(&g_aboutCanvas,L"CONTACT",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=278;r.bottom=310;ABM_D2D_CanvasText(&g_aboutCanvas,L"abmullick@gmail.com",r,ABM_THEME_COLOR_FAFCFF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=320;r.bottom=399;ABM_D2D_CanvasText(&g_aboutCanvas,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;ABM_D2D_CanvasText(&g_aboutCanvas,L"IN TRIBUTE TO DENNIS RITCHIE",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=461;r.bottom=535;ABM_D2D_CanvasText(&g_aboutCanvas,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            r.top=550;r.bottom=580;ABM_D2D_CanvasText(&g_aboutCanvas,L"BUILT WITH",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=585;r.bottom=616;ABM_D2D_CanvasText(&g_aboutCanvas,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            r.top=628;r.bottom=656;ABM_D2D_CanvasText(&g_aboutCanvas,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasEnd(&g_aboutCanvas);
+        }else{
+            SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_UI_COLOR_TEXT);
+            DrawTextW(dc,L"ABM AV Player",-1,&(RECT){320,58,rc.right-34,108},DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        }
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
-    case WM_DESTROY: if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} return 0;
+    case WM_DESTROY: if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} if(g_aboutCanvasReady){g_aboutCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_aboutCanvas);} return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
