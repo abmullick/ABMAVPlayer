@@ -5813,9 +5813,6 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
   }}
   return 0;
- case WM_MOUSEWHEEL:
-  if(g_advancedSettingsPage==9){int delta=GET_WHEEL_DELTA_WPARAM(wp);if(delta){g_advancedVlcFirstPlugin-=delta/WHEEL_DELTA;if(g_advancedVlcFirstPlugin<0)g_advancedVlcFirstPlugin=0;if(g_advancedVlcFirstPlugin>4)g_advancedVlcFirstPlugin=4;InvalidateRect(w,NULL,FALSE);return 0;}}
-  break;
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
