@@ -299,11 +299,14 @@ void ReleaseCachedTextFonts(){
     if(g_streamIconFont17){DeleteObject(g_streamIconFont17);g_streamIconFont17=NULL;}
 }
 void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weight,UINT flags){
-    (void)height;(void)weight;
+    (void)weight;
     if(!value||!value[0]||!g_streamButtonCanvasReady)return;
+    const int width=r.right-r.left,heightPx=r.bottom-r.top;
+    if(width<=0||heightPx<=0)return;
+    RECT local={0,0,width,heightPx};
     if(!ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r))return;
     const int role=(height<=13)?ABM_D2D_TEXT_SMALL:ABM_D2D_TEXT_BODY;
-    ABM_D2D_CanvasText(&g_streamButtonCanvas,value,r,color,role,flags);
+    ABM_D2D_CanvasText(&g_streamButtonCanvas,value,local,color,role,flags);
     ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
 }
 
@@ -317,9 +320,12 @@ HFONT GetCachedIconFont(int px){
 void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
     (void)px;
     if(!glyph||!g_streamButtonCanvasReady)return;
+    const int width=r.right-r.left,heightPx=r.bottom-r.top;
+    if(width<=0||heightPx<=0)return;
+    RECT local={0,0,width,heightPx};
     if(!ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r))return;
     wchar_t s[2]={glyph,0};
-    ABM_D2D_CanvasText(&g_streamButtonCanvas,s,r,color,ABM_D2D_TEXT_ICON,
+    ABM_D2D_CanvasText(&g_streamButtonCanvas,s,local,color,ABM_D2D_TEXT_ICON,
         DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
     ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
 }
@@ -344,15 +350,15 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
         (pressed?ABM_THEME_COLOR_234B5E:ABM_THEME_COLOR_142A3C);
     COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_THEME_COLOR_41BEA5:ABM_THEME_COLOR_305B71;
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r)){
-        ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_THEME_COLOR_0C1D2D);
-        RECT face=r;InflateRect(&face,-1,-1);
+        const float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
+        ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,ABM_THEME_COLOR_0C1D2D);
+        RECT face={1,1,(LONG)width-1,(LONG)height-1};
         ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
-        ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,
-            (float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,
+        ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,0.5f,0.5f,width-0.5f,height-0.5f,(float)ABM_UI_RADIUS_BUTTON,
             focused?ABM_THEME_COLOR_63E1CD:edge,focused?2.0f:1.0f);
         wchar_t glyph[2]={DeviceButtonGlyph(item->hwndItem),0};
-        RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
-        RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
+        RECT icon={7,2,31,(LONG)height-2};
+        RECT label={31,2,(LONG)width-6,(LONG)height-2};
         ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_THEME_COLOR_91E5D5,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
@@ -375,10 +381,11 @@ void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     bool selected=(item->itemState&ODS_SELECTED)!=0;
     RECT r=item->rcItem;
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&r)){
-        ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
-        RECT textRect=r;InflateRect(&textRect,-9,0);
+        const float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
+        ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+        RECT textRect={9,0,(LONG)width-9,(LONG)height};
         ABM_D2D_CanvasText(&g_streamButtonCanvas,name,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(item->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_4BBEB8,1.0f);
+        if(item->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,1,1,width-1,height-1,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_4BBEB8,1.0f);
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
         return;
     }
