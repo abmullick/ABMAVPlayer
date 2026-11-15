@@ -50,8 +50,9 @@ For reliable comparison, change one audio option, reopen the same media and comp
 ### Torrent & Storage
 
 - **Cache parent folder:** parent directory for the torrent engine's `torrent-cache` working data. Choose a drive with enough free space. Changing it does not move old cache data; if the engine is running, restart ABM AV Player to initialise the new path.
-- **Permanent downloads folder:** destination for selected/completed torrent media. It is separate from the working cache; changing it does not move existing downloads.
-- **Cache quota (1–4096 GiB; default 20 GiB):** controls how much persistent cache data may be retained. A larger quota can retain more pieces but consumes more disk capacity; it does not create peers or increase internet speed.
+- **Permanent downloads folder:** destination for selected/completed torrent media. Changing it does not move existing downloads.
+- **Torrent storage quota (1–4096 GiB; default 20 GiB):** limits combined storage used by managed torrent payload folders in the permanent downloads location and the working-cache directory. Usage is based on actual on-disk bytes; unrelated files in the downloads folder are excluded. The engine reserves the remaining size of each selected file so several simultaneous torrents cannot each consume the same unused quota.
+- **Quota safety:** inactive working-cache folders may be evicted to make room. Permanent downloads are never silently deleted. If existing retained downloads already exceed a newly lowered quota, new file selections are refused until you raise the quota or manually remove some downloads.
 - **Browse / Open folder:** select or inspect the configured directory in File Explorer.
 
 New installations base the cache on the Windows Downloads known folder: `<Downloads>\\ABM AV Player\\torrent-cache`. Existing installations with a legacy cache keep their existing location unless changed. Keep the old directory until you have confirmed the new location works and no cached data is needed.
