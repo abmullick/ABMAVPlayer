@@ -125,6 +125,8 @@ HWND g_window=nullptr;
 HWND g_mainWindow=nullptr;
 HWND g_infoWindow=nullptr;
 Gdiplus::Bitmap *g_infoPortrait=nullptr;
+ABM_D2D_CANVAS g_infoCanvas{};
+bool g_infoCanvasReady=false;
 bool g_infoAbout=false;
 ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
@@ -710,67 +712,88 @@ void LoadInfoPortrait(){
         if(SUCCEEDED(StringCchPrintfW(path,_countof(path),L"%s\\assets\\owner_portrait.bmp",candidate)))tryPath(path);
     }
 }
+void InfoText(HDC dc,const wchar_t *value,RECT rect,COLORREF color,int height,int weight,UINT flags){
+    if(g_infoCanvasReady&&g_infoCanvas.drawing){
+        int style=height>=24?ABM_D2D_TEXT_HEADING:height<=13?ABM_D2D_TEXT_SMALL:ABM_D2D_TEXT_BODY;
+        ABM_D2D_CanvasText(&g_infoCanvas,value,rect,color,style,flags);
+    }else Text(dc,value,rect,color,height,weight,flags);
+}
+void InfoFill(HDC dc,RECT rect,COLORREF color){
+    if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasFill(&g_infoCanvas,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,color);
+    else FillRectColor(dc,rect,color);
+}
+void InfoRound(HDC dc,RECT rect,COLORREF color,int radius){
+    if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,(float)radius,color);
+    else Rounded(dc,rect,color,radius);
+}
 LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_CREATE:
         LoadInfoPortrait();
+        g_infoCanvasReady=ABM_D2D_CanvasInit(&g_infoCanvas)!=FALSE;
         return 0;
     case WM_ERASEBKGND:return 1;
     case WM_PAINT:{
         PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
-        FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
-        RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
+        if(g_infoCanvasReady&&ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,7,ABM_UI_COLOR_ACCENT);
+            if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}
+            ABM_D2D_CanvasEnd(&g_infoCanvas);
+        }else{
+            FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
+            RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
+        }
+        if(g_infoAbout&&g_infoPortrait){
+            Gdiplus::Graphics graphics(dc);
+            graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+            graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));
+        }
+        if(g_infoCanvasReady)ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc);
         RECT brand={28,20,rc.right-28,54};
-        Text(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT subtitle={29,49,rc.right-28,72};
-        Text(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        InfoText(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_infoAbout){
-            RECT photoFrame={28,94,286,362};
-            Rounded(dc,photoFrame,ABM_THEME_COLOR_122637,10);
-            if(g_infoPortrait){
-                Gdiplus::Graphics graphics(dc);
-                graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-                graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));
-            }else{
-                RECT fallback={36,102,278,344};
-                Rounded(dc,fallback,ABM_THEME_COLOR_1B8F91,8);
-                Text(dc,L"ABM",fallback,ABM_THEME_COLOR_F5FFFF,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            if(!g_infoPortrait){
+                RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_THEME_COLOR_1B8F91,ABM_UI_RADIUS_CARD);
+                InfoText(dc,L"ABM",fallback,ABM_THEME_COLOR_F5FFFF,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
             RECT product={322,98,rc.right-28,138};
-            Text(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tagline={322,140,rc.right-28,163};
-            Text(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT creatorLabel={322,174,rc.right-28,197};
-            Text(dc,L"THE CREATOR",creatorLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"THE CREATOR",creatorLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT creator={322,204,rc.right-28,237};
-            Text(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT role={322,244,rc.right-28,271};
-            Text(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            InfoText(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
             RECT contactLabel={322,290,rc.right-28,313};
-            Text(dc,L"CONTACT",contactLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"CONTACT",contactLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT email={322,321,rc.right-28,348};
-            Text(dc,L"abmullick@gmail.com",email,ABM_THEME_COLOR_F6FAFF,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"abmullick@gmail.com",email,ABM_THEME_COLOR_F6FAFF,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT description={322,362,rc.right-28,412};
-            Text(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,420,rc.right-28,446};
-            Text(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT divider={28,455,rc.right-28,456};FillRectColor(dc,divider,ABM_THEME_COLOR_233E52);
+            InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT divider={28,455,rc.right-28,456};InfoFill(dc,divider,ABM_THEME_COLOR_233E52);
             RECT featuresTitle={32,470,rc.right-32,495};
-            Text(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT features={32,500,rc.right-32,592};
-            Text(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT tributeTitle={32,610,rc.right-32,635};
-            Text(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tribute={32,640,rc.right-32,700};
-            Text(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT stackTitle={32,720,rc.right-32,745};
-            Text(dc,L"BUILT WITH",stackTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"BUILT WITH",stackTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT stack={32,750,rc.right-32,790};
-            Text(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }else{
             const int left=32,right=rc.right-32;
             RECT intro={left,91,right,125};
-            Text(dc,L"Everything you need to use the ABM Streaming Centre.",intro,ABM_THEME_COLOR_EEF5FC,16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"Everything you need to use the ABM Streaming Centre.",intro,ABM_THEME_COLOR_EEF5FC,16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *heads[6]={
                 L"1. CHOOSE A SERVICE",L"2. SIGN IN & BROWSER PROFILE",L"3. NAVIGATION CONTROLS",
                 L"4. FULLSCREEN & EXTERNAL BROWSER",L"5. FIND TVs & SELECT A RECEIVER",L"6. CAST VIDEO & TROUBLESHOOT"
@@ -785,23 +808,27 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             };
             int y=140;
             for(int i=0;i<6;i++){
+                RECT card={left-6,y-3,right,y+82};InfoRound(dc,card,ABM_THEME_COLOR_0F1F30,ABM_UI_RADIUS_CONTROL);
                 RECT h={left,y,right,y+21};
-                Text(dc,heads[i],h,ABM_THEME_COLOR_5BE7DC,13,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-                RECT b={left,y+22,right,y+70};
-                Text(dc,body[i],b,ABM_THEME_COLOR_EBF2FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-                y+=88;
+                InfoText(dc,heads[i],h,ABM_THEME_COLOR_5BE7DC,13,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                RECT b={left,y+22,right,y+78};
+                InfoText(dc,body[i],b,ABM_THEME_COLOR_EBF2FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+                y+=94;
             }
             RECT note={left,rc.bottom-62,right,rc.bottom-18};
-            Text(dc,L"Streaming compatibility, DRM, subscriptions and protected playback are controlled by each provider. ABM AV Player does not host content or bypass provider protections.",note,ABM_THEME_COLOR_BED2E4,12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"Streaming compatibility, DRM, subscriptions and protected playback are controlled by each provider. ABM AV Player does not host content or bypass provider protections.",note,ABM_THEME_COLOR_BED2E4,12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
         }
+        if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasEnd(&g_infoCanvas);
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_NCDESTROY:
+        if(g_infoCanvasReady){g_infoCanvasReady=false;ABM_D2D_CanvasDestroy(&g_infoCanvas);}
         delete g_infoPortrait;g_infoPortrait=nullptr;g_infoWindow=nullptr;
         break;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
+
 void ShowStreamingInfo(bool about){
     if(g_infoWindow&&IsWindow(g_infoWindow)){
         if(g_infoAbout==about){ShowWindow(g_infoWindow,SW_RESTORE);SetForegroundWindow(g_infoWindow);return;}
