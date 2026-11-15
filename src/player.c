@@ -5550,7 +5550,8 @@ static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, t
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
  L"Overview",L"Video & Decoding",L"Audio Engine",L"Video Output",
- L"Subtitles",L"Streaming & Network",L"Performance",L"Controls & Behaviour",L"Diagnostics"
+ L"Subtitles",L"Streaming & Network",L"Performance",L"Controls & Behaviour",
+ L"Diagnostics",L"VLC Runtime & Codecs"
 };
 static const wchar_t *g_advancedSettingsDescriptions[]={
  L"Advanced configuration for ABM AV Player.",
@@ -5561,8 +5562,59 @@ static const wchar_t *g_advancedSettingsDescriptions[]={
  L"Network caching, stream timeouts and connection behaviour.",
  L"Playback resource usage, buffering and performance controls.",
  L"Keyboard, mouse, playlist and playback behaviour.",
- L"Playback engine information, logs and troubleshooting."
+ L"System and player health, local reports and troubleshooting.",
+ L"Bundled VLC runtime, plugin files and decoder capability indicators."
 };
+static wchar_t g_vlcRuntimeVersion[96]=L"Not detected";
+static wchar_t g_vlcRuntimePath[PATH_CAP]=L"Not detected";
+static wchar_t g_vlcPluginPath[PATH_CAP]=L"Not detected";
+static BOOL g_vlcRuntimeLoaded=FALSE,g_vlcPluginDirectoryFound=FALSE;
+static BOOL g_vlcPluginFound[8]={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
+static const wchar_t *g_vlcPluginNames[8]={
+ L"Core FFmpeg decoder (avcodec)",L"AV1 decoder (dav1d)",L"AV1 decoder (AOM)",
+ L"VP8 / VP9 decoder (VPx)",L"MPEG-2 decoder",L"AAC decoder (FAAD)",
+ L"FLAC decoder",L"Opus decoder"
+};
+static const wchar_t *g_vlcPluginFiles[8]={
+ L"libavcodec_plugin.dll",L"libdav1d_plugin.dll",L"libaom_plugin.dll",
+ L"libvpx_plugin.dll",L"libmpeg2_plugin.dll",L"libfaad_plugin.dll",
+ L"libflac_plugin.dll",L"libopus_plugin.dll"
+};
+static void ScanVlcRuntime(void){
+ wchar_t modulePath[PATH_CAP]={0},directory[PATH_CAP]={0},pluginDir[PATH_CAP]={0},filePath[PATH_CAP]={0};
+ HMODULE vlcModule=GetModuleHandleW(L"libvlc.dll");
+ g_vlcRuntimeLoaded=(vlcModule!=NULL);
+ if(vlcModule&&GetModuleFileNameW(vlcModule,modulePath,(DWORD)_countof(modulePath))>0){
+  StringCchCopyW(g_vlcRuntimePath,_countof(g_vlcRuntimePath),modulePath);
+  StringCchCopyW(directory,_countof(directory),modulePath);
+  wchar_t *slash=wcsrchr(directory,L'\\');if(slash)*slash=0;
+ }else StringCchCopyW(g_vlcRuntimePath,_countof(g_vlcRuntimePath),L"LibVLC module is not loaded");
+ const char *version=libvlc_get_version();
+ if(version&&*version)MultiByteToWideChar(CP_UTF8,0,version,-1,g_vlcRuntimeVersion,(int)_countof(g_vlcRuntimeVersion));
+ else StringCchCopyW(g_vlcRuntimeVersion,_countof(g_vlcRuntimeVersion),L"Version unavailable");
+ if(directory[0]){
+  StringCchPrintfW(pluginDir,_countof(pluginDir),L"%s\\plugins",directory);
+  DWORD attrs=GetFileAttributesW(pluginDir);
+  if(attrs==INVALID_FILE_ATTRIBUTES||!(attrs&FILE_ATTRIBUTE_DIRECTORY)){
+   wchar_t envPath[PATH_CAP]={0};DWORD n=GetEnvironmentVariableW(L"VLC_PLUGIN_PATH",envPath,(DWORD)_countof(envPath));
+   if(n>0&&n<_countof(envPath))StringCchCopyW(pluginDir,_countof(pluginDir),envPath);
+  }
+ }
+ if(pluginDir[0]){
+  StringCchCopyW(g_vlcPluginPath,_countof(g_vlcPluginPath),pluginDir);
+  DWORD attrs=GetFileAttributesW(pluginDir);
+  g_vlcPluginDirectoryFound=(attrs!=INVALID_FILE_ATTRIBUTES&&(attrs&FILE_ATTRIBUTE_DIRECTORY));
+ }else{
+  StringCchCopyW(g_vlcPluginPath,_countof(g_vlcPluginPath),L"Plugin directory not resolved");
+  g_vlcPluginDirectoryFound=FALSE;
+ }
+ for(int i=0;i<8;i++){
+  g_vlcPluginFound[i]=FALSE;
+  if(g_vlcPluginDirectoryFound&&SUCCEEDED(StringCchPrintfW(filePath,_countof(filePath),L"%s\\codec\\%s",pluginDir,g_vlcPluginFiles[i]))){
+   DWORD attrs=GetFileAttributesW(filePath);g_vlcPluginFound[i]=(attrs!=INVALID_FILE_ATTRIBUTES&&!(attrs&FILE_ATTRIBUTE_DIRECTORY));
+  }
+ }
+}
 static void AdvancedSettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF color,int style,UINT flags){
  RECT rc={l,t,r,b};ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,style,flags);
 }
@@ -5612,6 +5664,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
+  ScanVlcRuntime();
   g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
   g_advancedDiagnosticFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
   g_advancedDiagnosticEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"Generate a diagnostic report to preview its contents here.",
@@ -5637,9 +5690,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
    /* Match the exact row origin used by the navigation renderer. */
-   int top=151+i*54;
-   if(AdvancedSettingsPoint(x,y,22,top,254,top+46)){
-    g_advancedSettingsPage=i;if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,i==8?SW_SHOW:SW_HIDE);InvalidateRect(w,NULL,FALSE);return 0;
+   int top=151+i*50;
+   if(AdvancedSettingsPoint(x,y,22,top,254,top+44)){
+    g_advancedSettingsPage=i;if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,i==8?SW_SHOW:SW_HIDE);if(i==9)ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
   if(g_advancedSettingsPage==3){
@@ -5664,6 +5717,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",*values[n]);WritePrivateProfileStringW(L"Streaming",keys[n],v,p);}
     InvalidateRect(w,NULL,FALSE);return 0;
    }
+  }
+  if(g_advancedSettingsPage==9){
+   if(AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==8){
    if(AdvancedSettingsPoint(x,y,326,442,610,478)){wchar_t report[PATH_CAP];if(GenerateAdvancedDiagnosticReport(report,_countof(report))){if(!LoadAdvancedDiagnosticPreview(report))ABM_MessageBoxW(w,L"The report was saved, but its contents could not be loaded for preview.",APP_NAME,MB_ICONWARNING);}else ABM_MessageBoxW(w,L"Could not create the diagnostic report. Check that the ABM AV Player data folder is writable.",APP_NAME,MB_ICONERROR);return 0;}
@@ -5809,13 +5865,13 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,106.5f,257.5f,679.5f,14,SETTINGS_BORDER,0.8f);
    AdvancedSettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
-    float top=(float)(151+i*54);
+    float top=(float)(151+i*50);
     BOOL selected=(i==g_advancedSettingsPage);
     if(selected){
-     ABM_D2D_Round(&g_advancedSettingsUi,28,top,248,top+46,9,ABM_UI_COLOR_SURFACE_BLUE);
-     ABM_D2D_Round(&g_advancedSettingsUi,28,top+9,31,top+37,1.5f,ABM_UI_COLOR_ACCENT_BRIGHT);
+     ABM_D2D_Round(&g_advancedSettingsUi,28,top,248,top+44,9,ABM_UI_COLOR_SURFACE_BLUE);
+     ABM_D2D_Round(&g_advancedSettingsUi,28,top+8,31,top+36,1.5f,ABM_UI_COLOR_ACCENT_BRIGHT);
     }
-    AdvancedSettingsText(g_advancedSettingsPages[i],42,(int)top+2,237,(int)top+44,
+    AdvancedSettingsText(g_advancedSettingsPages[i],42,(int)top+1,237,(int)top+43,
        selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,
        DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }
@@ -5999,6 +6055,26 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        AdvancedSettingsText(overviewTitles[oi],left+14,top+8,left+326,top+30,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
        AdvancedSettingsText(overviewValues[oi],left+14,top+34,left+326,top+70,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK|DT_END_ELLIPSIS);
       }
+    }else if(g_advancedSettingsPage==9){
+      ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);
+      ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
+      AdvancedSettingsText(L"Loaded LibVLC runtime",326,258,1008,284,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(g_vlcRuntimeLoaded?L"Loaded in this process":L"Not loaded",326,290,520,320,g_vlcRuntimeLoaded?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(L"LibVLC version",548,290,680,320,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(g_vlcRuntimeVersion,680,290,1008,320,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(L"Loaded library path",326,326,1008,348,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(g_vlcRuntimePath,326,350,1008,374,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(L"Plugin directory",326,380,1008,402,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(g_vlcPluginPath,326,404,1008,426,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+      AdvancedSettingsText(g_vlcPluginDirectoryFound?L"Plugin directory found":L"Plugin directory not found",326,430,620,454,g_vlcPluginDirectoryFound?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsButtonDraw(326,466,520,502,L"Refresh scan",TRUE);
+      AdvancedSettingsText(L"Decoder-related plugin files  ·  presence check only",326,514,1008,538,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      for(int pi=0;pi<8;pi++){
+       int col=pi%2,row=pi/2,left=326+col*342,top=544+row*26;
+       AdvancedSettingsText(g_vlcPluginNames[pi],left,top,left+260,top+22,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+       AdvancedSettingsText(g_vlcPluginFound[pi]?L"File found":L"Not found",left+260,top,left+332,top+22,g_vlcPluginFound[pi]?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+      }
+      AdvancedSettingsText(L"Important: a plugin file being present does not prove that a codec/profile can decode successfully. Other VLC modules may provide the same format; driver, hardware and media-profile support are separate.",326,650,1008,678,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
     }else if(g_advancedSettingsPage==8){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
       AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
