@@ -8,11 +8,15 @@ extern "C" {
 #endif
 
 /* Opaque Direct2D objects keep this interface safe to include from C. */
+/* Canonical typography roles. The Main Player defines these roles; every
+   Direct2D canvas and owner-drawn surface uses the same role IDs and formats. */
 enum {
     ABM_D2D_TEXT_BODY = 0,
-    ABM_D2D_TEXT_ICON = 1,
-    ABM_D2D_TEXT_SMALL = 2,
-    ABM_D2D_TEXT_HEADING = 3
+    ABM_D2D_TEXT_SMALL = 1,
+    ABM_D2D_TEXT_HEADING = 2,
+    ABM_D2D_TEXT_BRAND_MAIN = 3,
+    ABM_D2D_TEXT_BRAND_SUFFIX = 4,
+    ABM_D2D_TEXT_ICON = 5
 };
 
 typedef struct ABM_D2D_CANVAS {
@@ -22,6 +26,8 @@ typedef struct ABM_D2D_CANVAS {
     void *body;
     void *smallFormat;
     void *heading;
+    void *brandMain;
+    void *brandSuffix;
     void *iconFormat;
     void *ellipsis;
     void *brush;
