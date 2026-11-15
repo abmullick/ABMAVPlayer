@@ -4413,7 +4413,7 @@ static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
     SetBkMode(dc,TRANSPARENT);
     SetTextColor(dc,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F7FDFF:ABM_THEME_COLOR_B2C9DA);
     RECT tx=r;tx.left+=12;tx.right-=10;
-    HFONT f=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+    UINT dpi=ABM_DpiGetForWindow(GetParent(d->hwndItem));HFONT f=CreateFontW(-ABM_DpiScale(14,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
     HGDIOBJ old=SelectObject(dc,f);
     DrawTextW(dc,line,-1,&tx,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -4435,7 +4435,7 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
         wchar_t name[256]=L"";SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)name);
         SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3);
         RECT tr=r;tr.left+=13;tr.right-=36;
-        HFONT f=CreateFontW(-14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
+        UINT dpi=ABM_DpiGetForWindow(GetParent(d->hwndItem));HFONT f=CreateFontW(-ABM_DpiScale(14,dpi),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         HGDIOBJ old=SelectObject(dc,f);DrawTextW(dc,name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         SelectObject(dc,old);DeleteObject(f);
@@ -4470,7 +4470,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND: return 1;
     
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
-    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=38;return TRUE;} break; }
+    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=ABM_DpiScale(38,ABM_DpiGetForWindow(hwnd));return TRUE;} break; }
     
     case WM_CTLCOLORDLG:
         if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(ABM_THEME_COLOR_12151D);
@@ -4487,7 +4487,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CREATE: {
-        g_torrentUiFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        g_torrentUiFont=CreateFontW(-ABM_DpiScale(15,ABM_DpiGetForWindow(hwnd)),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
         if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
@@ -4505,7 +4505,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentInfoLabel=CreateWindowW(L"STATIC",L"No torrent loaded",WS_CHILD|WS_VISIBLE,20,108,800,42,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentFileList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,20,158,800,300,hwnd,(HMENU)ID_TORRENT_FILES,NULL,NULL);
-        SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);SendMessageW(g_torrentFileList,LB_SETITEMHEIGHT,0,26);
+        SendMessageW(g_torrentFileList,WM_SETFONT,(WPARAM)font,TRUE);SendMessageW(g_torrentFileList,LB_SETITEMHEIGHT,0,ABM_DpiScale(26,ABM_DpiGetForWindow(hwnd)));
         g_torrentStatusLabel=CreateWindowW(L"STATIC",L"Engine ready. Add a source to begin.",WS_CHILD|WS_VISIBLE,20,466,800,28,hwnd,NULL,NULL,NULL);
         SendMessageW(g_torrentStatusLabel,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentBufferBar=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,20,540,770,14,hwnd,NULL,NULL,NULL);
