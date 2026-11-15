@@ -6156,7 +6156,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(next<0)next=0;if(next>maxPos)next=maxPos;
   if(next!=g_settingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_settingsScrollY-next,dpi);g_settingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
  }
- case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,820,520);return 0;}
+ case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,840,520);return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
   HDC dc=(HDC)wp;
@@ -6283,7 +6283,7 @@ static void ShowSettingsDialog(HWND owner) {
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
  UINT ownerDpi=ABM_DpiGetForWindow(owner);
- RECT wr={0};ABM_DpiMakeCenteredRect(owner,820,760,&wr);
+ RECT wr={0};ABM_DpiMakeCenteredRect(owner,840,760,&wr);
  int ww=wr.right-wr.left,hh=wr.bottom-wr.top;int x=wr.left,y=wr.top;
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VSCROLL,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
