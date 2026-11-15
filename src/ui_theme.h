@@ -1158,6 +1158,7 @@ COLORREF ABMThemePresetAccent(ABMThemePreset preset);
 #define ABM_UI_COLOR_BORDER ABM_THEME_COLOR_273346
 #define ABM_UI_COLOR_BORDER_STRONG ABM_THEME_COLOR_356F7F
 #define ABM_UI_COLOR_FOCUS ABM_THEME_COLOR_63E1CD
+#define ABM_UI_FONT_HEIGHT(px) (-(int)((px) + 0.5f))
 #define ABM_UI_FONT_FAMILY_TEXT       L"Segoe UI Variable Text"
 #define ABM_UI_FONT_FAMILY_DISPLAY    L"Segoe UI Variable Display"
 #define ABM_UI_FONT_SIZE_CAPTION      12.0f
