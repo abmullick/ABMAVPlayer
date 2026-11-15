@@ -3172,7 +3172,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         RECT wr={0};GetWindowRect(hwnd,&wr);SetWindowPos(hwnd,NULL,0,0,ABM_DpiScale(520,dpi),ABM_DpiScale(68+g_recentCount*42+10,dpi),SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE);
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
-    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(680,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(405,dpi);return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,420,280);return 0;}
     case WM_ACTIVATE:
         if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
         return 0;
@@ -4461,7 +4461,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         TorrentLayout(hwnd);
         RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
-    case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mm->ptMinTrackSize.x=ABM_DpiScale(900,dpi);mm->ptMinTrackSize.y=ABM_DpiScale(760,dpi);return 0; }
+    case WM_GETMINMAXINFO: { ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,640,500);return 0; }
     case WM_ERASEBKGND: return 1;
     
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
@@ -5081,7 +5081,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
         return 0;
     }
-    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(760,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(620,dpi);return 0;}
+    case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,600,440);return 0;}
     case WM_SIZE: {
         UINT dpi=ABM_DpiGetForWindow(hwnd);
         int w=ABM_DpiUnscale(LOWORD(lp),dpi),h=ABM_DpiUnscale(HIWORD(lp),dpi);
@@ -5583,8 +5583,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         return 0;
     case WM_GETMINMAXINFO: {
         MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);
-        mi->ptMinTrackSize.x=ABM_DpiScale(900,dpi);
-        mi->ptMinTrackSize.y=ABM_DpiScale(680,dpi);
+        ABM_DpiClampMinTrack(w,mi,760,540);
         return 0;
     }
  case WM_CREATE:
@@ -6111,7 +6110,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   InvalidateRect(w,NULL,FALSE);return 0;
  case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
- case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);mi->ptMinTrackSize.x=ABM_DpiScale(820,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(980,dpi);return 0;}
+ case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,620,520);return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
   HDC dc=(HDC)wp;
@@ -6318,7 +6317,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
-    case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; UINT dpi=ABM_DpiGetForWindow(hwnd); mi->ptMinTrackSize.x=ABM_DpiScale(1000,dpi); mi->ptMinTrackSize.y=ABM_DpiScale(650,dpi); return 0; }
+    case WM_GETMINMAXINFO: { ABM_DpiClampMinTrack(hwnd,(MINMAXINFO*)lp,760,480); return 0; }
     case WM_MEASUREITEM:
         if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
             ((LPMEASUREITEMSTRUCT)lp)->itemHeight=30;
