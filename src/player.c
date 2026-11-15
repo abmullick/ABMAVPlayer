@@ -5630,6 +5630,7 @@ static BOOL AdvancedSettingsPoint(int x,int y,int l,int t,int r,int b){
 }
 static BOOL GenerateAdvancedDiagnosticReport(wchar_t *reportPath,size_t reportPathCount){
  if(!EnsureDataDirectory())return FALSE;
+ ScanVlcRuntime();
  SYSTEM_INFO si={0};GetNativeSystemInfo(&si);
  MEMORYSTATUSEX mem={0};mem.dwLength=sizeof(mem);GlobalMemoryStatusEx(&mem);
  PROCESS_MEMORY_COUNTERS pmc={0};pmc.cb=sizeof(pmc);GetProcessMemoryInfo(GetCurrentProcess(),&pmc,sizeof(pmc));
@@ -5642,6 +5643,8 @@ static BOOL GenerateAdvancedDiagnosticReport(wchar_t *reportPath,size_t reportPa
  FILE *fp=NULL;if(_wfopen_s(&fp,reportPath,L"wt, ccs=UTF-8")!=0||!fp)return FALSE;
  fwprintf(fp,L"ABM AV Player diagnostic report\r\nGenerated: %04u-%02u-%02u %02u:%02u:%02u\r\n\r\n",now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond);
  fwprintf(fp,L"[Application]\r\nVersion: %s\r\nProcess ID: %lu\r\nArchitecture: %s\r\nExecutable: %s\r\nData directory: %s\r\n",APP_VERSION,GetCurrentProcessId(),arch,exe,g_dataDir);
+ fwprintf(fp,L"\r\n[VLC runtime]\r\nLoaded in process: %s\r\nLibVLC version: %s\r\nLibVLC module: %s\r\nPlugin directory: %s\r\nPlugin directory found: %s\r\n",g_vlcRuntimeLoaded?L"Yes":L"No",g_vlcRuntimeVersion,g_vlcRuntimePath,g_vlcPluginPath,g_vlcPluginDirectoryFound?L"Yes":L"No");
+ for(int vi=0;vi<8;vi++)fwprintf(fp,L"Plugin file %s: %s\r\n",g_vlcPluginNames[vi],g_vlcPluginFound[vi]?L"Found":L"Not found");
  fwprintf(fp,L"\r\n[System]\r\nLogical processors: %lu\r\nPhysical memory: %llu MB\r\nAvailable physical memory: %llu MB\r\nMemory load: %lu%%\r\n",si.dwNumberOfProcessors,(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL)),(unsigned long long)(mem.ullAvailPhys/(1024ULL*1024ULL)),mem.dwMemoryLoad);
  fwprintf(fp,L"\r\n[ABM AV Player process]\r\nWorking set: %llu MB\r\nPage file usage: %llu MB\r\n", (unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)),(unsigned long long)(pmc.PagefileUsage/(1024ULL*1024ULL)));
  fwprintf(fp,L"\r\n[Playback]\r\nState: %s\r\nVideo dimensions: %u x %u\r\nPlaylist entries: %d\r\nRecent entries: %d\r\nVolume: %d%%\r\nPlayback speed: %.2fx\r\nShuffle: %s\r\nRepeat: %s\r\n",playback,g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount,g_volume,(double)g_playbackRate,g_shuffle?L"On":L"Off",g_repeat?L"On":L"Off");
@@ -6068,13 +6071,13 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       AdvancedSettingsText(g_vlcPluginPath,326,404,1008,426,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
       AdvancedSettingsText(g_vlcPluginDirectoryFound?L"Plugin directory found":L"Plugin directory not found",326,430,620,454,g_vlcPluginDirectoryFound?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsButtonDraw(326,466,520,502,L"Refresh scan",TRUE);
-      AdvancedSettingsText(L"Decoder-related plugin files  ·  presence check only",326,514,1008,538,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(L"Decoder-related plugin files  ·  presence check only",326,506,1008,530,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       for(int pi=0;pi<8;pi++){
-       int col=pi%2,row=pi/2,left=326+col*342,top=544+row*26;
-       AdvancedSettingsText(g_vlcPluginNames[pi],left,top,left+260,top+22,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-       AdvancedSettingsText(g_vlcPluginFound[pi]?L"File found":L"Not found",left+260,top,left+332,top+22,g_vlcPluginFound[pi]?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+       int col=pi%2,row=pi/2,left=326+col*342,top=532+row*24;
+       AdvancedSettingsText(g_vlcPluginNames[pi],left,top,left+260,top+21,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+       AdvancedSettingsText(g_vlcPluginFound[pi]?L"File found":L"Not found",left+260,top,left+332,top+21,g_vlcPluginFound[pi]?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
       }
-      AdvancedSettingsText(L"Important: a plugin file being present does not prove that a codec/profile can decode successfully. Other VLC modules may provide the same format; driver, hardware and media-profile support are separate.",326,650,1008,678,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+      AdvancedSettingsText(L"Presence is not proof of successful decoding. VLC may support a format through other modules; profile, driver and hardware support must be tested with media.",326,630,1008,658,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
     }else if(g_advancedSettingsPage==8){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
       AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
