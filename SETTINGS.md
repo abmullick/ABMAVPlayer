@@ -18,6 +18,10 @@ Change one setting at a time when troubleshooting. Reopen the same test media an
 - **Overview:** read-only status; it does not change preferences.
 - **Diagnostics:** live metrics and a local report; it does not tune or repair the system.
 
+## Settings window layout and scrolling
+
+The Settings window opens at a practical default size, can be resized, and keeps the complete virtual page available when the display is short or narrow. If content extends beyond the visible client area, use the custom ABM-styled vertical and horizontal scrollbars. Drag the thumb to move through the page or click the track to move toward that position. The mouse wheel scrolls vertically; **Page Up / Page Down** move by a page, and **Ctrl+Home / Ctrl+End** move to the beginning or end. Focused native text-entry fields are brought into view when needed. The scrollbars use the shared ABM Direct2D theme and are not native Windows scrollbar widgets. Native edit fields remain native to preserve caret, text selection, IME and clipboard behaviour.
+
 ## Main Settings
 
 ### General
