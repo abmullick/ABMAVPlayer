@@ -13,13 +13,16 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
-### Current release highlights
+### Current release highlights — v1.0.8 candidate
 
-- Refined the F1 Help Centre presentation with application-matched visual styling and clearer navigation and search controls.
-- Updated the in-app Settings article and user/developer guides for the resizable Settings viewport and custom ABM-themed scrollbars; native Windows scrollbar chrome has been removed from that window.
-- Improved help article presentation with topic-focused views, richer heading/body typography, paragraph spacing and normalization of escaped line breaks across topics.
-- Aligned the main application, Streaming Centre, installer metadata, packaging guards, release publisher and vcpkg manifest to the version in `VERSION`.
-- Preserved the existing installer identity and per-user application data location so an in-place upgrade can retain existing user data.
+- Unified typography, iconography, control surfaces and Direct2D/DirectWrite rendering across the Main Player, Streaming Centre, Torrent Stream, Settings, Advanced Settings, Help Centre, About, Equalizer and modal windows.
+- Improved Settings responsiveness, monitor-safe sizing, custom scrollbars, keyboard navigation and focus visibility.
+- Added VLC Runtime & Codecs diagnostics with explicit evidence levels and richer diagnostic reports.
+- Hardened playback, Streaming Centre and Torrent lifecycles, including worker cancellation, callback lifetime, HTTP request handling and resource cleanup.
+- Improved Torrent quota accounting, stalled-download recovery, transient-error recovery and paused-state handling.
+- Expanded Help Centre, user/developer documentation and the Windows QA checklists.
+
+This is a source-prepared v1.0.8 candidate. Build and Windows regression/installer upgrade validation are required before publication.
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the release notes and [RELEASES.md](RELEASES.md) for build, validation and publishing requirements.
 
