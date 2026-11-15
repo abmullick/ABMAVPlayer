@@ -41,7 +41,15 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Home dashboard: card layout, hover hit targets, labels and icon alignment.
 - [ ] Playback surface: video remains correctly sized and is not displaced by UI animation.
 - [ ] Playlist drawer and recent-media surface: no clipping, stale selection or off-screen popup.
-- [ ] Settings and Torrent Stream windows: controls remain reachable and labels do not overlap.
+- [ ] Settings window: controls remain reachable and labels do not overlap.
+- [ ] Torrent Stream: compare ABM / AV PLAYER wordmark font roles, sizes, weights and baseline against Main Player.
+- [ ] Torrent Stream: verify clipped repaint has no flicker, stale regions or repaint loops after resize and restore.
+- [ ] Torrent Stream: inspect magnet input, owner-drawn file list, TV selector, action buttons and all three sliders for shared typography, surface, border, radius and padding.
+- [ ] Torrent Stream: verify primary, secondary, destructive and disabled button states plus keyboard focus outlines.
+- [ ] Torrent Stream: verify task summary, playback status, download/upload labels and cache text do not overlap headings or controls; test long names and long diagnostics.
+- [ ] Torrent Stream: verify slider keyboard arrows, pointer drag, focus outline and displayed values for unlimited, KiB/s, MiB/s and GiB.
+- [ ] Torrent Stream: test no-task, metadata-loading, queued/checking, downloading, complete/seeding, paused and error states.
+- [ ] Torrent Stream: verify dark title bar, rounded corners and border match the Main Player.
 - [ ] Advanced Settings: all ten navigation entries are visible and clickable; the VLC Runtime & Codecs page fits without colliding with the footer at 100%, 125%, 150% and 200% scaling.
 - [ ] VLC Runtime & Codecs: loaded LibVLC version/path and plugin directory are accurate; selected plugin-file presence matches the installed runtime; Refresh scan updates the results.
 - [ ] Streaming Centre: title bar, device panel, receiver/app lists and WebView2 region remain aligned.
@@ -137,3 +145,15 @@ For every failure, record:
 - [ ] Remaining known limitations documented.
 
 **Step 12 source status:** checklist and targeted source audit completed. All unchecked items require local Windows validation. Do not describe the UI redesign as fully QA-certified until those checks pass.
+
+
+## Torrent Stream design-system migration — source status
+
+Source changes committed on `main`:
+- `855a4f973e5be834604a522b6f6ddc919d2e42fe`
+- `aea5295854291f031ecf7f291801aac66a9259e4`
+- `6c458e890e9e204f8e7d8bb170e7ead59a67a0d1`
+
+The Torrent source now uses the canonical Main Player brand roles, clipped Direct2D repaint, DirectWrite slider/value rendering and DirectWrite application-owned labels. Two label-overlap defects were corrected. Native magnet text editing remains native intentionally to preserve Windows editing and accessibility behaviour.
+
+All screenshot comparison, build, DPI, interaction-state and functional regression items above remain unchecked until run on Windows. Source-level changes alone are not runtime sign-off.
