@@ -98,3 +98,16 @@ The Help Centre scales its top-level dimensions, native search/topic/article con
 ABM-owned modal notification dialogs, action menus and Recently Played popups now scale their top-level dimensions and custom GDI drawing to the monitor DPI. Their pointer hit testing uses logical coordinates; modal dialog button geometry is recalculated after a DPI transition. The fullscreen overlay remains a monitor-sized layered surface and is repositioned by the fullscreen owner.
 
 These changes are code-level migrations, not runtime certification. Validate mixed-DPI transitions, control focus, text clipping, popup placement near work-area edges and all interaction paths on real Windows displays before declaring the DPI pass complete.
+
+
+## Remaining application surfaces: DPI implementation pass
+
+The remaining utility and popup surfaces have been brought into the shared per-monitor DPI model:
+
+- Torrent Stream: logical layout calculations, scaled child-window placement, DPI-aware Direct2D target, monitor-specific control font, owner-drawn list/combo text sizing, row metrics and minimum size.
+- About: logical GDI drawing coordinates, DPI-scaled window dimensions and minimum tracking size.
+- Equalizer: logical GDI drawing coordinates, DPI-scaled creation/centering/minimum size, and logical-coordinate slider/preset input.
+- Help Centre: scaled top-level size, child control creation and resize layout, topic row metrics, monitor-specific control fonts, logical painted chrome, and logical close/title hit testing.
+- ABM modal notifications, custom action menus and Recently Played popup: scaled popup dimensions and GDI drawing, logical pointer hit-testing, recalculated dialog buttons, and popup resize on monitor DPI changes.
+
+This is an implementation pass rather than a certification. In particular, validate Torrent's custom slider subclasses and owner-drawn controls, Help's rich-edit formatting and child fonts, Equalizer's GDI back-buffer path, and popup work-area clamping on mixed-DPI monitors. Some native system-owned dialogs and the fullscreen layered overlay continue to use their own Windows/owner-managed sizing paths.
