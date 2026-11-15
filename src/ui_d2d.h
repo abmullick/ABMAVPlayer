@@ -32,6 +32,7 @@ typedef struct ABM_D2D_CANVAS {
     void *ellipsis;
     void *brush;
     BOOL drawing;
+    HWND hwnd; /* Last HWND associated with a bound owner-draw DC. */
 } ABM_D2D_CANVAS;
 
 typedef struct ABM_D2D {
