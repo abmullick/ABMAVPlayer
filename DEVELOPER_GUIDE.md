@@ -146,7 +146,7 @@ Document both the expected benefit and the cost:
 - More decoder threads can help parallel codecs but may increase scheduling/CPU contention; it is not a process-wide CPU cap.
 - Frame dropping/skipping can preserve playback responsiveness while sacrificing visual continuity.
 - Hardware decoding can reduce CPU work on supported combinations, but GPU/driver/codec compatibility is decisive.
-- Torrent cache quota is disk-retention capacity, not bandwidth or peer availability. Cache parent and permanent-download destination are distinct paths; path changes do not migrate existing data.
+- Torrent storage quota accounts for actual managed torrent payload bytes in per-info-hash folders under the permanent-download destination plus the working-cache directory. Selected files reserve their remaining expected size, including other active task reservations. Inactive working-cache folders may be evicted, but permanent downloads are never automatically deleted. Changing either folder path does not migrate existing data.
 - Subtitle appearance is a presentation preference; timing is a synchronisation correction. Do not imply that one fixes the other.
 
 Use concrete examples, units and activation requirements. Avoid claims such as "improves performance" without explaining the condition and trade-off. For any new control, add a troubleshooting example and state whether the setting applies immediately, to new media, or after restart.
