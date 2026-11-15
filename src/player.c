@@ -6463,6 +6463,9 @@ static void SettingsMoveChildControls(HWND w){
 }
 static void SettingsUpdateScrollBars(HWND w){
  RECT rc;GetClientRect(w,&rc);
+ BOOL needH=rc.right<SETTINGS_CONTENT_WIDTH;
+ ShowScrollBar(w,SB_HORZ,needH);
+ GetClientRect(w,&rc);
  SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_RANGE|SIF_PAGE|SIF_POS;si.nMin=0;si.nMax=SETTINGS_CONTENT_WIDTH-1;si.nPage=(UINT)(rc.right>0?rc.right:1);si.nPos=g_settingsScrollX;SetScrollInfo(w,SB_HORZ,&si,TRUE);
  si.nMax=SETTINGS_CONTENT_HEIGHT-1;si.nPage=(UINT)(rc.bottom>0?rc.bottom:1);si.nPos=g_settingsScrollY;SetScrollInfo(w,SB_VERT,&si,TRUE);
  int maxX=SETTINGS_CONTENT_WIDTH-rc.right;if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-rc.bottom;if(maxY<0)maxY=0;
