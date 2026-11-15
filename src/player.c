@@ -3630,7 +3630,12 @@ static void StartTorrentEngine(HWND owner) {
 
 
 static void TorrentSetLabel(HWND hwnd,const wchar_t *value) {
-    if(hwnd&&IsWindow(hwnd))SetWindowTextW(hwnd,value?value:L"");
+    if(hwnd&&IsWindow(hwnd)){
+        SetWindowTextW(hwnd,value?value:L"");
+        /* The Torrent labels are data holders; the parent paints their text
+           through the canonical DirectWrite renderer. */
+        if(g_torrentWindow)InvalidateRect(g_torrentWindow,NULL,FALSE);
+    }
 }
 static const wchar_t *TorrentPlaybackStateText(void) {
     switch((TorrentPlaybackState)InterlockedCompareExchange(&g_torrentPlaybackState,0,0)) {
@@ -4228,6 +4233,12 @@ static void TorrentStrokeRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF c
 static void TorrentGradientRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF start,COLORREF end){
     ABM_D2D_GradientRound(ui,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,radius,start,end);
 }
+static void TorrentDrawStoredText(HWND control,RECT rect,COLORREF color,int style,UINT flags){
+    if(!control||!IsWindow(control))return;
+    wchar_t text[2048]=L"";
+    GetWindowTextW(control,text,(int)_countof(text));
+    if(text[0])ABM_D2D_Text(&g_torrentUi,text,rect,color,style,flags);
+}
 static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     RECT rc={0};GetClientRect(hwnd,&rc);
     const float w=(float)rc.right,h=(float)rc.bottom;
@@ -4298,6 +4309,8 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     r=TorrentMakeRect(w-420,contentTop+5,w-m-14,contentTop+25);
     ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,0,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Fill(&g_torrentUi,m+14,contentTop+29,m+62,contentTop+31,accent);
+    r=TorrentMakeRect(m+14,contentTop+33,w-m-14,contentTop+53);
+    TorrentDrawStoredText(g_torrentInfoLabel,r,ABM_UI_COLOR_TEXT_SECONDARY,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Playback deck: status, progress and actions each have their own row. */
     r=TorrentMakeRect(m,playbackY,w-m,playbackY+100);
@@ -4309,7 +4322,9 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     float barL=m+14,barT=playbackY+47,barR=w-m-14;
     ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_THEME_COLOR_193041);
     ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,ABM_THEME_COLOR_314B5B);
-    if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_THEME_COLOR_289793,ABM_THEME_COLOR_66E6BE);
+    if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
+    r=TorrentMakeRect(m+14,playbackY+23,w-m-14,playbackY+43);
+    TorrentDrawStoredText(g_torrentStatusLabel,r,ABM_UI_COLOR_TEXT_SECONDARY,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Matched utility cards */
     r=TorrentMakeRect(m,networkY,w-m,networkY+76);
@@ -4321,9 +4336,20 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
 
     /* Receiver dock */
     r=TorrentMakeRect(m,tvY,w-m,h-12);
-    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
+    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
     r=TorrentMakeRect(m+14,tvY+2,m+220,tvY+22);ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+    /* Static child labels retain their text as state only. Render every
+       application-owned label with the same DirectWrite formats as Main. */
+    r=TorrentMakeRect(m+14,networkY+3,m+14+((w-2*m-14-18-136)/2),networkY+21);
+    TorrentDrawStoredText(g_torrentDownLabel,r,muted,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+14+((w-2*m-14-18-136)/2)+18,networkY+3,w-m-136,networkY+21);
+    TorrentDrawStoredText(g_torrentUpLabel,r,muted,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+14,cacheY+3,m+224,cacheY+21);
+    TorrentDrawStoredText(g_torrentCacheLabel,r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+232,cacheY+3,w-m-14,cacheY+21);
+    TorrentDrawStoredText(g_torrentCacheInfoLabel,r,muted,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     return ABM_D2D_End(&g_torrentUi);
 }
 /* Button renderer copied from Streaming Centre's DrawDeviceButton palette,
@@ -4718,6 +4744,14 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         /* Keep all interactive child controls visible until their Direct2D
            canvas replacements are wired. Never hide the command buttons. */
         ShowWindow(g_torrentFileList,SW_SHOW);
+        /* Native STATIC controls are retained as accessible text/state
+           holders. Their visible text is rendered by TorrentPaint/DirectWrite. */
+        ShowWindow(g_torrentInfoLabel,SW_HIDE);
+        ShowWindow(g_torrentStatusLabel,SW_HIDE);
+        ShowWindow(g_torrentDownLabel,SW_HIDE);
+        ShowWindow(g_torrentUpLabel,SW_HIDE);
+        ShowWindow(g_torrentCacheLabel,SW_HIDE);
+        ShowWindow(g_torrentCacheInfoLabel,SW_HIDE);
         ShowWindow(g_torrentBufferBar,SW_HIDE); /* replaced by the Direct2D progress rail */
         { const int ids[]={ID_TORRENT_DOWN_DEC,ID_TORRENT_DOWN_INC,ID_TORRENT_UP_DEC,ID_TORRENT_UP_INC,
             ID_TORRENT_CACHE_DEC,ID_TORRENT_CACHE_INC,ID_TORRENT_ADD_MAGNET,ID_TORRENT_BROWSE,ID_TORRENT_APPLY_LIMITS,
