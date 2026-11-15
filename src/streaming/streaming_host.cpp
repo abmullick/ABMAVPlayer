@@ -349,10 +349,10 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
         return;
     }
-    Rounded(dc,r,fill,8);
+    Rounded(dc,r,fill,ABM_UI_RADIUS_BUTTON);
     HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_63E1CD:edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
-    RoundRect(dc,r.left,r.top,r.right,r.bottom,8,8);
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,ABM_UI_RADIUS_BUTTON*2,ABM_UI_RADIUS_BUTTON*2);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
     RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
     DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),ABM_THEME_COLOR_91E5D5,16);
@@ -1443,7 +1443,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             FillRectColor(item->hDC,r,ABM_THEME_COLOR_0C1D2D);
             HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B5B70);
             HGDIOBJ oldPen=SelectObject(item->hDC,pen),oldBrush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
-            RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,14,14);
+            RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,ABM_UI_RADIUS_PANEL*2,ABM_UI_RADIUS_PANEL*2);
             SelectObject(item->hDC,oldBrush);SelectObject(item->hDC,oldPen);DeleteObject(pen);
             RECT accent={r.left+16,r.top+157,r.right-16,r.top+158};FillRectColor(item->hDC,accent,ABM_THEME_COLOR_267077);
             RECT appDivider={r.left+16,r.top+326,r.right-16,r.top+327};FillRectColor(item->hDC,appDivider,ABM_THEME_COLOR_267077);
