@@ -7294,8 +7294,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!RegisterClassW(&wc))return 1;
     WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
     if(!RegisterClassW(&owc))return 1;
-    UINT initialDpi=ABM_DpiGetSystem();
-    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,ABM_DpiScale(1440,initialDpi),ABM_DpiScale(900,initialDpi),NULL,NULL,inst,NULL);
+    RECT mainBounds={0};ABM_DpiMakeCenteredRect(NULL,1440,900,&mainBounds);
+    HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
+        mainBounds.left,mainBounds.top,mainBounds.right-mainBounds.left,mainBounds.bottom-mainBounds.top,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
     if(wc.hIcon)SendMessageW(hwnd,WM_SETICON,ICON_SMALL,(LPARAM)wc.hIcon);
     g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
