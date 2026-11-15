@@ -276,6 +276,14 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_ERASEBKGND:return 1;
+    case WM_DPICHANGED: {
+        ABM_DpiApplySuggestedRect(w,lp);UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(w);
+        RECT rc={0};GetClientRect(w,&rc);int width=ABM_DpiUnscale(rc.right,dpi),height=ABM_DpiUnscale(rc.bottom,dpi);
+        int bw=104,bh=36,gap=12,right=width-22,bottom=height-20;
+        if(d->buttonCount==2){d->buttons[1]=(RECT){right-bw,bottom-bh,right,bottom};d->buttons[0]=(RECT){right-bw*2-gap,bottom-bh,right-bw-gap,bottom};}
+        else d->buttons[0]=(RECT){right-bw,bottom-bh,right,bottom};
+        InvalidateRect(w,NULL,FALSE);return 0;
+    }
     case WM_KEYDOWN:
         if(wp==VK_ESCAPE){d->result=(d->flags&MB_YESNO)?IDNO:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
         if(wp==VK_TAB||wp==VK_LEFT||wp==VK_RIGHT){
@@ -288,13 +296,14 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
         }
         break;
     case WM_LBUTTONUP: {
-        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        UINT dpi=ABM_DpiGetForWindow(w);int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
         for(int i=0;i<d->buttonCount;i++)if(x>=d->buttons[i].left&&x<d->buttons[i].right&&y>=d->buttons[i].top&&y<d->buttons[i].bottom){
             d->focusedButton=i;d->result=(d->flags&MB_YESNO)?(i==0?IDYES:IDNO):IDOK;d->done=TRUE;DestroyWindow(w);return 0;
         } return 0;
     }
     case WM_PAINT: {
-        PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
+        PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);UINT dpi=ABM_DpiGetForWindow(w);
+        ABM_GdiUseLogicalDpi(dc,dpi);rc.right=ABM_DpiUnscale(rc.right,dpi);rc.bottom=ABM_DpiUnscale(rc.bottom,dpi);
         HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_090F19);FillRect(dc,&rc,bg);DeleteObject(bg);
         RECT head={0,0,rc.right,54};HBRUSH hb=CreateSolidBrush(ABM_THEME_COLOR_0F2230);FillRect(dc,&head,hb);DeleteObject(hb);
         SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
@@ -320,12 +329,12 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
     ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;d.focusedButton=d.defaultButton;
-    int width=560,height=220;HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
+    UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(560,dpi),height=ABM_DpiScale(220,dpi);HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-ABM_DpiScale(15,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,ABM_DpiUnscale(width-ABM_DpiScale(90,dpi),dpi),0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=ABM_DpiScale(ABM_DpiUnscale(measured.bottom,dpi)+150,dpi);if(height>ABM_DpiScale(560,dpi))height=ABM_DpiScale(560,dpi);RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
     if(!w)return d.result;
-    RECT client={0};GetClientRect(w,&client);int bw=104,bh=36,gap=12,right=client.right-22,bottom=client.bottom-20;
+    RECT client={0};GetClientRect(w,&client);int logicalW=ABM_DpiUnscale(client.right,dpi),logicalH=ABM_DpiUnscale(client.bottom,dpi);int bw=104,bh=36,gap=12,right=logicalW-22,bottom=logicalH-20;
     if(d.buttonCount==2){d.buttons[1]=(RECT){right-bw,bottom-bh,right,bottom};d.buttons[0]=(RECT){right-bw*2-gap,bottom-bh,right-bw-gap,bottom};}
     else d.buttons[0]=(RECT){right-bw,bottom-bh,right,bottom};
     BOOL ownerWasEnabled=owner&&IsWindowEnabled(owner);if(ownerWasEnabled)EnableWindow(owner,FALSE);
@@ -344,14 +353,14 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
-        TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,w,0};TrackMouseEvent(&t);
-        int row=(GET_Y_LPARAM(lp)-54)/36+d->first;if(row<d->first||row>=d->count||d->items[row].heading||!d->items[row].enabled)row=-1;
+        TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,w,0};TrackMouseEvent(&t);UINT dpi=ABM_DpiGetForWindow(w);
+        int row=(ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)-54)/36+d->first;if(row<d->first||row>=d->count||d->items[row].heading||!d->items[row].enabled)row=-1;
         if(row!=d->hover){d->hover=row;InvalidateRect(w,NULL,FALSE);}return 0;
     }
     case WM_MOUSELEAVE:d->hover=-1;InvalidateRect(w,NULL,FALSE);return 0;
     case WM_MOUSEWHEEL:{int delta=GET_WHEEL_DELTA_WPARAM(wp);d->first-=delta/WHEEL_DELTA*3;if(d->first<0)d->first=0;if(d->first>d->count-1)d->first=d->count-1;InvalidateRect(w,NULL,FALSE);return 0;}
     case WM_LBUTTONUP: {
-        int row=(GET_Y_LPARAM(lp)-54)/36+d->first;
+        int row=(ABM_DpiUnscale(GET_Y_LPARAM(lp),ABM_DpiGetForWindow(w))-54)/36+d->first;
         if(row>=d->first&&row<d->count&&!d->items[row].heading&&d->items[row].enabled){d->result=d->items[row].command;d->done=TRUE;DestroyWindow(w);}return 0;
     }
     case WM_KEYDOWN:
@@ -359,13 +368,14 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
         if(wp==VK_DOWN||wp==VK_UP){
             int step=wp==VK_DOWN?1:-1;int i=d->hover<0?(step>0?-1:0):d->hover;
             for(int n=0;n<d->count;n++){i=(i+step+d->count)%d->count;if(!d->items[i].heading&&d->items[i].enabled){d->hover=i;break;}}
-            RECT rc;GetClientRect(w,&rc);int visible=(rc.bottom-62)/36;if(d->hover<d->first)d->first=d->hover;if(d->hover>=d->first+visible)d->first=d->hover-visible+1;InvalidateRect(w,NULL,FALSE);return 0;
+            RECT rc;GetClientRect(w,&rc);int visible=(ABM_DpiUnscale(rc.bottom,dpi)-62)/36;if(d->hover<d->first)d->first=d->hover;if(d->hover>=d->first+visible)d->first=d->hover-visible+1;InvalidateRect(w,NULL,FALSE);return 0;
         }
         if(wp==VK_RETURN&&d->hover>=0){d->result=d->items[d->hover].command;d->done=TRUE;DestroyWindow(w);return 0;}
         break;
     case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){d->done=TRUE;DestroyWindow(w);return 0;}break;
     case WM_PAINT:{
-        PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
+        PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);UINT dpi=ABM_DpiGetForWindow(w);
+        ABM_GdiUseLogicalDpi(dc,dpi);rc.right=ABM_DpiUnscale(rc.right,dpi);rc.bottom=ABM_DpiUnscale(rc.bottom,dpi);
         HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_09101B);FillRect(dc,&rc,bg);DeleteObject(bg);
         HBRUSH head=CreateSolidBrush(ABM_THEME_COLOR_0F2533);RECT hr={0,0,rc.right,48};FillRect(dc,&hr,head);DeleteObject(head);
         SetBkMode(dc,TRANSPARENT);HFONT title=CreateFontW(-17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
@@ -388,7 +398,7 @@ static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int coun
     if(!items||count<=0)return 0;static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMMenuProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerActionMenu";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return 0;registered=TRUE;}
     ABMMenuState d={owner,items,count,-1,0,0,FALSE};POINT pt={x,y};ClientToScreen(owner,&pt);
-    int width=380,height=54+count*36+8;RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
+    UINT dpi=ABM_DpiGetForWindow(owner);int width=ABM_DpiScale(380,dpi),height=ABM_DpiScale(54+count*36+8,dpi);RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
     if(height>work.bottom-work.top-24)height=work.bottom-work.top-24;
     if(pt.x+width>work.right)pt.x=work.right-width;if(pt.y+height>work.bottom)pt.y=work.bottom-height;
     if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
@@ -2344,13 +2354,13 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         for(int i=0;i<4;i++){if(*fonts[i])DeleteObject(*fonts[i]);*fonts[i]=CreateFontW(-ABM_DpiScale(sizes[i],dpi),0,0,0,weights[i],FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,faces[i]);}
         HWND controls[]={g_helpSearch,g_helpFindButton,g_helpTopics,g_helpEdit};
         for(int i=0;i<4;i++)if(controls[i])SendMessageW(controls[i],WM_SETFONT,(WPARAM)(i==0||i==2?g_helpBodyFont:i==1?g_helpMetaFont:g_helpBodyFont),TRUE);
-        SendMessageW(hwnd,WM_SIZE,0,MAKELPARAM((short)(GetSystemMetrics(SM_CXSCREEN)),(short)(GetSystemMetrics(SM_CYSCREEN))));
+        {RECT client={0};GetClientRect(hwnd,&client);SendMessageW(hwnd,WM_SIZE,0,MAKELPARAM((short)client.right,(short)client.bottom));}
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
-        POINT p={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
+        UINT dpi=ABM_DpiGetForWindow(hwnd);POINT p={ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)};
         int row=(p.y-68)/42;
         int count=g_recentCount;
         if(row<0||row>=count||p.y<68)row=-1;
@@ -2359,7 +2369,7 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
     }
     case WM_MOUSELEAVE:g_recentPopupHover=-1;InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_LBUTTONUP: {
-        int row=(GET_Y_LPARAM(lp)-68)/42;
+        int row=(ABM_DpiUnscale(GET_Y_LPARAM(lp),ABM_DpiGetForWindow(hwnd))-68)/42;
         if(GET_Y_LPARAM(lp)>=68&&row>=0&&row<g_recentCount) {
             HWND owner=(HWND)GetWindowLongPtrW(hwnd,GWLP_USERDATA);
             RecentPlayIndex(owner,row);
@@ -2376,7 +2386,8 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         break;
     case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){DestroyWindow(hwnd);return 0;}break;
     case WM_PAINT: {
-        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);UINT dpi=ABM_DpiGetForWindow(hwnd);
+        ABM_GdiUseLogicalDpi(dc,dpi);rc.right=ABM_DpiUnscale(rc.right,dpi);rc.bottom=ABM_DpiUnscale(rc.bottom,dpi);
         HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_0A111C);FillRect(dc,&rc,bg);DeleteObject(bg);
         HPEN border=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_365B70);HGDIOBJ op=SelectObject(dc,border);
         HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,0,0,rc.right,rc.bottom,18,18);
@@ -2417,7 +2428,7 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;
     }
     POINT pt={x,y};ClientToScreen(hwnd,&pt);
-    int width=520,height=68+g_recentCount*42+10;
+    UINT dpi=ABM_DpiGetForWindow(hwnd);int width=ABM_DpiScale(520,dpi),height=ABM_DpiScale(68+g_recentCount*42+10,dpi);
     RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
     if(pt.x+width>work.right)pt.x=work.right-width;
     if(pt.y+height>work.bottom)pt.y=work.bottom-height;
