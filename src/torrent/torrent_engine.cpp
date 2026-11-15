@@ -8,6 +8,7 @@
 #include <ws2tcpip.h>
 #include <bcrypt.h>
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -391,17 +392,51 @@ public:
         std::shared_ptr<Task> task;
         {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end())return false;task=it->second;}
         const uint64_t generation=wait_cancel_generation_.load();
+        /* A readiness wait belongs to the currently active HTTP stream. Do not
+           accidentally succeed against a later stream after stop/replacement. */
+        if(http_stop_.load()||http_task_id_.load()!=id||http_file_index_.load()!=index)return false;
         if(length>0&&!SetReadWindow(id,index,offset,length,8*1024*1024))return false;
+        auto rangeReadyAndReadable=[&]() -> bool {
+            if(!RangeVerified(id,index,offset,length))return false;
+            if(length==0)return true;
+            auto ti=task->handle.torrent_file();
+            if(!ti||index<0||index>=ti->layout().num_files()||task->removed.load())return false;
+            try {
+                const std::string fullUtf8=ti->layout().file_path(lt::file_index_t(index),task->cache_path.u8string());
+                fs::path target=fs::weakly_canonical(fs::u8path(fullUtf8));
+                fs::path root=fs::weakly_canonical(task->cache_path);
+                auto ri=root.begin(),tiPath=target.begin();
+                for(;ri!=root.end();++ri,++tiPath)
+                    if(tiPath==target.end()||_wcsicmp(ri->c_str(),tiPath->c_str())!=0)return false;
+                if(tiPath==target.end())return false;
+                std::ifstream input(target,std::ios::binary);
+                if(!input)return false;
+                input.seekg(static_cast<std::streamoff>(offset),std::ios::beg);
+                std::array<char,64*1024> probe{};
+                int64_t remaining=length;
+                while(remaining>0) {
+                    if(task->removed.load()||wait_cancel_generation_.load()!=generation||
+                       http_stop_.load()||(cancel&&cancel->load())||stopping_.load())return false;
+                    const auto chunk=static_cast<std::streamsize>(std::min<int64_t>(remaining,probe.size()));
+                    input.read(probe.data(),chunk);
+                    if(input.gcount()!=chunk)return false;
+                    remaining-=chunk;
+                }
+                return true;
+            } catch(...) { return false; }
+        };
         const auto until=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);
         do {
             if(task->removed.load()||wait_cancel_generation_.load()!=generation||
+               http_stop_.load()||http_task_id_.load()!=id||http_file_index_.load()!=index||
                (cancel&&cancel->load())||stopping_.load())return false;
-            if(RangeVerified(id,index,offset,length))return true;
+            if(rangeReadyAndReadable())return true;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         } while(std::chrono::steady_clock::now()<until);
         if(task->removed.load()||wait_cancel_generation_.load()!=generation||
+           http_stop_.load()||http_task_id_.load()!=id||http_file_index_.load()!=index||
            (cancel&&cancel->load())||stopping_.load())return false;
-        return RangeVerified(id,index,offset,length);
+        return rangeReadyAndReadable();
     }
 
     bool ReadVerified(uint64_t id,int index,int64_t offset,char *buffer,size_t count,
@@ -446,7 +481,11 @@ public:
     }
     bool StartHttpStreamInternal(uint64_t id,int index,wchar_t *url,unsigned cap,std::wstring &err,bool lan) {
         if(!url||cap==0){err=L"Output URL buffer is unavailable.";return false;}
-        StopHttpStream();
+        /* Serialize the entire stop-and-start transition, not just teardown.
+           This prevents concurrent local/TV starts from overwriting shared
+           listener, token and task state. */
+        std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        StopHttpStreamLocked();
         if(!Select(id,index)){err=L"Select a valid torrent file after metadata is available.";return false;}
         std::shared_ptr<Task> task;
         {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end()){err=L"Torrent task no longer exists.";return false;}task=it->second;}
@@ -491,15 +530,17 @@ public:
         }
         std::wstring streamUrl=L"http://"+host+L":"+std::to_wstring(port)+L"/stream/"+token;
         if(streamUrl.size()+1>cap){closesocket(listener);err=L"Output URL buffer is too small.";return false;}
-        http_stop_.store(false);
         http_task_id_.store(id);http_file_index_=index;http_file_size_=size;
+        http_stop_.store(false);
         http_token_=token;http_socket_=listener;
         url[0]=0;wcsncpy_s(url,cap,streamUrl.c_str(),_TRUNCATE);
         try {
             const uint32_t lanIp=lan?ntohl(address.sin_addr.s_addr):0;
             http_accept_thread_=std::thread([this,listener,token,id,index,size,lan,lanIp,lanMask]{HttpAcceptLoop(listener,token,id,index,size,lan,lanIp,lanMask);});
         } catch(...) {
-            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_.store(0);http_token_.clear();
+            http_stop_.store(true);
+            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_.store(0);
+            http_file_index_=-1;http_file_size_=0;http_token_.clear();
             err=L"Could not start the local HTTP stream worker.";return false;
         }
         return true;
@@ -507,18 +548,31 @@ public:
 
     void StopHttpStream() {
         std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        StopHttpStreamLocked();
+    }
+
+private:
+
+    void StopHttpStreamLocked() {
         http_stop_.store(true);
         wait_cancel_generation_.fetch_add(1);
         if(http_socket_!=INVALID_SOCKET)shutdown(http_socket_,SD_BOTH);
+        /* Interrupt blocked client recv/send calls immediately. Client threads
+           retain ownership of close(); shutdown only wakes their socket I/O. */
+        {
+            std::lock_guard<std::mutex> clients(http_clients_mutex_);
+            for(auto &worker:http_clients_) {
+                if(!worker.socket)continue;
+                SOCKET client=worker.socket->load();
+                if(client!=INVALID_SOCKET)shutdown(client,SD_BOTH);
+            }
+        }
         if(http_accept_thread_.joinable())http_accept_thread_.join();
         if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
         http_task_id_.store(0);http_file_index_=-1;http_file_size_=0;
         if(!http_token_.empty())SecureZeroMemory(http_token_.data(),http_token_.size()*sizeof(wchar_t));
         http_token_.clear();
     }
-
-private:
-
     static bool SendAll(SOCKET client,const char *data,size_t size) {
         while(size) {
             int part=static_cast<int>(std::min<size_t>(size,64*1024));
@@ -556,6 +610,7 @@ private:
     struct HttpClientWorker {
         std::thread thread;
         std::shared_ptr<std::atomic<bool>> done;
+        std::shared_ptr<std::atomic<SOCKET>> socket;
     };
     static bool IsPrivateIPv4(uint32_t ip) {
         return (ip>>24)==10 || (ip>>20)==0xAC1 || (ip>>16)==0xC0A8;
@@ -600,6 +655,9 @@ private:
                 if(!IsPrivateIPv4(remoteIp)||(remoteIp&lanMask)!=(lanIp&lanMask)){closesocket(client);continue;}
             } else if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
             std::lock_guard<std::mutex> g(http_clients_mutex_);
+            /* Stop sets http_stop_ before taking this mutex. Recheck while
+               holding it so no late client can escape the shutdown sweep. */
+            if(http_stop_.load()){closesocket(client);break;}
             for(auto it=http_clients_.begin();it!=http_clients_.end();) {
                 if(it->done&&it->done->load()) {
                     if(it->thread.joinable())it->thread.join();
@@ -612,9 +670,12 @@ private:
                 http_clients_.emplace_back();
                 HttpClientWorker &worker=http_clients_.back();
                 worker.done=done;
-                worker.thread=std::thread([this,client,token,id,index,size,done]{
+                auto socketState=std::make_shared<std::atomic<SOCKET>>(client);
+                worker.socket=socketState;
+                worker.thread=std::thread([this,client,token,id,index,size,done,socketState]{
                     try { HandleHttpClient(client,token,id,index,size); }
                     catch(...) { closesocket(client); }
+                    socketState->store(INVALID_SOCKET);
                     done->store(true);
                 });
             } catch(...) {
@@ -1004,7 +1065,7 @@ private:
     std::atomic<uint64_t> wait_cancel_generation_{0};
     SOCKET http_socket_=INVALID_SOCKET;
     std::atomic<uint64_t> http_task_id_{0};
-    int http_file_index_=-1;
+    std::atomic<int> http_file_index_{-1};
     int64_t http_file_size_=0;
     std::wstring http_token_;
     bool winsock_ready_=false;
