@@ -2553,6 +2553,44 @@ static void ApplyEqProfile(void) {
 }
 static BOOL g_torrentPlaybackActive=FALSE;
 static HANDLE g_torrentStreamThread=NULL;
+/* LibVLC exposes a generic media-player Error state rather than a
+   reliable public error code for every demux/decoder/output failure. Keep
+   diagnoses evidence-based: classify by source context and never claim a
+   specific codec or device failure without a corresponding signal. */
+static void PlaybackReportFailure(int index,BOOL startupFailure) {
+    if(g_selectedRenderer) {
+        SetStatus(startupFailure?
+            L"Receiver could not start this media. Check receiver availability and format; ABM AV Player has not switched playback to this PC.":
+            L"Receiver playback failed. Choose another receiver or return to local playback; no automatic reroute was attempted");
+        return;
+    }
+    if(index<0||index>=g_playlistCount) {
+        SetStatus(L"Playback failed. Select the item again to retry or choose another media file.");
+        return;
+    }
+    DWORD attributes=GetFileAttributesW(g_playlist[index]);
+    if(attributes==INVALID_FILE_ATTRIBUTES||(attributes&FILE_ATTRIBUTE_DIRECTORY)) {
+        SetStatus(L"Playback source is unavailable. Check that the file still exists and can be accessed.");
+        return;
+    }
+    SetStatus(startupFailure?
+        L"LibVLC could not start this file. It may be unsupported, damaged, truncated, or blocked by a decoder/output initialisation failure. Try another file or review Video & Decoding settings.":
+        L"Playback stopped after a LibVLC error. The exact cause is not exposed; check the file, VLC plugins, decoder settings and audio/video output. Select Play to retry.");
+}
+static void PlaybackHandleEngineError(void) {
+    if(!g_hasMedia||!g_player)return;
+    int failedIndex=g_current;
+    /* Stop once and leave the queue selection intact. Do not auto-retry a
+       corrupt source or repeatedly cycle decoder/output initialisation. */
+    PlaybackStopEngine();
+    g_hasMedia=FALSE;g_endHandled=TRUE;g_pendingResume=FALSE;
+    g_videoBoundsValid=FALSE;ResetArtwork();
+    if(g_visualizerActive)ABM_AudioVisualizer_Stop();
+    g_visualizerActive=FALSE;g_visualizerTried=FALSE;
+    if(g_video&&!g_fullscreen)ShowWindow(g_video,SW_HIDE);
+    PlaybackReportFailure(failedIndex,FALSE);
+    InvalidateRect(g_main,NULL,FALSE);
+}
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
     if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
@@ -2590,12 +2628,11 @@ static void PlayIndex(int index) {
     ApplyEqProfile();
     if(PlaybackStartEngine()!=0){
         g_hasMedia=FALSE;g_pendingResume=FALSE;ResetArtwork();
-        if(g_selectedRenderer){
-            SetStatus(L"Receiver rejected playback - check the TV and supported format");
+        PlaybackReportFailure(index,TRUE);
+        if(g_selectedRenderer)
             ABM_MessageBoxW(g_main,L"LibVLC could not start playback on the selected receiver. The video was not redirected to local playback. Check that the TV is awake and supports this media format.",APP_NAME,MB_ICONERROR);
-        }else{
-            ABM_MessageBoxW(g_main,L"Playback could not start. Check the media file and VLC plugins.",APP_NAME,MB_ICONERROR);
-        }
+        else
+            ABM_MessageBoxW(g_main,L"Playback could not start. The file may be unsupported or damaged, or a decoder/output component may have failed. Review Video & Decoding settings and check the VLC plugins.",APP_NAME,MB_ICONERROR);
         return;
     }
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
@@ -6484,18 +6521,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
-            /* Keep the failed queue entry selected: pressing Play retries it,
-               while Next or another queue item remains available as recovery. */
-            g_hasMedia=FALSE;g_endHandled=TRUE;g_pendingResume=FALSE;
-            g_videoBoundsValid=FALSE;ResetArtwork();
-            if(g_visualizerActive)ABM_AudioVisualizer_Stop();
-            g_visualizerActive=FALSE;g_visualizerTried=FALSE;
-            if(g_video&&!g_fullscreen)ShowWindow(g_video,SW_HIDE);
-            if(g_selectedRenderer)
-                SetStatus(L"Cast failed - select Play to retry or choose another receiver; no local fallback");
-            else
-                SetStatus(L"Playback failed - select Play to retry or choose another file; check the media and VLC plugins");
-            InvalidateRect(hwnd,NULL,FALSE);
+            PlaybackHandleEngineError();
         }
         if(g_pendingResume && g_player){
             libvlc_state_t resumeState=libvlc_media_player_get_state(g_player);
