@@ -299,9 +299,12 @@ void ReleaseCachedTextFonts(){
     if(g_streamIconFont17){DeleteObject(g_streamIconFont17);g_streamIconFont17=NULL;}
 }
 void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weight,UINT flags){
-    HFONT f=GetCachedTextFont(height,weight);
-    HGDIOBJ old=SelectObject(dc,f);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
-    DrawTextW(dc,value,-1,&r,flags);SelectObject(dc,old);
+    (void)height;(void)weight;
+    if(!value||!value[0]||!g_streamButtonCanvasReady)return;
+    if(!ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r))return;
+    const int role=(height<=13)?ABM_D2D_TEXT_SMALL:ABM_D2D_TEXT_BODY;
+    ABM_D2D_CanvasText(&g_streamButtonCanvas,value,r,color,role,flags);
+    ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
 }
 
 HFONT GetCachedIconFont(int px){
@@ -312,10 +315,13 @@ HFONT GetCachedIconFont(int px){
     return *slot?*slot:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
 }
 void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
-    HGDIOBJ old=SelectObject(dc,GetCachedIconFont(px));
-    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,color);
-    wchar_t s[2]={glyph,0};DrawTextW(dc,s,1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-    SelectObject(dc,old);
+    (void)px;
+    if(!glyph||!g_streamButtonCanvasReady)return;
+    if(!ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r))return;
+    wchar_t s[2]={glyph,0};
+    ABM_D2D_CanvasText(&g_streamButtonCanvas,s,r,color,ABM_D2D_TEXT_ICON,
+        DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+    ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
 }
 wchar_t DeviceButtonGlyph(HWND button){
     if(button==g_deviceRefresh||button==g_deviceAppStatus)return 0xE72C; /* Refresh */
