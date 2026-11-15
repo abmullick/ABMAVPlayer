@@ -335,7 +335,9 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
         (pressed?ABM_THEME_COLOR_234B5E:ABM_THEME_COLOR_142A3C);
     COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_THEME_COLOR_41BEA5:ABM_THEME_COLOR_305B71;
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r)){
-        ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,8.0f,fill);
+        ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_THEME_COLOR_0C1D2D);
+        RECT face=r;InflateRect(&face,-1,-1);
+        ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,8.0f,fill);
         ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,
             (float)r.right-0.5f,(float)r.bottom-0.5f,8.0f,
             focused?ABM_THEME_COLOR_63E1CD:edge,focused?2.0f:1.0f);
