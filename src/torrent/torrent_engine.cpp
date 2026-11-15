@@ -716,9 +716,28 @@ private:
         for(unsigned char c:bytes){out.push_back(hex[c>>4]);out.push_back(hex[c&15]);}
         return out.empty()?L"unknown":out;
     }
+    static bool IsTorrentHashFolder(const fs::path &path) {
+        const std::wstring name=path.filename().wstring();
+        if(name.size()!=40&&name.size()!=64)return false;
+        return std::all_of(name.begin(),name.end(),[](wchar_t ch){return iswxdigit(ch)!=0;});
+    }
+    static uint64_t ManagedDownloadBytes(const fs::path &root) {
+        uint64_t total=0;
+        std::error_code ec;
+        if(!fs::exists(root,ec)||ec)return 0;
+        for(fs::directory_iterator it(root,fs::directory_options::skip_permission_denied,ec),end;it!=end;it.increment(ec)) {
+            if(ec){ec.clear();continue;}
+            const auto status=it->symlink_status(ec);
+            if(ec){ec.clear();continue;}
+            if(!fs::is_directory(status)||fs::is_symlink(status)||!IsTorrentHashFolder(it->path()))continue;
+            const uint64_t bytes=DirectoryBytes(it->path());
+            total=bytes>UINT64_MAX-total?UINT64_MAX:total+bytes;
+        }
+        return total;
+    }
     uint64_t StorageBytes() const {
         const uint64_t cache=DirectoryBytes(data_);
-        const uint64_t downloads=DirectoryBytes(downloads_);
+        const uint64_t downloads=ManagedDownloadBytes(downloads_);
         return downloads>UINT64_MAX-cache?UINT64_MAX:cache+downloads;
     }
     uint64_t TaskFileBytes(const Task &task,int index) const {
