@@ -5197,7 +5197,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_helpInputBrush){DeleteObject(g_helpInputBrush);g_helpInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
         if(g_helpArticleBrush){DeleteObject(g_helpArticleBrush);g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
         if(g_helpNavBrush){DeleteObject(g_helpNavBrush);g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);}
-        if(g_helpEdit)HelpFormatArticle(g_helpEdit);
+        if(g_helpEdit)SendMessageW(g_helpEdit,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_CREATE: {
         g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
@@ -5553,7 +5553,9 @@ static const float g_settingsRates[7]={0.5f,0.75f,1.0f,1.25f,1.5f,1.75f,2.0f};
 static const wchar_t *g_settingsRateLabels[7]={L"0.5x",L"0.75x",L"1.0x",L"1.25x",L"1.5x",L"1.75x",L"2.0x"};
 
 static void SettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF color,int style,UINT flags) {
- RECT rc={l,t,r,b};ABM_D2D_Text(&g_settingsUi,text,rc,color,style,flags);
+ RECT rc={l,t,r,b};
+ int role=style==2?ABM_D2D_TEXT_HEADING:style==1?ABM_D2D_TEXT_SMALL:ABM_D2D_TEXT_BODY;
+ ABM_D2D_Text(&g_settingsUi,text,rc,color,role,flags);
 }
 static void SettingsSection(int top,const wchar_t *title,const wchar_t *description,int bottom) {
  /* Consistent card surface, restrained edge and a short teal section marker. */
@@ -5883,7 +5885,9 @@ static void UpdateVlcReportText(void){
  SendMessageW(g_advancedVlcReportEdit,EM_SETLIMITTEXT,65535,0);SetWindowTextW(g_advancedVlcReportEdit,r);SendMessageW(g_advancedVlcReportEdit,EM_SETSEL,0,0);SendMessageW(g_advancedVlcReportEdit,EM_SCROLLCARET,0,0);free(r);
 }
 static void AdvancedSettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF color,int style,UINT flags){
- RECT rc={l,t,r,b};ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,style,flags);
+ RECT rc={l,t,r,b};
+ int role=style==2?ABM_D2D_TEXT_HEADING:style==1?ABM_D2D_TEXT_SMALL:ABM_D2D_TEXT_BODY;
+ ABM_D2D_Text(&g_advancedSettingsUi,text,rc,color,role,flags);
 }
 static void AdvancedSettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary){
  COLORREF fill=primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
@@ -6436,7 +6440,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  switch(msg) {
  case WM_CREATE: {
   if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
-  g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
+  g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
   g_settingsThemePreset=(int)ABMThemeCurrentPreset();
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
