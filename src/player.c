@@ -87,6 +87,17 @@ static libvlc_media_player_t *g_player;
 static libvlc_media_player_t *g_streamCastPlayer;
 static HWND g_video, g_renderers, g_main, g_fullscreenOverlay;
 static ABM_D2D g_ui;
+
+/* Main-player rectangles are stored in canonical 96-DPI logical units.
+   Convert only at Win32 APIs that consume physical client pixels. */
+static void InvalidateMainLogical(HWND hwnd,const RECT *logicalRect,BOOL erase) {
+    if(!hwnd || !IsWindow(hwnd)) return;
+    if(!logicalRect) { InvalidateRect(hwnd,NULL,erase); return; }
+    UINT dpi=ABM_DpiGetForWindow(hwnd);
+    RECT px={ABM_DpiScale(logicalRect->left,dpi),ABM_DpiScale(logicalRect->top,dpi),
+             ABM_DpiScale(logicalRect->right,dpi),ABM_DpiScale(logicalRect->bottom,dpi)};
+    InvalidateRect(hwnd,&px,erase);
+}
 static HFONT g_font, g_smallFont, g_headingFont;
 static HBRUSH g_videoBrush, g_comboBrush;
 static CRITICAL_SECTION g_rendererLock;
@@ -722,6 +733,7 @@ static void FullscreenDiag(const char *stage, ULONGLONG elapsedMs) {
 static void PositionVideoWindow(void) {
     if (!g_video || !IsWindow(g_video)) return;
 
+    UINT dpi=ABM_DpiGetForWindow(g_main);
     int areaW = R_VIDEO.right - R_VIDEO.left;
     int areaH = R_VIDEO.bottom - R_VIDEO.top;
     /* The media drawer is an always-visible foreground workspace. LibVLC
@@ -764,12 +776,12 @@ static void PositionVideoWindow(void) {
         next.right != g_videoBounds.right || next.bottom != g_videoBounds.bottom) {
         ULONGLONG positionStart=GetTickCount64();
         FullscreenDiag(g_fullscreenTransition?"video-child-resize-during-transition-begin":"video-child-resize-begin",0);
-        SetWindowPos(g_video, HWND_TOP, x, y, videoW, videoH,
-            SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        SetWindowPos(g_video, HWND_TOP,ABM_DpiScale(x,dpi),ABM_DpiScale(y,dpi),
+            ABM_DpiScale(videoW,dpi),ABM_DpiScale(videoH,dpi),SWP_NOACTIVATE|SWP_SHOWWINDOW);
         FullscreenDiag(g_fullscreenTransition?"video-child-resize-during-transition":"video-child-resize",GetTickCount64()-positionStart);
         g_videoBounds = next;
         g_videoBoundsValid = TRUE;
-        InvalidateRect(g_main, &R_VIDEO, FALSE);
+        InvalidateMainLogical(g_main, &R_VIDEO, FALSE);
     }
 }
 static void RefreshVideoGeometry(void) {
@@ -785,7 +797,8 @@ static void RefreshVideoGeometry(void) {
     }
 }
 static void UpdateLayout(HWND hwnd) {
-    RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
+    RECT c; GetClientRect(hwnd,&c); UINT dpi=ABM_DpiGetForWindow(hwnd);
+    int w=ABM_DpiUnscale(c.right,dpi),h=ABM_DpiUnscale(c.bottom,dpi);
     int left=28,top=104,bottom=150;
     int side=w>=1700?640:(w>=1400?600:(w>=1180?540:460));
     int drawerWidth=side*g_drawerProgress/100;
@@ -2783,7 +2796,7 @@ static void InvalidateButton(int hit) {
         default:return;
     }
     InflateRect(&r,3,3);
-    InvalidateRect(g_main,&r,FALSE);
+    InvalidateMainLogical(g_main,&r,FALSE);
 }
 static void UpdateUI(void) {
     if(!g_main || !g_player)return;
@@ -2795,8 +2808,8 @@ static void UpdateUI(void) {
     g_lastUiTime=current;
     RECT timeline={R_SEEK.left,R_SEEK.top-14,R_SEEK.right,R_SEEK.bottom+16};
     RECT timeText={20,R_SEEK.top+76,190,R_SEEK.top+106};
-    InvalidateRect(g_main,&timeline,FALSE);
-    InvalidateRect(g_main,&timeText,FALSE);
+    InvalidateMainLogical(g_main,&timeline,FALSE);
+    InvalidateMainLogical(g_main,&timeText,FALSE);
 }
 static void OverlayButton(HDC dc,RECT r,int kind,BOOL primary) {
     HBRUSH b=CreateSolidBrush(primary?ABM_THEME_COLOR_F7F8FA:ABM_THEME_COLOR_2B2E33);
@@ -6113,12 +6126,21 @@ static void ShowSettingsDialog(HWND owner) {
 }
 
 static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    /* Client mouse coordinates arrive in physical pixels; main-player
+       layout and hit-testing use canonical 96-DPI logical coordinates. */
+    if(msg==WM_MOUSEMOVE||msg==WM_LBUTTONDOWN||msg==WM_LBUTTONUP||
+       msg==WM_RBUTTONDOWN||msg==WM_RBUTTONUP||msg==WM_MBUTTONDOWN||
+       msg==WM_MBUTTONUP||msg==WM_XBUTTONDOWN||msg==WM_XBUTTONUP||msg==WM_MOUSEHOVER) {
+        UINT dpi=ABM_DpiGetForWindow(hwnd);
+        int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
+        lp=MAKELPARAM((short)x,(short)y);
+    }
     switch(msg) {
     case WM_THEMECHANGED:
         if(g_comboBrush){DeleteObject(g_comboBrush);g_comboBrush=CreateSolidBrush(C_PANEL2);}
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_CREATE: {
-        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} UINT dpi=ABM_DpiGetForWindow(hwnd); ABM_D2D_SetDpi(&g_ui,dpi,dpi); g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -6154,6 +6176,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            the destination monitor. Apply it before recalculating child/video
            geometry so the client area is measured at the new monitor DPI. */
         ABM_DpiApplySuggestedRect(hwnd,lp);
+        UINT newDpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(hwnd);
+        ABM_D2D_SetDpi(&g_ui,newDpi,newDpi);
         g_videoBoundsValid=FALSE;
         UpdateLayout(hwnd);
         RECT client{};GetClientRect(hwnd,&client);
@@ -6911,10 +6935,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 
         RECT r;
         GetClientRect(hwnd, &r);
+        UINT dpi=ABM_DpiGetForWindow(hwnd);
+        r.right=ABM_DpiUnscale(r.right,dpi);r.bottom=ABM_DpiUnscale(r.bottom,dpi);
+        RECT logicalPaint={ABM_DpiUnscale(ps.rcPaint.left,dpi),ABM_DpiUnscale(ps.rcPaint.top,dpi),
+            ABM_DpiUnscale(ps.rcPaint.right,dpi),ABM_DpiUnscale(ps.rcPaint.bottom,dpi)};
 
-        /* Paint only the invalidated area. A full-target Direct2D Clear on every
-           menu animation frame was repainting the whole surface and causing flicker. */
-        if (ABM_D2D_BeginClip(&g_ui, C_BG, &ps.rcPaint)) {
+        /* Paint in logical units; HWND invalidation remains in physical pixels. */
+        if (ABM_D2D_BeginClip(&g_ui, C_BG, &logicalPaint)) {
             DrawUI(NULL, r);
 
             if (!ABM_D2D_End(&g_ui)) {
