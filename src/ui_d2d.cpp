@@ -367,7 +367,8 @@ extern "C" void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect,
         style == ABM_D2D_TEXT_SMALL ? ui->smallFormat :
         style == ABM_D2D_TEXT_HEADING ? ui->heading :
         style == ABM_D2D_TEXT_BRAND_MAIN ? ui->brandMain :
-        style == ABM_D2D_TEXT_BRAND_SUFFIX ? ui->brandSuffix : ui->body);
+        style == ABM_D2D_TEXT_BRAND_SUFFIX ? ui->brandSuffix :
+        style == ABM_D2D_TEXT_ICON ? ui->iconFormat : ui->body);
     DWRITE_TEXT_ALIGNMENT align = (flags & DT_CENTER) ? DWRITE_TEXT_ALIGNMENT_CENTER :
         ((flags & DT_RIGHT) ? DWRITE_TEXT_ALIGNMENT_TRAILING : DWRITE_TEXT_ALIGNMENT_LEADING);
     DWRITE_PARAGRAPH_ALIGNMENT valign = (flags & DT_VCENTER) ?
@@ -464,6 +465,7 @@ extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->heading));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->brandMain));
     SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->brandSuffix));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&ui->iconFormat));
     SafeRelease(reinterpret_cast<IDWriteFactory **>(&ui->writeFactory));
     SafeRelease(reinterpret_cast<ID2D1Factory **>(&ui->factory));
     ZeroMemory(ui, sizeof(*ui));
