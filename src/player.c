@@ -4404,16 +4404,24 @@ static LRESULT CALLBACK TorrentPremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,L
                    rounded segment and teal chevron. */
                 const int arrowW=34;
                 RECT arrow={r.right-arrowW,r.top+1,r.right-1,r.bottom-1};
-                HBRUSH fill=CreateSolidBrush(ABM_THEME_COLOR_113041);
-                HPEN edge=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B6977);
-                HGDIOBJ ob=SelectObject(dc,fill),op=SelectObject(dc,edge);
-                RoundRect(dc,arrow.left,arrow.top,arrow.right,arrow.bottom,10,10);
-                SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(fill);DeleteObject(edge);
-                HPEN chevron=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_74DCCC);
-                op=SelectObject(dc,chevron);
-                int cx=arrow.left+arrowW/2,cy=(arrow.top+arrow.bottom)/2-1;
-                MoveToEx(dc,cx-5,cy-2,NULL);LineTo(dc,cx,cy+3);LineTo(dc,cx+5,cy-2);
-                SelectObject(dc,op);DeleteObject(chevron);
+                if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
+                    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)arrow.left,(float)arrow.top,(float)arrow.right,(float)arrow.bottom,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_113041);
+                    int cx=arrow.left+arrowW/2,cy=(arrow.top+arrow.bottom)/2-1;
+                    ABM_D2D_CanvasLine(&g_torrentButtonCanvas,(float)cx-5.0f,(float)cy-2.0f,(float)cx,(float)cy+3.0f,ABM_THEME_COLOR_74DCCC,2.0f);
+                    ABM_D2D_CanvasLine(&g_torrentButtonCanvas,(float)cx,(float)cy+3.0f,(float)cx+5.0f,(float)cy-2.0f,ABM_THEME_COLOR_74DCCC,2.0f);
+                    ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
+                }else{
+                    HBRUSH fill=CreateSolidBrush(ABM_THEME_COLOR_113041);
+                    HPEN edge=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B6977);
+                    HGDIOBJ ob=SelectObject(dc,fill),op=SelectObject(dc,edge);
+                    RoundRect(dc,arrow.left,arrow.top,arrow.right,arrow.bottom,ABM_UI_RADIUS_CONTROL*2,ABM_UI_RADIUS_CONTROL*2);
+                    SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(fill);DeleteObject(edge);
+                    HPEN chevron=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_74DCCC);
+                    op=SelectObject(dc,chevron);
+                    int cx=arrow.left+arrowW/2,cy=(arrow.top+arrow.bottom)/2-1;
+                    MoveToEx(dc,cx-5,cy-2,NULL);LineTo(dc,cx,cy+3);LineTo(dc,cx+5,cy-2);
+                    SelectObject(dc,op);DeleteObject(chevron);
+                }
                 HPEN border=CreatePen(PS_SOLID,1,(GetFocus()==hwnd)?ABM_THEME_COLOR_5BCDBC:ABM_THEME_COLOR_235265);
                 op=SelectObject(dc,border);ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
                 RoundRect(dc,r.left,r.top,r.right-1,r.bottom-1,14,14);
