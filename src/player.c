@@ -4336,8 +4336,8 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(hot&&!pressed&&!destructive)fill=TorrentBlend(fill,ABM_THEME_COLOR_285C65,18,100);
     ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_THEME_COLOR_0A1725);
     RECT face=r;InflateRect(&face,-1,-1);
-    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,8.0f,fill);
-    ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,8.0f,focused?ABM_THEME_COLOR_ABF6E2:borderColor,focused?2.0f:1.0f);
+    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
+    ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_THEME_COLOR_ABF6E2:borderColor,focused?2.0f:1.0f);
     BOOL numeric=(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC);
     wchar_t glyph[2]={TorrentButtonGlyph(id),0};
     RECT iconRect;
@@ -4347,7 +4347,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!numeric){
         wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
         RECT textRect={r.left+21,r.top+1,r.right-3,r.bottom-1};
-        ABM_D2D_CanvasText(&g_torrentButtonCanvas,caption,textRect,textColor,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_torrentButtonCanvas,caption,textRect,textColor,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
     ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
 }
