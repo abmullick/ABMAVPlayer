@@ -104,14 +104,14 @@ extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
     if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
         reinterpret_cast<IUnknown **>(&wf)))) { ABM_D2D_CanvasDestroy(c); return FALSE; }
     c->writeFactory = wf;
-    IDWriteTextFormat *body = nullptr, *small = nullptr, *heading = nullptr, *icon = nullptr;
+    IDWriteTextFormat *body = nullptr, *smallText = nullptr, *heading = nullptr, *icon = nullptr;
     if (!MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
-        !MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &small) ||
+        !MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &smallText) ||
         !MakeFormat(wf, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
         !MakeFormat(wf, ABM_UI_FONT_FAMILY_ICON, ABM_UI_FONT_SIZE_ICON, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
-        SafeRelease(&body); SafeRelease(&small); SafeRelease(&heading); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
+        SafeRelease(&body); SafeRelease(&smallText); SafeRelease(&heading); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
     }
-    c->body = body; c->smallFormat = small; c->heading = heading; c->iconFormat = icon;
+    c->body = body; c->smallFormat = smallText; c->heading = heading; c->iconFormat = icon;
     IDWriteInlineObject *ellipsis = nullptr;
     if (SUCCEEDED(wf->CreateEllipsisTrimmingSign(static_cast<IDWriteTextFormat *>(c->smallFormat), &ellipsis))) c->ellipsis = ellipsis;
     if(!CanvasCreateTarget(c)){ABM_D2D_CanvasDestroy(c);return FALSE;}
