@@ -5937,11 +5937,11 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",g_torrentCacheBaseDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,39,397,600,30,w,(HMENU)6201,NULL,NULL);
   CreateWindowExW(0,L"EDIT",g_torrentDownloadDir,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,39,458,600,30,w,(HMENU)6202,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%llu",(unsigned long long)g_torrentCacheQuotaGiB);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,174,498,100,29,w,(HMENU)6204,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,244,512,100,29,w,(HMENU)6204,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentDownloadLimitKiB);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,644,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
-  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
+  CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,644,130,29,w,(HMENU)6206,NULL,NULL);
   return 0;
  }
  case WM_THEMECHANGED:
@@ -5960,7 +5960,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
-   int left=40+col*185,top=780+row*46;
+   int left=40+col*185,top=822+row*46;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
     g_settingsThemePreset=preset;
     ABMThemeApplyPreset((ABMThemePreset)preset);
@@ -5979,12 +5979,12 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,350,280,680,306)){g_settingsCompressor=!g_settingsCompressor;InvalidateRect(w,NULL,FALSE);return 0;}
   if(SettingsPoint(x,y,655,396,780,428)){SettingsBrowse(w);return 0;}
   if(SettingsPoint(x,y,655,457,780,489)){SettingsBrowseDownloads(w);return 0;}
-  if(SettingsPoint(x,y,655,496,780,528)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
+  if(SettingsPoint(x,y,655,510,780,543)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
   /* Keep hit targets aligned with the current Direct2D-rendered button rectangles. */
   if(SettingsPoint(x,y,650,27,780,62)){ShowAdvancedSettingsDialog(w);return 0;}
-  if(SettingsPoint(x,y,39,681,194,714)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
-  if(SettingsPoint(x,y,610,914,735,952)){SettingsApply(w);return 0;}
-  if(SettingsPoint(x,y,744,914,800,952)){DestroyWindow(w);return 0;}
+  if(SettingsPoint(x,y,39,723,194,756)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
+  if(SettingsPoint(x,y,610,956,735,994)){SettingsApply(w);return 0;}
+  if(SettingsPoint(x,y,744,956,800,994)){DestroyWindow(w);return 0;}
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
@@ -6017,27 +6017,27 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsSection(238,L"AUDIO",L"Processing",324);
    SettingsCheckDraw(40,281,L"ReplayGain normalisation",g_settingsReplayGain);
    SettingsCheckDraw(352,281,L"Dynamic range compressor",g_settingsCompressor);
-   SettingsSection(336,L"TORRENT & STORAGE",L"Working cache, permanent downloads and combined storage quota",536);
+   SettingsSection(336,L"TORRENT & STORAGE",L"Storage locations & quota",580);
    SettingsText(L"Cache parent folder  ·  torrent-cache is created inside",40,372,610,394,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(34,396,644,429);SettingsButtonDraw(655,396,780,429,L"Browse…",FALSE);
    SettingsText(L"Permanent downloads folder",40,434,610,456,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(34,457,644,490);SettingsButtonDraw(655,457,780,490,L"Browse…",FALSE);
-   SettingsText(L"Torrent storage quota (GiB)",40,495,210,526,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(214,496,300,529);
-   SettingsText(L"Applies to managed torrent data in both locations. Permanent downloads are never auto-deleted.",310,493,645,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
-   SettingsButtonDraw(655,496,780,529,L"Open cache",FALSE);
-   SettingsSection(548,L"NETWORK",L"Torrent bandwidth  ·  0 = unlimited",654);
-   SettingsText(L"Download limit (KiB/s)",40,583,202,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(199,599,341,634);
-   SettingsText(L"Upload limit (KiB/s)",400,583,552,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(551,599,693,634);
-   SettingsSection(666,L"UPDATES",L"Maintenance",738);
-   SettingsButtonDraw(39,681,194,714,L"Check for updates",TRUE);
-   SettingsText(L"Checks the latest published GitHub release.",210,682,770,713,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsSection(748,L"COLOR THEME",L"Changes apply immediately",872);
+   SettingsText(L"Storage quota (GiB)",40,510,230,540,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsEditFrame(240,510,350,543);
+   SettingsText(L"Quota covers managed torrent data in both locations. Permanent downloads are never deleted automatically.",40,546,645,574,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   SettingsButtonDraw(655,510,780,543,L"Open cache",FALSE);
+   SettingsSection(590,L"NETWORK",L"Torrent bandwidth  ·  0 = unlimited",696);
+   SettingsText(L"Download limit (KiB/s)",40,625,202,650,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsEditFrame(199,641,341,676);
+   SettingsText(L"Upload limit (KiB/s)",400,625,552,650,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsEditFrame(551,641,693,676);
+   SettingsSection(708,L"UPDATES",L"Maintenance",780);
+   SettingsButtonDraw(39,723,194,756,L"Check for updates",TRUE);
+   SettingsText(L"Checks the latest published GitHub release.",210,724,770,755,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsSection(790,L"COLOR THEME",L"Changes apply immediately",914);
    for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
     int col=preset%4,row=preset/4;
-    float left=(float)(40+col*185),top=(float)(780+row*46);
+    float left=(float)(40+col*185),top=(float)(822+row*46);
     BOOL selected=(preset==g_settingsThemePreset);
     COLORREF accent=ABMThemePresetAccent((ABMThemePreset)preset);
     ABM_D2D_Round(&g_settingsUi,left,top,left+177.0f,top+44.0f,8.0f,selected?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
@@ -6046,9 +6046,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(g_settingsMessage,40,878,780,902,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   SettingsButtonDraw(610,914,735,952,L"Save settings",TRUE);
-   SettingsButtonDraw(744,914,800,952,L"Close",FALSE);
+   SettingsText(g_settingsMessage,40,920,780,944,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   SettingsButtonDraw(610,956,735,994,L"Save settings",TRUE);
+   SettingsButtonDraw(744,956,800,994,L"Close",FALSE);
    if(g_settingsRateOpen){
     ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_0C1B2B);
     ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
@@ -6071,7 +6071,7 @@ static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
- RECT wr={0,0,820,980};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
+ RECT wr={0,0,820,1020};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
  int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
