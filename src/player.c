@@ -3386,6 +3386,10 @@ static int64_t g_torrentLastMediaTime=-1;
 static ULONGLONG g_torrentLastProgressTick=0;
 static ULONGLONG g_torrentBufferingSinceTick=0;
 static libvlc_event_manager_t *g_torrentPlayerEventManager=NULL;
+/* Every torrent playback session owns a generation. Queued LibVLC callbacks
+   from an older session are discarded by the UI thread. */
+static volatile LONG g_torrentPlaybackGeneration=0;
+static LONG g_torrentAttachedGeneration=0;
 static libvlc_event_type_t g_torrentAttachedEvents[7];
 static int g_torrentAttachedEventCount=0;
 typedef struct TorrentStreamRequest {
@@ -3563,23 +3567,31 @@ static void TorrentSetPlaybackState(TorrentPlaybackState state,const wchar_t *de
     }
 }
 static void TorrentPlayerEvent(const libvlc_event_t *event,void *opaque) {
-    (void)opaque;
     if(!event||!g_main)return;
-    LONG_PTR value=0;
+    LONG generation=(LONG)(INT_PTR)opaque;
+    if(generation==0 ||
+       InterlockedCompareExchange(&g_torrentPlaybackGeneration,0,0)!=generation)return;
+    LONG value=0;
     if(event->type==libvlc_MediaPlayerBuffering) {
         float percent=event->u.media_player_buffering.new_cache;
         if(percent<0.0f)percent=0.0f;if(percent>100.0f)percent=100.0f;
-        value=(LONG_PTR)(percent+0.5f);
+        value=(LONG)(percent+0.5f);
     } else if(event->type==libvlc_MediaPlayerTimeChanged) {
-        value=(LONG_PTR)event->u.media_player_time_changed.new_time;
+        value=(LONG)event->u.media_player_time_changed.new_time;
     }
-    PostMessageW(g_main,WM_TORRENT_PLAYER_EVENT,(WPARAM)event->type,(LPARAM)value);
+    /* x64 build: pack generation and event value into LPARAM so a message
+       already queued before stop/replacement can still be rejected safely. */
+    uint64_t payload=((uint64_t)(uint32_t)generation<<32)|(uint32_t)value;
+    PostMessageW(g_main,WM_TORRENT_PLAYER_EVENT,(WPARAM)event->type,(LPARAM)(LONG_PTR)payload);
 }
 static BOOL TorrentAttachPlayerEvents(void) {
     if(g_torrentPlayerEventManager)return TRUE;
     if(!g_player)return FALSE;
     libvlc_event_manager_t *manager=libvlc_media_player_event_manager(g_player);
     if(!manager)return FALSE;
+    LONG generation=InterlockedCompareExchange(&g_torrentPlaybackGeneration,0,0);
+    if(generation==0)generation=InterlockedIncrement(&g_torrentPlaybackGeneration);
+    void *callbackContext=(void*)(INT_PTR)generation;
     static const libvlc_event_type_t types[]={
         libvlc_MediaPlayerBuffering,libvlc_MediaPlayerPlaying,
         libvlc_MediaPlayerPaused,libvlc_MediaPlayerStopped,
@@ -3588,24 +3600,30 @@ static BOOL TorrentAttachPlayerEvents(void) {
     };
     g_torrentAttachedEventCount=0;
     for(int i=0;i<(int)_countof(types);i++) {
-        if(libvlc_event_attach(manager,types[i],TorrentPlayerEvent,NULL)!=0) {
+        if(libvlc_event_attach(manager,types[i],TorrentPlayerEvent,callbackContext)!=0) {
             for(int j=0;j<g_torrentAttachedEventCount;j++)
-                libvlc_event_detach(manager,g_torrentAttachedEvents[j],TorrentPlayerEvent,NULL);
+                libvlc_event_detach(manager,g_torrentAttachedEvents[j],TorrentPlayerEvent,callbackContext);
             g_torrentAttachedEventCount=0;
             return FALSE;
         }
         g_torrentAttachedEvents[g_torrentAttachedEventCount++]=types[i];
     }
     g_torrentPlayerEventManager=manager;
+    g_torrentAttachedGeneration=generation;
     return TRUE;
 }
 static void TorrentDetachPlayerEvents(void) {
+    /* Invalidate first: callbacks already in flight and messages already
+       queued carry the previous generation and cannot mutate a later session. */
+    InterlockedIncrement(&g_torrentPlaybackGeneration);
     if(g_torrentPlayerEventManager) {
+        void *callbackContext=(void*)(INT_PTR)g_torrentAttachedGeneration;
         for(int i=0;i<g_torrentAttachedEventCount;i++)
-            libvlc_event_detach(g_torrentPlayerEventManager,g_torrentAttachedEvents[i],TorrentPlayerEvent,NULL);
+            libvlc_event_detach(g_torrentPlayerEventManager,g_torrentAttachedEvents[i],TorrentPlayerEvent,callbackContext);
     }
     g_torrentPlayerEventManager=NULL;
     g_torrentAttachedEventCount=0;
+    g_torrentAttachedGeneration=0;
 }
 static void TorrentCheckPlaybackStall(void) {
     if(!g_torrentPlaybackActive||!g_torrentPlayerEventManager)return;
@@ -6215,10 +6233,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return (LRESULT)g_comboBrush;
     case WM_COMMAND:if(LOWORD(wp)==ID_RENDERERS&&HIWORD(wp)==CBN_SELCHANGE){SelectRenderer();return 0;}break;
     case WM_TORRENT_PLAYER_EVENT: {
-        if(!g_torrentPlaybackActive)return 0;
+        uint64_t payload=(uint64_t)(ULONG_PTR)lp;
+        LONG generation=(LONG)(uint32_t)(payload>>32);
+        LONG eventValue=(LONG)(uint32_t)payload;
+        if(generation==0 ||
+           InterlockedCompareExchange(&g_torrentPlaybackGeneration,0,0)!=generation ||
+           !g_torrentPlaybackActive)return 0;
         switch((libvlc_event_type_t)wp) {
             case libvlc_MediaPlayerBuffering: {
-                int percent=(int)lp;
+                int percent=(int)eventValue;
                 InterlockedExchange(&g_torrentBufferPercent,percent);
                 TorrentSetBufferProgress(percent);
                 if(percent<100) {
@@ -6247,7 +6270,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 TorrentSetPlaybackState(TORRENT_PLAYBACK_PLAYING,NULL);
                 break;
             case libvlc_MediaPlayerTimeChanged: {
-                int64_t mediaTime=(int64_t)(LONG_PTR)lp;
+                int64_t mediaTime=(int64_t)eventValue;
                 if(g_torrentLastMediaTime<0||mediaTime!=g_torrentLastMediaTime) {
                     g_torrentLastMediaTime=mediaTime;
                     g_torrentLastProgressTick=GetTickCount64();
@@ -6312,6 +6335,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(url&&WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,req->url,-1,url,bytes,NULL,NULL)>0) {
                 libvlc_media_t *media=libvlc_media_new_location(g_vlc,url);
                 if(media) {
+                    TorrentDetachPlayerEvents();
                     PlaybackStopEngine();
                     g_hasMedia=FALSE;g_current=-1;
                     ApplyAudioOutputDevice();
