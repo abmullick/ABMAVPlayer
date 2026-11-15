@@ -251,6 +251,8 @@ enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT
 
 /* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
    preserving the Win32 result codes expected by existing call sites. */
+static ABM_D2D_CANVAS g_abmDialogCanvas;
+static BOOL g_abmDialogCanvasReady=FALSE;
 typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; int defaultButton; int focusedButton; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
 static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMDialogState *d=(ABMDialogState*)GetWindowLongPtrW(w,GWLP_USERDATA);
@@ -330,8 +332,8 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
 typedef struct ABMMenuItem { int command; const wchar_t *label; BOOL enabled; BOOL heading; } ABMMenuItem;
 typedef struct ABMMenuState { HWND owner; const ABMMenuItem *items; int count; int hover; int first; int result; BOOL done; } ABMMenuState;
 static ABMMenuState *g_abmActiveMenu=NULL;
-static ABM_D2D_CANVAS g_abmDialogCanvas,g_abmMenuCanvas;
-static BOOL g_abmDialogCanvasReady=FALSE,g_abmMenuCanvasReady=FALSE;
+static ABM_D2D_CANVAS g_abmMenuCanvas;
+static BOOL g_abmMenuCanvasReady=FALSE;
 static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMMenuState *d=(ABMMenuState*)GetWindowLongPtrW(w,GWLP_USERDATA);
     switch(m) {
