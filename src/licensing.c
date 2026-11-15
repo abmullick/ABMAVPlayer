@@ -290,7 +290,7 @@ static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL tr
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return FALSE;registered=TRUE;}
     d.instance=instance;d.daysLeft=daysLeft;d.trialAllowed=trialAllowed;d.manual=manual;d.alreadyActivated=alreadyActivated;
     DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP;
-    ABM_DpiMakeCenteredRect(owner,620,470,&bounds);
+    ABM_DpiMakeCenteredRect(owner,650,520,&bounds);
     width=bounds.right-bounds.left;height=bounds.bottom-bounds.top;
     int x=bounds.left,y=bounds.top;
     w=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayer.Licensing",L"ABM AV Player — License & Activation",
