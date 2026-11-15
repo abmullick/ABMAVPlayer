@@ -284,9 +284,15 @@ extern "C" BOOL ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip)
     return TRUE;
 }
 
+extern "C" void ABM_D2D_SetOffset(ABM_D2D *ui, float x, float y) {
+    if (!ui || !ui->target) return;
+    Target(ui)->SetTransform(D2D1::Matrix3x2F::Translation(x, y));
+}
+
 extern "C" BOOL ABM_D2D_End(ABM_D2D *ui) {
     if (!ui || !ui->target) return FALSE;
     if (ui->clipActive) {
+        Target(ui)->SetTransform(D2D1::Matrix3x2F::Identity);
         Target(ui)->PopAxisAlignedClip();
         ui->clipActive = FALSE;
     }
