@@ -6461,30 +6461,86 @@ static void SettingsMoveChildControls(HWND w){
  static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29}};
  for(int i=0;i<(int)_countof(items);i++){HWND child=GetDlgItem(w,items[i].id);if(child)SetWindowPos(child,NULL,items[i].x-g_settingsScrollX,items[i].y-g_settingsScrollY,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE);}
 }
+#define SETTINGS_SCROLLBAR_SIZE 12
+#define SETTINGS_SCROLLBAR_MIN_THUMB 28
+static BOOL g_settingsScrollDragging=FALSE,g_settingsScrollDragVertical=TRUE;
+static int g_settingsScrollDragOffset=0;
+static void SettingsScrollMetrics(HWND w,BOOL vertical,int *trackStart,int *trackLength,int *thumbStart,int *thumbLength,int *maxScroll){
+ RECT rc;GetClientRect(w,&rc);
+ int viewport=vertical?rc.bottom-SETTINGS_SCROLLBAR_SIZE:rc.right-SETTINGS_SCROLLBAR_SIZE;
+ int content=vertical?SETTINGS_CONTENT_HEIGHT:SETTINGS_CONTENT_WIDTH;
+ if(viewport<1)viewport=1;
+ int track=viewport-8;if(track<1)track=1;
+ int maximum=content-viewport;if(maximum<0)maximum=0;
+ int thumb=maximum?((track*viewport)/content):track;
+ if(thumb<SETTINGS_SCROLLBAR_MIN_THUMB&&track>SETTINGS_SCROLLBAR_MIN_THUMB)thumb=SETTINGS_SCROLLBAR_MIN_THUMB;
+ if(thumb>track)thumb=track;
+ int pos=vertical?g_settingsScrollY:g_settingsScrollX;
+ int start=4;
+ int thumbPos=start+(maximum?((track-thumb)*pos/maximum):0);
+ if(trackStart)*trackStart=start;
+ if(trackLength)*trackLength=track;
+ if(thumbStart)*thumbStart=thumbPos;
+ if(thumbLength)*thumbLength=thumb;
+ if(maxScroll)*maxScroll=maximum;
+}
+static void SettingsDrawScrollBars(HWND w){
+ RECT rc;GetClientRect(w,&rc);
+ int ts,tl,thumb,th,maxScroll;
+ SettingsScrollMetrics(w,TRUE,&ts,&tl,&thumb,&th,&maxScroll);
+ if(maxScroll>0){
+  ABM_D2D_Round(&g_settingsUi,(float)(rc.right-9),4.0f,(float)(rc.right-5),(float)(rc.bottom-SETTINGS_SCROLLBAR_SIZE-4),2.0f,ABM_THEME_COLOR_192B3B);
+  ABM_D2D_Round(&g_settingsUi,(float)(rc.right-10),(float)thumb,(float)(rc.right-4),(float)(thumb+th),3.0f,
+    g_settingsScrollDragging&&g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_456579);
+ }
+ SettingsScrollMetrics(w,FALSE,&ts,&tl,&thumb,&th,&maxScroll);
+ if(maxScroll>0){
+  ABM_D2D_Round(&g_settingsUi,4.0f,(float)(rc.bottom-9),(float)(rc.right-SETTINGS_SCROLLBAR_SIZE-4),(float)(rc.bottom-5),2.0f,ABM_THEME_COLOR_192B3B);
+  ABM_D2D_Round(&g_settingsUi,(float)thumb,(float)(rc.bottom-10),(float)(thumb+th),(float)(rc.bottom-4),3.0f,
+    g_settingsScrollDragging&&!g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_456579);
+ }
+}
 static void SettingsUpdateScrollBars(HWND w){
  RECT rc;GetClientRect(w,&rc);
- BOOL needH=rc.right<SETTINGS_CONTENT_WIDTH;
- ShowScrollBar(w,SB_HORZ,needH);
- GetClientRect(w,&rc);
- SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_RANGE|SIF_PAGE|SIF_POS;si.nMin=0;si.nMax=SETTINGS_CONTENT_WIDTH-1;si.nPage=(UINT)(rc.right>0?rc.right:1);si.nPos=g_settingsScrollX;SetScrollInfo(w,SB_HORZ,&si,TRUE);
- si.nMax=SETTINGS_CONTENT_HEIGHT-1;si.nPage=(UINT)(rc.bottom>0?rc.bottom:1);si.nPos=g_settingsScrollY;SetScrollInfo(w,SB_VERT,&si,TRUE);
- int maxX=SETTINGS_CONTENT_WIDTH-rc.right;if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-rc.bottom;if(maxY<0)maxY=0;
- g_settingsScrollX=SettingsClampInt(g_settingsScrollX,0,maxX);g_settingsScrollY=SettingsClampInt(g_settingsScrollY,0,maxY);
- si.nMax=SETTINGS_CONTENT_HEIGHT-1;si.nPage=(UINT)(rc.bottom>0?rc.bottom:1);si.nPos=g_settingsScrollY;SetScrollInfo(w,SB_VERT,&si,TRUE);
- si.nMax=SETTINGS_CONTENT_WIDTH-1;si.nPage=(UINT)(rc.right>0?rc.right:1);si.nPos=g_settingsScrollX;SetScrollInfo(w,SB_HORZ,&si,TRUE);
+ int maxX=SETTINGS_CONTENT_WIDTH-(rc.right-SETTINGS_SCROLLBAR_SIZE);if(maxX<0)maxX=0;
+ int maxY=SETTINGS_CONTENT_HEIGHT-(rc.bottom-SETTINGS_SCROLLBAR_SIZE);if(maxY<0)maxY=0;
+ g_settingsScrollX=SettingsClampInt(g_settingsScrollX,0,maxX);
+ g_settingsScrollY=SettingsClampInt(g_settingsScrollY,0,maxY);
  SettingsMoveChildControls(w);
 }
-static void SettingsSetScroll(HWND w,int x,int y){
- RECT rc;GetClientRect(w,&rc);int maxX=SETTINGS_CONTENT_WIDTH-rc.right;if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-rc.bottom;if(maxY<0)maxY=0;
- x=SettingsClampInt(x,0,maxX);y=SettingsClampInt(y,0,maxY);if(x==g_settingsScrollX&&y==g_settingsScrollY)return;
- g_settingsScrollX=x;g_settingsScrollY=y;SettingsMoveChildControls(w);
- SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_POS;si.nPos=x;SetScrollInfo(w,SB_HORZ,&si,TRUE);si.nPos=y;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);
+static BOOL SettingsBeginScrollDrag(HWND w,int x,int y){
+ RECT rc;GetClientRect(w,&rc);
+ int ts,tl,thumb,th,maxScroll;
+ SettingsScrollMetrics(w,TRUE,&ts,&tl,&thumb,&th,&maxScroll);
+ if(maxScroll>0&&x>=rc.right-SETTINGS_SCROLLBAR_SIZE&&y>=4&&y<rc.bottom-SETTINGS_SCROLLBAR_SIZE){
+  g_settingsScrollDragging=TRUE;g_settingsScrollDragVertical=TRUE;
+  if(y>=thumb&&y<thumb+th)g_settingsScrollDragOffset=y-thumb;
+  else {g_settingsScrollDragOffset=th/2;int p=y-g_settingsScrollDragOffset;int span=tl-th;SettingsSetScroll(w,g_settingsScrollX,span>0?(p-ts)*maxScroll/span:0);}
+  SetCapture(w);return TRUE;
+ }
+ SettingsScrollMetrics(w,FALSE,&ts,&tl,&thumb,&th,&maxScroll);
+ if(maxScroll>0&&y>=rc.bottom-SETTINGS_SCROLLBAR_SIZE&&x>=4&&x<rc.right-SETTINGS_SCROLLBAR_SIZE){
+  g_settingsScrollDragging=TRUE;g_settingsScrollDragVertical=FALSE;
+  if(x>=thumb&&x<thumb+th)g_settingsScrollDragOffset=x-thumb;
+  else {g_settingsScrollDragOffset=th/2;int p=x-g_settingsScrollDragOffset;int span=tl-th;SettingsSetScroll(w,span>0?(p-ts)*maxScroll/span:g_settingsScrollX,g_settingsScrollY);}
+  SetCapture(w);return TRUE;
+ }
+ return FALSE;
 }
-static void SettingsScrollCommand(HWND w,BOOL vertical,UINT code){
- SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_ALL;int bar=vertical?SB_VERT:SB_HORZ;if(!GetScrollInfo(w,bar,&si))return;
- int pos=vertical?g_settingsScrollY:g_settingsScrollX,page=(int)(si.nPage?si.nPage:48);
- switch(code){case SB_LINEUP:pos-=48;break;case SB_LINEDOWN:pos+=48;break;case SB_PAGEUP:pos-=page;break;case SB_PAGEDOWN:pos+=page;break;case SB_TOP:pos=0;break;case SB_BOTTOM:pos=si.nMax-(int)si.nPage+1;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:pos=si.nTrackPos;break;default:return;}
- if(vertical)SettingsSetScroll(w,g_settingsScrollX,pos);else SettingsSetScroll(w,pos,g_settingsScrollY);
+static void SettingsUpdateScrollDrag(HWND w,int x,int y){
+ int ts,tl,thumb,th,maxScroll;
+ SettingsScrollMetrics(w,g_settingsScrollDragVertical,&ts,&tl,&thumb,&th,&maxScroll);
+ int span=tl-th;if(span<1||maxScroll<1)return;
+ int p=(g_settingsScrollDragVertical?y:x)-g_settingsScrollDragOffset-ts;
+ p=SettingsClampInt(p,0,span);
+ int value=(p*maxScroll)/span;
+ if(g_settingsScrollDragVertical)SettingsSetScroll(w,g_settingsScrollX,value);
+ else SettingsSetScroll(w,value,g_settingsScrollY);
+}
+static void SettingsSetScroll(HWND w,int x,int y){
+ RECT rc;GetClientRect(w,&rc);int maxX=SETTINGS_CONTENT_WIDTH-(rc.right-SETTINGS_SCROLLBAR_SIZE);if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-(rc.bottom-SETTINGS_SCROLLBAR_SIZE);if(maxY<0)maxY=0;
+ x=SettingsClampInt(x,0,maxX);y=SettingsClampInt(y,0,maxY);if(x==g_settingsScrollX&&y==g_settingsScrollY)return;
+ g_settingsScrollX=x;g_settingsScrollY=y;SettingsMoveChildControls(w);InvalidateRect(w,NULL,FALSE);
 }
 static void SettingsClampToMonitor(HWND w,const RECT *suggested){
  RECT target=*suggested;HMONITOR mon=MonitorFromRect(&target,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
@@ -6541,9 +6597,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   return (LRESULT)g_settingsEditBrush;
  }
  case WM_CANCELMODE:case WM_CAPTURECHANGED:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
- case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
+ case WM_MOUSEMOVE:{if(g_settingsScrollDragging){SettingsUpdateScrollDrag(w,GET_X_LPARAM(lp),GET_Y_LPARAM(lp));return 0;}int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
  case WM_MOUSELEAVE:g_settingsHoverX=g_settingsHoverY=-1;g_settingsMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
- case WM_LBUTTONDOWN:{g_settingsMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
+ case WM_LBUTTONDOWN:{if(SettingsBeginScrollDrag(w,GET_X_LPARAM(lp),GET_Y_LPARAM(lp)))return 0;g_settingsMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
   int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
@@ -6575,10 +6631,8 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
- case WM_LBUTTONUP:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);break;
- case WM_VSCROLL:SettingsScrollCommand(w,TRUE,LOWORD(wp));return 0;
- case WM_HSCROLL:SettingsScrollCommand(w,FALSE,LOWORD(wp));return 0;
- case WM_MOUSEWHEEL:{int delta=GET_WHEEL_DELTA_WPARAM(wp);SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY-(delta/WHEEL_DELTA)*120);return 0;}
+ case WM_LBUTTONUP:g_settingsMousePressed=FALSE;g_settingsScrollDragging=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);break;
+ case WM_MOUSEWHEEL:{int delta=GET_WHEEL_DELTA_WPARAM(wp);SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY-(delta/WHEEL_DELTA)*72);return 0;}
  case WM_DPICHANGED:{SettingsClampToMonitor(w,(const RECT*)lp);SettingsUpdateScrollBars(w);if(g_settingsUiReady){RECT cr;GetClientRect(w,&cr);ABM_D2D_Resize(&g_settingsUi,cr.right,cr.bottom);}InvalidateRect(w,NULL,TRUE);return 0;}
  case WM_KEYDOWN:
   if(wp==VK_ESCAPE){if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}else DestroyWindow(w);return 0;}
@@ -6651,6 +6705,8 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
     for(int i=0;i<7;i++){int y=191+i*26;if(i==g_settingsRateIndex)ABM_D2D_Round(&g_settingsUi,570,(float)y,699,(float)(y+25),5,ABM_THEME_COLOR_195B58);SettingsText(g_settingsRateLabels[i],580,y,694,y+25,i==g_settingsRateIndex?ABM_THEME_COLOR_FFFFFF:SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
    }
+   ABM_D2D_SetOffset(&g_settingsUi,0.0f,0.0f);
+   SettingsDrawScrollBars(w);
    ABM_D2D_End(&g_settingsUi);
   }
   EndPaint(w,&ps);return 0;
@@ -6668,7 +6724,7 @@ static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){RECT current;GetWindowRect(g_settingsWindow,&current);SettingsClampToMonitor(g_settingsWindow,&current);ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
- DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_HSCROLL|WS_VSCROLL|WS_CLIPCHILDREN|WS_POPUP;
+ DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_CLIPCHILDREN|WS_POPUP;
  RECT wr={0,0,820,760};AdjustWindowRectEx(&wr,style,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
  HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};int workL=0,workT=0,workW=GetSystemMetrics(SM_CXSCREEN),workH=GetSystemMetrics(SM_CYSCREEN);if(GetMonitorInfoW(mon,&mi)){workL=mi.rcWork.left;workT=mi.rcWork.top;workW=mi.rcWork.right-mi.rcWork.left;workH=mi.rcWork.bottom-mi.rcWork.top;}
  if(ww>workW)ww=workW;if(hh>workH)hh=workH;int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;if(x<workL)x=workL;if(y<workT)y=workT;if(x+ww>workL+workW)x=workL+workW-ww;if(y+hh>workT+workH)y=workT+workH-hh;g_settingsScrollX=0;g_settingsScrollY=0;
