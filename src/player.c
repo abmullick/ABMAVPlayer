@@ -2351,16 +2351,11 @@ static void RecentPlayIndex(HWND owner,int index) {
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_DPICHANGED: {
+        /* This owner-drawn popup creates DPI-independent logical-size fonts
+           during WM_PAINT. Do not touch Help Centre controls or font globals. */
         ABM_DpiApplySuggestedRect(hwnd,lp);
-        UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(hwnd);
-        HFONT *fonts[]={&g_helpTitleFont,&g_helpSectionFont,&g_helpBodyFont,&g_helpMetaFont};
-        const int sizes[]={29,17,16,12};const int weights[]={FW_SEMIBOLD,FW_SEMIBOLD,FW_NORMAL,FW_SEMIBOLD};
-        const wchar_t *faces[]={L"Segoe UI Variable Display",L"Segoe UI Variable Text",L"Segoe UI Variable Text",L"Segoe UI Variable Text"};
-        for(int i=0;i<4;i++){if(*fonts[i])DeleteObject(*fonts[i]);*fonts[i]=CreateFontW(-ABM_DpiScale(sizes[i],dpi),0,0,0,weights[i],FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,faces[i]);}
-        HWND controls[]={g_helpSearch,g_helpFindButton,g_helpTopics,g_helpEdit};
-        for(int i=0;i<4;i++)if(controls[i])SendMessageW(controls[i],WM_SETFONT,(WPARAM)(i==0||i==2?g_helpBodyFont:i==1?g_helpMetaFont:g_helpBodyFont),TRUE);
-        {RECT client={0};GetClientRect(hwnd,&client);SendMessageW(hwnd,WM_SIZE,0,MAKELPARAM((short)client.right,(short)client.bottom));}
-        InvalidateRect(hwnd,NULL,FALSE);return 0;
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
     }
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
