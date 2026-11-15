@@ -310,6 +310,16 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
     ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
 }
 
+void BrandText(HDC dc,const wchar_t *value,RECT r,COLORREF color,int role,UINT flags){
+    if(!value||!value[0]||!g_streamButtonCanvasReady)return;
+    const int width=r.right-r.left,heightPx=r.bottom-r.top;
+    if(width<=0||heightPx<=0)return;
+    RECT local={0,0,width,heightPx};
+    if(!ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r))return;
+    ABM_D2D_CanvasText(&g_streamButtonCanvas,value,local,color,role,flags);
+    ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
+}
+
 HFONT GetCachedIconFont(int px){
     HFONT *slot=(px<=16)?&g_streamIconFont16:&g_streamIconFont17;
     if(!*slot)*slot=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
@@ -1160,10 +1170,15 @@ void PaintChrome(HWND hwnd){
     MoveToEx(dc,62,40,nullptr);LineTo(dc,75,48);LineTo(dc,62,56);LineTo(dc,62,40);
     SelectObject(dc,oldLogoPen);DeleteObject(playPen);
 
+    /* Brand wordmark uses the canonical display/text roles. Both layout
+       rectangles share the same bottom edge so the two parts sit on one
+       visual baseline rather than stepping down. */
     RECT brandMain={116,8,188,49};
-    Text(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,30,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandSuffix={188,20,306,48};
-    Text(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,18,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    BrandText(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,
+        ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT brandSuffix={188,13,306,49};
+    BrandText(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,
+        ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,ABM_THEME_COLOR_36B1A8);
     RECT sub={116,60,306,83};
     Text(dc,L"STREAMING CENTRE",sub,ABM_THEME_COLOR_9DB1C9,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
