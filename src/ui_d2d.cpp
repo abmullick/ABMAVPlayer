@@ -75,7 +75,10 @@ static ID2D1DCRenderTarget *CanvasTarget(ABM_D2D_CANVAS *c) { return static_cast
 static ID2D1SolidColorBrush *CanvasBrush(ABM_D2D_CANVAS *c) { return static_cast<ID2D1SolidColorBrush *>(c->brush); }
 
 static BOOL CanvasCreateTarget(ABM_D2D_CANVAS *c) {
-    if (!c || !c->factory || c->target) return c && c->target;
+    if(!c||!c->factory)return FALSE;
+    if(c->target&&c->brush)return TRUE;
+    SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&c->brush));
+    SafeRelease(reinterpret_cast<ID2D1DCRenderTarget **>(&c->target));
     D2D1_RENDER_TARGET_PROPERTIES rp=D2D1::RenderTargetProperties(
         D2D1_RENDER_TARGET_TYPE_DEFAULT,
         D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,D2D1_ALPHA_MODE_PREMULTIPLIED),
