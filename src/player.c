@@ -2335,10 +2335,18 @@ static void RecentPlayIndex(HWND owner,int index) {
 }
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_DPICHANGED:
+    case WM_DPICHANGED: {
         ABM_DpiApplySuggestedRect(hwnd,lp);
-        InvalidateRect(hwnd,NULL,FALSE);
-        return 0;
+        UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(hwnd);
+        HFONT *fonts[]={&g_helpTitleFont,&g_helpSectionFont,&g_helpBodyFont,&g_helpMetaFont};
+        const int sizes[]={29,17,16,12};const int weights[]={FW_SEMIBOLD,FW_SEMIBOLD,FW_NORMAL,FW_SEMIBOLD};
+        const wchar_t *faces[]={L"Segoe UI Variable Display",L"Segoe UI Variable Text",L"Segoe UI Variable Text",L"Segoe UI Variable Text"};
+        for(int i=0;i<4;i++){if(*fonts[i])DeleteObject(*fonts[i]);*fonts[i]=CreateFontW(-ABM_DpiScale(sizes[i],dpi),0,0,0,weights[i],FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,faces[i]);}
+        HWND controls[]={g_helpSearch,g_helpFindButton,g_helpTopics,g_helpEdit};
+        for(int i=0;i<4;i++)if(controls[i])SendMessageW(controls[i],WM_SETFONT,(WPARAM)(i==0||i==2?g_helpBodyFont:i==1?g_helpMetaFont:g_helpBodyFont),TRUE);
+        SendMessageW(hwnd,WM_SIZE,0,MAKELPARAM((short)(GetSystemMetrics(SM_CXSCREEN)),(short)(GetSystemMetrics(SM_CYSCREEN))));
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
@@ -5018,26 +5026,27 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_helpInputBrush)g_helpInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
         if(!g_helpArticleBrush)g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
         if(!g_helpNavBrush)g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
-        if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(29,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        UINT dpi=ABM_DpiGetForWindow(hwnd);
+        if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(-ABM_DpiScale(29,dpi),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(-ABM_DpiScale(17,dpi),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(-ABM_DpiScale(16,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(-ABM_DpiScale(12,dpi),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         /* Branded Help Centre workspace: borderless native text editing retains
            keyboard, selection and clipboard behaviour while the host paints the chrome. */
         g_helpSearch=CreateWindowExW(0,L"EDIT",L"",
-            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,32,124,760,46,hwnd,
+            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,ABM_DpiScale(32,dpi),ABM_DpiScale(124,dpi),ABM_DpiScale(760,dpi),ABM_DpiScale(46,dpi),hwnd,
             (HMENU)HELP_ID_SEARCH,GetModuleHandleW(NULL),NULL);
         g_helpFindButton=CreateWindowExW(0,L"BUTTON",L"SEARCH",
-            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,806,124,132,46,hwnd,
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,ABM_DpiScale(806,dpi),ABM_DpiScale(124,dpi),ABM_DpiScale(132,dpi),ABM_DpiScale(46,dpi),hwnd,
             (HMENU)HELP_ID_FIND,GetModuleHandleW(NULL),NULL);
         g_helpTopics=CreateWindowExW(0,L"LISTBOX",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_HASSTRINGS|LBS_OWNERDRAWFIXED,
-            32,198,286,500,hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
+            ABM_DpiScale(32,dpi),ABM_DpiScale(198,dpi),ABM_DpiScale(286,dpi),ABM_DpiScale(500,dpi),hwnd,(HMENU)HELP_ID_TOPICS,GetModuleHandleW(NULL),NULL);
         g_helpDocument=help;
         if(!g_helpRichEditModule)g_helpRichEditModule=LoadLibraryW(L"Msftedit.dll");
         g_helpEdit=CreateWindowExW(0,L"RICHEDIT50W",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
-            338,198,600,500,hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
+            ABM_DpiScale(338,dpi),ABM_DpiScale(198,dpi),ABM_DpiScale(600,dpi),ABM_DpiScale(500,dpi),hwnd,(HMENU)1,GetModuleHandleW(NULL),NULL);
         if(g_helpEdit){
             SendMessageW(g_helpEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(26,26));
             SendMessageW(g_helpEdit,EM_SETOPTIONS,ECOOP_OR,ECO_AUTOWORDSELECTION);
@@ -5055,19 +5064,21 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_SIZE: {
-        int w=LOWORD(lp),h=HIWORD(lp);
+        UINT dpi=ABM_DpiGetForWindow(hwnd);
+        int w=ABM_DpiUnscale(LOWORD(lp),dpi),h=ABM_DpiUnscale(HIWORD(lp),dpi);
         int contentH=h-278;if(contentH<190)contentH=190;
         int margin=32,top=198,topicW=(w<900?240:286),gap=20;
         int searchButtonW=132,searchY=124,searchH=46;
-        if(g_helpSearch)MoveWindow(g_helpSearch,margin,searchY,w-(margin*2)-searchButtonW-14,searchH,TRUE);
-        if(g_helpFindButton)MoveWindow(g_helpFindButton,w-margin-searchButtonW,searchY,searchButtonW,searchH,TRUE);
-        if(g_helpTopics)MoveWindow(g_helpTopics,margin,top,topicW,contentH,TRUE);
-        if(g_helpEdit)MoveWindow(g_helpEdit,margin+topicW+gap,top,w-(margin+topicW+gap)-margin,contentH,TRUE);
+        if(g_helpSearch)MoveWindow(g_helpSearch,ABM_DpiScale(margin,dpi),ABM_DpiScale(searchY,dpi),ABM_DpiScale(w-(margin*2)-searchButtonW-14,dpi),ABM_DpiScale(searchH,dpi),TRUE);
+        if(g_helpFindButton)MoveWindow(g_helpFindButton,ABM_DpiScale(w-margin-searchButtonW,dpi),ABM_DpiScale(searchY,dpi),ABM_DpiScale(searchButtonW,dpi),ABM_DpiScale(searchH,dpi),TRUE);
+        if(g_helpTopics)MoveWindow(g_helpTopics,ABM_DpiScale(margin,dpi),ABM_DpiScale(top,dpi),ABM_DpiScale(topicW,dpi),ABM_DpiScale(contentH,dpi),TRUE);
+        if(g_helpEdit)MoveWindow(g_helpEdit,ABM_DpiScale(margin+topicW+gap,dpi),ABM_DpiScale(top,dpi),ABM_DpiScale(w-(margin+topicW+gap)-margin,dpi),ABM_DpiScale(contentH,dpi),TRUE);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
     }
     case WM_PAINT: {
-        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
+        PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);UINT dpi=ABM_DpiGetForWindow(hwnd);
+        ABM_GdiUseLogicalDpi(dc,dpi);rc.right=ABM_DpiUnscale(rc.right,dpi);rc.bottom=ABM_DpiUnscale(rc.bottom,dpi);
         HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
         RECT header={0,0,rc.right,104};HBRUSH head=CreateSolidBrush(ABM_UI_COLOR_SURFACE_BLUE);FillRect(dc,&header,head);DeleteObject(head);
         RECT accent={0,101,rc.right,104};HBRUSH accentBrush=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
@@ -5192,7 +5203,8 @@ static void ShowHelpDialog(HWND owner) {
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    int w=1120,h=840;
+    UINT ownerDpi=ABM_DpiGetForWindow(owner);
+    int w=ABM_DpiScale(1120,ownerDpi),h=ABM_DpiScale(840,ownerDpi);
     RECT ownerRect;GetWindowRect(owner,&ownerRect);
     HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
     if(GetMonitorInfoW(mon,&mi)){
