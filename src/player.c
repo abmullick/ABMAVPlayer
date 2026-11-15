@@ -2314,6 +2314,10 @@ static void RecentPlayIndex(HWND owner,int index) {
 }
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
@@ -2920,6 +2924,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     SelectObject(mem,oldBmp);DeleteObject(dib);DeleteDC(mem);ReleaseDC(NULL,screen);
 }
 static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    if(msg==WM_DPICHANGED){ABM_DpiApplySuggestedRect(hwnd,lp);InvalidateRect(hwnd,NULL,FALSE);return 0;}
     HWND owner=GetWindow(hwnd,GW_OWNER);
     if(msg==WM_PAINT){PAINTSTRUCT ps;BeginPaint(hwnd,&ps);EndPaint(hwnd,&ps);PaintFullscreenOverlay(hwnd);return 0;}
     if(msg==WM_MOUSEMOVE||msg==WM_LBUTTONDOWN||msg==WM_LBUTTONUP){
@@ -3122,6 +3127,10 @@ static void EqSetFromPoint(HWND hwnd,int x,int y) {
 }
 static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg){
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
     case WM_ACTIVATE:
         if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
         return 0;
@@ -4385,6 +4394,10 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
 }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
     case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE:
         if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
@@ -4666,6 +4679,10 @@ static HBITMAP LoadAboutPortrait(void) {
 
 static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
     case WM_CREATE: {
         g_aboutPortrait=LoadAboutPortrait();
         return 0;
@@ -4884,6 +4901,10 @@ static BOOL HelpFindNext(HWND hwnd) {
 }
 static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(hwnd,lp);
+        InvalidateRect(hwnd,NULL,FALSE);
+        return 0;
     case WM_CREATE: {
         const wchar_t *help=
             L"ABM AV PLAYER  |  COMPLETE USER GUIDE\r\n"
@@ -5455,6 +5476,10 @@ static BOOL LoadAdvancedDiagnosticPreview(const wchar_t *path){
 }
 static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  switch(msg){
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(w,lp);
+        InvalidateRect(w,NULL,FALSE);
+        return 0;
  case WM_CREATE:
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
@@ -5926,6 +5951,10 @@ static void ShowAdvancedSettingsDialog(HWND owner){
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  switch(msg) {
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(w,lp);
+        InvalidateRect(w,NULL,FALSE);
+        return 0;
  case WM_CREATE: {
   if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
   g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
