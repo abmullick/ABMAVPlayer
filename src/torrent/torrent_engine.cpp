@@ -8,6 +8,7 @@
 #include <ws2tcpip.h>
 #include <bcrypt.h>
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -393,9 +394,8 @@ public:
         const uint64_t generation=wait_cancel_generation_.load();
         /* A readiness wait belongs to the currently active HTTP stream. Do not
            accidentally succeed against a later stream after stop/replacement. */
-        if(http_stop_.load()||http_task_id_.load()!=id||http_file_index_!=index)return false;
+        if(http_stop_.load()||http_task_id_.load()!=id||http_file_index_.load()!=index)return false;
         if(length>0&&!SetReadWindow(id,index,offset,length,8*1024*1024))return false;
-        const auto until=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);
         auto rangeReadyAndReadable=[&]() -> bool {
             if(!RangeVerified(id,index,offset,length))return false;
             if(length==0)return true;
@@ -428,13 +428,13 @@ public:
         const auto until=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeout);
         do {
             if(task->removed.load()||wait_cancel_generation_.load()!=generation||
-               http_stop_.load()||http_task_id_.load()!=id||http_file_index_!=index||
+               http_stop_.load()||http_task_id_.load()!=id||http_file_index_.load()!=index||
                (cancel&&cancel->load())||stopping_.load())return false;
             if(rangeReadyAndReadable())return true;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         } while(std::chrono::steady_clock::now()<until);
         if(task->removed.load()||wait_cancel_generation_.load()!=generation||
-           http_stop_.load()||http_task_id_.load()!=id||http_file_index_!=index||
+           http_stop_.load()||http_task_id_.load()!=id||http_file_index_.load()!=index||
            (cancel&&cancel->load())||stopping_.load())return false;
         return rangeReadyAndReadable();
     }
@@ -1057,7 +1057,7 @@ private:
     std::atomic<uint64_t> wait_cancel_generation_{0};
     SOCKET http_socket_=INVALID_SOCKET;
     std::atomic<uint64_t> http_task_id_{0};
-    int http_file_index_=-1;
+    std::atomic<int> http_file_index_{-1};
     int64_t http_file_size_=0;
     std::wstring http_token_;
     bool winsock_ready_=false;
