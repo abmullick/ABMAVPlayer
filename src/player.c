@@ -6522,16 +6522,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_homeCardMotion[ci]=EaseToward(before,target,34);
                 if(before!=g_homeCardMotion[ci])changed=TRUE;
             }
-            if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            if(changed)InvalidateMainLogical(hwnd,&R_VIDEO,FALSE);
         } else {
             BOOL changed=FALSE;for(int ci=0;ci<4;ci++){int before=g_homeCardMotion[ci];g_homeCardMotion[ci]=EaseToward(before,0,40);if(before!=g_homeCardMotion[ci])changed=TRUE;}
-            if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            if(changed)InvalidateMainLogical(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
         if (g_artworkLoaded && g_artworkFade < 100) {
             g_artworkFade += 5;
             if (g_artworkFade > 100) g_artworkFade = 100;
-            InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            InvalidateMainLogical(hwnd,&R_VIDEO,FALSE);
         }
         /* Fullscreen video geometry is already established for the active
            output. Avoid extra synchronous LibVLC output queries on the UI
@@ -6565,17 +6565,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if (!g_hasMedia || g_visualizerActive) {
             /* Keep the idle equalizer and audio spectrum fluid at the 30 Hz UI tick. */
-            InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            InvalidateMainLogical(hwnd,&R_VIDEO,FALSE);
         } else if ((g_visualPulse % 3u) == 0u) {
             RECT glow=R_VIDEO;
             InflateRect(&glow,4,4);
-            InvalidateRect(hwnd,&glow,FALSE);
+            InvalidateMainLogical(hwnd,&glow,FALSE);
         }
         if (g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing) {
             g_overlayPlaying=TRUE;
             RECT playDirty=R_PLAY;
             InflateRect(&playDirty,8,8);
-            InvalidateRect(hwnd,&playDirty,FALSE);
+            InvalidateMainLogical(hwnd,&playDirty,FALSE);
         } else {
             g_overlayPlaying=FALSE;
         }
@@ -6584,16 +6584,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             GetClientRect(hwnd,&headerDirty);
             headerDirty.top=91;
             headerDirty.bottom=96;
-            InvalidateRect(hwnd,&headerDirty,FALSE);
+            InvalidateMainLogical(hwnd,&headerDirty,FALSE);
             RECT sidebarAccent={R_SIDEBAR.left+1,R_SIDEBAR.top+1,R_SIDEBAR.right-1,R_SIDEBAR.top+4};
-            InvalidateRect(hwnd,&sidebarAccent,FALSE);
+            InvalidateMainLogical(hwnd,&sidebarAccent,FALSE);
         }
         UpdateUI();
         /* Invalidate on every animation step, including the final transition
            from 20% to 0%, so no fragment of the menu is left on screen. */
         if(oldMenuProgress!=g_menuProgress) {
             RECT dirty=R_MENU_PANEL;
-            InvalidateRect(hwnd,&dirty,FALSE);
+            InvalidateMainLogical(hwnd,&dirty,FALSE);
         }
     }return 0;
     case WM_MOUSEWHEEL: {
@@ -6605,7 +6605,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_playlistScroll-=wheelSteps*3;
         if(g_playlistScroll<0)g_playlistScroll=0;
         if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
-        InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;
+        InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);return 0;
     }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -6655,27 +6655,27 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_drawerOpen&&!g_fullscreen){RECT settingsHit=R_SETTINGS_BUTTON;InflateRect(&settingsHit,8,8);if(Inside(settingsHit,x,y)){g_drawerSettingsOpen=!g_drawerSettingsOpen;g_receiverPopup=FALSE;g_searchFocused=FALSE;UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}}
         if(g_drawerOpen&&g_drawerSettingsOpen&&!g_fullscreen&&Inside(R_ADVANCED_SETTINGS_BUTTON,x,y)){ShowAdvancedSettingsDialog(hwnd);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateRect(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
-        if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_SEARCH,x,y)){g_searchFocused=TRUE;SetFocus(hwnd);InvalidateMainLogical(hwnd,&R_SEARCH,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&g_searchFocused&&!Inside(R_SEARCH,x,y)){g_searchFocused=FALSE;InvalidateMainLogical(hwnd,&R_SEARCH,FALSE);}
         if(g_audioPopupOpen) {
             int rows=g_audioDeviceCount+1;if(rows>12)rows=12;
             if(Inside(R_AUDIO_PANEL,x,y)) {if(y>=R_AUDIO_PANEL.top+42){int item=(y-(R_AUDIO_PANEL.top+42))/38;if(item>=0&&item<rows)SelectAudioOutput(item-1);}ReleaseCapture();return 0;}
             if(!Inside(R_AUDIO_BUTTON,x,y))g_audioPopupOpen=FALSE;
         }
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_CLEAR_PLAYLIST,x,y)){if(g_playlistCount&&ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES)ClearPlaylist();ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_LIBRARY,x,y)){g_libraryTab=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_AUDIO,x,y)){g_mediaFilter=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_VIDEO,x,y)){g_mediaFilter=2;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){g_groupMode=(g_groupMode+1)%3;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_QUEUE,x,y)){g_libraryTab=0;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_TAB_LIBRARY,x,y)){g_libraryTab=1;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_AUDIO,x,y)){g_mediaFilter=1;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_VIDEO,x,y)){g_mediaFilter=2;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){g_groupMode=(g_groupMode+1)%3;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
             if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
             PositionVideoWindow();
             SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
-            InvalidateRect(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
+            InvalidateMainLogical(hwnd,&dirty,FALSE);ReleaseCapture();return 0;
         }
         /* Clicking anywhere outside the open menu dismisses it. Continue
            processing the click so the underlying control still responds. */
@@ -6688,7 +6688,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             PositionVideoWindow();
             SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;
-            InvalidateRect(hwnd,&dirty,FALSE);
+            InvalidateMainLogical(hwnd,&dirty,FALSE);
         }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(!g_fullscreen&&!g_hasMedia&&!g_drawerOpen) {
@@ -6755,8 +6755,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ReleaseCapture();
             return 0;
         }
-        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_SHUFFLE,x,y)){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_REPEAT,x,y)){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_SHUFFLE,x,y)){g_shuffle=!g_shuffle;SavePersistentState();InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_REPEAT,x,y)){g_repeat=!g_repeat;SavePersistentState();InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_SPEED,x,y)){
             if(g_playbackRate<0.99f)g_playbackRate=1.0f;
             else if(g_playbackRate<1.24f)g_playbackRate=1.25f;
@@ -6764,7 +6764,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else if(g_playbackRate<1.99f)g_playbackRate=2.0f;
             else g_playbackRate=0.75f;
             libvlc_media_player_set_rate(g_player,g_playbackRate);
-            SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;
+            SavePersistentState();InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;
         }
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_AUDIO_BUTTON,x,y)){RefreshAudioDevices();g_audioPopupOpen=!g_audioPopupOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
@@ -6787,14 +6787,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
-            if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+18)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%19;g_hoverMenuItem=-1;InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+18)%19;g_hoverMenuItem=-1;InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=18;g_hoverMenuItem=-1;InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
-        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
         if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
@@ -6811,10 +6811,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='R'){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ScreenToClient(hwnd,&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
         if(wp==VK_F1){ShowHelpDialog(hwnd);return 0;}
-        if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
+        if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateMainLogical(hwnd,&R_SEARCH,FALSE);return 0;}
         if(wp==VK_ESCAPE&&g_drawerOpen){g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);return 0;}
-        if(g_searchFocused&&wp==VK_BACK){size_t n=wcslen(g_searchText);if(n)g_searchText[n-1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;}
-        if(g_searchFocused&&wp==VK_RETURN){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
+        if(g_searchFocused&&wp==VK_BACK){size_t n=wcslen(g_searchText);if(n)g_searchText[n-1]=0;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);return 0;}
+        if(g_searchFocused&&wp==VK_RETURN){g_searchFocused=FALSE;InvalidateMainLogical(hwnd,&R_SEARCH,FALSE);return 0;}
         if(g_searchFocused&&(wp==VK_SPACE||wp==VK_LEFT||wp==VK_RIGHT))return 0;
         if(wp==VK_F11){ToggleFullscreen(hwnd);return 0;}
         if(wp==VK_SPACE&&g_hasMedia){if(libvlc_media_player_get_state(g_player)==libvlc_Playing)libvlc_media_player_set_pause(g_player,1);else libvlc_media_player_play(g_player);return 0;}
@@ -6825,11 +6825,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VK_HOME&&g_hasMedia){libvlc_media_player_set_time(g_player,0);return 0;}
         if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
         if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
-        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;PositionVideoWindow();SyncRendererComboVisibility();InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
     }
     case WM_CHAR:
-        if(g_searchFocused){wchar_t ch=(wchar_t)wp;if(ch>=32&&ch!=127){size_t n=wcslen(g_searchText);if(n<127){g_searchText[n]=ch;g_searchText[n+1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}}return 0;}
+        if(g_searchFocused){wchar_t ch=(wchar_t)wp;if(ch>=32&&ch!=127){size_t n=wcslen(g_searchText);if(n<127){g_searchText[n]=ch;g_searchText[n+1]=0;g_playlistScroll=0;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);}}return 0;}
         break;
     case WM_RBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
@@ -6843,10 +6843,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
         int playlistHot=-1;
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
-        if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
+        if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
         if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
-        if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
+        if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateMainLogical(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
             SetCursor(LoadCursorW(NULL,IDC_ARROW));
@@ -6869,7 +6869,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateButton(g_hoverButton);
             RECT hintStrip={0,0,0,0};GetClientRect(hwnd,&hintStrip);
             hintStrip.top=hintStrip.bottom-30;
-            InvalidateRect(hwnd,&hintStrip,FALSE);
+            InvalidateMainLogical(hwnd,&hintStrip,FALSE);
         }
         if(g_dragPlaylistScroll){
             int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/80:0;
@@ -6880,7 +6880,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             int travel=railH-thumbH;
             if(travel>0){int dy=my-g_playlistScrollGrabY;g_playlistScroll=g_playlistScrollStart+(int)((long long)dy*maxScroll/travel);}
             if(g_playlistScroll<0)g_playlistScroll=0;if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
-            InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
+            InvalidateMainLogical(hwnd,&R_SIDEBAR,FALSE);
         }
         if(g_dragSeek)g_dragSeekX=mx;
         if(g_dragVolume){
@@ -6892,7 +6892,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_fullscreen && g_fullscreenOverlay)
                     InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
                 else
-                    InvalidateRect(hwnd,&R_VOLUME,FALSE);
+                    InvalidateMainLogical(hwnd,&R_VOLUME,FALSE);
             }
         }
         SetCursor((hit!=HIT_NONE||chrome!=0)?LoadCursorW(NULL,IDC_HAND):LoadCursorW(NULL,IDC_ARROW));
