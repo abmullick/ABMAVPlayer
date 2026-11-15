@@ -3818,6 +3818,28 @@ static void TorrentStopPlayback(void) {
     if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)!=TORRENT_PLAYBACK_IDLE)
         TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
 }
+/* Torrent playback shares the local LibVLC player, but owns a different
+   failure/teardown path. Never let the generic local-file error handler clear
+   g_hasMedia first: that would make the queued torrent error callback stale
+   and leave the torrent HTTP stream running. */
+static void TorrentHandlePlayerError(void) {
+    if(!g_torrentPlaybackActive)return;
+    TorrentDetachPlayerEvents();
+    PlaybackStopEngine();
+    g_torrentPlaybackActive=FALSE;
+    g_hasMedia=FALSE;
+    g_current=-1;
+    g_pendingResume=FALSE;
+    g_endHandled=TRUE;
+    ResetArtwork();
+    if(g_visualizerActive)ABM_AudioVisualizer_Stop();
+    g_visualizerActive=FALSE;
+    g_visualizerTried=FALSE;
+    if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
+    TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,
+        L"Stream failed — LibVLC could not continue reading the torrent source.");
+    if(g_main)InvalidateRect(g_main,NULL,FALSE);
+}
 static void TorrentRefreshTvDevices(void) {
     if(!g_torrentTvCombo||!IsWindow(g_torrentTvCombo))return;
     unsigned int count=ABM_TorrentDlna_DeviceCount();
@@ -6346,12 +6368,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 TorrentSetPlaybackState(TORRENT_PLAYBACK_STOPPED,NULL);
                 break;
             case libvlc_MediaPlayerEncounteredError:
-                g_torrentPlaybackActive=FALSE;
-                g_hasMedia=FALSE;
-                TorrentDetachPlayerEvents();
-                if(g_torrentStopHttpStream&&g_torrentInitialized)g_torrentStopHttpStream();
-                TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,
-                    L"Stream failed — LibVLC could not continue reading the torrent source.");
+                TorrentHandlePlayerError();
                 break;
         }
         return 0;
@@ -6544,7 +6561,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
-            PlaybackHandleEngineError();
+            if(g_torrentPlaybackActive)
+                TorrentHandlePlayerError();
+            else
+                PlaybackHandleEngineError();
         }
         if(g_pendingResume && g_player){
             libvlc_state_t resumeState=libvlc_media_player_get_state(g_player);
