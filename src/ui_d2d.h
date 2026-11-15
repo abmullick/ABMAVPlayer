@@ -8,6 +8,17 @@ extern "C" {
 #endif
 
 /* Opaque Direct2D objects keep this interface safe to include from C. */
+typedef struct ABM_D2D_CANVAS {
+    void *factory;
+    void *target;
+    void *writeFactory;
+    void *body;
+    void *smallFormat;
+    void *iconFormat;
+    void *brush;
+    BOOL drawing;
+} ABM_D2D_CANVAS;
+
 typedef struct ABM_D2D {
     void *factory;
     void *target;
@@ -25,6 +36,15 @@ typedef struct ABM_D2D {
 } ABM_D2D;
 
 BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd);
+/* Shared Direct2D/DirectWrite renderer for owner-draw controls. The DC target
+   binds to DRAWITEMSTRUCT::hDC, so it paints the actual control surface. */
+BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *canvas);
+BOOL ABM_D2D_CanvasBegin(ABM_D2D_CANVAS *canvas, HDC dc, const RECT *bounds);
+BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *canvas);
+void ABM_D2D_CanvasFillRound(ABM_D2D_CANVAS *canvas, float l, float t, float r, float b, float radius, COLORREF color);
+void ABM_D2D_CanvasStrokeRound(ABM_D2D_CANVAS *canvas, float l, float t, float r, float b, float radius, COLORREF color, float width);
+void ABM_D2D_CanvasText(ABM_D2D_CANVAS *canvas, const wchar_t *text, RECT rect, COLORREF color, int style, UINT flags);
+void ABM_D2D_CanvasDestroy(ABM_D2D_CANVAS *canvas);
 void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height);
 void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear);
 BOOL ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip);
