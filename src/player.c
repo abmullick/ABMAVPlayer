@@ -4800,6 +4800,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 
 static HBRUSH g_helpBrush=NULL, g_helpInputBrush=NULL, g_helpArticleBrush=NULL, g_helpNavBrush=NULL;
 static HFONT g_helpTitleFont=NULL, g_helpSectionFont=NULL, g_helpBodyFont=NULL, g_helpMetaFont=NULL;
+static HFONT g_helpPaintTitleFont=NULL,g_helpPaintBodyFont=NULL,g_helpPaintMetaFont=NULL;
 static HWND g_helpEdit=NULL, g_helpSearch=NULL, g_helpTopics=NULL, g_helpFindButton=NULL;
 static HMODULE g_helpRichEditModule=NULL;
 static const wchar_t *g_helpDocument=NULL;
@@ -5050,6 +5051,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(-ABM_DpiScale(17,dpi),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(-ABM_DpiScale(16,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(-ABM_DpiScale(12,dpi),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpPaintTitleFont)g_helpPaintTitleFont=CreateFontW(-29,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+        if(!g_helpPaintBodyFont)g_helpPaintBodyFont=CreateFontW(-16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpPaintMetaFont)g_helpPaintMetaFont=CreateFontW(-12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
         /* Branded Help Centre workspace: borderless native text editing retains
            keyboard, selection and clipboard behaviour while the host paints the chrome. */
         g_helpSearch=CreateWindowExW(0,L"EDIT",L"",
@@ -5103,11 +5107,11 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RECT header={0,0,rc.right,104};HBRUSH head=CreateSolidBrush(ABM_UI_COLOR_SURFACE_BLUE);FillRect(dc,&header,head);DeleteObject(head);
         RECT accent={0,101,rc.right,104};HBRUSH accentBrush=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&accent,accentBrush);DeleteObject(accentBrush);
         SetBkMode(dc,TRANSPARENT);
-        HFONT old=(HFONT)SelectObject(dc,g_helpTitleFont);SetTextColor(dc,ABM_UI_COLOR_TEXT);
+        HFONT old=(HFONT)SelectObject(dc,g_helpPaintTitleFont);SetTextColor(dc,ABM_UI_COLOR_TEXT);
         RECT title={32,12,rc.right-70,52};DrawTextW(dc,L"Help Centre",-1,&title,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+        SelectObject(dc,g_helpPaintMetaFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
         RECT kicker={34,55,rc.right-70,78};DrawTextW(dc,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",-1,&kicker,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,g_helpBodyFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
+        SelectObject(dc,g_helpPaintBodyFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
         RECT intro={34,82,rc.right-70,101};DrawTextW(dc,L"Find answers, learn features and understand the practical impact of settings.",-1,&intro,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         /* Search field and content cards are painted by the application, not default control chrome. */
         HBRUSH card=CreateSolidBrush(ABM_UI_COLOR_SURFACE);HPEN edge=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);
@@ -5127,7 +5131,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         HPEN line=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);oldPen=SelectObject(dc,line);
         MoveToEx(dc,0,rc.bottom-48,NULL);LineTo(dc,rc.right,rc.bottom-48);
         SelectObject(dc,oldPen);DeleteObject(line);
-        SelectObject(dc,g_helpMetaFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);
+        SelectObject(dc,g_helpPaintMetaFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);
         RECT footText={26,rc.bottom-42,rc.right-24,rc.bottom-12};
         DrawTextW(dc,L"TIP   Ctrl+F search   •   Find next / F3 next match   •   Select a topic to jump",-1,&footText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         SelectObject(dc,old);EndPaint(hwnd,&ps);return 0;
@@ -5211,6 +5215,13 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
         if(g_helpSearch)RemoveWindowSubclass(g_helpSearch,HelpSearchSubclass,1);
         g_helpEdit=NULL;g_helpSearch=NULL;g_helpTopics=NULL;g_helpFindButton=NULL;
+        if(g_helpTitleFont){DeleteObject(g_helpTitleFont);g_helpTitleFont=NULL;}
+        if(g_helpSectionFont){DeleteObject(g_helpSectionFont);g_helpSectionFont=NULL;}
+        if(g_helpBodyFont){DeleteObject(g_helpBodyFont);g_helpBodyFont=NULL;}
+        if(g_helpMetaFont){DeleteObject(g_helpMetaFont);g_helpMetaFont=NULL;}
+        if(g_helpPaintTitleFont){DeleteObject(g_helpPaintTitleFont);g_helpPaintTitleFont=NULL;}
+        if(g_helpPaintBodyFont){DeleteObject(g_helpPaintBodyFont);g_helpPaintBodyFont=NULL;}
+        if(g_helpPaintMetaFont){DeleteObject(g_helpPaintMetaFont);g_helpPaintMetaFont=NULL;}
         return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
