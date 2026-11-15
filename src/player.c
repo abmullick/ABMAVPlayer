@@ -4896,7 +4896,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_aboutPortrait) {
             HDC mem=CreateCompatibleDC(dc);HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
             BITMAP bm;GetObjectW(g_aboutPortrait,sizeof(bm),&bm);
-            int side=250,sw=bm.bmWidth<bm.bmHeight?bm.bmWidth:bm.bmHeight;
+            int sw=bm.bmWidth<bm.bmHeight?bm.bmWidth:bm.bmHeight;
             int sx=(bm.bmWidth-sw)/2,sy=(bm.bmHeight-sw)/2;
             SetStretchBltMode(dc,HALFTONE);StretchBlt(dc,34,55,250,250,mem,sx,sy,sw,sw,SRCCOPY);
             SelectObject(mem,old);DeleteDC(mem);
