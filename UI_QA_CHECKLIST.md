@@ -175,6 +175,7 @@ Source-level rendering lifecycle changes are committed. The following are still 
 - [ ] Confirm all existing settings persistence, audio/video options, torrent storage/network controls, diagnostics and help content remain functionally unchanged.
 
 Source commits:
+- `a4a6fccec9fef3837ee8b5b21a0c7e0143cbe841`
 - `ffeef69f5c20e4a494c4a3395cd7b8b0ae238963`
 - `5c33e906ef20a08db3936cd36fd4211bc4342d8b`
 
