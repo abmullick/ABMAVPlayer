@@ -3271,10 +3271,8 @@ static void ShowEqualizer(void) {
         if(!g_eqWindow){ABM_MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
         SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);
     }
-    RECT owner;GetWindowRect(g_main,&owner);
-    UINT dpi=ABM_DpiGetForWindow(g_main);int ew=ABM_DpiScale(680,dpi),eh=ABM_DpiScale(405,dpi);
-    int x=owner.left+(owner.right-owner.left-ew)/2;
-    int y=owner.top+(owner.bottom-owner.top-eh)/2;
+    RECT bounds={0};ABM_DpiMakeCenteredRect(g_main,680,405,&bounds);
+    int ew=bounds.right-bounds.left,eh=bounds.bottom-bounds.top,x=bounds.left,y=bounds.top;
     SetWindowPos(g_eqWindow,HWND_TOPMOST,x,y,ew,eh,SWP_SHOWWINDOW);
     ShowWindow(g_eqWindow,SW_SHOWNORMAL);SetForegroundWindow(g_eqWindow);SetFocus(g_eqWindow);
     InvalidateRect(g_eqWindow,NULL,TRUE);
@@ -4691,8 +4689,8 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_0A111D);wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);UINT dpi=ABM_DpiGetForWindow(owner);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int targetW=ABM_DpiScale(1080,dpi),targetH=ABM_DpiScale(980,dpi);int w=maxW<targetW?maxW:targetW,h=maxH<targetH?maxH:targetH;if(w<ABM_DpiScale(760,dpi))w=ABM_DpiScale(760,dpi);if(h<ABM_DpiScale(620,dpi))h=ABM_DpiScale(620,dpi);
-    int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
+    RECT bounds={0};ABM_DpiMakeCenteredRect(owner,1080,980,&bounds);
+    int w=bounds.right-bounds.left,h=bounds.bottom-bounds.top,x=bounds.left,y=bounds.top;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
 }
@@ -5230,17 +5228,8 @@ static void ShowHelpDialog(HWND owner) {
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    UINT ownerDpi=ABM_DpiGetForWindow(owner);
-    int w=ABM_DpiScale(1120,ownerDpi),h=ABM_DpiScale(840,ownerDpi);
-    RECT ownerRect;GetWindowRect(owner,&ownerRect);
-    HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
-    if(GetMonitorInfoW(mon,&mi)){
-        int maxW=mi.rcWork.right-mi.rcWork.left-48,maxH=mi.rcWork.bottom-mi.rcWork.top-48;
-        if(w>maxW)w=maxW;if(h>maxH)h=maxH;
-    }
-    int x=ownerRect.left+(ownerRect.right-ownerRect.left-w)/2;
-    int y=ownerRect.top+(ownerRect.bottom-ownerRect.top-h)/2;
-    if(x<ownerRect.left)x=ownerRect.left+12;if(y<ownerRect.top)y=ownerRect.top+12;
+    RECT bounds={0};ABM_DpiMakeCenteredRect(owner,1120,840,&bounds);
+    int w=bounds.right-bounds.left,h=bounds.bottom-bounds.top,x=bounds.left,y=bounds.top;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerHelp",
         L"ABM AV Player - Help Centre",WS_POPUP|WS_THICKFRAME,
         x,y,w,h,owner,NULL,inst,NULL);
@@ -6139,7 +6128,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(next<0)next=0;if(next>maxPos)next=maxPos;
   if(next!=g_settingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_settingsScrollY-next,dpi);g_settingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
  }
- case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,620,520);return 0;}
+ case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,820,520);return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
   HDC dc=(HDC)wp;
