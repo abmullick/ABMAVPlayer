@@ -329,52 +329,46 @@ void LayoutDevicePanel(){
     const int x=(std::max)(margin,clientW-panelW-margin);
     const int y=(std::min)(64,(std::max)(8,clientH-220));
     const int panelH=(std::max)(210,(std::min)(520,clientH-y-margin));
-    const int pad=12,innerW=panelW-2*pad;
+    const int pad=12,innerW=panelW-2*pad,gap=7,actionH=32;
     const bool narrow=panelW<450;
-    const int gap=7;
-    int cy=y+10;
+    POINT screen={x,y};ClientToScreen(g_window,&screen);
+    SetWindowPos(g_devicePanel,HWND_TOP,screen.x,screen.y,panelW,panelH,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    int cy=10;
     auto place=[&](HWND control,int px,int py,int w,int h){
-        if(control)SetWindowPos(control,nullptr,px,py,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOOWNERZORDER);
+        if(control)SetWindowPos(control,nullptr,px,py,w,h,SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOZORDER);
     };
-    SetWindowPos(g_devicePanel,HWND_TOP,x,y,panelW,panelH,SWP_NOACTIVATE|SWP_SHOWWINDOW);
-    place(g_deviceTitle,x+pad,cy,innerW,22);cy+=25;
+    place(g_deviceTitle,pad,cy,innerW,22);cy+=25;
     const int hintH=narrow?34:42;
-    place(g_deviceHint,x+pad,cy,innerW,hintH);cy+=hintH+gap;
-    const int remaining=(std::max)(52,panelH-(cy-y)- (narrow?178:158));
-    const int tvListH=(std::max)(52,(std::min)(150,remaining/2));
-    place(g_deviceList,x+pad,cy,innerW,tvListH);cy+=tvListH+gap;
+    place(g_deviceHint,pad,cy,innerW,hintH);cy+=hintH+gap;
+    const int reserved=narrow?190:166;
+    const int tvListH=(std::max)(52,(std::min)(150,(panelH-cy-reserved)/2));
+    place(g_deviceList,pad,cy,innerW,tvListH);cy+=tvListH+gap;
     const int half=(innerW-gap)/2;
-    const int actionH=32;
     if(narrow){
-        place(g_deviceRefresh,x+pad,cy,half,actionH);
-        place(g_deviceSelect,x+pad+half+gap,cy,half,actionH);cy+=actionH+gap;
-        place(g_deviceApps,x+pad,cy,innerW,actionH);cy+=actionH+gap;
+        place(g_deviceRefresh,pad,cy,half,actionH);
+        place(g_deviceSelect,pad+half+gap,cy,half,actionH);cy+=actionH+gap;
+        place(g_deviceApps,pad,cy,innerW,actionH);cy+=actionH+gap;
     }else{
         const int actionW=(innerW-2*gap)/3;
-        place(g_deviceRefresh,x+pad,cy,actionW,actionH);
-        place(g_deviceSelect,x+pad+actionW+gap,cy,actionW,actionH);
-        place(g_deviceApps,x+pad+2*(actionW+gap),cy,actionW,actionH);cy+=actionH+gap;
+        place(g_deviceRefresh,pad,cy,actionW,actionH);
+        place(g_deviceSelect,pad+actionW+gap,cy,actionW,actionH);
+        place(g_deviceApps,pad+2*(actionW+gap),cy,actionW,actionH);cy+=actionH+gap;
     }
-    const int bottomSpace=panelH-(cy-y)-actionH-gap;
-    const int appListH=(std::max)(36,(std::min)(104,bottomSpace-2*actionH-gap));
-    place(g_deviceAppCombo,x+pad,cy,innerW,appListH);cy+=appListH+gap;
+    const int appListH=(std::max)(36,(std::min)(104,panelH-cy-2*actionH-3*gap));
+    place(g_deviceAppCombo,pad,cy,innerW,appListH);cy+=appListH+gap;
     if(narrow){
-        place(g_deviceLaunch,x+pad,cy,half,actionH);
-        place(g_deviceAppStop,x+pad+half+gap,cy,half,actionH);cy+=actionH+gap;
-        place(g_deviceAppStatus,x+pad,cy,half,actionH);
-        place(g_deviceClose,x+pad+half+gap,cy,half,actionH);
+        place(g_deviceLaunch,pad,cy,half,actionH);
+        place(g_deviceAppStop,pad+half+gap,cy,half,actionH);cy+=actionH+gap;
+        place(g_deviceAppStatus,pad,cy,half,actionH);
+        place(g_deviceClose,pad+half+gap,cy,half,actionH);
     }else{
         const int actionW=(innerW-2*gap)/3;
-        place(g_deviceLaunch,x+pad,cy,actionW,actionH);
-        place(g_deviceAppStop,x+pad+actionW+gap,cy,actionW,actionH);
-        place(g_deviceAppStatus,x+pad+2*(actionW+gap),cy,actionW,actionH);
-        place(g_deviceClose,x+pad,cy+actionH+gap,innerW,actionH);
+        place(g_deviceLaunch,pad,cy,actionW,actionH);
+        place(g_deviceAppStop,pad+actionW+gap,cy,actionW,actionH);
+        place(g_deviceAppStatus,pad+2*(actionW+gap),cy,actionW,actionH);
+        place(g_deviceClose,pad,cy+actionH+gap,innerW,actionH);
     }
-    /* Keep command notifications routed to StreamingProc; only sibling z-order changes. */
-    HWND controls[]={g_deviceTitle,g_deviceHint,g_deviceList,g_deviceRefresh,g_deviceSelect,g_deviceApps,g_deviceAppCombo,g_deviceLaunch,g_deviceAppStop,g_deviceAppStatus,g_deviceClose};
-    for(HWND control:controls)if(control)SetWindowPos(control,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
-}
-bool SameReceiverName(const std::wstring &left,const std::wstring &right){
+}bool SameReceiverName(const std::wstring &left,const std::wstring &right){
     auto canonical=[](std::wstring value){
         size_t suffix=value.find_last_of(L'(');
         if(suffix!=std::wstring::npos && !value.empty() && value.back()==L')' && suffix>0)
@@ -496,17 +490,17 @@ void RefreshDevicePanel(bool force){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_CHILD|SS_OWNERDRAW,0,0,516,520,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_POPUP|SS_OWNERDRAW,0,0,516,520,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceList=CreateWindowExW(0,L"LISTBOX",L"",
-        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
     g_deviceRefresh=CreateWindowExW(0,L"BUTTON",L"Refresh devices",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_REFRESH,GetModuleHandleW(nullptr),nullptr);
     g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
@@ -515,7 +509,7 @@ void CreateDevicePanel(HWND parent){
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APPS,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppCombo=CreateWindowExW(0,L"LISTBOX",L"",
-        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_TABSTOP,0,0,10,160,parent,
+        WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_TABSTOP,0,0,10,160,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_COMBO,GetModuleHandleW(nullptr),nullptr);
     g_deviceLaunch=CreateWindowExW(0,L"BUTTON",L"Launch app",
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
