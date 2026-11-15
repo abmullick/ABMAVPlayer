@@ -8,13 +8,22 @@ extern "C" {
 #endif
 
 /* Opaque Direct2D objects keep this interface safe to include from C. */
+enum {
+    ABM_D2D_TEXT_BODY = 0,
+    ABM_D2D_TEXT_ICON = 1,
+    ABM_D2D_TEXT_SMALL = 2,
+    ABM_D2D_TEXT_HEADING = 3
+};
+
 typedef struct ABM_D2D_CANVAS {
     void *factory;
     void *target;
     void *writeFactory;
     void *body;
     void *smallFormat;
+    void *heading;
     void *iconFormat;
+    void *ellipsis;
     void *brush;
     BOOL drawing;
 } ABM_D2D_CANVAS;
