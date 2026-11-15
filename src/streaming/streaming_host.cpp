@@ -1176,7 +1176,10 @@ void PaintChrome(HWND hwnd){
     RECT brandMain={116,8,188,49};
     BrandText(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,
         ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandSuffix={188,13,306,49};
+    /* Keep both DirectWrite formats in the exact same layout box. Their
+       different font metrics already provide the intended size hierarchy;
+       a second top offset incorrectly shifts the suffix down. */
+    RECT brandSuffix={188,8,306,49};
     BrandText(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,
         ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,ABM_THEME_COLOR_36B1A8);
