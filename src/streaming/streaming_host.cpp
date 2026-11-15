@@ -1926,6 +1926,7 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
         registered=true;
     }
     g_workersStopping.store(false);
+    ABM_CastV2_ResetOperationCancellation();
     HWND window=CreateWindowExW(0,kClassName,L"ABM AV Player - Streaming Centre",
         WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1160,820,
         nullptr,nullptr,instance,nullptr);
