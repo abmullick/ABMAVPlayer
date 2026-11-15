@@ -655,6 +655,9 @@ private:
                 if(!IsPrivateIPv4(remoteIp)||(remoteIp&lanMask)!=(lanIp&lanMask)){closesocket(client);continue;}
             } else if(remote.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)){closesocket(client);continue;}
             std::lock_guard<std::mutex> g(http_clients_mutex_);
+            /* Stop sets http_stop_ before taking this mutex. Recheck while
+               holding it so no late client can escape the shutdown sweep. */
+            if(http_stop_.load()){closesocket(client);break;}
             for(auto it=http_clients_.begin();it!=http_clients_.end();) {
                 if(it->done&&it->done->load()) {
                     if(it->thread.joinable())it->thread.join();
