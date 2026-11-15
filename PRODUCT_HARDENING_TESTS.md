@@ -11,6 +11,11 @@ Run these checks on a Windows 11 x64 machine using the exact release build and i
 - [ ] Confirm changing the cache path does not delete or silently move the previous cache. Verify the previous cache remains intact.
 - [ ] Start Torrent Stream, change the cache path, save and verify the current session continues using its original path while the new path is activated only after restart.
 - [ ] Verify cache quota validation (1–4096 GiB), persistence, and quota enforcement/cleanup behaviour.
+- [ ] Add a selected torrent and verify cache usage increases with actual bytes in its per-info-hash folder under the configured permanent downloads directory.
+- [ ] Put an unrelated file beside the torrent hash folders and verify it is excluded from torrent quota usage.
+- [ ] Select two large files in separate torrent tasks before either has downloaded data; verify outstanding file-size reservations prevent both from overcommitting the quota.
+- [ ] Lower the quota below existing permanent torrent payload usage; verify the new limit persists, new selections are refused with a clear quota error, and existing downloads remain untouched.
+- [ ] Run Clear inactive cache; verify only eligible working-cache folders are removed, permanent downloads remain intact, and the reported remaining usage still includes permanent torrent payloads.
 - [ ] Verify download and upload limits persist after restart; test 0 (unlimited) and non-zero values.
 - [ ] Verify volume, playback speed, shuffle, repeat, ReplayGain and compressor preferences persist and are applied as documented.
 - [ ] Verify the update-check action opens the normal confirmation/update workflow.
