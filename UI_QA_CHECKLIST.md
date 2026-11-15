@@ -159,3 +159,13 @@ For every failure, record:
 - [ ] Branded modal dialogs: verify Yes/No/OK button positions, keyboard focus, message wrapping and click hit targets at each scale; test long messages and both default-button choices.
 - [ ] Custom action menus and Recently Played popup: verify row hit targets, hover, keyboard navigation, scrolling, fonts and work-area edge clamping at each scale.
 - [ ] Fullscreen overlay on monitors with different DPI: verify it remains aligned to the fullscreen monitor and playback controls retain correct input routing.
+
+
+- [ ] Torrent Stream: at 100/125/150/200%, verify the scaled Direct2D surface, child controls, custom slider hit areas, owner-drawn buttons, combo/list rendering, text and item heights.
+- [ ] Torrent Stream: move between monitors at different scale factors while open; verify every child remains aligned and playback, torrent transfer, DLNA discovery/casting and stop actions remain unaffected.
+- [ ] About: verify the full creator, portrait, tribute, technology and version content remains visible and proportionate at all tested scales.
+- [ ] Equalizer: verify GDI back-buffer rendering, all slider tracks/knobs, preamp, preset buttons, drag coordinates and window minimum size at all tested scales.
+- [ ] Help Centre: verify native search/list/rich-edit controls, font sizes, article formatting, topic row height, close button and draggable header after DPI changes.
+- [ ] Branded modal dialogs: test long wrapped messages, Yes/No/OK geometry, default focus, keyboard and mouse activation after moving between monitors.
+- [ ] Action menus and Recently Played: test hover, row selection, keyboard navigation, wheel scrolling, dynamic height and placement near every work-area edge at all scales.
+- [ ] Test all surfaces on a mixed-DPI two-monitor setup, including opening each popup while the owner is on the secondary monitor.
