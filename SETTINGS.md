@@ -178,6 +178,19 @@ The page separates system-wide resources from ABM AV Player process metrics.
 
 Diagnostics reports observations; it does not automatically change settings or prove that a particular component caused a problem.
 
+### VLC Runtime & Codecs
+
+Open **Advanced Settings → VLC Runtime & Codecs** to inspect the LibVLC runtime currently loaded by ABM AV Player.
+
+- **Loaded runtime:** confirms whether `libvlc.dll` is loaded in the current process.
+- **LibVLC version:** displays the version reported by the loaded library.
+- **Loaded library path:** shows the actual path of the loaded `libvlc.dll`, rather than assuming that the system-wide VLC installation is being used.
+- **Plugin directory:** shows the plugin directory resolved from the runtime location or `VLC_PLUGIN_PATH`, and whether that directory exists.
+- **Decoder-related plugin files:** checks for selected files such as `libavcodec_plugin.dll`, `libdav1d_plugin.dll`, `libaom_plugin.dll`, `libvpx_plugin.dll`, `libmpeg2_plugin.dll`, `libfaad_plugin.dll`, `libflac_plugin.dll` and `libopus_plugin.dll`.
+- **Refresh scan:** repeats the path and file-presence checks.
+
+This is a runtime and plugin-file inventory, not a complete codec certification test. A DLL being present does not prove that it loaded successfully or that a particular codec, profile, bit depth, container, subtitle format or hardware-decoding path will work. VLC can also support a format through another module. Confirm real support by testing representative media files on the target PC. The diagnostic TXT report includes the same runtime paths and selected plugin-file results.
+
 ## What takes effect when?
 
 | Setting group | Activation behaviour |
