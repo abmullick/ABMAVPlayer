@@ -5547,7 +5547,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     pointer coordinates once, at the window-procedure boundary. */
  if(msg==WM_LBUTTONDOWN){
   UINT dpi=ABM_DpiGetForWindow(w);
-  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
+  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)+g_advancedSettingsScrollY;
   lp=MAKELPARAM((short)x,(short)y);
  }
  switch(msg){
