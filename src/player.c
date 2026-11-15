@@ -4524,11 +4524,9 @@ static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
     SetBkMode(dc,TRANSPARENT);
     SetTextColor(dc,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F7FDFF:ABM_THEME_COLOR_B2C9DA);
     RECT tx=r;tx.left+=12;tx.right-=10;
-    HFONT f=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HGDIOBJ old=SelectObject(dc,f);
+    HGDIOBJ old=SelectObject(dc,g_smallFont?g_smallFont:GetStockObject(DEFAULT_GUI_FONT));
     DrawTextW(dc,line,-1,&tx,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    SelectObject(dc,old);DeleteObject(f);
+    SelectObject(dc,old);
     if(d->itemState&ODS_FOCUS){HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_41BEA5);old=SelectObject(dc,pen);
         HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));Rectangle(dc,r.left+1,r.top+1,r.right-1,r.bottom-1);
         SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(pen);}
@@ -4559,10 +4557,9 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
         wchar_t name[256]=L"";SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)name);
         SetBkMode(dc,TRANSPARENT);SetTextColor(dc,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3);
         RECT tr=r;tr.left+=13;tr.right-=36;
-        HFONT f=CreateFontW(-14,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-        HGDIOBJ old=SelectObject(dc,f);DrawTextW(dc,name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        SelectObject(dc,old);DeleteObject(f);
+        HGDIOBJ old=SelectObject(dc,g_smallFont?g_smallFont:GetStockObject(DEFAULT_GUI_FONT));
+        DrawTextW(dc,name,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        SelectObject(dc,old);
     }
     /* The combo's native drop button is covered and redrawn once by the
        control subclass after default painting. The edit item draws no arrow. */
