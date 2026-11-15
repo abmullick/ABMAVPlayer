@@ -105,7 +105,7 @@ extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
     if (!MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY, DWRITE_FONT_WEIGHT_NORMAL, &body) ||
         !MakeFormat(wf, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL, DWRITE_FONT_WEIGHT_SEMI_BOLD, &small) ||
         !MakeFormat(wf, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING, DWRITE_FONT_WEIGHT_SEMI_BOLD, &heading) ||
-        !MakeFormat(wf, L"Segoe MDL2 Assets", ABM_UI_FONT_SIZE_ICON, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
+        !MakeFormat(wf, ABM_UI_FONT_FAMILY_ICON, ABM_UI_FONT_SIZE_ICON, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
         SafeRelease(&body); SafeRelease(&small); SafeRelease(&heading); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
     }
     c->body = body; c->smallFormat = small; c->heading = heading; c->iconFormat = icon;
