@@ -5751,7 +5751,7 @@ static void VlcCodecVerificationReset(void) {
 }
 static void VlcFourccText(uint32_t code,wchar_t *out,size_t count) {if(!out||count<5)return;for(int i=0;i<4;i++){unsigned char c=(unsigned char)((code>>(i*8))&0xff);out[i]=(c>=32&&c<=126)?(wchar_t)c:L'.';}out[4]=0;}
 static void VlcCaptureTrackEvidence(void) {
- if(!g_player||!g_hasMedia)return;libvlc_media_t *media=libvlc_media_player_get_media(g_player);if(!media)return;libvlc_media_retain(media);
+ if(!g_player||!g_hasMedia)return;libvlc_media_t *media=libvlc_media_player_get_media(g_player);if(!media)return;
  libvlc_media_track_t **tracks=NULL;unsigned int count=libvlc_media_tracks_get(media,&tracks),limit=count>ABM_VLC_TRACK_MAX?ABM_VLC_TRACK_MAX:count;g_vlcTrackEvidenceCount=0;
  g_vlcSelectedAudioId=libvlc_audio_get_track(g_player);g_vlcSelectedVideoId=libvlc_video_get_track(g_player);g_vlcSelectedSubtitleId=libvlc_video_get_spu(g_player);
  for(unsigned int i=0;i<limit;i++){libvlc_media_track_t *t=tracks?tracks[i]:NULL;if(!t)continue;ABM_VlcTrackEvidence *e=&g_vlcTrackEvidence[g_vlcTrackEvidenceCount++];ZeroMemory(e,sizeof(*e));e->id=t->i_id;e->type=t->i_type;e->codec=t->i_codec;e->selected=(t->i_type==libvlc_track_audio&&e->id==g_vlcSelectedAudioId)||(t->i_type==libvlc_track_video&&e->id==g_vlcSelectedVideoId)||(t->i_type==libvlc_track_text&&e->id==g_vlcSelectedSubtitleId);const char *d=libvlc_media_get_codec_description(t->i_type,t->i_codec);if(d&&*d)MultiByteToWideChar(CP_UTF8,0,d,-1,e->description,(int)_countof(e->description));if(!e->description[0])VlcFourccText(t->i_codec,e->description,_countof(e->description));}
@@ -5777,7 +5777,7 @@ static void VlcCodecVerificationPoll(void) {
  if(g_vlcMediaPlayingObserved&&!g_vlcTrackSnapshotReady)VlcCaptureTrackEvidence();
  VlcRefreshSelectedTracks();
  int64_t now=libvlc_media_player_get_time(g_player);
- if(g_vlcMediaPlayingObserved&&now>=0&&g_vlcLastObservedTime>=0&&now>g_vlcLastObservedTime)g_vlcPlaybackSessionSuccessful=TRUE;
+ if(state==libvlc_Playing&&g_vlcMediaPlayingObserved&&now>=0&&g_vlcLastObservedTime>=0&&now>g_vlcLastObservedTime)g_vlcPlaybackSessionSuccessful=TRUE;
  if(now>=0)g_vlcLastObservedTime=now;
  if((events&ABM_VLC_EVT_ENDED)&&g_vlcMediaPlayingObserved)g_vlcPlaybackSessionSuccessful=TRUE;
  if(g_vlcMediaErrorObserved)StringCchCopyW(g_vlcPlaybackTestDetail,_countof(g_vlcPlaybackTestDetail),L"PLAYBACK ERROR — LibVLC reported EncounteredError");
