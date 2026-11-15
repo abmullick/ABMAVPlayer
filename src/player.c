@@ -5267,10 +5267,8 @@ static void ShowAboutDialog(HWND owner) {
         if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    UINT dpi=ABM_DpiGetForWindow(owner);
-    RECT wr={0,0,ABM_DpiScale(900,dpi),ABM_DpiScale(760,dpi)}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
-    int w=wr.right-wr.left,h=wr.bottom-wr.top;
-    int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
+    RECT wr={0};ABM_DpiMakeCenteredRect(owner,900,760,&wr);
+    int w=wr.right-wr.left,h=wr.bottom-wr.top,x=wr.left,y=wr.top;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerAbout",
         L"About ABM AV Player",WS_CAPTION|WS_SYSMENU|WS_POPUP,
         x,y,w,h,owner,NULL,inst,NULL);
@@ -6037,11 +6035,8 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
   registered=TRUE;
  }
- UINT ownerDpi=ABM_DpiGetForWindow(owner);
- RECT wr={0,0,ABM_DpiScale(1080,ownerDpi),ABM_DpiScale(780,ownerDpi)};
- AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
- int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
- int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
+ RECT wr={0};ABM_DpiMakeCenteredRect(owner,1080,780,&wr);
+ int ww=wr.right-wr.left,hh=wr.bottom-wr.top,x=wr.left,y=wr.top;
  g_advancedSettingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,
   L"ABMAVPlayerAdvancedSettings",L"ABM AV Player — Advanced Settings",
   WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
