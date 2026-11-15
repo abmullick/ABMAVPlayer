@@ -234,7 +234,7 @@ public:
         const uint64_t additional=fileBytes>existingFileBytes?fileBytes-existingFileBytes:0;
         const uint64_t otherReservations=OutstandingReservations(i->second.get());
         if(additional>UINT64_MAX-otherReservations ||
-           !EnsureCacheCapacity(additional+otherReservations)) {
+           !EnsureStorageCapacity(additional+otherReservations)) {
             i->second->error=L"Torrent storage quota reached. Increase the quota or remove files from the permanent Torrent Downloads folder before selecting this file.";
             return false;
         }
@@ -801,7 +801,7 @@ private:
         std::vector<fs::path> result;for(auto &entry:ordered)result.push_back(entry.second);
         return result;
     }
-    bool EnsureCacheCapacity(uint64_t additional) {
+    bool EnsureStorageCapacity(uint64_t additional) {
         if(additional>cache_limit_bytes_)return false;
         uint64_t used=StorageBytes();
         if(used<=cache_limit_bytes_&&additional<=cache_limit_bytes_-used)return true;
