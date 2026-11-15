@@ -6452,6 +6452,12 @@ static void ShowAdvancedSettingsDialog(HWND owner){
 }
 
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
+static LRESULT CALLBACK SettingsEditFocusSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref){
+ (void)wp;(void)lp;(void)id;(void)ref;
+ if(msg==WM_SETFOCUS||msg==WM_KILLFOCUS)InvalidateRect(GetParent(edit),NULL,FALSE);
+ if(msg==WM_NCDESTROY)RemoveWindowSubclass(edit,SettingsEditFocusSubclass,1);
+ return DefSubclassProc(edit,msg,wp,lp);
+}
 static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  switch(msg) {
  case WM_CREATE: {
@@ -6471,7 +6477,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
-  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit)SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);}
+  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
   return 0;
  }
  case WM_THEMECHANGED:
