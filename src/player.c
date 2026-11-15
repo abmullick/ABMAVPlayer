@@ -6896,17 +6896,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateRect(hwnd,&dirty,FALSE);
         }
     }return 0;
-    case WM_MOUSEWHEEL: {
-        if(!g_drawerOpen)return 0;
-        int delta=GET_WHEEL_DELTA_WPARAM(wp);
-        int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/80:0;
-        int maxScroll=CountFilteredMedia()-visible;if(maxScroll<0)maxScroll=0;
-        int wheelSteps=delta/WHEEL_DELTA;
-        g_playlistScroll-=wheelSteps*3;
-        if(g_playlistScroll<0)g_playlistScroll=0;
-        if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
-        InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;
-    }
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         if(g_fullscreen) {
