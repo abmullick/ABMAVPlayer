@@ -46,6 +46,7 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Branded dialogs and custom menus: fit within the work area at every screen edge; long text and long menus remain usable.
 - [ ] Move the main player, Settings, Torrent Stream, Streaming Centre and auxiliary windows between monitors with different scaling factors; record any size or coordinate jump.
 - [ ] Verify each window's custom-drawn geometry, native child controls, fonts, hit targets and popup placement are scaled/re-laid out correctly; applying the suggested outer rectangle alone is not sufficient for sign-off.
+- [ ] Main player: verify Direct2D content, partial repaint regions, mouse hit targets, fullscreen transport and LibVLC child-video bounds at 100%, 125%, 150% and 200%.
 - [ ] Confirm the manifest is embedded in the built EXE and the runtime reports Per-Monitor V2 awareness.
 - [ ] Test taskbar auto-hide, non-primary monitor placement and display resolution changes.
 
