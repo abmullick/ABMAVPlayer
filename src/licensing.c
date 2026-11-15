@@ -53,7 +53,7 @@ static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
         ABM_D2D_CanvasFill(&g_licenseCanvas,(float)d->rcItem.left,(float)d->rcItem.top,(float)d->rcItem.right,(float)d->rcItem.bottom,ABM_THEME_COLOR_060A12);
         ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)d->rcItem.left+1,(float)d->rcItem.top+1,(float)d->rcItem.right-1,(float)d->rcItem.bottom-1,(float)ABM_UI_RADIUS_BUTTON,fill);
         ABM_D2D_CanvasStrokeRound(&g_licenseCanvas,(float)d->rcItem.left+0.5f,(float)d->rcItem.top+0.5f,(float)d->rcItem.right-0.5f,(float)d->rcItem.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focus?2.0f:1.0f);
-        wchar_t label[64]=L\"\";GetWindowTextW(d->hwndItem,label,_countof(label));
+        wchar_t label[64]=L"";GetWindowTextW(d->hwndItem,label,_countof(label));
         ABM_D2D_CanvasText(&g_licenseCanvas,label,d->rcItem,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasEnd(&g_licenseCanvas);return;
     }
