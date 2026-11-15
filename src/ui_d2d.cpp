@@ -140,6 +140,7 @@ extern "C" void ABM_D2D_SetTransform(ABM_D2D *ui,float scaleX,float scaleY,float
 extern "C" void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear) {
     if (!ui || !EnsureTarget(ui)) return;
     Target(ui)->BeginDraw();
+    Target(ui)->SetTransform(D2D1::Matrix3x2F::Identity());
     D2D1_COLOR_F color = ToD2D(clear);
     Target(ui)->Clear(&color);
     ui->clipActive = FALSE;
