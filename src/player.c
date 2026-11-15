@@ -4095,43 +4095,30 @@ static void TorrentSliderSetPoint(HWND hwnd,TorrentSliderState *s,int x){
 }
 static void TorrentSliderPaint(HWND hwnd,HDC dc,TorrentSliderState *s){
     RECT r;GetClientRect(hwnd,&r);
-    HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_0C1B2B);FillRect(dc,&r,bg);DeleteObject(bg);
-    int left=14,right=r.right-104,cy=(r.top+r.bottom)/2;if(right<=left+18)return;
+    if(!s||!g_torrentButtonCanvasReady||
+       !ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r))return;
+    int left=14,right=r.right-104,cy=(r.top+r.bottom)/2;
+    if(right<=left+18){ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);return;}
     int pos=TorrentSliderToPos(s->kind,s->value),thumb=left+(right-left)*pos/1000;
-    /* Deep recessed rail with a luminous teal progress segment. */
-    RECT track={left,cy-4,right,cy+4};
-    HRGN region=CreateRoundRectRgn(track.left,track.top,track.right,track.bottom,8,8);
-    HBRUSH rail=CreateSolidBrush(ABM_THEME_COLOR_1C3445);FillRgn(dc,region,rail);DeleteObject(region);DeleteObject(rail);
-    if(thumb>left){
-        RECT fill={left,cy-4,thumb,cy+4};region=CreateRoundRectRgn(fill.left,fill.top,fill.right,fill.bottom,8,8);
-        HBRUSH accent=CreateSolidBrush(ABM_THEME_COLOR_31978F);FillRgn(dc,region,accent);DeleteObject(region);DeleteObject(accent);
-        HPEN sheen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_67DABE);HGDIOBJ op=SelectObject(dc,sheen);
-        MoveToEx(dc,left+4,cy-2,NULL);LineTo(dc,max(left+4,thumb-3),cy-2);
-        SelectObject(dc,op);DeleteObject(sheen);
-    }
-    /* Soft outer halo and a larger two-tone thumb. */
-    HBRUSH halo=CreateSolidBrush(ABM_THEME_COLOR_164149);HGDIOBJ ob=SelectObject(dc,halo);
-    HPEN none=(HPEN)GetStockObject(NULL_PEN);HGDIOBJ op=SelectObject(dc,none);
-    Ellipse(dc,thumb-13,cy-13,thumb+13,cy+13);
-    SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(halo);
-    HBRUSH knob=CreateSolidBrush(ABM_THEME_COLOR_73DCC7);HPEN rim=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_CDFFF0);
-    ob=SelectObject(dc,knob);op=SelectObject(dc,rim);
-    Ellipse(dc,thumb-7,cy-7,thumb+7,cy+7);
-    SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(rim);DeleteObject(knob);
-    /* Value capsule is isolated from the track and always legible. */
+    /* Canonical Direct2D/DirectWrite canvas, shared palette and focus style. */
+    ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_COLOR_SURFACE_BLUE);
+    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)left,(float)(cy-4),(float)right,(float)(cy+4),4.0f,ABM_UI_COLOR_BORDER);
+    if(thumb>left)ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)left,(float)(cy-4),(float)thumb,(float)(cy+4),4.0f,ABM_UI_COLOR_ACCENT);
+    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)(thumb-12),(float)(cy-12),(float)(thumb+12),(float)(cy+12),12.0f,ABM_UI_COLOR_ACCENT_SOFT);
+    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)(thumb-7),(float)(cy-7),(float)(thumb+7),(float)(cy+7),7.0f,ABM_UI_COLOR_ACCENT_BRIGHT);
+    ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)(thumb-7)+0.5f,(float)(cy-7)+0.5f,(float)(thumb+7)-0.5f,(float)(cy+7)-0.5f,7.0f,ABM_UI_COLOR_TEXT,1.0f);
     RECT pill={r.right-94,cy-16,r.right-2,cy+16};
-    HBRUSH pillBrush=CreateSolidBrush(ABM_THEME_COLOR_113040);HPEN pillPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_439797);
-    ob=SelectObject(dc,pillBrush);op=SelectObject(dc,pillPen);
-    RoundRect(dc,pill.left,pill.top,pill.right,pill.bottom,14,14);
-    SelectObject(dc,op);SelectObject(dc,ob);DeleteObject(pillPen);DeleteObject(pillBrush);
+    ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_INPUT);
+    ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)pill.left+0.5f,(float)pill.top+0.5f,(float)pill.right-0.5f,(float)pill.bottom-0.5f,ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_BORDER_STRONG,1.0f);
     wchar_t valueText[48];
     if(s->kind<2){if(s->value==0)StringCchCopyW(valueText,_countof(valueText),L"Unlimited");
         else if(s->value>=1024)StringCchPrintfW(valueText,_countof(valueText),L"%.1f MiB/s",(double)s->value/1024.0);
         else StringCchPrintfW(valueText,_countof(valueText),L"%d KiB/s",s->value);}
     else StringCchPrintfW(valueText,_countof(valueText),L"%d GiB",s->value);
-    HGDIOBJ old=SelectObject(dc,g_smallFont?g_smallFont:GetStockObject(DEFAULT_GUI_FONT));SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_E7F7F9);
-    DrawTextW(dc,valueText,-1,&pill,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-    SelectObject(dc,old);
+    RECT textRect={pill.left+3,pill.top+1,pill.right-3,pill.bottom-1};
+    ABM_D2D_CanvasText(&g_torrentButtonCanvas,valueText,textRect,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(GetFocus()==hwnd)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.5f);
+    ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
 }
 static LRESULT CALLBACK TorrentSliderProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     TorrentSliderState *s=(TorrentSliderState*)GetWindowLongPtrW(hwnd,GWLP_USERDATA);
@@ -4178,10 +4165,12 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-272,36,FALSE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-250,sourceTop+23,104,42,FALSE);
     MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-134,sourceTop+23,122,42,FALSE);
-    MoveWindow(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,FALSE);
-    MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),FALSE);
-    MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,FALSE);
-    MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,FALSE);
+    /* Keep the live task summary below the content heading. */
+    MoveWindow(g_torrentInfoLabel,m+14,contentTop+33,inner-28,20,FALSE);
+    MoveWindow(g_torrentFileList,m+12,contentTop+58,inner-24,max(40,contentBottom-contentTop-66),FALSE);
+    /* Playback title, status and progress each own a distinct baseline. */
+    MoveWindow(g_torrentStatusLabel,m+14,playbackY+23,inner-28,20,FALSE);
+    MoveWindow(g_torrentBufferBar,m+14,playbackY+47,inner-28,5,FALSE);
     /* Playback actions use a compact fixed width, like Streaming Centre
        controls; do not stretch them to consume the entire window. */
     const int actionWidths[5]={184,156,128,128,110},actionH=42,actionGap=10;
@@ -4239,7 +4228,7 @@ static void TorrentStrokeRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF c
 static void TorrentGradientRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF start,COLORREF end){
     ABM_D2D_GradientRound(ui,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,radius,start,end);
 }
-static void TorrentPaint(HWND hwnd){
+static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     RECT rc={0};GetClientRect(hwnd,&rc);
     const float w=(float)rc.right,h=(float)rc.bottom;
     const float m=22.0f,headerH=94.0f,sourceTop=108.0f,sourceH=66.0f;
@@ -4250,7 +4239,7 @@ static void TorrentPaint(HWND hwnd){
     float cacheY=networkY+84.0f,tvY=cacheY+84.0f;
     const COLORREF bg=ABM_UI_COLOR_BACKGROUND,edge=ABM_UI_COLOR_BORDER_STRONG;
     const COLORREF muted=ABM_UI_COLOR_TEXT_MUTED,accent=ABM_UI_COLOR_ACCENT;
-    ABM_D2D_Begin(&g_torrentUi,bg);
+    if(!paintRect||!ABM_D2D_BeginClip(&g_torrentUi,bg,paintRect))return FALSE;
 
     /* Cinematic branded masthead */
     ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0F2539,ABM_THEME_COLOR_06111D);
@@ -4268,8 +4257,9 @@ static void TorrentPaint(HWND hwnd){
     ABM_D2D_Line(&g_torrentUi,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2.0f);
     ABM_D2D_Line(&g_torrentUi,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2.0f);
 
-    RECT r=TorrentMakeRect(116,8,420,49);ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,3,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_84CDC2,4,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT r=TorrentMakeRect(116,8,420,49);ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    /* Match the Main Player's exact brand suffix role and baseline. */
+    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_84CDC2,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
     r=TorrentMakeRect(116,60,510,83);ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,ABM_THEME_COLOR_9DB1C9,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Live task state is presented as a compact status chip. This is a
@@ -4314,8 +4304,9 @@ static void TorrentPaint(HWND hwnd){
     TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_THEME_COLOR_112638,ABM_THEME_COLOR_0A1928);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
     r=TorrentMakeRect(m+14,playbackY+2,m+250,playbackY+21);ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    int progress=(int)SendMessageW(g_torrentBufferBar,PBM_GETPOS,0,0);
-    float barL=m+14,barT=playbackY+28,barR=w-m-14;
+    int progress=(int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0);
+    if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)==TORRENT_PLAYBACK_PLAYING)progress=100;
+    float barL=m+14,barT=playbackY+47,barR=w-m-14;
     ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_THEME_COLOR_193041);
     ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,ABM_THEME_COLOR_314B5B);
     if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_THEME_COLOR_289793,ABM_THEME_COLOR_66E6BE);
@@ -4333,7 +4324,7 @@ static void TorrentPaint(HWND hwnd){
     TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
     r=TorrentMakeRect(m+14,tvY+2,m+220,tvY+22);ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_End(&g_torrentUi);
+    return ABM_D2D_End(&g_torrentUi);
 }
 /* Button renderer copied from Streaming Centre's DrawDeviceButton palette,
    radius, border, pressed/focus treatment and typography. */
@@ -4594,7 +4585,7 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
 }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
+    case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady&&!TorrentPaint(hwnd,&ps.rcPaint))InvalidateRect(hwnd,NULL,FALSE);EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE:
         if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
         TorrentLayout(hwnd);
@@ -4621,7 +4612,9 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CREATE: {
-        g_torrentUiFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
+        /* Native EDIT retains caret, selection, IME and accessibility while
+           using the Main Player body face and size. */
+        g_torrentUiFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
         if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
