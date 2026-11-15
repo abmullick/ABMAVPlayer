@@ -629,6 +629,7 @@ Do not call Torrent Stream fully visually validated until the unchecked Windows 
 ## Step 14 — Settings, Advanced Settings and Help rendering alignment
 
 **Source implementation commits:**
+- `a4a6fccec9fef3837ee8b5b21a0c7e0143cbe841` — canonical DirectWrite roles and semantic input surfaces
 - `ffeef69f5c20e4a494c4a3395cd7b8b0ae238963` — shared clipped repaint and theme refresh
 - `5c33e906ef20a08db3936cd36fd4211bc4342d8b` — erase-background and Help brush lifecycle hardening
 
