@@ -142,7 +142,7 @@ The report is local and is not automatically uploaded or sent to support. Review
 
 Open **Command Centre → Settings → Advanced… → VLC Runtime & Codecs** when a media file fails to open or you want to check which VLC runtime ABM AV Player is using.
 
-The page displays the loaded LibVLC version and DLL path, the resolved plugin directory, and a presence check for selected decoder-related plugin files. Use **Refresh scan** after changing the runtime or plugin files, then generate a Diagnostics report if you need to share the findings.
+The page scans the resolved VLC plugin directory and lists discovered DLLs by category. It reports four separate checks: **File Found** (filesystem inventory), **Plugin Loaded** (DLL currently mapped in the ABM process), **Runtime Tested** (LibVLC instance and local player initialized), and **Playback Verified** (the current media reached LibVLC Playing state when the scan was refreshed). Plugins load on demand, so a DLL marked Not Loaded is not automatically a fault. Play a representative media file and select **Refresh scan** to update playback evidence. The playback indicator is session-level evidence, not certification of every codec, profile, subtitle format or hardware-acceleration path. The diagnostic TXT export includes the same plugin inventory and status summary.
 
 A listed plugin file is not a guarantee that a codec or profile will decode. The check does not execute sample media, certify hardware acceleration, or prove that all plugin dependencies loaded. Test representative files—for example H.264, HEVC Main10, AV1, AAC, FLAC and Opus—on the actual PC. Missing one named plugin file also does not prove the corresponding format is unsupported; another VLC module may provide that capability.
 
