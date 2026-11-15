@@ -4944,8 +4944,8 @@ static void HelpFormatArticle(HWND edit) {
  int len=GetWindowTextLengthW(edit);if(len<=0)return;
  CHARFORMAT2W cf;ZeroMemory(&cf,sizeof(cf));cf.cbSize=sizeof(cf);
  cf.dwMask=CFM_FACE|CFM_SIZE|CFM_COLOR|CFM_CHARSET|CFM_BOLD;
- wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),L"Segoe UI Variable Text");
- cf.yHeight=190;cf.crTextColor=ABM_UI_COLOR_TEXT_SECONDARY;cf.bCharSet=DEFAULT_CHARSET;
+ wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),ABM_UI_FONT_FAMILY_TEXT);
+ cf.yHeight=(LONG)(ABM_UI_FONT_SIZE_D2D_BODY*15.0f);cf.crTextColor=ABM_UI_COLOR_TEXT_SECONDARY;cf.bCharSet=DEFAULT_CHARSET;
  SendMessageW(edit,EM_SETSEL,0,-1);
  SendMessageW(edit,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
  PARAFORMAT2 pf;ZeroMemory(&pf,sizeof(pf));pf.cbSize=sizeof(pf);
@@ -4968,8 +4968,8 @@ static void HelpFormatArticle(HWND edit) {
     SendMessageW(edit,EM_SETSEL,pos,end);
     ZeroMemory(&cf,sizeof(cf));cf.cbSize=sizeof(cf);
     cf.dwMask=CFM_FACE|CFM_SIZE|CFM_BOLD|CFM_COLOR;
-    wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),L"Segoe UI Variable Display");
-    cf.yHeight=260;cf.dwEffects=CFE_BOLD;cf.crTextColor=ABM_UI_COLOR_ACCENT_BRIGHT;
+    wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),ABM_UI_FONT_FAMILY_DISPLAY);
+    cf.yHeight=(LONG)(ABM_UI_FONT_SIZE_D2D_HEADING*15.0f);cf.dwEffects=CFE_BOLD;cf.crTextColor=ABM_UI_COLOR_ACCENT_BRIGHT;
     SendMessageW(edit,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
     SendMessageW(edit,EM_SETSEL,pos,end);
     ZeroMemory(&pf,sizeof(pf));pf.cbSize=sizeof(pf);
@@ -5122,10 +5122,10 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(!g_helpInputBrush)g_helpInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
         if(!g_helpArticleBrush)g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
         if(!g_helpNavBrush)g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
-        if(!g_helpTitleFont)g_helpTitleFont=CreateFontW(29,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        if(!g_helpSectionFont)g_helpSectionFont=CreateFontW(17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        if(!g_helpBodyFont)g_helpBodyFont=CreateFontW(16,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        if(!g_helpMetaFont)g_helpMetaFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+        if(!g_helpTitleFont)g_helpTitleFont=g_headingFont;
+        if(!g_helpSectionFont)g_helpSectionFont=g_smallFont;
+        if(!g_helpBodyFont)g_helpBodyFont=g_font;
+        if(!g_helpMetaFont)g_helpMetaFont=g_smallFont;
         /* Branded Help Centre workspace: borderless native text editing retains
            keyboard, selection and clipboard behaviour while the host paints the chrome. */
         g_helpSearch=CreateWindowExW(0,L"EDIT",L"",
@@ -6171,6 +6171,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_CREATE: {
   if(!ABM_D2D_Init(&g_settingsUi,w))return -1;g_settingsUiReady=TRUE;
   g_settingsEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
+  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit)SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);}
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
   g_settingsThemePreset=(int)ABMThemeCurrentPreset();
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
@@ -7186,9 +7187,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!ABM_LicenseCheckAndPrompt(inst,NULL)){if(SUCCEEDED(comInit))CoUninitialize();return 0;}
     InitializeCriticalSection(&g_rendererLock);
     g_videoBrush=CreateSolidBrush(ABM_THEME_COLOR_000000);g_comboBrush=CreateSolidBrush(C_PANEL2);
-    g_font=CreateFontW(18,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-    g_smallFont=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-    g_headingFont=CreateFontW(30,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
+    g_font=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+    g_smallFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_SMALL),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
+    g_headingFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_HEADING),0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
     /* Resolve the bundled LibVLC runtime relative to this executable. This lets
        an installed copy find its own plugins/data without a system VLC install. */
     wchar_t modulePath[PATH_CAP]={0}, appDir[PATH_CAP]={0}, pluginDir[PATH_CAP]={0};
