@@ -256,6 +256,8 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMDialogState *d=(ABMDialogState*)GetWindowLongPtrW(w,GWLP_USERDATA);
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
+    case WM_CREATE:g_abmDialogCanvasReady=ABM_D2D_CanvasInit(&g_abmDialogCanvas);return 0;
+    case WM_DESTROY:if(g_abmDialogCanvasReady){g_abmDialogCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_abmDialogCanvas);}return 0;
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
         if(wp==VK_ESCAPE){d->result=(d->flags&MB_YESNO)?IDNO:IDOK;d->done=TRUE;DestroyWindow(w);return 0;}
@@ -276,22 +278,31 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     }
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
-        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_090F19);FillRect(dc,&rc,bg);DeleteObject(bg);
-        RECT head={0,0,rc.right,54};HBRUSH hb=CreateSolidBrush(ABM_THEME_COLOR_0F2230);FillRect(dc,&head,hb);DeleteObject(hb);
-        SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
-        HFONT title=CreateFontW(-18,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        HFONT body=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ old=SelectObject(dc,title);RECT cap={22,8,rc.right-20,46};DrawTextW(dc,d->caption&&*d->caption?d->caption:L"ABM AV Player",-1,&cap,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        SelectObject(dc,body);COLORREF accent=(d->flags&MB_ICONERROR)?ABM_THEME_COLOR_DC4B55:(d->flags&MB_ICONWARNING)?ABM_THEME_COLOR_F2B14F:ABM_THEME_COLOR_52CDBE;
-        HBRUSH dot=CreateSolidBrush(accent);RECT mark={22,78,30,86};FillRect(dc,&mark,dot);DeleteObject(dot);
-        SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);RECT msg={44,68,rc.right-24,rc.bottom-74};DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
-        for(int i=0;i<d->buttonCount;i++){
-            RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton);HBRUSH br=CreateSolidBrush(primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737);FillRect(dc,&b,br);DeleteObject(br);
-            BOOL focused=(i==d->focusedButton);
-            HPEN pen=CreatePen(PS_SOLID,focused?3:1,focused?ABM_UI_COLOR_FOCUS:(primary?ABM_THEME_COLOR_44B4A4:ABM_THEME_COLOR_394E63));HGDIOBJ op=SelectObject(dc,pen);HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,b.left,b.top,b.right,b.bottom,9,9);SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
-            SetTextColor(dc,ABM_THEME_COLOR_F7FAFF);RECT t=b;DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&t,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        if(g_abmDialogCanvasReady&&ABM_D2D_CanvasBegin(&g_abmDialogCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_abmDialogCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_090F19);
+            ABM_D2D_CanvasFill(&g_abmDialogCanvas,0,0,(float)rc.right,54,ABM_THEME_COLOR_0F2230);
+            RECT cap={22,8,rc.right-20,46};ABM_D2D_CanvasText(&g_abmDialogCanvas,d->caption&&*d->caption?d->caption:L"ABM AV Player",cap,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            COLORREF accent=(d->flags&MB_ICONERROR)?ABM_THEME_COLOR_DC4B55:(d->flags&MB_ICONWARNING)?ABM_THEME_COLOR_F2B14F:ABM_THEME_COLOR_52CDBE;
+            ABM_D2D_CanvasFillRound(&g_abmDialogCanvas,22,78,30,86,3.0f,accent);
+            RECT msg={44,68,rc.right-24,rc.bottom-74};ABM_D2D_CanvasText(&g_abmDialogCanvas,d->text?d->text:L"",msg,ABM_THEME_COLOR_D7E4F1,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+            for(int i=0;i<d->buttonCount;i++){
+                RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton),focused=(i==d->focusedButton);
+                ABM_D2D_CanvasFillRound(&g_abmDialogCanvas,(float)b.left,(float)b.top,(float)b.right,(float)b.bottom,(float)ABM_UI_RADIUS_BUTTON,primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737);
+                ABM_D2D_CanvasStrokeRound(&g_abmDialogCanvas,(float)b.left+0.5f,(float)b.top+0.5f,(float)b.right-0.5f,(float)b.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_UI_COLOR_FOCUS:(primary?ABM_THEME_COLOR_44B4A4:ABM_THEME_COLOR_394E63),focused?2.0f:1.0f);
+                const wchar_t *label=(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK";
+                ABM_D2D_CanvasText(&g_abmDialogCanvas,label,b,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            }
+            ABM_D2D_CanvasEnd(&g_abmDialogCanvas);
+        }else{
+            HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_090F19);FillRect(dc,&rc,bg);DeleteObject(bg);
+            SetBkMode(dc,TRANSPARENT);HFONT old=(HFONT)SelectObject(dc,g_headingFont);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
+            RECT cap={22,8,rc.right-20,46};DrawTextW(dc,d->caption&&*d->caption?d->caption:L"ABM AV Player",-1,&cap,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            SelectObject(dc,g_font);SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);RECT msg={44,68,rc.right-24,rc.bottom-74};
+            DrawTextW(dc,d->text?d->text:L"",-1,&msg,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
+            for(int i=0;i<d->buttonCount;i++){RECT b=d->buttons[i];SetTextColor(dc,ABM_THEME_COLOR_F7FAFF);DrawTextW(dc,(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK",-1,&b,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+            SelectObject(dc,old);
         }
-        SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
+        EndPaint(w,&ps);return 0;
     }
     case WM_NCDESTROY:if(d)d->done=TRUE;break;
     }
@@ -319,10 +330,14 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
 typedef struct ABMMenuItem { int command; const wchar_t *label; BOOL enabled; BOOL heading; } ABMMenuItem;
 typedef struct ABMMenuState { HWND owner; const ABMMenuItem *items; int count; int hover; int first; int result; BOOL done; } ABMMenuState;
 static ABMMenuState *g_abmActiveMenu=NULL;
+static ABM_D2D_CANVAS g_abmDialogCanvas,g_abmMenuCanvas;
+static BOOL g_abmDialogCanvasReady=FALSE,g_abmMenuCanvasReady=FALSE;
 static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     ABMMenuState *d=(ABMMenuState*)GetWindowLongPtrW(w,GWLP_USERDATA);
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
+    case WM_CREATE:g_abmMenuCanvasReady=ABM_D2D_CanvasInit(&g_abmMenuCanvas);return 0;
+    case WM_DESTROY:if(g_abmMenuCanvasReady){g_abmMenuCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_abmMenuCanvas);}return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,w,0};TrackMouseEvent(&t);
@@ -347,19 +362,25 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){d->done=TRUE;DestroyWindow(w);return 0;}break;
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
-        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_09101B);FillRect(dc,&rc,bg);DeleteObject(bg);
-        HBRUSH head=CreateSolidBrush(ABM_THEME_COLOR_0F2533);RECT hr={0,0,rc.right,48};FillRect(dc,&hr,head);DeleteObject(head);
-        SetBkMode(dc,TRANSPARENT);HFONT title=CreateFontW(-17,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        HFONT body=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,ABM_THEME_COLOR_F3F9FF);RECT tr={18,7,rc.right-14,42};DrawTextW(dc,L"ABM  /  ACTIONS",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        int visible=(rc.bottom-62)/36;if(visible<1)visible=1;
-        for(int v=0;v<visible&&d->first+v<d->count;v++){
-            int i=d->first+v;int top=54+v*36;RECT row={8,top,rc.right-8,top+33};const ABMMenuItem *it=&d->items[i];
-            if(it->heading){SelectObject(dc,body);SetTextColor(dc,ABM_THEME_COLOR_59B9AE);RECT t={18,top+1,rc.right-12,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);continue;}
-            if(i==d->hover){HBRUSH hot=CreateSolidBrush(ABM_THEME_COLOR_18424C);FillRect(dc,&row,hot);DeleteObject(hot);}
-            SelectObject(dc,body);SetTextColor(dc,it->enabled?ABM_THEME_COLOR_E2EEF9:ABM_THEME_COLOR_5B6C80);RECT t={20,top+1,rc.right-14,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        }
-        SelectObject(dc,old);DeleteObject(title);DeleteObject(body);EndPaint(w,&ps);return 0;
+        if(g_abmMenuCanvasReady&&ABM_D2D_CanvasBegin(&g_abmMenuCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_abmMenuCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_09101B);
+            ABM_D2D_CanvasFill(&g_abmMenuCanvas,0,0,(float)rc.right,48,ABM_THEME_COLOR_0F2533);
+            RECT tr={18,7,rc.right-14,42};ABM_D2D_CanvasText(&g_abmMenuCanvas,L"ABM  /  ACTIONS",tr,ABM_THEME_COLOR_F3F9FF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            int visible=(rc.bottom-62)/36;if(visible<1)visible=1;
+            for(int v=0;v<visible&&d->first+v<d->count;v++){
+                int i=d->first+v,top=54+v*36;RECT row={8,top,rc.right-8,top+33};const ABMMenuItem *it=&d->items[i];
+                if(it->heading){
+                    RECT t={18,top+1,rc.right-12,top+32};
+                    ABM_D2D_CanvasText(&g_abmMenuCanvas,it->label,t,ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    continue;
+                }
+                if(i==d->hover)ABM_D2D_CanvasFillRound(&g_abmMenuCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_18424C);
+                RECT t={20,top+1,rc.right-14,top+32};
+                ABM_D2D_CanvasText(&g_abmMenuCanvas,it->label,t,it->enabled?ABM_THEME_COLOR_E2EEF9:ABM_THEME_COLOR_5B6C80,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
+            ABM_D2D_CanvasEnd(&g_abmMenuCanvas);
+        }else{HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_09101B);FillRect(dc,&rc,bg);DeleteObject(bg);}
+        EndPaint(w,&ps);return 0;
     }
     case WM_NCDESTROY:if(g_abmActiveMenu==d)g_abmActiveMenu=NULL;break;
     }
