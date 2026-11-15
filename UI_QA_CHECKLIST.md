@@ -201,3 +201,27 @@ Remaining source work — do not mark these complete:
 - No Windows compiler build or runtime screenshot verification is implied by these source commits.
 
 Validation still required: build on the documented MSVC toolchain; exercise 100%, 125%, 150% and 200% scale; resize Help below and above 760 client pixels; test mouse capture interruption; and perform keyboard-only navigation through every interactive control.
+
+
+## Settings window — monitor-safe geometry and scrolling
+
+Source implementation committed:
+- Settings opens at a practical, shorter default client height instead of requesting a 980-pixel-tall window.
+- Initial placement is centered on the owner's nearest monitor and clamped to that monitor's work area, excluding the taskbar and docked app bars.
+- The window is resizable and uses horizontal/vertical scrollbars when the virtual Settings canvas exceeds the available client area. All existing controls—including theme presets, status text, Save and Close—remain reachable on short or narrow displays.
+- Direct2D painting uses a client-pixel translation for the scroll offset. Native EDIT controls move with the same offset; pointer hit-testing is translated back into virtual content coordinates.
+- Mouse-wheel scrolling works over the window and is forwarded from native edit fields. Page Up/Down and Ctrl+Home/End provide keyboard scrolling.
+- When a native edit field receives focus, the viewport scrolls it into view.
+- A per-monitor `WM_DPICHANGED` handler applies the suggested rectangle, clamps it to the nearest monitor work area and refreshes the render target/scroll ranges. Reopening an existing Settings window also clamps it inside its current monitor work area.
+- Settings values, save logic, theme selection and existing control coordinates remain unchanged; the content is now a scrollable virtual surface rather than a tall fixed-height window.
+
+Windows runtime validation remains mandatory:
+- [ ] Build with MSVC and confirm the new Direct2D translation API links from C to C++.
+- [ ] Verify at 100%, 125%, 150% and 200% scaling.
+- [ ] Verify a short laptop display (including taskbar visible), a narrow portrait/4:3 display, and an ultrawide display.
+- [ ] Verify the window can be resized smaller/larger, moved between monitors, and reopened after moving partly off-screen.
+- [ ] Verify vertical and horizontal scrollbar thumb, line/page commands, mouse wheel over both canvas and edit fields, Page Up/Down, Ctrl+Home/End, and Tab focus auto-reveal.
+- [ ] Verify all settings, theme presets, rate dropdown, Browse/Open cache, Check for updates, Save and Close actions at scroll offsets 0, middle and maximum.
+- [ ] Verify no child EDIT field becomes detached from its painted frame while scrolling or resizing.
+
+Do not mark this as runtime-validated until the above checks have been run on Windows.
