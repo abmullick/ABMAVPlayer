@@ -189,7 +189,7 @@ Open **Advanced Settings → VLC Runtime & Codecs** to inspect the LibVLC runtim
 - **Decoder-related plugin files:** checks for selected files such as `libavcodec_plugin.dll`, `libdav1d_plugin.dll`, `libaom_plugin.dll`, `libvpx_plugin.dll`, `libmpeg2_plugin.dll`, `libfaad_plugin.dll`, `libflac_plugin.dll` and `libopus_plugin.dll`.
 - **Refresh scan:** repeats the path and file-presence checks.
 
-This is a runtime and plugin-file inventory, not a complete codec certification test. A DLL being present does not prove that it loaded successfully or that a particular codec, profile, bit depth, container, subtitle format or hardware-decoding path will work. VLC can also support a format through another module. Confirm real support by testing representative media files on the target PC. The diagnostic TXT report includes the same runtime paths and selected plugin-file results.
+The page now reports four independent evidence levels: **File Found** (plugin DLL exists in the resolved directory), **Plugin Loaded** (DLL is mapped in the ABM process at scan time), **Runtime Tested** (the LibVLC instance and local player initialized), and **Playback Verified** (the current media reached the Playing state when refreshed). The inventory covers plugin DLLs by category. VLC loads plugins on demand, so Not Loaded is not automatically a fault. Playback Verified is session-level evidence, not certification of every codec/profile or hardware path. Play representative media and select **Refresh scan** to update the evidence. The diagnostic TXT report includes the inventory and status summary.
 
 ## What takes effect when?
 
