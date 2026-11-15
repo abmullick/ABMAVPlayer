@@ -5663,6 +5663,7 @@ static wchar_t g_vlcRuntimeVersion[96]=L"Not detected";
 static wchar_t g_vlcRuntimePath[PATH_CAP]=L"Not detected";
 static wchar_t g_vlcPluginPath[PATH_CAP]=L"Not detected";
 static BOOL g_vlcRuntimeLoaded=FALSE,g_vlcPluginDirectoryFound=FALSE;
+static int g_advancedVlcFirstPlugin=0;
 static BOOL g_vlcPluginFound[8]={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
 static const wchar_t *g_vlcPluginNames[8]={
  L"Core FFmpeg decoder (avcodec)",L"AV1 decoder (dav1d)",L"AV1 decoder (AOM)",
@@ -5783,6 +5784,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
   }}
   return 0;
+ case WM_MOUSEWHEEL:
+  if(g_advancedSettingsPage==9){int delta=GET_WHEEL_DELTA_WPARAM(wp);if(delta){g_advancedVlcFirstPlugin-=delta/WHEEL_DELTA;if(g_advancedVlcFirstPlugin<0)g_advancedVlcFirstPlugin=0;if(g_advancedVlcFirstPlugin>4)g_advancedVlcFirstPlugin=4;InvalidateRect(w,NULL,FALSE);return 0;}}
+  break;
  case WM_LBUTTONDOWN:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
@@ -5817,6 +5821,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   }
   if(g_advancedSettingsPage==9){
    if(AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,1000,532,1020,620)){int trackY=y-532;g_advancedVlcFirstPlugin=(trackY*5)/88;if(g_advancedVlcFirstPlugin>4)g_advancedVlcFirstPlugin=4;InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==8){
    if(AdvancedSettingsPoint(x,y,326,442,610,478)){wchar_t report[PATH_CAP];if(GenerateAdvancedDiagnosticReport(report,_countof(report))){if(!LoadAdvancedDiagnosticPreview(report))ABM_MessageBoxW(w,L"The report was saved, but its contents could not be loaded for preview.",APP_NAME,MB_ICONWARNING);}else ABM_MessageBoxW(w,L"Could not create the diagnostic report. Check that the ABM AV Player data folder is writable.",APP_NAME,MB_ICONERROR);return 0;}
@@ -5936,6 +5941,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   }
   if(AdvancedSettingsPoint(x,y,914,694,1040,738)){DestroyWindow(w);return 0;}
   return 0;
+ }
+ case WM_LBUTTONUP:{
+  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  if(g_advancedSettingsPage==9&&AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;}
+  break;
  }
  case WM_KEYDOWN:
   if(wp==VK_ESCAPE){DestroyWindow(w);return 0;}
@@ -6166,12 +6176,18 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       AdvancedSettingsText(g_vlcPluginDirectoryFound?L"Plugin directory found":L"Plugin directory not found",326,430,620,454,g_vlcPluginDirectoryFound?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsButtonDraw(326,466,520,502,L"Refresh scan",TRUE);
       AdvancedSettingsText(L"Decoder-related plugin files  ·  presence check only",326,506,1008,530,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-      for(int pi=0;pi<8;pi++){
-       int col=pi%2,row=pi/2,left=326+col*342,top=532+row*24;
-       AdvancedSettingsText(g_vlcPluginNames[pi],left,top,left+260,top+21,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-       AdvancedSettingsText(g_vlcPluginFound[pi]?L"File found":L"Not found",left+260,top,left+332,top+21,g_vlcPluginFound[pi]?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+      /* Four visible rows keep the inventory within the card. Scroll with the
+         wheel or click the compact track to inspect all eight decoder entries. */
+      for(int visible=0;visible<4;visible++){
+       int pi=g_advancedVlcFirstPlugin+visible;
+       int col=pi%2,left=326+col*342,top=532+visible*21;
+       if(pi>=8)break;
+       AdvancedSettingsText(g_vlcPluginNames[pi],left,top,left+260,top+19,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+       AdvancedSettingsText(g_vlcPluginFound[pi]?L"File found":L"Not found",left+260,top,left+332,top+19,g_vlcPluginFound[pi]?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
       }
-      AdvancedSettingsText(L"Presence is not proof of successful decoding. VLC may support a format through other modules; profile, driver and hardware support must be tested with media.",326,630,1008,658,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+      ABM_D2D_Round(&g_advancedSettingsUi,1008,532,1016,616,4,ABM_UI_COLOR_SURFACE_RAISED);
+      ABM_D2D_Round(&g_advancedSettingsUi,1008,532+(float)g_advancedVlcFirstPlugin*11.0f,1016,576+(float)g_advancedVlcFirstPlugin*11.0f,4,ABM_UI_COLOR_ACCENT);
+      AdvancedSettingsText(L"Presence is not proof of successful decoding. VLC may support a format through other modules; profile, driver and hardware support must be tested with media.",326,620,1008,646,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
     }else if(g_advancedSettingsPage==8){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
       AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
