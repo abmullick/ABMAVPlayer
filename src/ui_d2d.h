@@ -66,6 +66,8 @@ void ABM_D2D_CanvasDestroy(ABM_D2D_CANVAS *canvas);
 void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height);
 void ABM_D2D_Begin(ABM_D2D *ui, COLORREF clear);
 BOOL ABM_D2D_BeginClip(ABM_D2D *ui, COLORREF clear, const RECT *clip);
+/* Translate the active HWND render target in client-pixel coordinates. */
+void ABM_D2D_SetOffset(ABM_D2D *ui, float x, float y);
 BOOL ABM_D2D_End(ABM_D2D *ui);
 void ABM_D2D_Fill(ABM_D2D *ui, float l, float t, float r, float b, COLORREF color);
 void ABM_D2D_Round(ABM_D2D *ui, float l, float t, float r, float b, float radius, COLORREF color);
