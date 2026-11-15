@@ -130,7 +130,11 @@ public:
         } catch(...) { session_.reset();if(winsock_ready_){WSACleanup();winsock_ready_=false;}return false; }
     }
     void Stop() {
-        StopHttpStream();
+        /* Keep stream starts/removals out until the torrent session is fully
+           stopped. Releasing this lock after listener teardown alone would
+           allow a new stream to start while the session is being destroyed. */
+        std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        StopHttpStreamLocked();
         stopping_=true;
         if(worker_.joinable()) worker_.join();
         std::lock_guard<std::mutex> g(m_);
