@@ -624,3 +624,41 @@ Do not call Torrent Stream fully visually validated until the unchecked Windows 
 
 
 **Additional source commits:** `19384175014e475d8b804c68df605688b84f367c` (theme refresh and resource lifecycle), `ab16915676b330c4366bf793fa89d20060b2bdb7` (semantic input palette and slider keyboard focus), and `86019de4d46b8caa52268fbbd07739fb9da02ef6` (obsolete drawing helper removal).
+
+
+## Step 14 — Settings, Advanced Settings and Help rendering alignment
+
+**Source implementation commits:**
+- `ffeef69f5c20e4a494c4a3395cd7b8b0ae238963` — shared clipped repaint and theme refresh
+- `5c33e906ef20a08db3936cd36fd4211bc4342d8b` — erase-background and Help brush lifecycle hardening
+
+### Source-level changes
+
+- Settings and Advanced Settings now use the same clipped Direct2D invalid-region paint path as the Main Player. The paint handlers retain their existing drawing geometry while limiting background clearing and drawing to the Windows invalidated rectangle.
+- Advanced Settings now suppresses redundant background erasure, matching Settings and the Main Player's flicker-resistant paint convention.
+- Help Centre now suppresses redundant background erasure while retaining its existing Direct2D/DirectWrite canvas and native RichEdit reading surface.
+- Help's cached background, input, article and navigation brushes are rebuilt when the shared theme changes and released when the Help window closes. This fixes a repeated open/close GDI brush accumulation path.
+- Advanced Settings rebuilds its diagnostic and VLC-report brushes on theme changes, so open pages follow the active shared palette.
+- Existing shared ABM DirectWrite role IDs, theme tokens, DWM caption treatment, page navigation, search, article formatting, settings values, controls and engine handlers are retained.
+
+### Explicit boundaries
+
+- This is a rendering lifecycle and shared-theme alignment pass, not a claim that every control is now a custom DirectWrite control. Native EDIT/RichEdit controls remain where text entry, selection, clipboard, IME, scrolling and familiar Windows accessibility behaviour are important.
+- Settings and Advanced Settings retain their existing hand-authored coordinate layouts. This commit does not introduce per-monitor-v2 DPI support, responsive reflow, or a scrollable Settings page.
+- No setting semantics, persistence keys, LibVLC options, diagnostics content, help text, search behaviour, playback, torrent, streaming or casting behaviour was intentionally changed.
+- The Help article's RichEdit formatting is refreshed when the active theme changes; article content and topic selection logic remain unchanged.
+
+### Validation status
+
+- [x] Settings and Advanced Settings use clipped Direct2D repaint.
+- [x] Advanced Settings and Help suppress redundant background erasure.
+- [x] Help cached brushes are refreshed on theme change and released on close.
+- [x] Advanced Settings diagnostic brushes are refreshed on theme change.
+- [ ] Build with the local Windows MSVC toolchain.
+- [ ] Compare all three windows against Main Player at 100%, 125%, 150% and 200% scaling.
+- [ ] Verify Help topic selection, article scrolling, search, F3/Enter and theme switching.
+- [ ] Verify every Settings control, folder picker, Save settings, update check and Advanced Settings navigation.
+- [ ] Verify all ten Advanced Settings pages, diagnostic preview, VLC inventory and all option persistence.
+- [ ] Verify repeated open/close cycles, GDI handle stability, keyboard focus and long-text clipping.
+
+Do not mark these windows fully migrated or visually validated until the outstanding Windows build and runtime checks pass.
