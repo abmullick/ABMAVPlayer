@@ -5192,6 +5192,13 @@ static BOOL HelpFindNext(HWND hwnd) {
 }
 static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_THEMECHANGED:
+        if(g_helpBrush){DeleteObject(g_helpBrush);g_helpBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);}
+        if(g_helpInputBrush){DeleteObject(g_helpInputBrush);g_helpInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
+        if(g_helpArticleBrush){DeleteObject(g_helpArticleBrush);g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
+        if(g_helpNavBrush){DeleteObject(g_helpNavBrush);g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);}
+        if(g_helpEdit)HelpFormatArticle(g_helpEdit);
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_CREATE: {
         g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
         const wchar_t *help=
@@ -5918,6 +5925,10 @@ static BOOL LoadAdvancedDiagnosticPreview(const wchar_t *path){
 }
 static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
  switch(msg){
+ case WM_THEMECHANGED:
+  if(g_advancedDiagnosticBrush){DeleteObject(g_advancedDiagnosticBrush);g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
+  if(g_advancedVlcReportBrush){DeleteObject(g_advancedVlcReportBrush);g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
+  InvalidateRect(w,NULL,FALSE);return 0;
  case WM_CREATE:
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
@@ -6117,7 +6128,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_PAINT:{
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_advancedSettingsUiReady){
-   ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
+   /* Use the same clipped paint path as the Main Player and Settings. */
+   ABM_D2D_BeginClip(&g_advancedSettingsUi,SETTINGS_BG,&ps.rcPaint);
    ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
        ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
@@ -6487,7 +6499,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_PAINT:{
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_settingsUiReady){
-   ABM_D2D_Begin(&g_settingsUi,SETTINGS_BG);
+   /* Match the Main Player's invalid-region rendering: preserve the rest of
+      the window and repaint only what Windows invalidated. */
+   ABM_D2D_BeginClip(&g_settingsUi,SETTINGS_BG,&ps.rcPaint);
    ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
    ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_1C9D9D);
