@@ -37,6 +37,7 @@
 #include <dwmapi.h>
 
 static void ApplyAdvancedAspectRatio(void);
+static void VlcCodecVerificationReset(void);
 static void AddAdvancedCachingOptions(libvlc_media_t *media);
 static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #pragma comment(lib, "dwmapi.lib")
