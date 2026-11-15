@@ -506,13 +506,13 @@ LRESULT CALLBACK DevicePanelProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
 void CreateDevicePanel(HWND parent){
     if(g_devicePanel)return;
     g_devicePanel=CreateWindowExW(WS_EX_CONTROLPARENT,L"STATIC",L"",
-        WS_POPUP|SS_OWNERDRAW,0,0,516,520,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_POPUP|SS_OWNERDRAW,0,0,516,520,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_devicePanelOriginalProc=(WNDPROC)SetWindowLongPtrW(g_devicePanel,GWLP_WNDPROC,(LONG_PTR)DevicePanelProc);
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
         WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,g_devicePanel,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceList=CreateWindowExW(0,L"LISTBOX",L"",
         WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
@@ -520,25 +520,25 @@ void CreateDevicePanel(HWND parent){
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_REFRESH,GetModuleHandleW(nullptr),nullptr);
     g_deviceSelect=CreateWindowExW(0,L"BUTTON",L"Use selected TV",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_SELECT,GetModuleHandleW(nullptr),nullptr);
     g_deviceApps=CreateWindowExW(0,L"BUTTON",L"Check TV apps",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APPS,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppCombo=CreateWindowExW(0,L"LISTBOX",L"",
         WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_TABSTOP,0,0,10,160,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_COMBO,GetModuleHandleW(nullptr),nullptr);
     g_deviceLaunch=CreateWindowExW(0,L"BUTTON",L"Launch app",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LAUNCH,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppStatus=CreateWindowExW(0,L"BUTTON",L"Refresh app status",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STATUS,GetModuleHandleW(nullptr),nullptr);
     g_deviceAppStop=CreateWindowExW(0,L"BUTTON",L"Stop TV",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_APP_STOP,GetModuleHandleW(nullptr),nullptr);
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,g_devicePanel,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
     SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
     SendMessageW(g_deviceHint,WM_SETFONT,(WPARAM)GetCachedTextFont(10,500),TRUE);
