@@ -43,12 +43,12 @@ static BOOL EnsureTarget(ABM_D2D *ui) {
     HRESULT hr = Factory(ui)->CreateHwndRenderTarget(rp, hp, &target);
     if (FAILED(hr)) return FALSE;
 
-    /* The Win32 layout engine and hit-testing use client-area pixel
-       coordinates. An HWND render target otherwise inherits the system DPI
-       and interprets those same values as DIPs, stretching the drawing beyond
-       the client area on scaled displays (for example 125% / 150%). Keep the
-       render target in the same 96-DPI coordinate space as the layout. */
-    target->SetDpi(96.0f, 96.0f);
+    /* The caller owns the coordinate policy for this surface. Main-player
+       rendering uses logical 96-DPI units and sets the monitor DPI explicitly;
+       legacy surfaces remain at 96 DPI until their own layout migration. */
+    UINT dpiX=ui->dpiX?ui->dpiX:96u;
+    UINT dpiY=ui->dpiY?ui->dpiY:96u;
+    target->SetDpi((FLOAT)dpiX,(FLOAT)dpiY);
 
     ID2D1SolidColorBrush *brush = nullptr;
     hr = target->CreateSolidColorBrush(D2D1::ColorF(1, 1, 1, 1), &brush);
@@ -73,6 +73,8 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     if (!ui || !hwnd) return FALSE;
     ZeroMemory(ui, sizeof(*ui));
     ui->hwnd = hwnd;
+    ui->dpiX = 96u;
+    ui->dpiY = 96u;
 
     ID2D1Factory *factory = nullptr;
     HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &factory);
@@ -107,6 +109,13 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     ui->brandMain = brandMain; ui->brandSuffix = brandSuffix;
     if (!EnsureTarget(ui)) { ABM_D2D_Destroy(ui); return FALSE; }
     return TRUE;
+}
+
+extern "C" void ABM_D2D_SetDpi(ABM_D2D *ui, UINT dpiX, UINT dpiY) {
+    if(!ui) return;
+    ui->dpiX=dpiX?dpiX:96u;
+    ui->dpiY=dpiY?dpiY:ui->dpiX;
+    if(ui->target) Target(ui)->SetDpi((FLOAT)ui->dpiX,(FLOAT)ui->dpiY);
 }
 
 extern "C" void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height) {
