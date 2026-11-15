@@ -143,3 +143,9 @@ For every failure, record:
 - [ ] Advanced Settings at 100%, 125%, 150% and 200%: verify the 1080 × 780 logical design remains proportionate, navigation rows and every option hit target align, and the diagnostic preview edit/font remains aligned and readable.
 - [ ] Move Advanced Settings between monitors with different scale factors; verify suggested window bounds, Direct2D rendering, child EDIT placement/font and resize behaviour update without clipping or stale geometry.
 - [ ] Verify Advanced Settings minimum tracking size remains usable at each tested DPI and that all existing settings actions still behave identically.
+
+
+- [ ] Standard Settings at 100%, 125%, 150% and 200%: verify all six EDIT controls align with their Direct2D frames and labels, with readable scaled Segoe UI text.
+- [ ] Verify every Settings hit target after scaling: playback-rate dropdown, toggles, browse/open buttons, update button, theme presets, Save settings, Close and Advanced Settings.
+- [ ] Move Settings between monitors with different DPI values; verify the dialog bounds, Direct2D rendering, child EDIT positions/sizes and fonts update without drift or clipping.
+- [ ] Verify volume, cache paths, download path, quota and bandwidth fields retain their values and save exactly as before the DPI migration.
