@@ -69,6 +69,81 @@ static BOOL MakeFormat(IDWriteFactory *factory, const wchar_t *family,
         DWRITE_FONT_STRETCH_NORMAL, size, L"en-us", out));
 }
 
+
+static ID2D1DCRenderTarget *CanvasTarget(ABM_D2D_CANVAS *c) { return static_cast<ID2D1DCRenderTarget *>(c->target); }
+static ID2D1SolidColorBrush *CanvasBrush(ABM_D2D_CANVAS *c) { return static_cast<ID2D1SolidColorBrush *>(c->brush); }
+
+extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
+    if (!c) return FALSE;
+    ZeroMemory(c, sizeof(*c));
+    ID2D1Factory *factory = nullptr;
+    if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &factory))) return FALSE;
+    c->factory = factory;
+    IDWriteFactory *wf = nullptr;
+    if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
+        reinterpret_cast<IUnknown **>(&wf)))) { ABM_D2D_CanvasDestroy(c); return FALSE; }
+    c->writeFactory = wf;
+    IDWriteTextFormat *body = nullptr, *icon = nullptr;
+    if (!MakeFormat(wf, L"Segoe UI Variable Text", 12.5f, DWRITE_FONT_WEIGHT_SEMI_BOLD, &body) ||
+        !MakeFormat(wf, L"Segoe MDL2 Assets", 16.0f, DWRITE_FONT_WEIGHT_NORMAL, &icon)) {
+        SafeRelease(&body); SafeRelease(&icon); ABM_D2D_CanvasDestroy(c); return FALSE;
+    }
+    c->body = body; c->iconFormat = icon;
+    D2D1_RENDER_TARGET_PROPERTIES rp = D2D1::RenderTargetProperties(
+        D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+        96.0f, 96.0f, D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE, D2D1_FEATURE_LEVEL_DEFAULT);
+    ID2D1DCRenderTarget *target = nullptr;
+    if (FAILED(factory->CreateDCRenderTarget(&rp, &target))) { ABM_D2D_CanvasDestroy(c); return FALSE; }
+    target->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
+    ID2D1SolidColorBrush *brush = nullptr;
+    if (FAILED(target->CreateSolidColorBrush(D2D1::ColorF(1,1,1,1), &brush))) {
+        target->Release(); ABM_D2D_CanvasDestroy(c); return FALSE;
+    }
+    c->target = target; c->brush = brush;
+    return TRUE;
+}
+extern "C" BOOL ABM_D2D_CanvasBegin(ABM_D2D_CANVAS *c, HDC dc, const RECT *bounds) {
+    if (!c || !c->target || !dc || !bounds || c->drawing) return FALSE;
+    if (FAILED(CanvasTarget(c)->BindDC(dc, bounds))) return FALSE;
+    CanvasTarget(c)->BeginDraw(); c->drawing = TRUE; return TRUE;
+}
+extern "C" BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *c) {
+    if (!c || !c->target || !c->drawing) return FALSE;
+    c->drawing = FALSE;
+    HRESULT hr = CanvasTarget(c)->EndDraw();
+    return SUCCEEDED(hr);
+}
+extern "C" void ABM_D2D_CanvasFillRound(ABM_D2D_CANVAS *c,float l,float t,float r,float b,float radius,COLORREF color) {
+    if (!c || !c->drawing || r<=l || b<=t) return;
+    D2D1_COLOR_F col=ToD2D(color); CanvasBrush(c)->SetColor(col);
+    CanvasTarget(c)->FillRoundedRectangle(D2D1::RoundedRect(D2D1::RectF(l,t,r,b),radius,radius),CanvasBrush(c));
+}
+extern "C" void ABM_D2D_CanvasStrokeRound(ABM_D2D_CANVAS *c,float l,float t,float r,float b,float radius,COLORREF color,float width) {
+    if (!c || !c->drawing || r<=l || b<=t) return;
+    CanvasBrush(c)->SetColor(ToD2D(color));
+    CanvasTarget(c)->DrawRoundedRectangle(D2D1::RoundedRect(D2D1::RectF(l,t,r,b),radius,radius),CanvasBrush(c),width);
+}
+extern "C" void ABM_D2D_CanvasText(ABM_D2D_CANVAS *c,const wchar_t *value,RECT rect,COLORREF color,int style,UINT flags) {
+    if (!c || !c->drawing || !value || !value[0]) return;
+    IDWriteTextFormat *fmt=static_cast<IDWriteTextFormat *>(style==1?c->iconFormat:c->body);
+    fmt->SetTextAlignment((flags&DT_CENTER)?DWRITE_TEXT_ALIGNMENT_CENTER:((flags&DT_RIGHT)?DWRITE_TEXT_ALIGNMENT_TRAILING:DWRITE_TEXT_ALIGNMENT_LEADING));
+    fmt->SetParagraphAlignment((flags&DT_VCENTER)?DWRITE_PARAGRAPH_ALIGNMENT_CENTER:DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+    fmt->SetWordWrapping((flags&DT_SINGLELINE)?DWRITE_WORD_WRAPPING_NO_WRAP:DWRITE_WORD_WRAPPING_WRAP);
+    CanvasBrush(c)->SetColor(ToD2D(color));
+    D2D1_RECT_F box=D2D1::RectF((float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom);
+    CanvasTarget(c)->DrawText(value,(UINT32)wcslen(value),fmt,box,CanvasBrush(c),D2D1_DRAW_TEXT_OPTIONS_CLIP,DWRITE_MEASURING_MODE_NATURAL);
+}
+extern "C" void ABM_D2D_CanvasDestroy(ABM_D2D_CANVAS *c) {
+    if (!c) return;
+    SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&c->brush));
+    SafeRelease(reinterpret_cast<ID2D1DCRenderTarget **>(&c->target));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->body));
+    SafeRelease(reinterpret_cast<IDWriteTextFormat **>(&c->iconFormat));
+    SafeRelease(reinterpret_cast<IDWriteFactory **>(&c->writeFactory));
+    SafeRelease(reinterpret_cast<ID2D1Factory **>(&c->factory));
+    ZeroMemory(c,sizeof(*c));
+}
+
 extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
     if (!ui || !hwnd) return FALSE;
     ZeroMemory(ui, sizeof(*ui));
