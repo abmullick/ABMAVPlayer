@@ -6180,7 +6180,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ABM_D2D_SetDpi(&g_ui,newDpi,newDpi);
         g_videoBoundsValid=FALSE;
         UpdateLayout(hwnd);
-        RECT client{};GetClientRect(hwnd,&client);
+        RECT client={0};GetClientRect(hwnd,&client);
         ABM_D2D_Resize(&g_ui,(UINT)client.right,(UINT)client.bottom);
         InvalidateRect(hwnd,NULL,FALSE);
         return 0;
