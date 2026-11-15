@@ -5074,6 +5074,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
         return 0;
     }
+    case WM_GETMINMAXINFO:{MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mi->ptMinTrackSize.x=ABM_DpiScale(760,dpi);mi->ptMinTrackSize.y=ABM_DpiScale(620,dpi);return 0;}
     case WM_SIZE: {
         UINT dpi=ABM_DpiGetForWindow(hwnd);
         int w=ABM_DpiUnscale(LOWORD(lp),dpi),h=ABM_DpiUnscale(HIWORD(lp),dpi);
@@ -5125,7 +5126,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_MEASUREITEM: {
         MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp;
-        if(mi&&mi->CtlID==HELP_ID_TOPICS){mi->itemHeight=40;return TRUE;}
+        if(mi&&mi->CtlID==HELP_ID_TOPICS){mi->itemHeight=ABM_DpiScale(40,ABM_DpiGetForWindow(hwnd));return TRUE;}
         break;
     }
     case WM_DRAWITEM: {
@@ -5177,14 +5178,15 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         LRESULT hit=DefWindowProcW(hwnd,msg,wp,lp);
         if(hit==HTCLIENT) {
             POINT p={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};ScreenToClient(hwnd,&p);
-            RECT rc;GetClientRect(hwnd,&rc);
-            if(p.y>=0&&p.y<96&&p.x<rc.right-58)return HTCAPTION;
+            RECT rc;GetClientRect(hwnd,&rc);UINT dpi=ABM_DpiGetForWindow(hwnd);
+            p.x=ABM_DpiUnscale(p.x,dpi);p.y=ABM_DpiUnscale(p.y,dpi);
+            if(p.y>=0&&p.y<96&&p.x<ABM_DpiUnscale(rc.right,dpi)-58)return HTCAPTION;
         }
         return hit;
     }
     case WM_LBUTTONDOWN: {
-        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);RECT rc;GetClientRect(hwnd,&rc);
-        if(x>=rc.right-58&&y>=8&&y<=62){DestroyWindow(hwnd);return 0;}
+        UINT dpi=ABM_DpiGetForWindow(hwnd);int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);RECT rc;GetClientRect(hwnd,&rc);
+        if(x>=ABM_DpiUnscale(rc.right,dpi)-58&&y>=8&&y<=62){DestroyWindow(hwnd);return 0;}
         break;
     }
     case WM_CTLCOLOREDIT:
