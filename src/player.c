@@ -373,7 +373,7 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
         if(wp==VK_DOWN||wp==VK_UP){
             int step=wp==VK_DOWN?1:-1;int i=d->hover<0?(step>0?-1:0):d->hover;
             for(int n=0;n<d->count;n++){i=(i+step+d->count)%d->count;if(!d->items[i].heading&&d->items[i].enabled){d->hover=i;break;}}
-            RECT rc;GetClientRect(w,&rc);int visible=(ABM_DpiUnscale(rc.bottom,dpi)-62)/36;if(d->hover<d->first)d->first=d->hover;if(d->hover>=d->first+visible)d->first=d->hover-visible+1;InvalidateRect(w,NULL,FALSE);return 0;
+            RECT rc;GetClientRect(w,&rc);UINT dpi=ABM_DpiGetForWindow(w);int visible=(ABM_DpiUnscale(rc.bottom,dpi)-62)/36;if(d->hover<d->first)d->first=d->hover;if(d->hover>=d->first+visible)d->first=d->hover-visible+1;InvalidateRect(w,NULL,FALSE);return 0;
         }
         if(wp==VK_RETURN&&d->hover>=0){d->result=d->items[d->hover].command;d->done=TRUE;DestroyWindow(w);return 0;}
         break;
