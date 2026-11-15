@@ -4869,9 +4869,32 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             r.top=628;r.bottom=656;ABM_D2D_CanvasText(&g_aboutCanvas,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasEnd(&g_aboutCanvas);
         }else{
-            SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_UI_COLOR_TEXT);
-            RECT titleRect={320,58,rc.right-34,108};
-            DrawTextW(dc,L"ABM AV Player",-1,&titleRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SetBkMode(dc,TRANSPARENT);
+            RECT r={320,58,rc.right-34,108};HFONT oldFont=(HFONT)SelectObject(dc,g_headingFont);
+            SetTextColor(dc,ABM_UI_COLOR_TEXT);DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            r.top=116;r.bottom=145;DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_headingFont);SetTextColor(dc,ABM_THEME_COLOR_FFFFFF);
+            r.top=151;r.bottom=192;DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_font);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
+            r.top=198;r.bottom=232;DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            r.top=245;r.bottom=274;DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_font);SetTextColor(dc,ABM_THEME_COLOR_FAFCFF);
+            r.top=278;r.bottom=310;DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=320;r.bottom=399;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
+            DrawTextW(dc,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_font);SetTextColor(dc,ABM_UI_COLOR_TEXT);
+            r.top=461;r.bottom=535;DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            r.top=550;r.bottom=580;DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
+            r.top=585;r.bottom=616;DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            r.top=628;r.bottom=656;SetTextColor(dc,ABM_UI_COLOR_TEXT_MUTED);
+            DrawTextW(dc,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            SelectObject(dc,oldFont);
         }
         EndPaint(hwnd,&ps);return 0;
     }
