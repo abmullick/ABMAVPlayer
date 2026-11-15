@@ -6490,15 +6490,15 @@ static void SettingsDrawScrollBars(HWND w){
  int ts,tl,thumb,th,maxScroll;
  SettingsScrollMetrics(w,TRUE,&ts,&tl,&thumb,&th,&maxScroll);
  if(maxScroll>0){
-  ABM_D2D_Round(&g_settingsUi,(float)(rc.right-9),4.0f,(float)(rc.right-5),(float)(rc.bottom-SETTINGS_SCROLLBAR_SIZE-4),2.0f,ABM_THEME_COLOR_192B3B);
+  ABM_D2D_Round(&g_settingsUi,(float)(rc.right-9),4.0f,(float)(rc.right-5),(float)(rc.bottom-SETTINGS_SCROLLBAR_SIZE-4),2.0f,ABM_THEME_COLOR_193041);
   ABM_D2D_Round(&g_settingsUi,(float)(rc.right-10),(float)thumb,(float)(rc.right-4),(float)(thumb+th),3.0f,
-    g_settingsScrollDragging&&g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_456579);
+    g_settingsScrollDragging&&g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_45697C);
  }
  SettingsScrollMetrics(w,FALSE,&ts,&tl,&thumb,&th,&maxScroll);
  if(maxScroll>0){
-  ABM_D2D_Round(&g_settingsUi,4.0f,(float)(rc.bottom-9),(float)(rc.right-SETTINGS_SCROLLBAR_SIZE-4),(float)(rc.bottom-5),2.0f,ABM_THEME_COLOR_192B3B);
+  ABM_D2D_Round(&g_settingsUi,4.0f,(float)(rc.bottom-9),(float)(rc.right-SETTINGS_SCROLLBAR_SIZE-4),(float)(rc.bottom-5),2.0f,ABM_THEME_COLOR_193041);
   ABM_D2D_Round(&g_settingsUi,(float)thumb,(float)(rc.bottom-10),(float)(thumb+th),(float)(rc.bottom-4),3.0f,
-    g_settingsScrollDragging&&!g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_456579);
+    g_settingsScrollDragging&&!g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_45697C);
  }
 }
 static void SettingsUpdateScrollBars(HWND w){
