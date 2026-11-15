@@ -79,3 +79,11 @@
 - Microsoft Edge WebView2 Evergreen Runtime
 - 64-bit LibVLC SDK/runtime and required plugins
 - Windows x64 build dependencies, including the manifest-pinned libtorrent 2.1.2 package
+
+
+## Settings window — custom scrolling follow-up
+
+- Replaced the Settings window's native Windows horizontal and vertical scrollbars with custom Direct2D-rendered ABM scrollbars using shared theme tokens.
+- Added documentation for thumb dragging, track clicks, mouse-wheel scrolling and keyboard navigation, including the retained native text-entry controls.
+- Updated the in-app F1 Settings article, Settings reference, User Guide, Developer Guide, UI/UX design-system notes and Windows QA checklist.
+- This is a source/documentation update. The custom scrollbar implementation still requires a successful MSVC build and Windows runtime verification at multiple window sizes and display scales.
