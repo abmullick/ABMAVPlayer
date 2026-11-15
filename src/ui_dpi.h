@@ -113,4 +113,19 @@ static __inline void ABM_DpiClampMinTrack(HWND hwnd,MINMAXINFO *info,
     info->ptMinTrackSize.y=minH;
 }
 
+static __inline void ABM_DpiClampRectToWorkArea(HWND anchor,RECT *rect) {
+    if(!rect) return;
+    RECT work={0};if(!ABM_DpiGetWorkArea(anchor,&work))return;
+    int workW=work.right-work.left,workH=work.bottom-work.top;
+    int width=rect->right-rect->left,height=rect->bottom-rect->top;
+    if(width>workW-16)width=workW-16;
+    if(height>workH-16)height=workH-16;
+    int x=rect->left,y=rect->top;
+    if(x<work.left+8)x=work.left+8;
+    if(y<work.top+8)y=work.top+8;
+    if(x+width>work.right-8)x=work.right-width-8;
+    if(y+height>work.bottom-8)y=work.bottom-height-8;
+    SetRect(rect,x,y,x+width,y+height);
+}
+
 #endif
