@@ -237,3 +237,10 @@ Common starting points:
 - **Audio silent or unstable:** compare Automatic, WASAPI and DirectSound one at a time, restarting after each change.
 - **Subtitle sync is wrong:** adjust Timing in 50 ms increments; do not change font/outline to fix timing.
 - **Disk pressure during torrent use:** review cache quota and both folder paths; changing a path does not move old data.
+
+
+### VLC Runtime & Codecs — playback evidence
+
+The report separates runtime inventory from evidence gathered from the current media session. While a file is playing, ABM checks the LibVLC player state and reads elementary-stream metadata through LibVLC. The report lists each returned stream's type, track ID, codec description and FourCC. A diagnostic export records the same current-media evidence.
+
+**Verified** means the player reached `Playing` and LibVLC returned stream metadata for that media. **Playing / metadata unavailable** is incomplete, not a pass. **Failed** means LibVLC reported an error. The displayed container/extension is derived from the filename and is only a hint. Stream presence does not prove every alternate audio/subtitle track was selected, and this API does not reveal the internal decoder plugin/module name. Use several representative files to test a codec/container family; do not treat one file as universal certification.
