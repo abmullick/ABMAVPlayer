@@ -69,6 +69,8 @@ struct Task {
     bool metadata_applied=false;
     bool fallback_trackers_added=false;
     int file_count=0;
+    int selected_file_index=-1;
+    uint64_t selected_file_size=0;
     std::atomic<bool> removed{false};
 };
 class Engine {
@@ -82,7 +84,7 @@ public:
             downloads_=(download_directory&&*download_directory?fs::absolute(download_directory):(fs::absolute(directory)/L"Torrent Downloads")).lexically_normal();
             fs::create_directories(data_);
             fs::create_directories(downloads_);
-            cache_used_bytes_.store(DirectoryBytes(data_));
+            cache_used_bytes_.store(StorageBytes());
             {
                 std::ifstream config(data_/L"cache_limit.txt");
                 uint64_t persisted=0;
@@ -228,22 +230,33 @@ public:
         auto ti=i->second->handle.torrent_file();
         if(!ti||index<0||index>=ti->layout().num_files())return false;
         const uint64_t fileBytes=static_cast<uint64_t>(ti->layout().file_size(lt::file_index_t(index)));
-        const uint64_t existing=DirectoryBytes(i->second->cache_path);
-        const uint64_t additional=fileBytes>existing?fileBytes-existing:0;
+        const uint64_t existingFileBytes=TaskFileBytes(*i->second,index);
+        const uint64_t additional=fileBytes>existingFileBytes?fileBytes-existingFileBytes:0;
+        const uint64_t otherReservations=OutstandingReservations(i->second.get());
+        if(additional>UINT64_MAX-otherReservations ||
+           !EnsureStorageCapacity(additional+otherReservations)) {
+            i->second->error=L"Torrent storage quota reached. Increase the quota or remove files from the permanent Torrent Downloads folder before selecting this file.";
+            return false;
+        }
         ULARGE_INTEGER freeAvailable{},totalBytes{},totalFree{};
-        if(!GetDiskFreeSpaceExW(i->second->cache_path.c_str(),&freeAvailable,&totalBytes,&totalFree)||
+        if(!GetDiskFreeSpaceExW(downloads_.c_str(),&freeAvailable,&totalBytes,&totalFree)||
            freeAvailable.QuadPart<additional) {
             i->second->error=L"Not enough free disk space in the permanent Torrent Downloads folder for this file.";
             return false;
         }
         i->second->error.clear();
         std::vector<lt::download_priority_t> p((size_t)ti->layout().num_files(),lt::dont_download);
-        p[(size_t)index]=lt::default_priority;i->second->handle.prioritize_files(p);return true;
+        p[(size_t)index]=lt::default_priority;
+        i->second->handle.prioritize_files(p);
+        i->second->selected_file_index=index;
+        i->second->selected_file_size=fileBytes;
+        cache_used_bytes_.store(StorageBytes());
+        return true;
     }
     bool CacheInfo(uint64_t *used,uint64_t *limit) {
         if(!used||!limit)return false;
         std::lock_guard<std::mutex> g(m_);
-        *used=cache_used_bytes_.load();*limit=cache_limit_bytes_;return true;
+        *used=StorageBytes();cache_used_bytes_.store(*used);*limit=cache_limit_bytes_;return true;
     }
     bool SetCacheLimit(uint64_t limit,uint64_t *used) {
         if(limit<1024ULL*1024*1024||limit>4096ULL*1024*1024*1024)return false;
@@ -262,17 +275,17 @@ public:
                 return false;
         }
         CleanupCacheToLimit();
-        const uint64_t current=DirectoryBytes(data_);
+        const uint64_t current=StorageBytes();
         cache_used_bytes_.store(current);
         if(used)*used=current;
         return current<=cache_limit_bytes_;
     }
     bool ClearCache(uint64_t *freed,uint64_t *remaining) {
         std::lock_guard<std::mutex> g(m_);
-        const uint64_t before=DirectoryBytes(data_);
+        const uint64_t before=StorageBytes();
         auto candidates=EvictableCacheFolders();
         for(const auto &path:candidates){std::error_code ec;fs::remove_all(path,ec);}
-        const uint64_t after=DirectoryBytes(data_);
+        const uint64_t after=StorageBytes();
         cache_used_bytes_.store(after);
         if(freed)*freed=before>after?before-after:0;
         if(remaining)*remaining=after;
@@ -703,6 +716,54 @@ private:
         for(unsigned char c:bytes){out.push_back(hex[c>>4]);out.push_back(hex[c&15]);}
         return out.empty()?L"unknown":out;
     }
+    static bool IsTorrentHashFolder(const fs::path &path) {
+        const std::wstring name=path.filename().wstring();
+        if(name.size()!=40&&name.size()!=64)return false;
+        return std::all_of(name.begin(),name.end(),[](wchar_t ch){return iswxdigit(ch)!=0;});
+    }
+    static uint64_t ManagedDownloadBytes(const fs::path &root) {
+        std::error_code ec;
+        const auto rootStatus=fs::symlink_status(root,ec);
+        if(ec||!fs::is_directory(rootStatus)||fs::is_symlink(rootStatus))return 0;
+        uint64_t total=0;
+        for(fs::directory_iterator it(root,fs::directory_options::skip_permission_denied,ec),end;it!=end;it.increment(ec)) {
+            if(ec){ec.clear();continue;}
+            const auto status=it->symlink_status(ec);
+            if(ec){ec.clear();continue;}
+            if(!fs::is_directory(status)||fs::is_symlink(status)||!IsTorrentHashFolder(it->path()))continue;
+            const uint64_t bytes=DirectoryBytes(it->path());
+            total=bytes>UINT64_MAX-total?UINT64_MAX:total+bytes;
+        }
+        return total;
+    }
+    uint64_t StorageBytes() const {
+        const uint64_t cache=DirectoryBytes(data_);
+        const uint64_t downloads=ManagedDownloadBytes(downloads_);
+        return downloads>UINT64_MAX-cache?UINT64_MAX:cache+downloads;
+    }
+    uint64_t TaskFileBytes(const Task &task,int index) const {
+        try {
+            auto ti=task.handle.torrent_file();
+            if(!ti||index<0||index>=ti->layout().num_files())return 0;
+            const std::string fullPath=ti->layout().file_path(lt::file_index_t(index),task.cache_path.u8string());
+            const fs::path file=fs::u8path(fullPath);
+            std::error_code ec;
+            if(!fs::is_regular_file(file,ec)||ec)return 0;
+            const uint64_t bytes=fs::file_size(file,ec);
+            return ec?0:bytes;
+        } catch(...) { return 0; }
+    }
+    uint64_t OutstandingReservations(const Task *excluded=nullptr) const {
+        uint64_t total=0;
+        for(const auto &entry:tasks_) {
+            const Task *task=entry.second.get();
+            if(task==excluded||task->selected_file_index<0||task->selected_file_size==0)continue;
+            const uint64_t present=TaskFileBytes(*task,task->selected_file_index);
+            const uint64_t remaining=task->selected_file_size>present?task->selected_file_size-present:0;
+            total=remaining>UINT64_MAX-total?UINT64_MAX:total+remaining;
+        }
+        return total;
+    }
     static uint64_t DirectoryBytes(const fs::path &root) {
         std::error_code ec;
         if(!fs::exists(root,ec)||ec)return 0;
@@ -713,7 +774,7 @@ private:
             auto st=it->symlink_status(ec);if(ec){ec.clear();continue;}
             if(fs::is_regular_file(st)) {
                 const auto size=it->file_size(ec);
-                if(!ec&&UINT64_MAX-total>=size)total+=size;
+                if(!ec)total=size>UINT64_MAX-total?UINT64_MAX:total+size;
                 ec.clear();
             } else if(fs::is_symlink(st))it.disable_recursion_pending();
         }
@@ -741,26 +802,25 @@ private:
         std::vector<fs::path> result;for(auto &entry:ordered)result.push_back(entry.second);
         return result;
     }
-    bool EnsureCacheCapacity(uint64_t additional,const fs::path &protectedPath) {
+    bool EnsureStorageCapacity(uint64_t additional) {
         if(additional>cache_limit_bytes_)return false;
-        uint64_t used=DirectoryBytes(data_);
-        if(additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional)return true;
+        uint64_t used=StorageBytes();
+        if(used<=cache_limit_bytes_&&additional<=cache_limit_bytes_-used)return true;
         auto candidates=EvictableCacheFolders();std::error_code ec;
         for(const auto &path:candidates) {
             fs::remove_all(path,ec);ec.clear();
-            used=DirectoryBytes(data_);
-            if(additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional)return true;
+            used=StorageBytes();
+            if(used<=cache_limit_bytes_&&additional<=cache_limit_bytes_-used)return true;
         }
-        (void)protectedPath;
-        return additional<=cache_limit_bytes_&&used<=cache_limit_bytes_-additional;
+        return used<=cache_limit_bytes_&&additional<=cache_limit_bytes_-used;
     }
     void CleanupCacheToLimit() {
-        uint64_t used=DirectoryBytes(data_);
+        uint64_t used=StorageBytes();
         if(used<=cache_limit_bytes_)return;
         auto candidates=EvictableCacheFolders();std::error_code ec;
         for(const auto &path:candidates) {
             fs::remove_all(path,ec);ec.clear();
-            used=DirectoryBytes(data_);if(used<=cache_limit_bytes_)break;
+            used=StorageBytes();if(used<=cache_limit_bytes_)break;
         }
     }
     void Monitor() {
@@ -836,7 +896,7 @@ private:
                         ec.clear();
                     }
                 }
-                cache_used_bytes_.store(DirectoryBytes(data_));
+                cache_used_bytes_.store(StorageBytes());
                 lastCacheScan=now;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
