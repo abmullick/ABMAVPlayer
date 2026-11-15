@@ -5430,7 +5430,7 @@ static void SettingsApply(HWND w) {
    page surfaces only; engine controls are added in later, capability-backed steps. */
 static ABM_D2D g_advancedSettingsUi;
 static BOOL g_advancedSettingsUiReady=FALSE;
-static int g_advancedSettingsScrollY=0;
+static int g_advancedSettingsScrollY=0,g_advancedSettingsScrollX=0;
 static BOOL g_advancedConfirmExit=TRUE;
 static BOOL g_advancedDoubleClickFullscreen=TRUE;
 static HWND g_advancedSettingsWindow=NULL;
@@ -5547,7 +5547,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     pointer coordinates once, at the window-procedure boundary. */
  if(msg==WM_LBUTTONDOWN){
   UINT dpi=ABM_DpiGetForWindow(w);
-  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)+g_advancedSettingsScrollY;
+  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi)+g_advancedSettingsScrollX,y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi)+g_advancedSettingsScrollY;
   lp=MAKELPARAM((short)x,(short)y);
  }
  switch(msg){
@@ -5573,6 +5573,10 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         SCROLLINFO si={sizeof(si),SIF_RANGE|SIF_PAGE|SIF_POS,0,679,(UINT)page,g_advancedSettingsScrollY,0};
         SetScrollInfo(w,SB_VERT,&si,TRUE);int maxPos=680-page;if(maxPos<0)maxPos=0;
         if(g_advancedSettingsScrollY>maxPos)g_advancedSettingsScrollY=maxPos;
+        UINT dpi=ABM_DpiGetForWindow(w);int pageW=ABM_DpiUnscale(LOWORD(lp),dpi);if(pageW<1)pageW=1;
+        SCROLLINFO sx={sizeof(sx),SIF_RANGE|SIF_PAGE|SIF_POS,0,1079,(UINT)pageW,g_advancedSettingsScrollX,0};
+        SetScrollInfo(w,SB_HORZ,&sx,TRUE);int maxX=1080-pageW;if(maxX<0)maxX=0;
+        if(g_advancedSettingsScrollX>maxX)g_advancedSettingsScrollX=maxX;
         InvalidateRect(w,NULL,FALSE);return 0;
     }
     case WM_VSCROLL:{
@@ -5580,6 +5584,12 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         switch(LOWORD(wp)){case SB_LINEUP:next-=48;break;case SB_LINEDOWN:next+=48;break;case SB_PAGEUP:next-=(int)si.nPage;break;case SB_PAGEDOWN:next+=(int)si.nPage;break;case SB_THUMBTRACK:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=680;break;}
         int maxPos=680-(int)si.nPage;if(maxPos<0)maxPos=0;if(next<0)next=0;if(next>maxPos)next=maxPos;
         if(next!=g_advancedSettingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_advancedSettingsScrollY-next,dpi);g_advancedSettingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
+    }
+    case WM_HSCROLL:{
+        SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_HORZ,&si);int next=g_advancedSettingsScrollX;
+        switch(LOWORD(wp)){case SB_LINELEFT:next-=48;break;case SB_LINERIGHT:next+=48;break;case SB_PAGELEFT:next-=(int)si.nPage;break;case SB_PAGERIGHT:next+=(int)si.nPage;break;case SB_THUMBTRACK:next=si.nTrackPos;break;case SB_LEFT:next=0;break;case SB_RIGHT:next=1080;break;}
+        int maxPos=1080-(int)si.nPage;if(maxPos<0)maxPos=0;if(next<0)next=0;if(next>maxPos)next=maxPos;
+        if(next!=g_advancedSettingsScrollX){UINT dpi=ABM_DpiGetForWindow(w);int dx=ABM_DpiScale(g_advancedSettingsScrollX-next,dpi);g_advancedSettingsScrollX=next;ScrollWindowEx(w,dx,0,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_HORZ,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
     }
     case WM_MOUSEWHEEL:{
         int delta=GET_WHEEL_DELTA_WPARAM(wp),next=g_advancedSettingsScrollY-(delta/WHEEL_DELTA)*144;
@@ -5782,7 +5792,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_advancedSettingsUiReady){
    ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
-   ABM_D2D_SetTransform(&g_advancedSettingsUi,1.0f,1.0f,0.0f,(float)-g_advancedSettingsScrollY);
+   ABM_D2D_SetTransform(&g_advancedSettingsUi,1.0f,1.0f,(float)-g_advancedSettingsScrollX,(float)-g_advancedSettingsScrollY);
    ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
        ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
@@ -6047,7 +6057,7 @@ static void ShowAdvancedSettingsDialog(HWND owner){
  int ww=wr.right-wr.left,hh=wr.bottom-wr.top,x=wr.left,y=wr.top;
  g_advancedSettingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,
   L"ABMAVPlayerAdvancedSettings",L"ABM AV Player — Advanced Settings",
-  WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VSCROLL,x,y,ww,hh,owner,NULL,inst,NULL);
+  WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VSCROLL|WS_HSCROLL,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_advancedSettingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_advancedSettingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
