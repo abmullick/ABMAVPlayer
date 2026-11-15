@@ -54,7 +54,7 @@ The updater requires GitHub to provide a SHA-256 digest for the installer asset.
 
 `tools/prepare_version.ps1` generates the C/C++ header, Inno Setup include and vcpkg manifest from `VERSION`. `build_installer.bat` rebuilds and checks the freshly built and staged executables against that source. `publish_release.bat` reads the same file and checks the installer's PE FileVersionInfo/ProductVersion resource; it does not search inside the compressed installer payload. If any displayed or embedded version is stale, rebuild from the current `main` source and verify the result before publishing.
 
-## Previous release baseline: v1.0.6
+## Previous release baseline: v1.0.7
 
-The v1.0.6 release introduced native compiler/linker hardening, stricter local trial-state validation, constant-time activation digest comparison and lightweight digest obfuscation. Authenticode enforcement remained optional and disabled by default. The standard unsigned build did not require a certificate or publisher registration.
+The v1.0.7 release focused on the F1 Help Centre experience and release/packaging alignment. It refined topic navigation, rich-text article presentation, paragraph rendering and guide-wide search. It aligned the application, Streaming Centre, installer metadata, package manifest and release scripts to the canonical `VERSION` file while preserving the existing installer identity and per-user AppData separation.
 
