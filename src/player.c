@@ -5982,6 +5982,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   return 0;
  case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);if(x!=g_advancedHoverX||y!=g_advancedHoverY){g_advancedHoverX=x;g_advancedHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
  case WM_MOUSELEAVE:g_advancedHoverX=g_advancedHoverY=-1;g_advancedMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_CANCELMODE:case WM_CAPTURECHANGED:g_advancedMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
  case WM_LBUTTONDOWN:{g_advancedMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
@@ -6494,6 +6495,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
  case WM_MOUSELEAVE:g_settingsHoverX=g_settingsHoverY=-1;g_settingsMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_CANCELMODE:case WM_CAPTURECHANGED:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
  case WM_LBUTTONDOWN:{g_settingsMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
