@@ -1,5 +1,14 @@
 # ABM AV Player — Help Centre experience and release alignment
 
+## Documentation follow-up — Advanced Settings diagnostics
+
+- Expanded the in-app F1 Advanced Settings article to explain the read-only Overview, all ten Advanced Settings pages, Diagnostics report workflow and the separate VLC Runtime & Codecs evidence levels.
+- Clarified the distinction between system-wide resource metrics and ABM AV Player process memory, and documented the local report preview and data-folder actions.
+- Documented the four VLC evidence states: File Found, Plugin Loaded, Runtime Tested and Playback Verified. Clarified that on-demand plugin loading is normal and playback evidence is not codec certification.
+- Expanded the User Guide's Diagnostics report contents, privacy review guidance and Refresh scan workflow.
+- Documentation-only change: no settings, playback, diagnostics collection, network or upload behaviour was changed. Windows build and in-app runtime verification remain required.
+
+
 ## What's new
 
 - Refined the F1 Help Centre shell with ABM AV Player styling, stronger typography, clearer navigation and a more spacious search and article layout.
