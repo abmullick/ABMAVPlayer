@@ -1161,6 +1161,10 @@ COLORREF ABMThemePresetAccent(ABMThemePreset preset);
 #define ABM_UI_FONT_FAMILY_TEXT       L"Segoe UI Variable Text"
 #define ABM_UI_FONT_FAMILY_DISPLAY    L"Segoe UI Variable Display"
 #define ABM_UI_FONT_SIZE_CAPTION      12.0f
+#define ABM_UI_FONT_SIZE_D2D_BODY     16.5f
+#define ABM_UI_FONT_SIZE_D2D_SMALL    12.5f
+#define ABM_UI_FONT_SIZE_D2D_HEADING  28.0f
+#define ABM_UI_FONT_SIZE_ICON         16.0f
 #define ABM_UI_FONT_SIZE_BODY         14.0f
 #define ABM_UI_FONT_SIZE_BODY_LARGE   16.0f
 #define ABM_UI_FONT_SIZE_SECTION     18.0f
