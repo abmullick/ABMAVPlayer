@@ -138,6 +138,14 @@ The page reports application version and PID, logical processor count, installed
 
 The report is local and is not automatically uploaded or sent to support. Review it before sharing because it can include machine details, executable paths, process information and playback/session state.
 
+### VLC Runtime & Codecs
+
+Open **Command Centre → Settings → Advanced… → VLC Runtime & Codecs** when a media file fails to open or you want to check which VLC runtime ABM AV Player is using.
+
+The page displays the loaded LibVLC version and DLL path, the resolved plugin directory, and a presence check for selected decoder-related plugin files. Use **Refresh scan** after changing the runtime or plugin files, then generate a Diagnostics report if you need to share the findings.
+
+A listed plugin file is not a guarantee that a codec or profile will decode. The check does not execute sample media, certify hardware acceleration, or prove that all plugin dependencies loaded. Test representative files—for example H.264, HEVC Main10, AV1, AAC, FLAC and Opus—on the actual PC. Missing one named plugin file also does not prove the corresponding format is unsupported; another VLC module may provide that capability.
+
 ### Practical settings scenarios
 
 Use these as starting points, not universal prescriptions. Compare the same file or stream before and after each single change.
