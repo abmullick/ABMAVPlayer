@@ -3218,74 +3218,69 @@ static void EqSetFromPoint(HWND hwnd,int x,int y) {
         }
     }
 }
+static ABM_D2D_CANVAS g_equalizerCanvas;
+static BOOL g_equalizerCanvasReady=FALSE;
 static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg){
     case WM_ACTIVATE:
         if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
         return 0;
     case WM_ERASEBKGND:return 1;
+    case WM_CREATE:
+        g_equalizerCanvasReady=ABM_D2D_CanvasInit(&g_equalizerCanvas);
+        return 0;
+    case WM_DESTROY:
+        if(g_equalizerCanvasReady){g_equalizerCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_equalizerCanvas);}
+        return 0;
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);
         RECT client;GetClientRect(hwnd,&client);
-        HDC mem=CreateCompatibleDC(dc);HBITMAP bmp=CreateCompatibleBitmap(dc,client.right,client.bottom);
-        HBITMAP old=(HBITMAP)SelectObject(mem,bmp);
-        HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(mem,&client,bg);DeleteObject(bg);
-        HPEN border=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER_STRONG);HGDIOBJ oldPen=SelectObject(mem,border);
-        HBRUSH panel=CreateSolidBrush(ABM_UI_COLOR_SURFACE);HGDIOBJ oldBrush=SelectObject(mem,panel);
-        RoundRect(mem,8,8,client.right-8,client.bottom-8,22,22);
-        SelectObject(mem,oldBrush);DeleteObject(panel);SelectObject(mem,oldPen);DeleteObject(border);
-        SetBkMode(mem,TRANSPARENT);
-        HFONT title=CreateFontW(23,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
-        HFONT smallFont=CreateFontW(12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
-        HFONT normal=CreateFontW(14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ oldFont=SelectObject(mem,title);SetTextColor(mem,ABM_UI_COLOR_TEXT);
-        TextOutW(mem,28,23,L"ADVANCED EQUALIZER",18);
-        SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_ACCENT_BRIGHT);
-        TextOutW(mem,30,52,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",48);
-        SelectObject(mem,normal);SetTextColor(mem,ABM_UI_COLOR_TEXT_SECONDARY);
-        TextOutW(mem,30,105,L"PREAMP",6);
-        RECT preTrack={145,116,555,120};HBRUSH track=CreateSolidBrush(ABM_UI_COLOR_BORDER);FillRect(mem,&preTrack,track);DeleteObject(track);
-        int preX=145+(int)((g_eqPreamp+12.0f)/24.0f*410.0f);
-        HPEN accent=CreatePen(PS_SOLID,3,ABM_UI_COLOR_ACCENT);oldPen=SelectObject(mem,accent);
-        MoveToEx(mem,145,118,NULL);LineTo(mem,preX,118);SelectObject(mem,oldPen);DeleteObject(accent);
-        HBRUSH knob=CreateSolidBrush(ABM_UI_COLOR_ACCENT_BRIGHT);HGDIOBJ ob=SelectObject(mem,knob);Ellipse(mem,preX-6,112,preX+6,124);SelectObject(mem,ob);DeleteObject(knob);
-        wchar_t preText[32];swprintf_s(preText,_countof(preText),L"%+.1f dB",g_eqPreamp);
-        RECT pr={565,102,650,132};DrawTextW(mem,preText,-1,&pr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_TEXT_MUTED);
-        for(int line=-12;line<=12;line+=6){
-            int yy=155+(12-line)*160/24;
-            HPEN grid=CreatePen(PS_DOT,1,ABM_UI_COLOR_BORDER);oldPen=SelectObject(mem,grid);
-            MoveToEx(mem,32,yy,NULL);LineTo(mem,648,yy);SelectObject(mem,oldPen);DeleteObject(grid);
-            wchar_t db[20];swprintf_s(db,_countof(db),L"%+d",line);
-            RECT lr={15,yy-8,37,yy+8};DrawTextW(mem,db,-1,&lr,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+        if(g_equalizerCanvasReady&&ABM_D2D_CanvasBegin(&g_equalizerCanvas,dc,&client)){
+            ABM_D2D_CanvasFill(&g_equalizerCanvas,0,0,(float)client.right,(float)client.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_D2D_CanvasFillRound(&g_equalizerCanvas,8,8,(float)client.right-8,(float)client.bottom-8,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasStrokeRound(&g_equalizerCanvas,8.5f,8.5f,(float)client.right-8.5f,(float)client.bottom-8.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+            RECT r={28,20,650,48};ABM_D2D_CanvasText(&g_equalizerCanvas,L"ADVANCED EQUALIZER",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=49;r.bottom=73;ABM_D2D_CanvasText(&g_equalizerCanvas,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.left=30;r.top=94;r.right=130;r.bottom=126;ABM_D2D_CanvasText(&g_equalizerCanvas,L"PREAMP",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasFill(&g_equalizerCanvas,145,116,555,120,ABM_UI_COLOR_BORDER);
+            int preX=145+(int)((g_eqPreamp+12.0f)/24.0f*410.0f);
+            ABM_D2D_CanvasLine(&g_equalizerCanvas,145,118,(float)preX,118,ABM_UI_COLOR_ACCENT,3.0f);
+            ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)preX-6,112,(float)preX+6,124,6.0f,ABM_UI_COLOR_ACCENT_BRIGHT);
+            wchar_t preText[32];swprintf_s(preText,_countof(preText),L"%+.1f dB",g_eqPreamp);
+            r.left=565;r.top=102;r.right=650;r.bottom=132;ABM_D2D_CanvasText(&g_equalizerCanvas,preText,r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            for(int line=-12;line<=12;line+=6){
+                int yy=155+(12-line)*160/24;
+                ABM_D2D_CanvasLine(&g_equalizerCanvas,38,(float)yy,648,(float)yy,ABM_UI_COLOR_BORDER,1.0f);
+                wchar_t db[20];swprintf_s(db,_countof(db),L"%+d",line);
+                r.left=5;r.top=yy-9;r.right=35;r.bottom=yy+9;ABM_D2D_CanvasText(&g_equalizerCanvas,db,r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            }
+            static const wchar_t *bands[10]={L"31",L"63",L"125",L"250",L"500",L"1k",L"2k",L"4k",L"8k",L"16k"};
+            for(int i=0;i<10;i++){
+                int cx=58+i*62,zeroY=235;
+                int thumbY=155+(int)((12.0f-g_eqBandGain[i])*160.0f/24.0f);
+                ABM_D2D_CanvasLine(&g_equalizerCanvas,(float)cx,155,(float)cx,315,ABM_UI_COLOR_SURFACE_RAISED,5.0f);
+                ABM_D2D_CanvasLine(&g_equalizerCanvas,(float)cx,(float)zeroY,(float)cx,(float)thumbY,ABM_UI_COLOR_ACCENT_BRIGHT,5.0f);
+                ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)cx-8,(float)thumbY-8,(float)cx+8,(float)thumbY+8,8.0f,ABM_UI_COLOR_ACCENT_ORANGE);
+                wchar_t val[24];swprintf_s(val,_countof(val),L"%+.1f",g_eqBandGain[i]);
+                r.left=cx-27;r.top=thumbY-29;r.right=cx+27;r.bottom=thumbY-10;
+                ABM_D2D_CanvasText(&g_equalizerCanvas,val,r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                r.left=cx-28;r.top=321;r.right=cx+28;r.bottom=340;
+                ABM_D2D_CanvasText(&g_equalizerCanvas,bands[i],r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            }
+            static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
+            for(int i=0;i<5;i++){
+                RECT pr={30+i*126,354,145+i*126,383};
+                COLORREF fill=(g_eqPreset==i)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
+                COLORREF edge=(g_eqPreset==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER;
+                ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
+                ABM_D2D_CanvasStrokeRound(&g_equalizerCanvas,(float)pr.left+0.5f,(float)pr.top+0.5f,(float)pr.right-0.5f,(float)pr.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,1.0f);
+                ABM_D2D_CanvasText(&g_equalizerCanvas,presetNames[i],pr,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            }
+            ABM_D2D_CanvasEnd(&g_equalizerCanvas);
+        }else{
+            FillRectColor(dc,client,ABM_UI_COLOR_BACKGROUND);
         }
-        static const wchar_t *fallback[10]={L"31",L"63",L"125",L"250",L"500",L"1k",L"2k",L"4k",L"8k",L"16k"};
-        for(int i=0;i<10;i++){
-            int cx=58+i*62,zeroY=235;
-            int thumbY=155+(int)((12.0f-g_eqBandGain[i])*160.0f/24.0f);
-            HPEN rail=CreatePen(PS_SOLID,5,ABM_UI_COLOR_SURFACE_RAISED);oldPen=SelectObject(mem,rail);
-            MoveToEx(mem,cx,155,NULL);LineTo(mem,cx,315);SelectObject(mem,oldPen);DeleteObject(rail);
-            HPEN active=CreatePen(PS_SOLID,5,ABM_UI_COLOR_ACCENT_BRIGHT);oldPen=SelectObject(mem,active);
-            MoveToEx(mem,cx,zeroY,NULL);LineTo(mem,cx,thumbY);SelectObject(mem,oldPen);DeleteObject(active);
-            HBRUSH dot=CreateSolidBrush(ABM_UI_COLOR_ACCENT_ORANGE);ob=SelectObject(mem,dot);
-            Ellipse(mem,cx-8,thumbY-8,cx+8,thumbY+8);SelectObject(mem,ob);DeleteObject(dot);
-            wchar_t val[24];swprintf_s(val,_countof(val),L"%+.1f",g_eqBandGain[i]);
-            SelectObject(mem,normal);SetTextColor(mem,ABM_UI_COLOR_TEXT_SECONDARY);
-            RECT vr={cx-26,thumbY-28,cx+26,thumbY-10};DrawTextW(mem,val,-1,&vr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_TEXT_MUTED);
-            RECT fr={cx-28,321,cx+28,340};DrawTextW(mem,fallback[i],-1,&fr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        }
-        static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
-        for(int i=0;i<5;i++){
-            RECT r={30+i*126,354,145+i*126,383};
-            HBRUSH pb=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);ob=SelectObject(mem,pb);
-            RoundRect(mem,r.left,r.top,r.right,r.bottom,10,10);SelectObject(mem,ob);DeleteObject(pb);
-            SelectObject(mem,smallFont);SetTextColor(mem,ABM_UI_COLOR_TEXT_SECONDARY);
-            DrawTextW(mem,presetNames[i],-1,&r,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        }
-        SelectObject(mem,oldFont);DeleteObject(title);DeleteObject(smallFont);DeleteObject(normal);
-        BitBlt(dc,0,0,client.right,client.bottom,mem,0,0,SRCCOPY);
-        SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);EndPaint(hwnd,&ps);return 0;
+        EndPaint(hwnd,&ps);return 0;
     }
     case WM_LBUTTONDOWN:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
