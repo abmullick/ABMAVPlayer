@@ -2372,8 +2372,11 @@ static void RecentPlayIndex(HWND owner,int index) {
     if(found>=0){g_selected=found;SavePersistentState();PlayIndex(found);}
     if(IsWindow(owner))InvalidateRect(owner,NULL,FALSE);
 }
+static ABM_D2D_CANVAS g_recentPopupCanvas;
+static BOOL g_recentPopupCanvasReady=FALSE;
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_CREATE:g_recentPopupCanvasReady=ABM_D2D_CanvasInit(&g_recentPopupCanvas);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
@@ -2404,32 +2407,33 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
     case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){DestroyWindow(hwnd);return 0;}break;
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
-        HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_0A111C);FillRect(dc,&rc,bg);DeleteObject(bg);
-        HPEN border=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_365B70);HGDIOBJ op=SelectObject(dc,border);
-        HGDIOBJ ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));RoundRect(dc,0,0,rc.right,rc.bottom,18,18);
-        SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(border);
-        RECT head={1,1,rc.right-1,62};HBRUSH hb=CreateSolidBrush(ABM_THEME_COLOR_102736);FillRect(dc,&head,hb);DeleteObject(hb);
-        SetBkMode(dc,TRANSPARENT);
-        HFONT title=CreateFontW(-21,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Display");
-        HFONT meta=CreateFontW(-12,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HFONT body=CreateFontW(-14,0,0,0,FW_MEDIUM,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");
-        HGDIOBJ old=SelectObject(dc,title);SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);
-        RECT tr={20,10,rc.right-18,36};DrawTextW(dc,L"Recently played",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        SelectObject(dc,meta);SetTextColor(dc,ABM_THEME_COLOR_8BB4C2);
-        wchar_t countText[64];StringCchPrintfW(countText,_countof(countText),L"%d LOCAL FILE%s  ·  SELECT TO PLAY",g_recentCount,g_recentCount==1?L"":L"S");
-        RECT mr={21,36,rc.right-18,56};DrawTextW(dc,countText,-1,&mr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        for(int i=0;i<g_recentCount;i++) {
-            int top=68+i*42;RECT row={10,top,rc.right-10,top+38};
-            if(i==g_recentPopupHover){HBRUSH hot=CreateSolidBrush(ABM_THEME_COLOR_18424C);FillRect(dc,&row,hot);DeleteObject(hot);}
-            else if((i&1)==0){HBRUSH stripe=CreateSolidBrush(ABM_THEME_COLOR_0D1825);FillRect(dc,&row,stripe);DeleteObject(stripe);}
-            RECT num={20,top+2,48,top+36};SelectObject(dc,body);SetTextColor(dc,ABM_THEME_COLOR_5BBFB1);
-            wchar_t n[12];StringCchPrintfW(n,_countof(n),L"%02d",i+1);DrawTextW(dc,n,-1,&num,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            const wchar_t *leaf=wcsrchr(g_recent[i],L'\\');if(!leaf)leaf=wcsrchr(g_recent[i],L'/');leaf=leaf?leaf+1:g_recent[i];
-            RECT name={54,top+2,rc.right-22,top+36};SetTextColor(dc,ABM_THEME_COLOR_E1EDF7);DrawTextW(dc,leaf,-1,&name,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(g_recentPopupCanvasReady&&ABM_D2D_CanvasBegin(&g_recentPopupCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_recentPopupCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_0A111C);
+            ABM_D2D_CanvasFillRound(&g_recentPopupCanvas,1,1,(float)rc.right-1,(float)rc.bottom-1,(float)ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_0A111C);
+            ABM_D2D_CanvasStrokeRound(&g_recentPopupCanvas,0.5f,0.5f,(float)rc.right-0.5f,(float)rc.bottom-0.5f,(float)ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_365B70,1.0f);
+            ABM_D2D_CanvasFill(&g_recentPopupCanvas,1,1,(float)rc.right-1,62,ABM_THEME_COLOR_102736);
+            RECT tr={20,10,rc.right-18,36};
+            ABM_D2D_CanvasText(&g_recentPopupCanvas,L"Recently played",tr,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            wchar_t countText[64];StringCchPrintfW(countText,_countof(countText),L"%d LOCAL FILE%s  ·  SELECT TO PLAY",g_recentCount,g_recentCount==1?L"":L"S");
+            RECT mr={21,36,rc.right-18,56};
+            ABM_D2D_CanvasText(&g_recentPopupCanvas,countText,mr,ABM_THEME_COLOR_8BB4C2,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            for(int i=0;i<g_recentCount;i++){
+                int top=68+i*42;RECT row={10,top,rc.right-10,top+38};
+                if(i==g_recentPopupHover)ABM_D2D_CanvasFillRound(&g_recentPopupCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_18424C);
+                else if((i&1)==0)ABM_D2D_CanvasFill(&g_recentPopupCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,ABM_THEME_COLOR_0D1825);
+                RECT num={20,top+2,48,top+36};wchar_t n[12];StringCchPrintfW(n,_countof(n),L"%02d",i+1);
+                ABM_D2D_CanvasText(&g_recentPopupCanvas,n,num,ABM_THEME_COLOR_5BBFB1,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                const wchar_t *leaf=wcsrchr(g_recent[i],L'\\');if(!leaf)leaf=wcsrchr(g_recent[i],L'/');leaf=leaf?leaf+1:g_recent[i];
+                RECT name={54,top+2,rc.right-22,top+36};
+                ABM_D2D_CanvasText(&g_recentPopupCanvas,leaf,name,ABM_THEME_COLOR_E1EDF7,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
+            ABM_D2D_CanvasEnd(&g_recentPopupCanvas);
+        }else{
+            HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_0A111C);FillRect(dc,&rc,bg);DeleteObject(bg);
         }
-        SelectObject(dc,old);DeleteObject(title);DeleteObject(meta);DeleteObject(body);EndPaint(hwnd,&ps);return 0;
+        EndPaint(hwnd,&ps);return 0;
     }
-    case WM_NCDESTROY:g_recentPopupWindow=NULL;g_recentPopupHover=-1;break;
+    case WM_NCDESTROY:if(g_recentPopupCanvasReady){g_recentPopupCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_recentPopupCanvas);}g_recentPopupWindow=NULL;g_recentPopupHover=-1;break;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
