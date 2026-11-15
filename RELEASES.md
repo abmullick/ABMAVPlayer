@@ -10,9 +10,11 @@ The installer uses the existing Inno Setup AppId and installation directory to u
 
 ## Canonical release version
 
-The source release focuses on the F1 Help Centre experience and coordinated version alignment. It includes focused topic articles, richer text formatting, improved paragraph presentation and normalization of escaped line endings. It also aligns the main application, Streaming Centre, installer, package manifest and release scripts.
+The current source candidate is **v1.0.8**, prepared from the latest `main` branch after the published `v1.0.7` tag. The change set includes the shared ABM Direct2D/DirectWrite design system across application windows, Settings and Help interaction refinements, VLC runtime diagnostics, structured playback failure reporting, and lifecycle/reliability improvements across local playback, Streaming Centre and Torrent Stream.
 
-The source has not, by itself, been certified by a Windows build or runtime test. Complete the validation checklist below before publishing.
+The Torrent work includes payload-aware cache quota accounting, stalled-download and transient-error recovery, paused-state corrections, safer HTTP/worker lifetimes and stale-callback rejection. The UI work includes canonical typography and icon-font roles, shared control surfaces, Direct2D fallback/resource recovery, and custom Settings scrollbars.
+
+This is a **source-prepared release candidate**, not a certified installer. A successful Windows x64 build, runtime regression pass, clean-install test and in-place upgrade test are required before publishing. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the detailed change summary.
 
 ## Publishing a release
 
