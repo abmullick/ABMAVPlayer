@@ -38,8 +38,8 @@ static BOOL EnsureTarget(ABM_D2D *ui) {
     D2D1_RENDER_TARGET_PROPERTIES rp = D2D1::RenderTargetProperties();
     D2D1_HWND_RENDER_TARGET_PROPERTIES hp =
         D2D1::HwndRenderTargetProperties(ui->hwnd,
-            D2D1::SizeU(static_cast<UINT>(rc.right - rc.left),
-                        static_cast<UINT>(rc.bottom - rc.top)));
+            D2D1::SizeU(static_cast<UINT>((rc.right > rc.left) ? (rc.right - rc.left) : 1),
+                        static_cast<UINT>((rc.bottom > rc.top) ? (rc.bottom - rc.top) : 1)));
     ID2D1HwndRenderTarget *target = nullptr;
     HRESULT hr = Factory(ui)->CreateHwndRenderTarget(rp, hp, &target);
     if (FAILED(hr)) return FALSE;
@@ -149,17 +149,22 @@ extern "C" BOOL ABM_D2D_CanvasInit(ABM_D2D_CANVAS *c) {
 extern "C" BOOL ABM_D2D_CanvasBegin(ABM_D2D_CANVAS *c, HDC dc, const RECT *bounds) {
     if (!c || !dc || !bounds || c->drawing || !CanvasCreateTarget(c)) return FALSE;
     if (FAILED(CanvasTarget(c)->BindDC(dc, bounds))) return FALSE;
+    c->hwnd = WindowFromDC(dc);
     CanvasTarget(c)->BeginDraw(); c->drawing = TRUE; return TRUE;
 }
 extern "C" BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *c) {
     if (!c || !c->target || !c->drawing) return FALSE;
     c->drawing = FALSE;
     HRESULT hr = CanvasTarget(c)->EndDraw();
-    if(hr==D2DERR_RECREATE_TARGET){
+    if (hr == D2DERR_RECREATE_TARGET) {
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&c->brush));
         SafeRelease(reinterpret_cast<ID2D1DCRenderTarget **>(&c->target));
+        /* DRAWITEM DCs are transient: schedule a fresh paint after target loss. */
+        if (c->hwnd && IsWindow(c->hwnd)) InvalidateRect(c->hwnd, NULL, FALSE);
         return FALSE;
     }
+    if (FAILED(hr) && c->hwnd && IsWindow(c->hwnd))
+        InvalidateRect(c->hwnd, NULL, FALSE);
     return SUCCEEDED(hr);
 }
 extern "C" void ABM_D2D_CanvasLine(ABM_D2D_CANVAS *c,float x1,float y1,float x2,float y2,COLORREF color,float width) {
@@ -246,9 +251,8 @@ extern "C" BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd) {
         ABM_D2D_Destroy(ui);
         return FALSE;
     }
-    SafeRelease(&icon);
     ui->body = body; ui->smallFormat = smallFormat; ui->heading = heading;
-    ui->brandMain = brandMain; ui->brandSuffix = brandSuffix;
+    ui->brandMain = brandMain; ui->brandSuffix = brandSuffix; ui->iconFormat = icon;
     if (!EnsureTarget(ui)) { ABM_D2D_Destroy(ui); return FALSE; }
     return TRUE;
 }
@@ -260,6 +264,7 @@ extern "C" void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height) {
     if (FAILED(hr)) {
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
         SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
+        if (ui->hwnd && IsWindow(ui->hwnd)) InvalidateRect(ui->hwnd, NULL, FALSE);
     }
 }
 
@@ -300,8 +305,11 @@ extern "C" BOOL ABM_D2D_End(ABM_D2D *ui) {
     if (hr == D2DERR_RECREATE_TARGET) {
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
         SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
+        if (ui->hwnd && IsWindow(ui->hwnd)) InvalidateRect(ui->hwnd, NULL, FALSE);
         return FALSE;
     }
+    if (FAILED(hr) && ui->hwnd && IsWindow(ui->hwnd))
+        InvalidateRect(ui->hwnd, NULL, FALSE);
     return SUCCEEDED(hr);
 }
 
