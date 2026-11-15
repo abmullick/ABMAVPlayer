@@ -13,6 +13,7 @@
 #include <wchar.h>
 #include <string.h>
 #include "licensing.h"
+#include "ui_dpi.h"
 #include "ui_theme.h"
 
 #define ABM_TRIAL_DAYS 10ULL
@@ -185,6 +186,10 @@ static int TrialDaysLeft(const ABMTrialState *state,ULONGLONG now) {
 static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     ABMLicenseDialog *d=(ABMLicenseDialog*)GetWindowLongPtrW(w,GWLP_USERDATA);
     switch(msg) {
+    case WM_DPICHANGED:
+        ABM_DpiApplySuggestedRect(w,lp);
+        InvalidateRect(w,NULL,FALSE);
+        return 0;
     case WM_NCCREATE:
         d=(ABMLicenseDialog*)((CREATESTRUCTW*)lp)->lpCreateParams;d->window=w;SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)d);return TRUE;
     case WM_CREATE: {
