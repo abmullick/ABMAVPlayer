@@ -3620,7 +3620,7 @@ static void TorrentRefreshCacheStatus(void) {
     wchar_t usedText[64],limitText[64],line[256];
     TorrentFormatBytes((int64_t)(used>INT64_MAX?INT64_MAX:used),usedText,_countof(usedText));
     TorrentFormatBytes((int64_t)(limit>INT64_MAX?INT64_MAX:limit),limitText,_countof(limitText));
-    StringCchPrintfW(line,_countof(line),L"Disk cache: %s used of %s  |  Location: %s\\torrent-cache",
+    StringCchPrintfW(line,_countof(line),L"Torrent storage: %s used of %s  |  Working cache + managed permanent downloads",
         usedText,limitText,(g_torrentInitialized||g_torrentInitPending)?(g_torrentActiveCacheBaseDir[0]?g_torrentActiveCacheBaseDir:g_dataDir):(g_torrentCacheBaseDir[0]?g_torrentCacheBaseDir:g_dataDir));
     TorrentSetLabel(g_torrentCacheInfoLabel,line);
     if(g_torrentCacheLimitEdit&&GetFocus()!=g_torrentCacheLimitEdit) {
@@ -4454,7 +4454,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_torrentSliders[2]=CreateWindowExW(0,g_torrentSliderClass,L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP,0,0,250,46,hwnd,NULL,GetModuleHandleW(NULL),(LPVOID)(INT_PTR)2);
         h=CreateWindowW(L"BUTTON",L"Apply limits",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,670,500,120,30,hwnd,(HMENU)ID_TORRENT_APPLY_LIMITS,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        h=CreateWindowW(L"STATIC",L"CACHE QUOTA GiB",WS_CHILD|WS_VISIBLE,20,612,130,22,hwnd,NULL,NULL,NULL);
+        h=CreateWindowW(L"STATIC",L"TORRENT STORAGE GiB",WS_CHILD|WS_VISIBLE,20,612,130,22,hwnd,NULL,NULL,NULL);
         g_torrentCacheLabel=h;SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentCacheLimitEdit=CreateWindowExW(0,L"EDIT",L"20",WS_CHILD|WS_VISIBLE|ES_NUMBER|ES_READONLY|ES_CENTER,165,608,65,26,hwnd,(HMENU)ID_TORRENT_CACHE_LIMIT,NULL,NULL);
         SendMessageW(g_torrentCacheLimitEdit,WM_SETFONT,(WPARAM)font,TRUE);
@@ -4462,7 +4462,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         h=CreateWindowW(L"BUTTON",L"Clear inactive cache",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,365,606,155,30,hwnd,(HMENU)ID_TORRENT_CLEAR_CACHE,NULL,NULL);
         SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
-        g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Disk cache: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
+        g_torrentCacheInfoLabel=CreateWindowW(L"STATIC",L"Torrent storage: calculating…",WS_CHILD|WS_VISIBLE,20,648,800,24,hwnd,NULL,NULL,NULL);
         g_torrentTvButtons[0]=CreateWindowW(L"BUTTON",L"Find TVs",WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,684,130,38,hwnd,(HMENU)ID_TORRENT_FIND_TVS,NULL,NULL);
         SendMessageW(g_torrentTvButtons[0],WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentTvCombo=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS,140,684,260,220,hwnd,(HMENU)ID_TORRENT_TV_COMBO,NULL,NULL);
@@ -4560,21 +4560,21 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             case ID_TORRENT_CACHE_APPLY: {
                 unsigned long long gib=(unsigned long long)g_torrentSliderValues[2];
                 if(gib<1||gib>4096) {
-                    TorrentSetLabel(g_torrentStatusLabel,L"Cache quota must be from 1 to 4096 GiB.");return 0;
+                    TorrentSetLabel(g_torrentStatusLabel,L"Torrent storage quota must be from 1 to 4096 GiB.");return 0;
                 }
                 uint64_t used=0,limit=(uint64_t)gib*1024ULL*1024ULL*1024ULL;
                 BOOL applied=g_torrentSetCacheLimit&&g_torrentSetCacheLimit(limit,&used);
                 TorrentRefreshCacheStatus();
-                if(applied)TorrentSetLabel(g_torrentStatusLabel,L"Cache quota applied. Oldest inactive torrent folders are evicted first when needed.");
-                else TorrentSetLabel(g_torrentStatusLabel,L"Quota saved, but active torrent data prevents cleanup below this limit. Stop/remove active tasks or choose a larger quota.");
+                if(applied)TorrentSetLabel(g_torrentStatusLabel,L"Torrent storage quota applied. Only eligible inactive working-cache folders may be evicted; permanent downloads are retained.");
+                else TorrentSetLabel(g_torrentStatusLabel,L"Quota saved, but retained torrent data is already above this limit. Permanent downloads are protected; raise the quota or manually remove downloads.");
                 return 0;
             }
             case ID_TORRENT_CLEAR_CACHE: {
-                if(ABM_MessageBoxW(hwnd,L"Delete cached data for inactive torrents? Data belonging to the currently loaded torrent is protected. This cannot be undone.",L"Clear Torrent Cache",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return 0;
+                if(ABM_MessageBoxW(hwnd,L"Delete eligible inactive working-cache folders? Permanent downloads are not deleted. Data belonging to loaded torrents is protected. This cannot be undone.",L"Clear Torrent Cache",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return 0;
                 uint64_t freed=0,remaining=0;
                 if(g_torrentClearCache&&g_torrentClearCache(&freed,&remaining)) {
                     wchar_t a[64],b[64],statusMessage[192];TorrentFormatBytes((int64_t)freed,a,_countof(a));TorrentFormatBytes((int64_t)remaining,b,_countof(b));
-                    StringCchPrintfW(statusMessage,_countof(statusMessage),L"Inactive cache cleared — freed %s. Remaining cache: %s.",a,b);
+                    StringCchPrintfW(statusMessage,_countof(statusMessage),L"Inactive working cache cleared — freed %s. Total torrent storage remaining (including permanent downloads): %s.",a,b);
                     TorrentSetLabel(g_torrentStatusLabel,statusMessage);TorrentRefreshCacheStatus();
                 } else TorrentSetLabel(g_torrentStatusLabel,L"Could not clear inactive torrent cache.");
                 return 0;
@@ -4900,7 +4900,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"If you begin with the 10-day trial, you can activate at any time without reinstalling. Open the Command Centre and choose License & Activation, enter the universal 16-character key, and select Activate. The player confirms successful activation and remembers it for future launches.\r\n"
             L"\r\n"
             L"APPLICATION SETTINGS\r\n"
-            L"Open Settings from the Command Centre to configure the player in one dedicated window. General includes volume, playback speed, shuffle and repeat defaults. Audio includes ReplayGain normalisation and the dynamic-range compressor. Torrent & Storage lets you choose the cache parent folder and set a cache quota from 1 to 4096 GiB. The player creates a torrent-cache subfolder inside the selected parent. Network controls set torrent download and upload limits in KiB/s; enter 0 for unlimited. Updates provides a manual check for the latest public GitHub release. Choose Save settings to persist your changes.\r\n"
+            L"Open Settings from the Command Centre to configure the player in one dedicated window. General includes volume, playback speed, shuffle and repeat defaults. Audio includes ReplayGain normalisation and the dynamic-range compressor. Torrent & Storage lets you choose the working-cache parent folder, permanent downloads folder and combined torrent storage quota from 1 to 4096 GiB. The quota accounts for managed torrent payloads in both locations; permanent downloads are never automatically deleted. The player creates a torrent-cache subfolder inside the selected cache parent. Network controls set torrent download and upload limits in KiB/s; enter 0 for unlimited. Updates provides a manual check for the latest public GitHub release. Choose Save settings to persist your changes.\r\n"
             L"On a new installation, the cache parent defaults to the current Windows user Downloads known folder, inside an ABM AV Player folder. Redirected Downloads folders are respected. Existing installations with a legacy cache keep using that location unless you choose another. Changing the cache parent while Torrent Stream is running requires restarting ABM AV Player. Changing the location does not automatically move existing cache data; existing files remain in the old folder. Settings are stored in %APPDATA%\\ABMAVPlayer\\settings.ini; audio processing preferences are also stored in audio.ini.\r\n"
             L"\r\n"
             L"AUDIO, VIDEO AND SUBTITLES\r\n"
@@ -4927,7 +4927,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Choose Check for updates in the Command Centre. The player checks the latest public GitHub Release, shows release notes and asks before downloading. The installer is checked against the SHA-256 digest supplied by GitHub; an absent or mismatched digest blocks installation. No GitHub account or code-signing certificate is required. Windows may still display SmartScreen warnings for an unsigned installer. Approve the normal Windows elevation prompt to install.\r\n"
             L"\r\n"
             L"TORRENT STREAM — DOWNLOAD, PLAY AND CAST\r\n"
-            L"Open Torrent Stream from the main navigation or use Ctrl+Shift+T. Add a magnet URI or open a local .torrent file, wait for metadata, then select a media file. Play / Stream starts progressive playback while the selected file continues downloading to the configured Permanent downloads folder. The quota-managed torrent-cache is a separate working cache; changing its parent does not move existing data. Use Open Downloads Folder to inspect downloaded files. Find TVs discovers compatible DLNA MediaRenderer devices; select one and choose Cast to TV. The TV fetches the same persistent download over a temporary authenticated private-LAN connection while downloading continues. Stop TV stops the receiver/listener but does not delete the file or stop the torrent task. This is direct play: the TV must support the media container and codecs; PC-side transcoding is not provided. Only download content you have the right to access.\r\n"
+            L"Open Torrent Stream from the main navigation or use Ctrl+Shift+T. Add a magnet URI or open a local .torrent file, wait for metadata, then select a media file. Play / Stream starts progressive playback while the selected file continues downloading to the configured Permanent downloads folder. The Torrent storage quota counts managed torrent payloads in the permanent downloads folder plus the working-cache directory. Clear inactive cache removes only eligible inactive working-cache folders; it never deletes permanent downloads. Use Open Downloads Folder to inspect downloaded files. Find TVs discovers compatible DLNA MediaRenderer devices; select one and choose Cast to TV. The TV fetches the same persistent download over a temporary authenticated private-LAN connection while downloading continues. Stop TV stops the receiver/listener but does not delete the file or stop the torrent task. This is direct play: the TV must support the media container and codecs; PC-side transcoding is not provided. Only download content you have the right to access.\r\n"
             L"INTERFACE MENUS, DIALOGS AND KEYBOARD ACCESS\r\n"
             L"Application-owned action menus, recent-media lists, alerts and confirmations use ABM-styled dark surfaces rather than legacy-looking Windows popup menus or message boxes. Standard Windows file-open/save pickers and Windows security/UAC prompts remain system-owned. In custom action menus, use Up/Down to move, Enter to choose and Esc to close; long menus can be scrolled with the mouse wheel. In branded Yes/No dialogs, use Tab or Left/Right to change the focused choice, then Enter or Space to activate it. Esc cancels and follows the safe No/cancel path. The Streaming Centre device panel supports Tab/Shift+Tab navigation between its action buttons and lists; visible focus indicates the current action.\r\n"
             L"ACCESSIBILITY, DISPLAY AND MOTION\r\n"
@@ -5790,7 +5790,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      StringCchCopyW(row5,_countof(row5),L"Display-specific controls will appear here when the renderer exposes a safe runtime option.");
     }else if(g_advancedSettingsPage==5){
      sectionTitle=L"Network and streaming configuration";
-     StringCchPrintfW(row1,_countof(row1),L"Torrent cache quota: %llu GiB",(unsigned long long)g_torrentCacheQuotaGiB);
+     StringCchPrintfW(row1,_countof(row1),L"Torrent storage quota: %llu GiB",(unsigned long long)g_torrentCacheQuotaGiB);
      StringCchPrintfW(row2,_countof(row2),L"Torrent download limit: %s",g_torrentDownloadLimitKiB?L"Configured (KiB/s)":L"Unlimited");
      StringCchPrintfW(row3,_countof(row3),L"Torrent upload limit: %s",g_torrentUploadLimitKiB?L"Configured (KiB/s)":L"Unlimited");
      StringCchPrintfW(row4,_countof(row4),L"Download limit value: %d KiB/s     Upload limit value: %d KiB/s",g_torrentDownloadLimitKiB,g_torrentUploadLimitKiB);
@@ -6017,13 +6017,15 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsSection(238,L"AUDIO",L"Processing",324);
    SettingsCheckDraw(40,281,L"ReplayGain normalisation",g_settingsReplayGain);
    SettingsCheckDraw(352,281,L"Dynamic range compressor",g_settingsCompressor);
-   SettingsSection(336,L"TORRENT & STORAGE",L"Cache, permanent downloads and quota",536);
+   SettingsSection(336,L"TORRENT & STORAGE",L"Working cache, permanent downloads and combined storage quota",536);
    SettingsText(L"Cache parent folder  ·  torrent-cache is created inside",40,372,610,394,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(34,396,644,429);SettingsButtonDraw(655,396,780,429,L"Browse…",FALSE);
    SettingsText(L"Permanent downloads folder",40,434,610,456,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(34,457,644,490);SettingsButtonDraw(655,457,780,490,L"Browse…",FALSE);
-   SettingsText(L"Cache quota (GiB)",40,495,166,526,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(169,496,279,529);SettingsButtonDraw(655,496,780,529,L"Open cache",FALSE);
+   SettingsText(L"Torrent storage quota (GiB)",40,495,210,526,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsEditFrame(214,496,300,529);
+   SettingsText(L"Applies to managed torrent data in both locations. Permanent downloads are never auto-deleted.",310,493,645,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   SettingsButtonDraw(655,496,780,529,L"Open cache",FALSE);
    SettingsSection(548,L"NETWORK",L"Torrent bandwidth  ·  0 = unlimited",654);
    SettingsText(L"Download limit (KiB/s)",40,583,202,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(199,599,341,634);
