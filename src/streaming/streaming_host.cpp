@@ -193,6 +193,8 @@ Gdiplus::Bitmap *g_serviceLogos[kServiceCount]{};
 const wchar_t *kLogoFiles[kServiceCount]={L"youtube.png",L"netflix.png",L"primevideo.png",L"jiohotstar.png",L"sonyliv.png",L"zee5.png"};
 struct CachedTextFont{int height;int weight;HFONT font;};
 CachedTextFont g_textFonts[24]{};
+HFONT g_streamIconFont16=NULL;
+HFONT g_streamIconFont17=NULL;
 
 /* Shared diagnostics for the Streaming Centre and GoCast/DIAL investigation. */
 void StreamingDiag(const wchar_t *format,...){
@@ -288,6 +290,8 @@ HFONT GetCachedTextFont(int height,int weight){
 }
 void ReleaseCachedTextFonts(){
     for(auto &entry:g_textFonts){if(entry.font)DeleteObject(entry.font);entry={};}
+    if(g_streamIconFont16){DeleteObject(g_streamIconFont16);g_streamIconFont16=NULL;}
+    if(g_streamIconFont17){DeleteObject(g_streamIconFont17);g_streamIconFont17=NULL;}
 }
 void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weight,UINT flags){
     HFONT f=GetCachedTextFont(height,weight);
@@ -296,8 +300,7 @@ void Text(HDC dc,const wchar_t *value,RECT r,COLORREF color,int height,int weigh
 }
 
 HFONT GetCachedIconFont(int px){
-    static HFONT icon16=NULL,icon17=NULL;
-    HFONT *slot=(px<=16)?&icon16:&icon17;
+    HFONT *slot=(px<=16)?&g_streamIconFont16:&g_streamIconFont17;
     if(!*slot)*slot=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
         L"Segoe MDL2 Assets");
