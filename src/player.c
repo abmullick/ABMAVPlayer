@@ -5849,7 +5849,6 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==9){
-   if(AdvancedSettingsPoint(x,y,1000,532,1020,620)){int trackY=y-532;g_advancedVlcFirstPlugin=(trackY*5)/88;if(g_advancedVlcFirstPlugin>4)g_advancedVlcFirstPlugin=4;InvalidateRect(w,NULL,FALSE);return 0;}
   }
   if(g_advancedSettingsPage==8){
    if(AdvancedSettingsPoint(x,y,326,442,610,478)){wchar_t report[PATH_CAP];if(GenerateAdvancedDiagnosticReport(report,_countof(report))){if(!LoadAdvancedDiagnosticPreview(report))ABM_MessageBoxW(w,L"The report was saved, but its contents could not be loaded for preview.",APP_NAME,MB_ICONWARNING);}else ABM_MessageBoxW(w,L"Could not create the diagnostic report. Check that the ABM AV Player data folder is writable.",APP_NAME,MB_ICONERROR);return 0;}
@@ -5972,7 +5971,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  }
  case WM_LBUTTONUP:{
   int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-  if(g_advancedSettingsPage==9&&AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();InvalidateRect(w,NULL,FALSE);return 0;}
+  if(g_advancedSettingsPage==9&&AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();UpdateVlcReportText();InvalidateRect(w,NULL,FALSE);return 0;}
   break;
  }
  case WM_KEYDOWN:
@@ -5980,6 +5979,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   if(wp==VK_UP||wp==VK_DOWN){
    int n=(int)_countof(g_advancedSettingsPages);
    g_advancedSettingsPage=(g_advancedSettingsPage+(wp==VK_DOWN?1:n-1))%n;
+   if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,g_advancedSettingsPage==8?SW_SHOW:SW_HIDE);
+   if(g_advancedVlcReportEdit)ShowWindow(g_advancedVlcReportEdit,g_advancedSettingsPage==9?SW_SHOW:SW_HIDE);
    InvalidateRect(w,NULL,FALSE);return 0;
   }
   break;
