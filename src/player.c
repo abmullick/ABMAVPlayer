@@ -5301,6 +5301,7 @@ static BOOL g_settingsReplayGain=FALSE,g_settingsCompressor=FALSE;
 static BOOL g_settingsRateOpen=FALSE;
 static int g_settingsThemePreset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
 static HFONT g_settingsControlFont=NULL;
+static int g_settingsScrollY=0;
 static int g_settingsRateIndex=2;
 static wchar_t g_settingsMessage[256]=L"Settings are saved only when you choose Save settings.";
 
@@ -6109,7 +6110,40 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_THEMECHANGED:
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   InvalidateRect(w,NULL,FALSE);return 0;
- case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_SIZE:{
+  if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
+  UINT dpi=ABM_DpiGetForWindow(w);int page=ABM_DpiUnscale(HIWORD(lp),dpi);
+  if(page<1)page=1;
+  SCROLLINFO si={sizeof(si),SIF_RANGE|SIF_PAGE|SIF_POS,0,1019,(UINT)page,(int)g_settingsScrollY,0};
+  SetScrollInfo(w,SB_VERT,&si,TRUE);
+  int maxPos=1020-page;if(maxPos<0)maxPos=0;if(g_settingsScrollY>maxPos)g_settingsScrollY=maxPos;
+  InvalidateRect(w,NULL,FALSE);return 0;
+ }
+ case WM_VSCROLL:{
+  SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_VERT,&si);
+  int next=g_settingsScrollY;
+  switch(LOWORD(wp)){
+   case SB_LINEUP:next-=48;break;case SB_LINEDOWN:next+=48;break;
+   case SB_PAGEUP:next-=(int)si.nPage;break;case SB_PAGEDOWN:next+=(int)si.nPage;break;
+   case SB_THUMBTRACK:next=si.nTrackPos;break;case SB_TOP:next=0;break;case SB_BOTTOM:next=1020;break;
+  }
+  int maxPos=1020-(int)si.nPage;if(maxPos<0)maxPos=0;
+  if(next<0)next=0;if(next>maxPos)next=maxPos;
+  if(next!=g_settingsScrollY){
+   UINT dpi=ABM_DpiGetForWindow(w);int delta=ABM_DpiScale(g_settingsScrollY-next,dpi);
+   g_settingsScrollY=next;
+   ScrollWindowEx(w,0,delta,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);
+   si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);
+   InvalidateRect(w,NULL,FALSE);
+  }return 0;
+ }
+ case WM_MOUSEWHEEL:{
+  int delta=GET_WHEEL_DELTA_WPARAM(wp);int next=g_settingsScrollY-(delta/WHEEL_DELTA)*144;
+  SCROLLINFO si={sizeof(si),SIF_ALL};GetScrollInfo(w,SB_VERT,&si);
+  int maxPos=1020-(int)si.nPage;if(maxPos<0)maxPos=0;
+  if(next<0)next=0;if(next>maxPos)next=maxPos;
+  if(next!=g_settingsScrollY){UINT dpi=ABM_DpiGetForWindow(w);int dy=ABM_DpiScale(g_settingsScrollY-next,dpi);g_settingsScrollY=next;ScrollWindowEx(w,0,dy,NULL,NULL,NULL,NULL,SW_SCROLLCHILDREN|SW_INVALIDATE);si.fMask=SIF_POS;si.nPos=next;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);}return 0;
+ }
  case WM_GETMINMAXINFO:{ABM_DpiClampMinTrack(w,(MINMAXINFO*)lp,620,520);return 0;}
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
@@ -6120,8 +6154,8 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   return (LRESULT)g_settingsEditBrush;
  }
  case WM_LBUTTONDOWN:{
-  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-  for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
+  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp)+g_settingsScrollY;
+  for(int preset=preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
    int left=40+col*185,top=822+row*46;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
@@ -6159,6 +6193,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_settingsUiReady){
    ABM_D2D_Begin(&g_settingsUi,SETTINGS_BG);
+   ABM_D2D_SetTransform(&g_settingsUi,1.0f,1.0f,0.0f,(float)-g_settingsScrollY);
    ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
    ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_1C9D9D);
@@ -6236,9 +6271,9 @@ static void ShowSettingsDialog(HWND owner) {
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
  UINT ownerDpi=ABM_DpiGetForWindow(owner);
- RECT wr={0,0,ABM_DpiScale(820,ownerDpi),ABM_DpiScale(1020,ownerDpi)};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
- int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
- g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
+ RECT wr={0};ABM_DpiMakeCenteredRect(owner,820,760,&wr);
+ int ww=wr.right-wr.left,hh=wr.bottom-wr.top;int x=wr.left,y=wr.top;
+ g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP|WS_VSCROLL,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
