@@ -312,7 +312,7 @@ static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *capt
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
     ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;d.focusedButton=d.defaultButton;
-    int width=560,height=220;HDC measure=GetDC(NULL);HFONT measureFont=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI Variable Text");HGDIOBJ previousFont=measure&&measureFont?SelectObject(measure,measureFont):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measureFont)DeleteObject(measureFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
+    int width=560,height=220;HDC measure=GetDC(NULL);HGDIOBJ previousFont=measure?SelectObject(measure,g_font):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int x=(ownerRect.left+ownerRect.right-width)/2,y=(ownerRect.top+ownerRect.bottom-height)/2;
     HWND w=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerModalDialog",L"",WS_POPUP|WS_BORDER,x,y,width,height,owner,NULL,inst,&d);
@@ -379,7 +379,20 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
                 ABM_D2D_CanvasText(&g_abmMenuCanvas,it->label,t,it->enabled?ABM_THEME_COLOR_E2EEF9:ABM_THEME_COLOR_5B6C80,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             ABM_D2D_CanvasEnd(&g_abmMenuCanvas);
-        }else{HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_09101B);FillRect(dc,&rc,bg);DeleteObject(bg);}
+        }else{
+            HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_09101B);FillRect(dc,&rc,bg);DeleteObject(bg);
+            SetBkMode(dc,TRANSPARENT);HFONT old=(HFONT)SelectObject(dc,g_font);SetTextColor(dc,ABM_THEME_COLOR_F3F9FF);
+            RECT tr={18,7,rc.right-14,42};DrawTextW(dc,L"ABM  /  ACTIONS",-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            int visible=(rc.bottom-62)/36;if(visible<1)visible=1;
+            for(int v=0;v<visible&&d->first+v<d->count;v++){
+                int i=d->first+v,top=54+v*36;const ABMMenuItem *it=&d->items[i];
+                RECT row={8,top,rc.right-8,top+33};
+                if(i==d->hover){HBRUSH hot=CreateSolidBrush(ABM_THEME_COLOR_18424C);FillRect(dc,&row,hot);DeleteObject(hot);}
+                SelectObject(dc,it->heading?g_smallFont:g_font);SetTextColor(dc,it->heading?ABM_THEME_COLOR_59B9AE:it->enabled?ABM_THEME_COLOR_E2EEF9:ABM_THEME_COLOR_5B6C80);
+                RECT t={20,top+1,rc.right-14,top+32};DrawTextW(dc,it->label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
+            SelectObject(dc,old);
+        }
         EndPaint(w,&ps);return 0;
     }
     case WM_NCDESTROY:if(g_abmActiveMenu==d)g_abmActiveMenu=NULL;break;
