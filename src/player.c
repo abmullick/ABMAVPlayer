@@ -5282,10 +5282,10 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         /* Branded Help Centre workspace: borderless native text editing retains
            keyboard, selection and clipboard behaviour while the host paints the chrome. */
         g_helpSearch=CreateWindowExW(0,L"EDIT",L"",
-            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_LEFT,32,74,760,40,hwnd,
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_LEFT,32,74,760,40,hwnd,
             (HMENU)HELP_ID_SEARCH,GetModuleHandleW(NULL),NULL);
         g_helpFindButton=CreateWindowExW(0,L"BUTTON",L"SEARCH",
-            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,806,74,132,40,hwnd,
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,806,74,132,40,hwnd,
             (HMENU)HELP_ID_FIND,GetModuleHandleW(NULL),NULL);
         g_helpTopics=CreateWindowExW(0,L"LISTBOX",L"",
             WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_HASSTRINGS|LBS_OWNERDRAWFIXED,
@@ -5344,12 +5344,15 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             RECT kicker={34,7,rc.right-28,29};ABM_D2D_CanvasText(&g_helpCanvas,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",kicker,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT intro={34,31,rc.right-28,57};ABM_D2D_CanvasText(&g_helpCanvas,L"Find answers, learn features and understand the practical impact of settings.",intro,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             ABM_D2D_CanvasFill(&g_helpCanvas,0,60,(float)rc.right,63,ABM_UI_COLOR_ACCENT);
-            ABM_D2D_CanvasFillRound(&g_helpCanvas,24,66,(float)rc.right-24,126,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
-            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,24.5f,66.5f,(float)rc.right-24.5f,125.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
-            ABM_D2D_CanvasFillRound(&g_helpCanvas,24,136,324,(float)rc.bottom-62,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
-            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,24.5f,136.5f,323.5f,(float)rc.bottom-62.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
-            ABM_D2D_CanvasFillRound(&g_helpCanvas,334,136,(float)rc.right-24,(float)rc.bottom-62,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
-            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,334.5f,136.5f,(float)rc.right-24.5f,(float)rc.bottom-62.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
+            /* Draw panel chrome from actual child bounds so cards stay aligned
+               in both side-by-side and narrow stacked layouts. */
+            HWND panels[3]={g_helpSearch,g_helpTopics,g_helpEdit};
+            for(int pi=0;pi<3;pi++)if(panels[pi]&&IsWindowVisible(panels[pi])){
+                RECT pr;GetWindowRect(panels[pi],&pr);MapWindowPoints(HWND_DESKTOP,hwnd,(POINT*)&pr,2);
+                InflateRect(&pr,8,8);
+                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+                ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)pr.left+0.5f,(float)pr.top+0.5f,(float)pr.right-0.5f,(float)pr.bottom-0.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
+            }
             ABM_D2D_CanvasFill(&g_helpCanvas,0,(float)rc.bottom-48,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_SURFACE);
             ABM_D2D_CanvasLine(&g_helpCanvas,0,(float)rc.bottom-48,(float)rc.right,(float)rc.bottom-48,ABM_UI_COLOR_BORDER,1.0f);
             RECT foot={26,rc.bottom-42,rc.right-24,rc.bottom-12};ABM_D2D_CanvasText(&g_helpCanvas,L"TIP   Ctrl+F search   •   Find next / F3 next match   •   Select a topic to jump",foot,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
