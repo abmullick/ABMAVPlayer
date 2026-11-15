@@ -140,6 +140,7 @@ static BOOL g_visualizerTried=FALSE;
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
+static int g_eqUiPreset=-1;
 static libvlc_media_t *g_artMedia=NULL;
 static volatile LONG g_artworkGeneration=0;
 static LONG g_artworkCallbackGeneration=0;
@@ -3200,6 +3201,7 @@ static void EqSetPreset(int preset) {
     for(int i=0;i<10;i++)g_eqBandGain[i]=presets[preset][i];
     g_eqPreamp=preset==1?-3.0f:0.0f;
     g_eqProfile=4;
+    g_eqUiPreset=preset;
     ApplyCustomEqualizer();
     SaveAudioPreferences();
     if(g_eqWindow)InvalidateRect(g_eqWindow,NULL,FALSE);
@@ -3209,14 +3211,14 @@ static void EqSetFromPoint(HWND hwnd,int x,int y) {
     if(y>=102&&y<=132&&x>=145&&x<=555){
         g_eqPreamp=-12.0f+24.0f*(float)(x-145)/410.0f;
         if(g_eqPreamp<-12)g_eqPreamp=-12;if(g_eqPreamp>12)g_eqPreamp=12;
-        g_eqProfile=4;ApplyCustomEqualizer();SaveAudioPreferences();return;
+        g_eqProfile=4;g_eqUiPreset=-1;ApplyCustomEqualizer();SaveAudioPreferences();return;
     }
     for(int i=0;i<10;i++){
         int cx=58+i*62;
         if(x>=cx-23&&x<=cx+23&&y>=145&&y<=330){
             float gain=12.0f-24.0f*(float)(y-155)/160.0f;
             if(gain>12)gain=12;if(gain<-12)gain=-12;
-            g_eqBandGain[i]=gain;g_eqProfile=4;
+            g_eqBandGain[i]=gain;g_eqProfile=4;g_eqUiPreset=-1;
             ApplyCustomEqualizer();SaveAudioPreferences();InvalidateRect(g_eqWindow,NULL,FALSE);
             return;
         }
@@ -3274,8 +3276,8 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
             static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
             for(int i=0;i<5;i++){
                 RECT pr={30+i*126,354,145+i*126,383};
-                COLORREF fill=(g_eqProfile==i)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
-                COLORREF edge=(g_eqProfile==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER;
+                COLORREF fill=(g_eqUiPreset==i)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
+                COLORREF edge=(g_eqUiPreset==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER;
                 ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
                 ABM_D2D_CanvasStrokeRound(&g_equalizerCanvas,(float)pr.left+0.5f,(float)pr.top+0.5f,(float)pr.right-0.5f,(float)pr.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,1.0f);
                 ABM_D2D_CanvasText(&g_equalizerCanvas,presetNames[i],pr,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
