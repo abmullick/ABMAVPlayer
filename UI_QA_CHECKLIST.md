@@ -157,3 +157,25 @@ Source changes committed on `main`:
 The Torrent source now uses the canonical Main Player brand roles, clipped Direct2D repaint, DirectWrite slider/value rendering and DirectWrite application-owned labels. Two label-overlap defects were corrected. Native magnet text editing remains native intentionally to preserve Windows editing and accessibility behaviour.
 
 All screenshot comparison, build, DPI, interaction-state and functional regression items above remain unchecked until run on Windows. Source-level changes alone are not runtime sign-off.
+
+
+## 10. Settings, Advanced Settings and Help — migration checks
+
+Source-level rendering lifecycle changes are committed. The following are still required on Windows:
+
+- [ ] Settings: inspect every section, input, folder picker, theme swatch, playback-rate selector and action button against Main Player typography, spacing, radius, border and focus treatment.
+- [ ] Settings: test long paths, validation errors, Save settings feedback, theme changes while Settings remains open, and opening Advanced Settings.
+- [ ] Advanced Settings: visit all ten pages; check selected navigation state, option cards, radio-style choices, toggle states, diagnostic controls, VLC plugin inventory and report preview.
+- [ ] Advanced Settings: change theme while the window is open; confirm diagnostic and VLC report controls use the new palette.
+- [ ] Help: inspect search, topic list, selected topic, RichEdit article typography, paragraph rhythm, scrollbar and footer.
+- [ ] Help: test every topic, search match across topics, no-match feedback, Enter, F3, Ctrl+F and Escape.
+- [ ] Help: switch theme while open and verify search/list/article surfaces refresh without losing usability.
+- [ ] Repeatedly open and close Help; check GDI handle count does not grow from cached brush leakage.
+- [ ] Compare all three windows to Main Player at 100%, 125%, 150% and 200%; note the existing system-aware DPI limitation and any clipping on short displays.
+- [ ] Confirm all existing settings persistence, audio/video options, torrent storage/network controls, diagnostics and help content remain functionally unchanged.
+
+Source commits:
+- `ffeef69f5c20e4a494c4a3395cd7b8b0ae238963`
+- `5c33e906ef20a08db3936cd36fd4211bc4342d8b`
+
+These changes are source-level only; no Windows build or runtime screenshot validation has been performed in this environment.
