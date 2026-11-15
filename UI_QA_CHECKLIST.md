@@ -19,7 +19,7 @@ Audited on `main` during Step 12:
 | File selection | Native common open/save dialogs remain intentional system-owned file workflows. Torrent folder selection uses the modern COM file-dialog interface. |
 | Updater dialogs | Updater uses the shared branded dialog entry point; no direct native message-box call was found in `src/updater.cpp`. |
 | Streaming Centre | No direct native message-box or legacy popup-menu API calls found; device-panel action buttons expose tab stops and owner-drawn focus feedback. |
-| DPI awareness | The player opts into system-aware DPI handling. A per-monitor `WM_DPICHANGED` resize/re-layout path was not found in this audit; mixed-DPI monitor transitions therefore require explicit runtime verification and may remain a limitation. |
+| DPI awareness | The application now declares Per-Monitor V2 in its embedded manifest, requests Per-Monitor V2 with Per-Monitor V1/system-aware fallbacks before creating HWNDs, and applies `WM_DPICHANGED` suggested bounds in the main player, Settings, Advanced Settings, Torrent, Help, About, Equalizer, recent popup, fullscreen overlay and Streaming Centre windows. Shared scaling helpers are in `src/ui_dpi.h`. This is the DPI-awareness and window-transition foundation; per-surface layout/control/font scaling still requires staged migration and runtime verification. |
 | Accessibility coverage | Branded modal keyboard handling and selected Streaming Centre controls are improved, but this is not a complete screen-reader/UI Automation or high-contrast audit. |
 
 This is a targeted source inspection, not a formal static-analysis report or a claim that every native Windows control has been eliminated. Native system file pickers and OS/UAC-owned surfaces are intentional exceptions.
@@ -44,7 +44,9 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Settings and Torrent Stream windows: controls remain reachable and labels do not overlap.
 - [ ] Streaming Centre: title bar, device panel, receiver/app lists and WebView2 region remain aligned.
 - [ ] Branded dialogs and custom menus: fit within the work area at every screen edge; long text and long menus remain usable.
-- [ ] Move windows between monitors with different scaling factors; record any size or coordinate jump. System-aware DPI is not equivalent to per-monitor-v2 support.
+- [ ] Move the main player, Settings, Torrent Stream, Streaming Centre and auxiliary windows between monitors with different scaling factors; record any size or coordinate jump.
+- [ ] Verify each window's custom-drawn geometry, native child controls, fonts, hit targets and popup placement are scaled/re-laid out correctly; applying the suggested outer rectangle alone is not sufficient for sign-off.
+- [ ] Confirm the manifest is embedded in the built EXE and the runtime reports Per-Monitor V2 awareness.
 - [ ] Test taskbar auto-hide, non-primary monitor placement and display resolution changes.
 
 ## 4. Keyboard and accessibility
