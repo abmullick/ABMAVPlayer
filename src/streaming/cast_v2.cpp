@@ -68,6 +68,7 @@ std::string Utf8(const std::wstring &s) {
 }
 std::atomic<SOCKET> g_mdnsSocket{INVALID_SOCKET};
 std::atomic<LONG> g_operationGeneration{0};
+std::atomic<bool> g_operationsCancelled{false};
 
 static unsigned ReadU16(const unsigned char *p) {
     return ((unsigned)p[0]<<8)|(unsigned)p[1];
@@ -460,7 +461,7 @@ int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t 
     for(;;) {
         wait=WaitForSingleObject(pi.hProcess,100);
         if(wait==WAIT_OBJECT_0)break;
-        if(wait!=WAIT_TIMEOUT || g_operationGeneration.load()!=operationGeneration ||
+        if(wait!=WAIT_TIMEOUT || g_operationsCancelled.load() || g_operationGeneration.load()!=operationGeneration ||
            GetTickCount64()-started>=timeout) {
             TerminateProcess(pi.hProcess,1);
             WaitForSingleObject(pi.hProcess,2000);
@@ -499,6 +500,7 @@ bool LaunchCastApp(const Receiver &receiver,const wchar_t *appId) {
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
     const LONG operationGeneration=g_operationGeneration.load();
+    if(g_operationsCancelled.load())return false;
     Diag(L"Launch requested receiver=%s host=%S port=%u",r.name.c_str(),r.host.c_str(),r.port);
     wchar_t module[MAX_PATH]{};
     if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { Diag(L"GetModuleFileName failed Win32=%lu",GetLastError());g_error=L"Cannot locate ABM AV Player installation."; return false; }
@@ -550,7 +552,11 @@ bool Launch(const Receiver &r,const wchar_t *video) {
 }
 }
 extern "C" void ABM_CastV2_CancelOperations(void) {
+    g_operationsCancelled.store(true);
     g_operationGeneration.fetch_add(1);
+}
+extern "C" void ABM_CastV2_ResetOperationCancellation(void) {
+    g_operationsCancelled.store(false);
 }
 extern "C" void ABM_CastV2_StartDiscovery(void) {
     Diag(L"========== GoCast discovery started ==========");
