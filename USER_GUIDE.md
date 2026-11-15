@@ -478,3 +478,12 @@ Open **Advanced Settings → VLC Runtime & Codecs** while media is playing, then
 A result is marked **VERIFIED** only when the media reached `Playing` and LibVLC returned elementary-stream metadata. If playback starts but track metadata is unavailable, verification remains incomplete. A LibVLC error is reported as a failed session. The container shown is inferred from the filename extension and is explicitly a hint, not proof of which demuxer VLC selected.
 
 This is session- and media-aware evidence, not a claim that every alternate track was decoded. The public LibVLC API used here does not expose the internal decoder module selected for each stream. Test additional files to build evidence across codecs and containers; one successful file does not certify all files using the same extension.
+
+
+### Active track and playback verification
+
+The VLC Runtime & Codecs report now distinguishes stream discovery from track selection and successful playback. During a local-player session, ABM listens for LibVLC Playing, Paused, Stopped, EndReached, EncounteredError, MediaChanged and elementary-stream Added/Deleted/Selected events. The callback only records atomic event flags; the existing UI timer reads player state and queries the current selected audio, video and subtitle IDs on the UI thread.
+
+Each detected stream is listed with its type, ID, codec and whether that ID is currently selected. The report separately shows whether media time progressed after Playing (or the stream reached EndReached), whether LibVLC reported a playback error, and whether event monitoring attached successfully. A detected stream is not automatically a selected stream; a selected track is not by itself proof of a successful playback session.
+
+**Decoder module identified** is reported as unknown when LibVLC does not expose the actual internal decoder module. ABM does not guess the module from the codec name or plugin inventory. The evidence is scoped to the active media session; it is not a certification of every alternate track or every file using the same extension.
