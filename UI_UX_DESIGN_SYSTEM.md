@@ -594,7 +594,9 @@ The canonical DirectWrite role contract is implemented. This is a foundation mil
 - Torrent's live task summary, playback status, download/upload labels and cache labels are now painted by the parent Direct2D surface using canonical DirectWrite roles. Their STATIC HWNDs remain as hidden text-state holders so existing status updates and task logic are not rewritten.
 - Corrected two source-level layout collisions: the live task summary no longer occupies the content heading row, and playback status no longer overlaps the playback heading/progress rail.
 - Owner-drawn Torrent buttons now include an explicit disabled treatment and consume shared semantic text, surface, border, accent and focus tokens. File-list and TV-selector drawing also use the shared semantic palette.
-- The Torrent top-level window now uses the shared dark caption, border and rounded-corner treatment.
+- The Torrent top-level window now uses the shared dark caption, border and rounded-corner treatment. Theme changes now rebuild its cached GDI brushes and reapply DWM caption/border colors; those brushes are released when the window closes.
+- Slider keyboard focus is visibly invalidated on focus/enable changes, and the slider explicitly requests arrow-key input. Native edit-control colors use the shared input and text tokens.
+- Removed an obsolete Torrent GDI drawing helper. Remaining GDI text branches are defensive fallbacks if the shared canvas cannot begin; the normal path is DirectWrite.
 
 ### Explicit boundaries
 
@@ -619,3 +621,6 @@ The canonical DirectWrite role contract is implemented. This is a foundation mil
 - [ ] Run the complete Torrent functional regression checklist.
 
 Do not call Torrent Stream fully visually validated until the unchecked Windows build and runtime comparisons pass.
+
+
+**Additional source commits:** `19384175014e475d8b804c68df605688b84f367c` (theme refresh and resource lifecycle), `ab16915676b330c4366bf793fa89d20060b2bdb7` (semantic input palette and slider keyboard focus), and `86019de4d46b8caa52268fbbd07739fb9da02ef6` (obsolete drawing helper removal).
