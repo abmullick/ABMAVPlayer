@@ -1,0 +1,73 @@
+# ABM AV Player — Per-Monitor DPI Architecture
+
+## Status
+
+**Foundation committed on `main`; full visual scaling migration remains in progress.**
+
+This document distinguishes process/window DPI awareness from the separate work required to make every rendered element and child control scale correctly.
+
+## 1. Awareness policy
+
+- Embed `src/abm_av_player.manifest` as resource ID 1 in `src/player.rc`.
+- Declare `PerMonitorV2,PerMonitor` using the Windows 10 DPI-awareness manifest schema, with the legacy `true/pm` declaration as a compatibility fallback.
+- Before creating any HWND, `EnableDpiAwareness` dynamically requests `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2`, then Per-Monitor V1, then system-aware mode.
+- Never change process awareness after the first HWND exists.
+
+The embedded manifest is the preferred declaration because it is active before application code creates windows. The runtime call is a best-effort compatibility fallback and must not override a manifest-established context.
+
+## 2. Shared DPI primitives
+
+`src/ui_dpi.h` provides C/C++-compatible inline helpers:
+
+- `ABM_DpiGetForWindow` — query the effective DPI for an HWND, with a device-context fallback.
+- `ABM_DpiGetSystem` — obtain the system DPI before the main window exists.
+- `ABM_DpiScale` / `ABM_DpiUnscale` — convert between 96-DPI layout units and physical pixels.
+- `ABM_DpiApplySuggestedRect` — apply the rectangle supplied by `WM_DPICHANGED`.
+
+Use these helpers at Win32 HWND boundaries rather than duplicating DPI arithmetic in each module.
+
+## 3. Window transition contract
+
+A top-level window receiving `WM_DPICHANGED` must:
+
+1. Apply the suggested outer rectangle supplied in `lParam`.
+2. Recompute its client-area dimensions after the resize.
+3. Re-layout child HWNDs and custom-drawn geometry from canonical 96-DPI layout units.
+4. Recreate or resize DPI-dependent rendering resources and fonts.
+5. Recompute hit-test rectangles and popup/overlay placement.
+6. Invalidate the affected surface and restore focus/interaction state.
+
+The main player currently applies the suggested rectangle, recalculates video/layout geometry and resizes its Direct2D target. The Settings, Advanced Settings, Torrent, Help, About, Equalizer, recent popup, fullscreen overlay and Streaming Centre windows now apply the suggested rectangle and invalidate/re-run their existing size/layout paths where available.
+
+**Important:** handling the outer rectangle is not proof that every child control, font, hit target or painted element is correctly scaled. The fixed-coordinate surfaces still require dedicated migration and Windows validation.
+
+## 4. Layout coordinate rules
+
+- Author new layout constants in 96-DPI logical units.
+- Convert to physical pixels only when creating or positioning Win32 child HWNDs.
+- Convert mouse/touch coordinates to the same logical coordinate space before hit testing.
+- Do not mix physical-pixel rectangles with DIPs in the same layout calculation.
+- Keep Direct2D render-target DPI, DirectWrite font sizes and HWND child geometry under one explicit policy per surface.
+- Avoid repeated scaling: store canonical logical geometry and derive physical geometry from the current window DPI.
+
+The current Direct2D bridge historically fixes the HWND render target at 96 DPI because its drawing and hit-test coordinates were authored in client pixels. Do not simply change that target to the monitor DPI without first migrating that surface's layout and input coordinates to DIPs; doing so would scale drawings twice or misalign them with child HWNDs.
+
+## 5. Migration sequence
+
+1. Main player: convert layout, drawing and hit-testing to logical units; scale the LibVLC child HWND at the Win32 boundary; refresh DirectWrite/GDI fonts.
+2. Settings and Advanced Settings: scale all owner-drawn rectangles, input HWNDs, labels, click regions and minimum window geometry from one canonical layout.
+3. Torrent Stream: migrate task cards, native child controls, list rows, sliders, and TV/device panels.
+4. Streaming Centre: migrate browser chrome, WebView2 controller bounds, device panel and custom hit regions; do not alter provider page content or casting ownership.
+5. Help, About, Equalizer, licensing, menus and popups: migrate each surface and verify screen-edge placement.
+6. Add automated geometry assertions where possible and complete the 100%, 125%, 150% and 200% mixed-monitor matrix.
+
+## 6. Build and validation
+
+- Build from the repository root so the resource compiler resolves `src/abm_av_player.manifest` from `src/player.rc`.
+- Inspect the built executable to confirm resource ID 1 contains the application manifest.
+- Verify process awareness is Per-Monitor V2 on supported Windows versions.
+- Move each top-level window between monitors with different scale factors.
+- Check window bounds, child HWND positions, Direct2D alignment, font metrics, hit targets, fullscreen transitions, popups and WebView2 bounds.
+- Test startup on a system where Per-Monitor V2 is unavailable to confirm the runtime fallback path.
+
+Do not mark the DPI work release-complete until the visual and interaction matrix passes on Windows.
