@@ -5515,6 +5515,12 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     case WM_SIZE:
         if(g_advancedSettingsUiReady)ABM_D2D_Resize(&g_advancedSettingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
         return 0;
+    case WM_GETMINMAXINFO: {
+        MINMAXINFO *mi=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(w);
+        mi->ptMinTrackSize.x=ABM_DpiScale(900,dpi);
+        mi->ptMinTrackSize.y=ABM_DpiScale(680,dpi);
+        return 0;
+    }
  case WM_CREATE:
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   {UINT dpi=ABM_DpiGetForWindow(w);ABM_D2D_SetDpi(&g_advancedSettingsUi,dpi,dpi);}
@@ -5965,7 +5971,8 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
   registered=TRUE;
  }
- RECT wr={0,0,1080,780};
+ UINT ownerDpi=ABM_DpiGetForWindow(owner);
+ RECT wr={0,0,ABM_DpiScale(1080,ownerDpi),ABM_DpiScale(780,ownerDpi)};
  AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
  int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
  int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
