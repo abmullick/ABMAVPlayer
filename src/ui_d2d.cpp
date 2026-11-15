@@ -118,6 +118,11 @@ extern "C" BOOL ABM_D2D_CanvasEnd(ABM_D2D_CANVAS *c) {
     HRESULT hr = CanvasTarget(c)->EndDraw();
     return SUCCEEDED(hr);
 }
+extern "C" void ABM_D2D_CanvasLine(ABM_D2D_CANVAS *c,float x1,float y1,float x2,float y2,COLORREF color,float width) {
+    if (!c || !c->drawing) return;
+    CanvasBrush(c)->SetColor(ToD2D(color));
+    CanvasTarget(c)->DrawLine(D2D1::Point2F(x1,y1),D2D1::Point2F(x2,y2),CanvasBrush(c),width);
+}
 extern "C" void ABM_D2D_CanvasFill(ABM_D2D_CANVAS *c,float l,float t,float r,float b,COLORREF color) {
     if (!c || !c->drawing || r<=l || b<=t) return;
     CanvasBrush(c)->SetColor(ToD2D(color));
