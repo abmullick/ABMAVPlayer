@@ -6490,9 +6490,16 @@ static void SettingsClampToMonitor(HWND w,const RECT *suggested){
 }
 
 static LRESULT CALLBACK SettingsEditFocusSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref){
- (void)id;(void)ref;
- if(msg==WM_SETFOCUS||msg==WM_KILLFOCUS)InvalidateRect(GetParent(edit),NULL,FALSE);
- if(msg==WM_MOUSEWHEEL){SendMessageW(GetParent(edit),WM_MOUSEWHEEL,wp,lp);return 0;}
+ (void)id;(void)ref;HWND parent=GetParent(edit);
+ if(msg==WM_SETFOCUS){
+  RECT r,client;GetWindowRect(edit,&r);MapWindowPoints(HWND_DESKTOP,parent,(POINT*)&r,2);GetClientRect(parent,&client);
+  int sx=g_settingsScrollX,sy=g_settingsScrollY;
+  if(r.left<0)sx+=r.left;else if(r.right>client.right)sx+=r.right-client.right;
+  if(r.top<0)sy+=r.top;else if(r.bottom>client.bottom)sy+=r.bottom-client.bottom;
+  SettingsSetScroll(parent,sx,sy);InvalidateRect(parent,NULL,FALSE);
+ }
+ if(msg==WM_KILLFOCUS)InvalidateRect(parent,NULL,FALSE);
+ if(msg==WM_MOUSEWHEEL){SendMessageW(parent,WM_MOUSEWHEEL,wp,lp);return 0;}
  if(msg==WM_NCDESTROY)RemoveWindowSubclass(edit,SettingsEditFocusSubclass,1);
  return DefSubclassProc(edit,msg,wp,lp);
 }
@@ -6573,6 +6580,10 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_KEYDOWN:
   if(wp==VK_ESCAPE){if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}else DestroyWindow(w);return 0;}
   if((GetKeyState(VK_CONTROL)&0x8000)&&wp=='S'){SettingsApply(w);return 0;}
+  if(wp==VK_PRIOR){SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY-GetSystemMetrics(SM_CYSCREEN)/2);return 0;}
+  if(wp==VK_NEXT){SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY+GetSystemMetrics(SM_CYSCREEN)/2);return 0;}
+  if(wp==VK_HOME&&(GetKeyState(VK_CONTROL)&0x8000)){SettingsSetScroll(w,0,0);return 0;}
+  if(wp==VK_END&&(GetKeyState(VK_CONTROL)&0x8000)){SettingsSetScroll(w,SETTINGS_CONTENT_WIDTH,SETTINGS_CONTENT_HEIGHT);return 0;}
   break;
  case WM_PAINT:{
   PAINTSTRUCT ps;BeginPaint(w,&ps);
