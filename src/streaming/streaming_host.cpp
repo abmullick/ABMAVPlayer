@@ -344,8 +344,8 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
         wchar_t glyph[2]={DeviceButtonGlyph(item->hwndItem),0};
         RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
         RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
-        ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_THEME_COLOR_91E5D5,1,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_THEME_COLOR_91E5D5,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
         return;
     }
@@ -365,6 +365,14 @@ void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)name);
     bool selected=(item->itemState&ODS_SELECTED)!=0;
     RECT r=item->rcItem;
+    if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&r)){
+        ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+        RECT textRect=r;InflateRect(&textRect,-9,0);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,name,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(item->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_4BBEB8,1.0f);
+        ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
+        return;
+    }
     FillRectColor(item->hDC,r,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
     RECT textRect=r;InflateRect(&textRect,-9,0);
     Text(item->hDC,name,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,11,selected?700:500,
@@ -523,9 +531,9 @@ void CreateDevicePanel(HWND parent){
         WS_CHILD|SS_OWNERDRAW,0,0,516,430,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!g_devicePanel)return;
     g_deviceTitle=CreateWindowExW(0,L"STATIC",L"CAST TO A DEVICE",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceHint=CreateWindowExW(0,L"STATIC",L"Searching for compatible receivers…",
-        WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
+        WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,parent,nullptr,GetModuleHandleW(nullptr),nullptr);
     g_deviceList=CreateWindowExW(0,L"LISTBOX",L"",
         WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_LIST,GetModuleHandleW(nullptr),nullptr);
@@ -553,8 +561,6 @@ void CreateDevicePanel(HWND parent){
     g_deviceClose=CreateWindowExW(0,L"BUTTON",L"Close",
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,parent,
         (HMENU)(INT_PTR)ID_STREAM_DEVICE_CLOSE,GetModuleHandleW(nullptr),nullptr);
-    SendMessageW(g_deviceTitle,WM_SETFONT,(WPARAM)GetCachedTextFont(12,700),TRUE);
-    SendMessageW(g_deviceHint,WM_SETFONT,(WPARAM)GetCachedTextFont(10,500),TRUE);
     SendMessageW(g_deviceList,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
     SendMessageW(g_deviceAppCombo,WM_SETFONT,(WPARAM)GetCachedTextFont(11,500),TRUE);
     SendMessageW(g_deviceList,LB_SETITEMHEIGHT,0,27);
@@ -1426,6 +1432,14 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(!item)return TRUE;
         if(item->hwndItem==g_devicePanel){
             RECT r=item->rcItem;
+            if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&r)){
+                ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_0C1D2D);
+                ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_2B5B70,1.0f);
+                ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left+16.0f,(float)r.top+157.0f,(float)r.right-16.0f,(float)r.top+158.0f,ABM_THEME_COLOR_267077);
+                ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left+16.0f,(float)r.top+326.0f,(float)r.right-16.0f,(float)r.top+327.0f,ABM_THEME_COLOR_267077);
+                ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
+                return TRUE;
+            }
             FillRectColor(item->hDC,r,ABM_THEME_COLOR_0C1D2D);
             HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B5B70);
             HGDIOBJ oldPen=SelectObject(item->hDC,pen),oldBrush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
@@ -1433,6 +1447,16 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             SelectObject(item->hDC,oldBrush);SelectObject(item->hDC,oldPen);DeleteObject(pen);
             RECT accent={r.left+16,r.top+157,r.right-16,r.top+158};FillRectColor(item->hDC,accent,ABM_THEME_COLOR_267077);
             RECT appDivider={r.left+16,r.top+326,r.right-16,r.top+327};FillRectColor(item->hDC,appDivider,ABM_THEME_COLOR_267077);
+            return TRUE;
+        }
+        if(item->hwndItem==g_deviceTitle||item->hwndItem==g_deviceHint){
+            wchar_t label[512]{};GetWindowTextW(item->hwndItem,label,_countof(label));
+            if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&item->rcItem)){
+                ABM_D2D_CanvasText(&g_streamButtonCanvas,label,item->rcItem,
+                    item->hwndItem==g_deviceTitle?ABM_THEME_COLOR_F2F9FF:ABM_THEME_COLOR_96BECF,
+                    ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
+            }else Text(item->hDC,label,item->rcItem,item->hwndItem==g_deviceTitle?ABM_THEME_COLOR_F2F9FF:ABM_THEME_COLOR_96BECF,12,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             return TRUE;
         }
         if(item->hwndItem==g_deviceRefresh){DrawDeviceButton(item,L"Refresh devices",false);return TRUE;}
@@ -1447,9 +1471,16 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             if(item->itemID==(UINT)-1)return TRUE;
             wchar_t label[256]{};SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)label);
             const bool selected=(item->itemState&ODS_SELECTED)!=0;
-            FillRectColor(item->hDC,item->rcItem,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
-            RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
-            Text(item->hDC,label,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&item->rcItem)){
+                ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)item->rcItem.left,(float)item->rcItem.top,(float)item->rcItem.right,(float)item->rcItem.bottom,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+                RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
+                ABM_D2D_CanvasText(&g_streamButtonCanvas,label,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
+            }else{
+                FillRectColor(item->hDC,item->rcItem,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+                RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
+                Text(item->hDC,label,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            }
             return TRUE;
         }
         break;
