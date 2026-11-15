@@ -4271,11 +4271,11 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     ABM_D2D_Line(&g_torrentUi,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2.0f);
     ABM_D2D_Line(&g_torrentUi,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2.0f);
 
-    RECT r=TorrentMakeRect(116,8,420,49);ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT r=TorrentMakeRect(116,8,420,49);ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Match the Main Player's exact brand suffix role and baseline. */
-    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_84CDC2,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
-    r=TorrentMakeRect(116,60,510,83);ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,ABM_THEME_COLOR_9DB1C9,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(116,60,510,83);ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Live task state is presented as a compact status chip. This is a
        read-only view of the existing engine task; it does not alter its state. */
     const wchar_t *engineState=L"ENGINE READY";
@@ -4296,30 +4296,30 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     r=TorrentMakeRect(w-244,23,w-22,57);TorrentRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_SURFACE);
     TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,engineDot);
-    r=TorrentMakeRect(w-211,25,w-34,55);ABM_D2D_Text(&g_torrentUi,engineState,r,ABM_THEME_COLOR_B4CDDB,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(w-211,25,w-34,55);ABM_D2D_Text(&g_torrentUi,engineState,r,ABM_THEME_COLOR_B4CDDB,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Source card: label above the edit row; no painted text beneath controls. */
     r=TorrentMakeRect(m,sourceTop,w-m,sourceTop+sourceH);
     TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_SURFACE);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
-    r=TorrentMakeRect(m+14,sourceTop+3,m+250,sourceTop+22);ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+14,sourceTop+3,m+250,sourceTop+22);ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,accent,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Content library card */
     r=TorrentMakeRect(m,contentTop,w-m,contentBottom);
     TorrentGradientRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_BORDER,1.0f);
-    r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=TorrentMakeRect(w-420,contentTop+5,w-m-14,contentTop+25);
-    ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,0,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,ABM_D2D_TEXT_BODY,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Fill(&g_torrentUi,m+14,contentTop+29,m+62,contentTop+31,accent);
     r=TorrentMakeRect(m+14,contentTop+33,w-m-14,contentTop+53);
-    TorrentDrawStoredText(g_torrentInfoLabel,r,ABM_UI_COLOR_TEXT_SECONDARY,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    TorrentDrawStoredText(g_torrentInfoLabel,r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Playback deck: status, progress and actions each have their own row. */
     r=TorrentMakeRect(m,playbackY,w-m,playbackY+100);
     TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_SURFACE);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
-    r=TorrentMakeRect(m+14,playbackY+2,m+250,playbackY+21);ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+14,playbackY+2,m+250,playbackY+21);ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int progress=(int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0);
     if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)==TORRENT_PLAYBACK_PLAYING)progress=100;
     float barL=m+14,barT=playbackY+47,barR=w-m-14;
@@ -4327,7 +4327,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,ABM_THEME_COLOR_314B5B);
     if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
     r=TorrentMakeRect(m+14,playbackY+23,w-m-14,playbackY+43);
-    TorrentDrawStoredText(g_torrentStatusLabel,r,ABM_UI_COLOR_TEXT_SECONDARY,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    TorrentDrawStoredText(g_torrentStatusLabel,r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Matched utility cards */
     r=TorrentMakeRect(m,networkY,w-m,networkY+76);
@@ -4341,18 +4341,18 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     r=TorrentMakeRect(m,tvY,w-m,h-12);
     TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
-    r=TorrentMakeRect(m+14,tvY+2,m+220,tvY+22);ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(m+14,tvY+2,m+220,tvY+22);ABM_D2D_Text(&g_torrentUi,L"TV CASTING",r,accent,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Static child labels retain their text as state only. Render every
        application-owned label with the same DirectWrite formats as Main. */
     r=TorrentMakeRect(m+14,networkY+3,m+14+((w-2*m-14-18-136)/2),networkY+21);
-    TorrentDrawStoredText(g_torrentDownLabel,r,muted,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    TorrentDrawStoredText(g_torrentDownLabel,r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=TorrentMakeRect(m+14+((w-2*m-14-18-136)/2)+18,networkY+3,w-m-136,networkY+21);
-    TorrentDrawStoredText(g_torrentUpLabel,r,muted,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    TorrentDrawStoredText(g_torrentUpLabel,r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=TorrentMakeRect(m+14,cacheY+3,m+224,cacheY+21);
-    TorrentDrawStoredText(g_torrentCacheLabel,r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    TorrentDrawStoredText(g_torrentCacheLabel,r,accent,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=TorrentMakeRect(m+232,cacheY+3,w-m-14,cacheY+21);
-    TorrentDrawStoredText(g_torrentCacheInfoLabel,r,muted,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    TorrentDrawStoredText(g_torrentCacheInfoLabel,r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     return ABM_D2D_End(&g_torrentUi);
 }
 /* Button renderer copied from Streaming Centre's DrawDeviceButton palette,
