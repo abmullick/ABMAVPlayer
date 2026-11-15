@@ -163,3 +163,10 @@ When extending Help:
 - Include practical consequences, examples, limitations and activation timing for settings.
 - Verify topic selection, search wraparound, no-match feedback, Ctrl+F, Enter, F3, resize behaviour and Esc close in the Windows build.
 - Keep the full documentation in the Markdown guides; the in-app article is a navigable quick reference, not a replacement for the developer guide.
+
+
+### Codec-aware playback evidence
+
+The VLC Runtime & Codecs diagnostic now maintains evidence for the active local-player media session. `PlaybackSetMedia` resets the evidence; the main player's existing 33 ms UI timer polls `libvlc_media_player_get_state`. Once `Playing` is observed, `VlcCaptureTrackEvidence` retains the current media descriptor, calls `libvlc_media_tracks_get`, copies bounded track metadata into ABM-owned storage, and releases both the returned track array and retained media reference. The snapshot is capped at 32 streams for display while the full LibVLC-returned array count is supplied to `libvlc_media_tracks_release`.
+
+The report and diagnostic export include stream type, track ID, codec description and FourCC, plus the current playlist path where available. The extension-derived container label is intentionally named a hint. `Playback Verified` requires both an observed `Playing` state and a non-empty track snapshot; a LibVLC error overrides that result. This is not decoder-module introspection: LibVLC's public API does not expose the exact internal decoder plugin selected, nor does a parsed track list prove every alternate track was selected or decoded. Keep these evidence boundaries explicit in UI and documentation.
