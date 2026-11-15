@@ -4347,7 +4347,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     if(!numeric){
         wchar_t caption[128]={0};GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
         RECT textRect={r.left+21,r.top+1,r.right-3,r.bottom-1};
-        ABM_D2D_CanvasText(&g_torrentButtonCanvas,caption,textRect,textColor,0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_torrentButtonCanvas,caption,textRect,textColor,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
 }
@@ -4437,6 +4437,23 @@ static void TorrentPremiumizeControl(HWND hwnd){
 static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
     if(!d)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
+    if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
+        COLORREF bg=(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_144B53:((d->itemID&1)?ABM_THEME_COLOR_0C1C2C:ABM_THEME_COLOR_0A1827);
+        ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,bg);
+        if(d->itemState&ODS_SELECTED){
+            RECT pill=r;InflateRect(&pill,-3,-2);
+            ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_14444F);
+            ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)pill.left,(float)pill.top,(float)pill.right,(float)pill.bottom,ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_31848B,1.0f);
+            ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left+5.0f,(float)r.top+6.0f,(float)r.left+8.0f,(float)r.bottom-6.0f,ABM_THEME_COLOR_5DDABE);
+        }
+        wchar_t line[1200]=L"";
+        if(d->itemID!=(UINT)-1)SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
+        RECT tx=r;tx.left+=12;tx.right-=10;
+        ABM_D2D_CanvasText(&g_torrentButtonCanvas,line,tx,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F7FDFF:ABM_THEME_COLOR_B2C9DA,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_41BEA5,1.0f);
+        ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
+        return;
+    }
     COLORREF bg=(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_144B53:((d->itemID&1)?ABM_THEME_COLOR_0C1C2C:ABM_THEME_COLOR_0A1827);
     HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
     if(d->itemState&ODS_SELECTED){
@@ -4465,6 +4482,19 @@ static void TorrentDrawFileListItem(const DRAWITEMSTRUCT *d){
 static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
     if(!d||!d->hwndItem)return;
     HDC dc=d->hDC;RECT r=d->rcItem;
+    if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,dc,&r)){
+        COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?ABM_THEME_COLOR_0D1E2F:ABM_THEME_COLOR_0A1826;
+        ABM_D2D_CanvasFill(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,bg);
+        if(d->itemID!=(UINT)-1){
+            if(d->itemState&ODS_SELECTED){RECT sr=r;InflateRect(&sr,-2,-1);ABM_D2D_CanvasFillRound(&g_torrentButtonCanvas,(float)sr.left,(float)sr.top,(float)sr.right,(float)sr.bottom,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_194653);}
+            wchar_t name[256]=L"";SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)name);
+            RECT tr=r;tr.left+=13;tr.right-=36;
+            ABM_D2D_CanvasText(&g_torrentButtonCanvas,name,tr,(d->itemState&ODS_SELECTED)?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        }
+        if(d->itemState&ODS_COMBOBOXEDIT)ABM_D2D_CanvasStrokeRound(&g_torrentButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_1D4B5B,1.0f);
+        ABM_D2D_CanvasEnd(&g_torrentButtonCanvas);
+        return;
+    }
     COLORREF bg=(d->itemState&ODS_COMBOBOXEDIT)?ABM_THEME_COLOR_0D1E2F:ABM_THEME_COLOR_0A1826;
     HBRUSH b=CreateSolidBrush(bg);FillRect(dc,&r,b);DeleteObject(b);
     if(d->itemID!=(UINT)-1){
