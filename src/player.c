@@ -4613,9 +4613,18 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
         if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
         g_torrentUiReady=TRUE;
-        if(!ABM_D2D_CanvasInit(&g_torrentButtonCanvas))return -1;
+        if(!ABM_D2D_CanvasInit(&g_torrentButtonCanvas)){
+            ABM_D2D_Destroy(&g_torrentUi);g_torrentUiReady=FALSE;
+            if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
+            return -1;
+        }
         g_torrentButtonCanvasReady=TRUE;
-        if(!TorrentRegisterSliderClass(GetModuleHandleW(NULL)))return -1;
+        if(!TorrentRegisterSliderClass(GetModuleHandleW(NULL))){
+            g_torrentButtonCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_torrentButtonCanvas);
+            ABM_D2D_Destroy(&g_torrentUi);g_torrentUiReady=FALSE;
+            if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
+            return -1;
+        }
         HWND h=CreateWindowExW(0,L"STATIC",L"Magnet URI or local .torrent file",WS_CHILD|WS_VISIBLE,20,76,760,20,hwnd,NULL,NULL,NULL);
         g_torrentSourceHint=h;ShowWindow(h,SW_HIDE);SendMessageW(h,WM_SETFONT,(WPARAM)font,TRUE);
         g_torrentMagnetEdit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,20,62,570,30,hwnd,(HMENU)ID_TORRENT_MAGNET,NULL,NULL);
