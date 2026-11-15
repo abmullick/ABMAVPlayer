@@ -209,7 +209,7 @@ This is a runtime and plugin-file inventory, not a complete codec certification 
 | Streaming/file/live caching | Passed to newly opened media. |
 | Performance options | Attached to newly opened media; reopen to test. |
 | Controls & Behaviour | Saved immediately and read by the corresponding UI action. |
-| Overview / Diagnostics | Read-only; no activation. |
+| Overview / Diagnostics / VLC Runtime & Codecs | Read-only; no activation. Runtime scan checks the loaded library path and selected plugin-file presence. |
 
 ## Configuration files
 
