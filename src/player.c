@@ -3386,6 +3386,9 @@ static void ShowTorrentWindow(HWND owner);
 static void ShowSettingsDialog(HWND owner);
 static BOOL EnsureTorrentCacheBaseDir(void);
 static volatile LONG g_torrentStreamCancel=0;
+/* Scalar completion tokens keep queued WM_TORRENT_STREAM_READY messages independent
+   of request memory, which remains owned by the UI thread. */
+static volatile LONG g_torrentStreamGeneration=0;
 static HWND g_torrentWindow=NULL,g_torrentMagnetEdit=NULL,g_torrentFileList=NULL,g_torrentInfoLabel=NULL,g_torrentStatusLabel=NULL;
 static HWND g_torrentDownLimitEdit=NULL,g_torrentUpLimitEdit=NULL,g_torrentBufferBar=NULL;
 static HWND g_torrentCacheLimitEdit=NULL,g_torrentCacheInfoLabel=NULL;
@@ -3431,6 +3434,7 @@ static libvlc_event_type_t g_torrentAttachedEvents[7];
 static int g_torrentAttachedEventCount=0;
 typedef struct TorrentStreamRequest {
     HWND owner;
+    LONG generation;
     uint64_t task_id;
     int file_index;
     int64_t file_size;
@@ -3787,13 +3791,25 @@ static void TorrentRefreshStatus(void) {
         TorrentSetLabel(g_torrentStatusLabel,buffering);
     } else if(playbackText)TorrentSetLabel(g_torrentStatusLabel,playbackText);
 }
+static void TorrentCancelStreamPreparation(void) {
+    /* Invalidate already-queued completion messages before touching request memory. */
+    InterlockedIncrement(&g_torrentStreamGeneration);
+    InterlockedExchange(&g_torrentStreamCancel,1);
+    if(g_torrentStreamThread) {
+        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
+        WaitForSingleObject(g_torrentStreamThread,INFINITE);
+        CloseHandle(g_torrentStreamThread);
+        g_torrentStreamThread=NULL;
+    }
+    if(g_torrentStreamRequest) {
+        free(g_torrentStreamRequest);
+        g_torrentStreamRequest=NULL;
+    }
+}
 static void TorrentStopPlayback(void) {
     BOOL hadLocalStream=(g_torrentStreamThread!=NULL)||g_torrentPlaybackActive;
     TorrentDetachPlayerEvents();
-    if(g_torrentStreamThread) {
-        InterlockedExchange(&g_torrentStreamCancel,1);
-        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
-    }
+    if(g_torrentStreamThread||g_torrentStreamRequest)TorrentCancelStreamPreparation();
     if(g_torrentPlaybackActive) {
         if(g_player)PlaybackStopEngine();
         g_torrentPlaybackActive=FALSE;g_hasMedia=FALSE;ResetArtwork();
@@ -3902,11 +3918,9 @@ static DWORD WINAPI TorrentStreamWorker(void *arg) {
     }
     if(!r->ok && !InterlockedCompareExchange(&g_torrentStreamCancel,0,0))
         InterlockedExchange(&g_torrentPlaybackState,TORRENT_PLAYBACK_FAILED);
-    if(!PostMessageW(r->owner,WM_TORRENT_STREAM_READY,0,(LPARAM)r)) {
-        if(g_torrentStopHttpStream)g_torrentStopHttpStream();
-        if(g_torrentStreamRequest==r)g_torrentStreamRequest=NULL;
-        free(r);
-    }
+    /* The message carries only a generation token, never a heap pointer. The UI
+       thread owns and frees the request after joining this worker. */
+    PostMessageW(r->owner,WM_TORRENT_STREAM_READY,(WPARAM)r->generation,0);
     return 0;
 }
 static void TorrentBeginStream(void) {
@@ -3937,7 +3951,8 @@ static void TorrentBeginStream(void) {
         L"Buffering before playback starts — collecting the initial verified pieces…");
     TorrentStreamRequest *req=(TorrentStreamRequest*)calloc(1,sizeof(*req));
     if(!req){TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — not enough memory to start streaming.");return;}
-    req->owner=g_main;req->task_id=g_torrentTaskId;req->file_index=fileIndex;req->file_size=size;
+    req->owner=g_main;req->generation=InterlockedIncrement(&g_torrentStreamGeneration);
+    req->task_id=g_torrentTaskId;req->file_index=fileIndex;req->file_size=size;
     InterlockedExchange(&g_torrentStreamCancel,0);g_torrentStreamRequest=req;
     g_torrentStreamThread=CreateThread(NULL,0,TorrentStreamWorker,req,0,NULL);
     if(!g_torrentStreamThread){g_torrentStreamRequest=NULL;free(req);TorrentSetPlaybackState(TORRENT_PLAYBACK_FAILED,L"Stream failed — could not start the buffering worker.");}
@@ -6362,9 +6377,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TORRENT_STREAM_READY: {
-        TorrentStreamRequest *req=(TorrentStreamRequest*)lp;
-        if(g_torrentStreamThread){CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;}
-        if(g_torrentStreamRequest==req)g_torrentStreamRequest=NULL;
+        LONG generation=(LONG)wp;
+        TorrentStreamRequest *req=g_torrentStreamRequest;
+        /* A stop/replacement may have invalidated this queued completion. */
+        if(!req||req->generation!=generation||
+           InterlockedCompareExchange(&g_torrentStreamGeneration,0,0)!=generation)
+            return 0;
+        if(g_torrentStreamThread){
+            WaitForSingleObject(g_torrentStreamThread,INFINITE);
+            CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;
+        }
+        g_torrentStreamRequest=NULL;
         BOOL cancelled=InterlockedCompareExchange(&g_torrentStreamCancel,0,0)!=0;
         if(req&&req->ok&&!cancelled) {
             int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,req->url,-1,NULL,0,NULL,NULL);
@@ -6991,13 +7014,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
     case WM_DESTROY:
         TorrentDetachPlayerEvents();
-        if(g_torrentStreamThread) {
-            InterlockedExchange(&g_torrentStreamCancel,1);
-            if(g_torrentStopHttpStream)g_torrentStopHttpStream();
-            WaitForSingleObject(g_torrentStreamThread,INFINITE);
-            CloseHandle(g_torrentStreamThread);g_torrentStreamThread=NULL;
-            if(g_torrentStreamRequest){free(g_torrentStreamRequest);g_torrentStreamRequest=NULL;}
-        }
+        if(g_torrentStreamThread||g_torrentStreamRequest)TorrentCancelStreamPreparation();
         if(g_torrentTvStreamThread) {
             InterlockedExchange(&g_torrentTvStreamCancel,1);
             if(g_torrentStopHttpStream)g_torrentStopHttpStream();
