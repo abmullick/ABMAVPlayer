@@ -67,6 +67,8 @@ std::string Utf8(const std::wstring &s) {
     std::string out((size_t)n,'\0');WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,s.data(),(int)s.size(),out.data(),n,nullptr,nullptr);return out;
 }
 std::atomic<SOCKET> g_mdnsSocket{INVALID_SOCKET};
+std::atomic<LONG> g_operationGeneration{0};
+std::atomic<bool> g_operationsCancelled{false};
 
 static unsigned ReadU16(const unsigned char *p) {
     return ((unsigned)p[0]<<8)|(unsigned)p[1];
@@ -421,6 +423,8 @@ int CheckYouTubeAvailability(const Receiver &receiver) {
     return -1;
 }
 int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t *appId,bool launch) {
+    const LONG operationGeneration=g_operationGeneration.load();
+    if(g_operationsCancelled.load())return -1;
     if(!appId||wcslen(appId)!=8)return -1;
     for(const wchar_t *p=appId;*p;++p)
         if(!((*p>=L'0'&&*p<=L'9')||(*p>=L'A'&&*p<=L'F')))return -1;
@@ -452,8 +456,20 @@ int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t 
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
     if(!created){Diag(L"Could not start Cast app helper Win32=%lu",GetLastError());CloseHandle(readPipe);return -1;}
-    DWORD wait=WaitForSingleObject(pi.hProcess,launch?40000:15000),exitCode=1;
-    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
+    DWORD wait=WAIT_TIMEOUT,exitCode=1;
+    const DWORD timeout=launch?40000:15000;
+    const ULONGLONG started=GetTickCount64();
+    for(;;) {
+        wait=WaitForSingleObject(pi.hProcess,100);
+        if(wait==WAIT_OBJECT_0)break;
+        if(wait!=WAIT_TIMEOUT || g_operationsCancelled.load() || g_operationGeneration.load()!=operationGeneration ||
+           GetTickCount64()-started>=timeout) {
+            TerminateProcess(pi.hProcess,1);
+            WaitForSingleObject(pi.hProcess,2000);
+            break;
+        }
+    }
+    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
     std::string output;char buffer[512];DWORD got=0;
     if(wait==WAIT_OBJECT_0)while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got){
@@ -484,6 +500,8 @@ bool LaunchCastApp(const Receiver &receiver,const wchar_t *appId) {
     return RunCastAppHelper(receiver,L"--launch-app",appId,true)==1;
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
+    const LONG operationGeneration=g_operationGeneration.load();
+    if(g_operationsCancelled.load())return false;
     Diag(L"Launch requested receiver=%s host=%S port=%u",r.name.c_str(),r.host.c_str(),r.port);
     wchar_t module[MAX_PATH]{};
     if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { Diag(L"GetModuleFileName failed Win32=%lu",GetLastError());g_error=L"Cannot locate ABM AV Player installation."; return false; }
@@ -506,8 +524,19 @@ bool Launch(const Receiver &r,const wchar_t *video) {
     BOOL created=CreateProcessW(helper.c_str(),command.data(),nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,directory.c_str(),&si,&pi);
     CloseHandle(writePipe);
     if(!created) { DWORD e=GetLastError();Diag(L"CreateProcess failed Win32=%lu path=%s",e,helper.c_str());CloseHandle(readPipe);g_error=L"Could not start the GoCast sender helper.";return false; }
-    DWORD wait=WaitForSingleObject(pi.hProcess,45000),exitCode=1;
-    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);else TerminateProcess(pi.hProcess,1);
+    DWORD wait=WAIT_TIMEOUT,exitCode=1;
+    const ULONGLONG started=GetTickCount64();
+    for(;;) {
+        wait=WaitForSingleObject(pi.hProcess,100);
+        if(wait==WAIT_OBJECT_0)break;
+        if(wait!=WAIT_TIMEOUT || g_operationGeneration.load()!=operationGeneration ||
+           GetTickCount64()-started>=45000) {
+            TerminateProcess(pi.hProcess,1);
+            WaitForSingleObject(pi.hProcess,2000);
+            break;
+        }
+    }
+    if(wait==WAIT_OBJECT_0)GetExitCodeProcess(pi.hProcess,&exitCode);
     CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
     std::string output;char buffer[1024];DWORD got=0;
     if(wait==WAIT_OBJECT_0) while(ReadFile(readPipe,buffer,sizeof(buffer),&got,nullptr)&&got) { if(output.size()<16384)output.append(buffer,got); }
@@ -522,6 +551,13 @@ bool Launch(const Receiver &r,const wchar_t *video) {
     }
     g_error.clear();Diag(L"Helper completed successfully");return true;
 }
+}
+extern "C" void ABM_CastV2_CancelOperations(void) {
+    g_operationsCancelled.store(true);
+    g_operationGeneration.fetch_add(1);
+}
+extern "C" void ABM_CastV2_ResetOperationCancellation(void) {
+    g_operationsCancelled.store(false);
 }
 extern "C" void ABM_CastV2_StartDiscovery(void) {
     Diag(L"========== GoCast discovery started ==========");
