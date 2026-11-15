@@ -25,6 +25,7 @@
 #include <WebView2.h>
 #include <gdiplus.h>
 #include "../ui_theme.h"
+#include "../ui_d2d.h"
 #include "version.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
