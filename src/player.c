@@ -3979,9 +3979,14 @@ static BOOL TorrentRegisterSliderClass(HINSTANCE instance){
     if(RegisterClassW(&wc)||GetLastError()==ERROR_CLASS_ALREADY_EXISTS)return TRUE;return FALSE;
 }
 
+static void TorrentMove(HWND control,int x,int y,int width,int height,BOOL repaint){
+    if(!control)return;UINT dpi=ABM_DpiGetForWindow(GetParent(control));
+    MoveWindow(control,ABM_DpiScale(x,dpi),ABM_DpiScale(y,dpi),
+        ABM_DpiScale(width,dpi),ABM_DpiScale(height,dpi),repaint);
+}
 static void TorrentLayout(HWND hwnd) {
-    RECT rc={0};GetClientRect(hwnd,&rc);
-    const int w=rc.right,h=rc.bottom,m=22,inner=w-2*m;
+    RECT rc={0};GetClientRect(hwnd,&rc);UINT dpi=ABM_DpiGetForWindow(hwnd);
+    const int w=ABM_DpiUnscale(rc.right,dpi),h=ABM_DpiUnscale(rc.bottom,dpi),m=22,inner=w-2*m;
     /* Ignore minimized/intermediate zero-sized WM_SIZE notifications. The
        next restored/maximized size will perform a complete layout pass. */
     if(w<700||h<600)return;
@@ -3994,43 +3999,43 @@ static void TorrentLayout(HWND hwnd) {
     if(contentBottom<contentTop+100)contentBottom=contentTop+100;
     const int playbackY=contentBottom+12,networkY=playbackY+112;
     const int cacheY=networkY+84,tvY=cacheY+84;
-    MoveWindow(g_torrentMagnetEdit,m+14,sourceTop+27,inner-272,36,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-250,sourceTop+23,104,42,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-134,sourceTop+23,122,42,FALSE);
-    MoveWindow(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,FALSE);
-    MoveWindow(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),FALSE);
-    MoveWindow(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,FALSE);
-    MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,FALSE);
+    TorrentMove(g_torrentMagnetEdit,m+14,sourceTop+27,inner-272,36,FALSE);
+    TorrentMove(GetDlgItem(hwnd,ID_TORRENT_ADD_MAGNET),w-m-250,sourceTop+23,104,42,FALSE);
+    TorrentMove(GetDlgItem(hwnd,ID_TORRENT_BROWSE),w-m-134,sourceTop+23,122,42,FALSE);
+    TorrentMove(g_torrentInfoLabel,m+14,contentTop+7,inner-28,22,FALSE);
+    TorrentMove(g_torrentFileList,m+12,contentTop+34,inner-24,max(40,contentBottom-contentTop-42),FALSE);
+    TorrentMove(g_torrentStatusLabel,m+14,playbackY+5,inner-28,19,FALSE);
+    TorrentMove(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,FALSE);
     /* Playback actions use a compact fixed width, like Streaming Centre
        controls; do not stretch them to consume the entire window. */
     const int actionWidths[5]={128,156,128,128,110},actionH=42,actionGap=10;
     int actionTotal=actionGap*4;
     for(int i=0;i<5;i++)actionTotal+=actionWidths[i];
     int x=m+(inner-actionTotal)/2;
-    for(int i=0;i<5;i++){MoveWindow(g_torrentActionButtons[i],x,playbackY+54,actionWidths[i],actionH,FALSE);x+=actionWidths[i]+actionGap;}
+    for(int i=0;i<5;i++){TorrentMove(g_torrentActionButtons[i],x,playbackY+54,actionWidths[i],actionH,FALSE);x+=actionWidths[i]+actionGap;}
     /* Two balanced bandwidth columns; reserve a dedicated action lane at right. */
     const int leftX=m+14,applyX=w-m-136,gap=18;
     const int sliderW=max(170,(applyX-leftX-gap)/2);
     const int secondX=leftX+sliderW+gap;
-    MoveWindow(g_torrentDownLabel,leftX,networkY+3,sliderW,18,FALSE);
-    MoveWindow(g_torrentUpLabel,secondX,networkY+3,sliderW,18,FALSE);
+    TorrentMove(g_torrentDownLabel,leftX,networkY+3,sliderW,18,FALSE);
+    TorrentMove(g_torrentUpLabel,secondX,networkY+3,sliderW,18,FALSE);
     ShowWindow(g_torrentDownLimitEdit,SW_HIDE);ShowWindow(g_torrentUpLimitEdit,SW_HIDE);
     for(int si=0;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
-    MoveWindow(g_torrentSliders[0],leftX,networkY+25,sliderW,46,FALSE);
-    MoveWindow(g_torrentSliders[1],secondX,networkY+25,sliderW,46,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),applyX,networkY+25,124,42,FALSE);
-    MoveWindow(g_torrentCacheLabel,m+14,cacheY+3,210,18,FALSE);
-    MoveWindow(g_torrentCacheInfoLabel,m+232,cacheY+3,max(180,inner-246),18,FALSE);
+    TorrentMove(g_torrentSliders[0],leftX,networkY+25,sliderW,46,FALSE);
+    TorrentMove(g_torrentSliders[1],secondX,networkY+25,sliderW,46,FALSE);
+    TorrentMove(GetDlgItem(hwnd,ID_TORRENT_APPLY_LIMITS),applyX,networkY+25,124,42,FALSE);
+    TorrentMove(g_torrentCacheLabel,m+14,cacheY+3,210,18,FALSE);
+    TorrentMove(g_torrentCacheInfoLabel,m+232,cacheY+3,max(180,inner-246),18,FALSE);
     ShowWindow(g_torrentCacheLimitEdit,SW_HIDE);
     for(int si=4;si<6;si++)if(g_torrentNumericButtons[si])ShowWindow(g_torrentNumericButtons[si],SW_HIDE);
-    MoveWindow(g_torrentSliders[2],m+14,cacheY+25,260,46,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+290,cacheY+25,112,42,FALSE);
-    MoveWindow(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+418,cacheY+25,168,42,FALSE);
-    MoveWindow(g_torrentOpenDownloadsButton,m+600,cacheY+25,190,42,FALSE);
-    MoveWindow(g_torrentTvButtons[0],m+14,tvY+26,132,42,FALSE);
-    MoveWindow(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,FALSE);
-    MoveWindow(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,FALSE);
-    MoveWindow(g_torrentTvButtons[2],w-m-128,tvY+26,120,42,FALSE);
+    TorrentMove(g_torrentSliders[2],m+14,cacheY+25,260,46,FALSE);
+    TorrentMove(GetDlgItem(hwnd,ID_TORRENT_CACHE_APPLY),m+290,cacheY+25,112,42,FALSE);
+    TorrentMove(GetDlgItem(hwnd,ID_TORRENT_CLEAR_CACHE),m+418,cacheY+25,168,42,FALSE);
+    TorrentMove(g_torrentOpenDownloadsButton,m+600,cacheY+25,190,42,FALSE);
+    TorrentMove(g_torrentTvButtons[0],m+14,tvY+26,132,42,FALSE);
+    TorrentMove(g_torrentTvCombo,m+158,tvY+26,max(120,inner-442),42,FALSE);
+    TorrentMove(g_torrentTvButtons[1],w-m-270,tvY+26,130,42,FALSE);
+    TorrentMove(g_torrentTvButtons[2],w-m-128,tvY+26,120,42,FALSE);
     /* Keep interactive buttons above overlapping static labels after relayout. */
     const int buttonIds[]={ID_TORRENT_APPLY_LIMITS,ID_TORRENT_CACHE_APPLY,
         ID_TORRENT_CLEAR_CACHE,ID_TORRENT_FIND_TVS,ID_TORRENT_CAST_TV,
@@ -4059,8 +4064,8 @@ static void TorrentGradientRoundRect(ABM_D2D *ui,RECT rect,float radius,COLORREF
     ABM_D2D_GradientRound(ui,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,radius,start,end);
 }
 static void TorrentPaint(HWND hwnd){
-    RECT rc={0};GetClientRect(hwnd,&rc);
-    const float w=(float)rc.right,h=(float)rc.bottom;
+    RECT rc={0};GetClientRect(hwnd,&rc);UINT dpi=ABM_DpiGetForWindow(hwnd);
+    const float w=(float)ABM_DpiUnscale(rc.right,dpi),h=(float)ABM_DpiUnscale(rc.bottom,dpi);
     const float m=22.0f,headerH=94.0f,sourceTop=108.0f,sourceH=66.0f;
     const float contentTop=sourceTop+sourceH+12.0f;
     float contentBottom=h-410.0f;
@@ -4407,10 +4412,16 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
 }
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_DPICHANGED:
+    case WM_DPICHANGED: {
         ABM_DpiApplySuggestedRect(hwnd,lp);
-        InvalidateRect(hwnd,NULL,FALSE);
-        return 0;
+        UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(hwnd);
+        ABM_D2D_SetDpi(&g_torrentUi,dpi,dpi);
+        if(g_torrentUiFont)DeleteObject(g_torrentUiFont);
+        g_torrentUiFont=CreateFontW(-ABM_DpiScale(15,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
+        {HWND controls[]={g_torrentSourceHint,g_torrentMagnetEdit,g_torrentInfoLabel,g_torrentFileList,g_torrentStatusLabel,g_torrentBufferBar,g_torrentDownLabel,g_torrentDownLimitEdit,g_torrentUpLabel,g_torrentUpLimitEdit,g_torrentCacheLabel,g_torrentCacheLimitEdit,g_torrentCacheInfoLabel,g_torrentTvCombo,g_torrentDownloadPathLabel,g_torrentOpenDownloadsButton,g_torrentSliders[0],g_torrentSliders[1],g_torrentSliders[2],g_torrentNumericButtons[0],g_torrentNumericButtons[1],g_torrentNumericButtons[2],g_torrentNumericButtons[3],g_torrentNumericButtons[4],g_torrentNumericButtons[5],g_torrentTvButtons[0],g_torrentTvButtons[1],g_torrentTvButtons[2],g_torrentActionButtons[0],g_torrentActionButtons[1],g_torrentActionButtons[2],g_torrentActionButtons[3],g_torrentActionButtons[4]};
+         for(int i=0;i<(int)_countof(controls);i++)if(controls[i]&&g_torrentUiFont)SendMessageW(controls[i],WM_SETFONT,(WPARAM)g_torrentUiFont,TRUE);}
+        TorrentLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
+    }
     case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady)TorrentPaint(hwnd);EndPaint(hwnd,&ps);return 0; }
     case WM_SIZE:
         if(g_torrentUiReady)ABM_D2D_Resize(&g_torrentUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
@@ -4442,6 +4453,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         HFONT font=g_torrentUiFont?g_torrentUiFont:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         ZeroMemory(&g_torrentUi,sizeof(g_torrentUi));
         if(!ABM_D2D_Init(&g_torrentUi,hwnd)){if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}return -1;}
+        {UINT dpi=ABM_DpiGetForWindow(hwnd);ABM_D2D_SetDpi(&g_torrentUi,dpi,dpi);}
         g_torrentUiReady=TRUE;
         if(!TorrentRegisterSliderClass(GetModuleHandleW(NULL)))return -1;
         HWND h=CreateWindowExW(0,L"STATIC",L"Magnet URI or local .torrent file",WS_CHILD|WS_VISIBLE,20,76,760,20,hwnd,NULL,NULL,NULL);
