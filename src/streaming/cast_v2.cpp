@@ -424,6 +424,7 @@ int CheckYouTubeAvailability(const Receiver &receiver) {
 }
 int RunCastAppHelper(const Receiver &receiver,const wchar_t *mode,const wchar_t *appId,bool launch) {
     const LONG operationGeneration=g_operationGeneration.load();
+    if(g_operationsCancelled.load())return -1;
     if(!appId||wcslen(appId)!=8)return -1;
     for(const wchar_t *p=appId;*p;++p)
         if(!((*p>=L'0'&&*p<=L'9')||(*p>=L'A'&&*p<=L'F')))return -1;
