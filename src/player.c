@@ -4621,6 +4621,16 @@ static void TorrentDrawTvCombo(const DRAWITEMSTRUCT *d){
         SelectObject(dc,ob);SelectObject(dc,old);DeleteObject(border);
     }
 }
+static void TorrentApplyWindowChrome(HWND hwnd){
+    if(!hwnd)return;
+    BOOL dark=TRUE;
+    DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+    {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_THEME_COLOR_0A0F19;
+     DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+     DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+     DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+    SetWindowPos(hwnd,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
+}
 static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_PAINT: { PAINTSTRUCT ps;BeginPaint(hwnd,&ps);if(g_torrentUiReady&&!TorrentPaint(hwnd,&ps.rcPaint))InvalidateRect(hwnd,NULL,FALSE);EndPaint(hwnd,&ps);return 0; }
@@ -4631,6 +4641,12 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=760;return 0; }
     case WM_ERASEBKGND: return 1;
+    case WM_THEMECHANGED:
+        if(g_torrentSurfaceBrush){DeleteObject(g_torrentSurfaceBrush);g_torrentSurfaceBrush=NULL;}
+        if(g_torrentControlBrush){DeleteObject(g_torrentControlBrush);g_torrentControlBrush=NULL;}
+        TorrentApplyWindowChrome(hwnd);
+        InvalidateRect(hwnd,NULL,TRUE);
+        return 0;
     
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
     case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=38;return TRUE;} break; }
@@ -4871,6 +4887,8 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         ABM_D2D_CanvasDestroy(&g_torrentButtonCanvas);
         ABM_D2D_Destroy(&g_torrentUi);
         if(g_torrentUiFont){DeleteObject(g_torrentUiFont);g_torrentUiFont=NULL;}
+        if(g_torrentSurfaceBrush){DeleteObject(g_torrentSurfaceBrush);g_torrentSurfaceBrush=NULL;}
+        if(g_torrentControlBrush){DeleteObject(g_torrentControlBrush);g_torrentControlBrush=NULL;}
         g_torrentInfoLabel=NULL;g_torrentStatusLabel=NULL;g_torrentDownLimitEdit=NULL;g_torrentUpLimitEdit=NULL;g_torrentBufferBar=NULL;g_torrentOpenDownloadsButton=NULL;
         g_torrentCacheLimitEdit=NULL;g_torrentCacheInfoLabel=NULL;g_torrentTvCombo=NULL;g_torrentDownloadPathLabel=NULL;return 0;
     }
@@ -4887,12 +4905,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow){
         HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
         if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
-        BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-        {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_THEME_COLOR_0A0F19;
-         DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
-         DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
-         DwmSetWindowAttribute(g_torrentWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
-        SetWindowPos(g_torrentWindow,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
+        TorrentApplyWindowChrome(g_torrentWindow);
         ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();
     }
 }
