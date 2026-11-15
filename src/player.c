@@ -3980,7 +3980,7 @@ static void TorrentLayout(HWND hwnd) {
     MoveWindow(g_torrentBufferBar,m+14,playbackY+29,inner-28,5,FALSE);
     /* Playback actions use a compact fixed width, like Streaming Centre
        controls; do not stretch them to consume the entire window. */
-    const int actionWidths[5]={128,156,128,128,110},actionH=42,actionGap=10;
+    const int actionWidths[5]={184,156,128,128,110},actionH=42,actionGap=10;
     int actionTotal=actionGap*4;
     for(int i=0;i<5;i++)actionTotal+=actionWidths[i];
     int x=m+(inner-actionTotal)/2;
@@ -4475,7 +4475,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_torrentOpenDownloadsButton,WM_SETFONT,(WPARAM)font,TRUE);
         SendMessageW(g_torrentCacheInfoLabel,WM_SETFONT,(WPARAM)font,TRUE);
         const struct {int id;const wchar_t *label;} buttons[]={
-            {ID_TORRENT_PAUSE,L"Pause / Resume"},{ID_TORRENT_STREAM,L"Play / Stream"},
+            {ID_TORRENT_PAUSE,L"Pause / Resume Download"},{ID_TORRENT_STREAM,L"Play / Stream"},
             {ID_TORRENT_STOP,L"Stop stream"},{ID_TORRENT_REMOVE,L"Remove task"},{ID_TORRENT_REFRESH,L"Refresh"}
         };
         for(size_t i=0;i<_countof(buttons);i++){g_torrentActionButtons[i]=CreateWindowW(L"BUTTON",buttons[i].label,WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,20,568,125,40,hwnd,(HMENU)(INT_PTR)buttons[i].id,NULL,NULL);SendMessageW(g_torrentActionButtons[i],WM_SETFONT,(WPARAM)font,TRUE);}
