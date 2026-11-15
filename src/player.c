@@ -6463,6 +6463,7 @@ static void SettingsMoveChildControls(HWND w){
 }
 #define SETTINGS_SCROLLBAR_SIZE 12
 #define SETTINGS_SCROLLBAR_MIN_THUMB 28
+static void SettingsSetScroll(HWND w,int x,int y);
 static BOOL g_settingsScrollDragging=FALSE,g_settingsScrollDragVertical=TRUE;
 static int g_settingsScrollDragOffset=0;
 static void SettingsScrollMetrics(HWND w,BOOL vertical,int *trackStart,int *trackLength,int *thumbStart,int *thumbLength,int *maxScroll){
@@ -6596,7 +6597,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   SetBkMode(dc,OPAQUE);
   return (LRESULT)g_settingsEditBrush;
  }
- case WM_CANCELMODE:case WM_CAPTURECHANGED:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_CANCELMODE:case WM_CAPTURECHANGED:g_settingsMousePressed=FALSE;g_settingsScrollDragging=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
  case WM_MOUSEMOVE:{if(g_settingsScrollDragging){SettingsUpdateScrollDrag(w,GET_X_LPARAM(lp),GET_Y_LPARAM(lp));return 0;}int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
  case WM_MOUSELEAVE:g_settingsHoverX=g_settingsHoverY=-1;g_settingsMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
  case WM_LBUTTONDOWN:{if(SettingsBeginScrollDrag(w,GET_X_LPARAM(lp),GET_Y_LPARAM(lp)))return 0;g_settingsMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
