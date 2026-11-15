@@ -6453,6 +6453,42 @@ static void ShowAdvancedSettingsDialog(HWND owner){
 }
 
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
+static int g_settingsScrollX=0,g_settingsScrollY=0;
+#define SETTINGS_CONTENT_WIDTH 820
+#define SETTINGS_CONTENT_HEIGHT 980
+static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
+static void SettingsMoveChildControls(HWND w){
+ static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29}};
+ for(int i=0;i<(int)_countof(items);i++){HWND child=GetDlgItem(w,items[i].id);if(child)SetWindowPos(child,NULL,items[i].x-g_settingsScrollX,items[i].y-g_settingsScrollY,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE);}
+}
+static void SettingsUpdateScrollBars(HWND w){
+ RECT rc;GetClientRect(w,&rc);
+ SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_RANGE|SIF_PAGE|SIF_POS;si.nMin=0;si.nMax=SETTINGS_CONTENT_WIDTH-1;si.nPage=(UINT)(rc.right>0?rc.right:1);si.nPos=g_settingsScrollX;SetScrollInfo(w,SB_HORZ,&si,TRUE);
+ si.nMax=SETTINGS_CONTENT_HEIGHT-1;si.nPage=(UINT)(rc.bottom>0?rc.bottom:1);si.nPos=g_settingsScrollY;SetScrollInfo(w,SB_VERT,&si,TRUE);
+ int maxX=SETTINGS_CONTENT_WIDTH-rc.right;if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-rc.bottom;if(maxY<0)maxY=0;
+ g_settingsScrollX=SettingsClampInt(g_settingsScrollX,0,maxX);g_settingsScrollY=SettingsClampInt(g_settingsScrollY,0,maxY);
+ si.nMax=SETTINGS_CONTENT_HEIGHT-1;si.nPage=(UINT)(rc.bottom>0?rc.bottom:1);si.nPos=g_settingsScrollY;SetScrollInfo(w,SB_VERT,&si,TRUE);
+ si.nMax=SETTINGS_CONTENT_WIDTH-1;si.nPage=(UINT)(rc.right>0?rc.right:1);si.nPos=g_settingsScrollX;SetScrollInfo(w,SB_HORZ,&si,TRUE);
+ SettingsMoveChildControls(w);
+}
+static void SettingsSetScroll(HWND w,int x,int y){
+ RECT rc;GetClientRect(w,&rc);int maxX=SETTINGS_CONTENT_WIDTH-rc.right;if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-rc.bottom;if(maxY<0)maxY=0;
+ x=SettingsClampInt(x,0,maxX);y=SettingsClampInt(y,0,maxY);if(x==g_settingsScrollX&&y==g_settingsScrollY)return;
+ g_settingsScrollX=x;g_settingsScrollY=y;SettingsMoveChildControls(w);
+ SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_POS;si.nPos=x;SetScrollInfo(w,SB_HORZ,&si,TRUE);si.nPos=y;SetScrollInfo(w,SB_VERT,&si,TRUE);InvalidateRect(w,NULL,FALSE);
+}
+static void SettingsScrollCommand(HWND w,BOOL vertical,UINT code){
+ SCROLLINFO si={0};si.cbSize=sizeof(si);si.fMask=SIF_ALL;int bar=vertical?SB_VERT:SB_HORZ;if(!GetScrollInfo(w,bar,&si))return;
+ int pos=vertical?g_settingsScrollY:g_settingsScrollX,page=(int)(si.nPage?si.nPage:48);
+ switch(code){case SB_LINEUP:pos-=48;break;case SB_LINEDOWN:pos+=48;break;case SB_PAGEUP:pos-=page;break;case SB_PAGEDOWN:pos+=page;break;case SB_TOP:pos=0;break;case SB_BOTTOM:pos=si.nMax-(int)si.nPage+1;break;case SB_THUMBTRACK:case SB_THUMBPOSITION:pos=si.nTrackPos;break;default:return;}
+ if(vertical)SettingsSetScroll(w,g_settingsScrollX,pos);else SettingsSetScroll(w,pos,g_settingsScrollY);
+}
+static void SettingsClampToMonitor(HWND w,const RECT *suggested){
+ RECT target=*suggested;HMONITOR mon=MonitorFromRect(&target,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
+ if(GetMonitorInfoW(mon,&mi)){int maxW=mi.rcWork.right-mi.rcWork.left,maxH=mi.rcWork.bottom-mi.rcWork.top,width=target.right-target.left,height=target.bottom-target.top;if(width>maxW)width=maxW;if(height>maxH)height=maxH;target.right=target.left+width;target.bottom=target.top+height;if(target.left<mi.rcWork.left){target.left=mi.rcWork.left;target.right=target.left+width;}if(target.top<mi.rcWork.top){target.top=mi.rcWork.top;target.bottom=target.top+height;}if(target.right>mi.rcWork.right){target.right=mi.rcWork.right;target.left=target.right-width;}if(target.bottom>mi.rcWork.bottom){target.bottom=mi.rcWork.bottom;target.top=target.bottom-height;}}
+ SetWindowPos(w,NULL,target.left,target.top,target.right-target.left,target.bottom-target.top,SWP_NOZORDER|SWP_NOACTIVATE);
+}
+
 static LRESULT CALLBACK SettingsEditFocusSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref){
  (void)wp;(void)lp;(void)id;(void)ref;
  if(msg==WM_SETFOCUS||msg==WM_KILLFOCUS)InvalidateRect(GetParent(edit),NULL,FALSE);
@@ -6484,7 +6520,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_THEMECHANGED:
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   InvalidateRect(w,NULL,FALSE);return 0;
- case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));SettingsUpdateScrollBars(w);InvalidateRect(w,NULL,FALSE);return 0;
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
   HDC dc=(HDC)wp;
@@ -6496,8 +6532,10 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
  case WM_MOUSELEAVE:g_settingsHoverX=g_settingsHoverY=-1;g_settingsMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
  case WM_CANCELMODE:case WM_CAPTURECHANGED:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
+ case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;if(x!=g_settingsHoverX||y!=g_settingsHoverY){g_settingsHoverX=x;g_settingsHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
+ case WM_MOUSELEAVE:g_settingsHoverX=g_settingsHoverY=-1;g_settingsMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
  case WM_LBUTTONDOWN:{g_settingsMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
-  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
    int left=40+col*185,top=780+row*46;
@@ -6529,6 +6567,10 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   break;
  }
  case WM_LBUTTONUP:g_settingsMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);break;
+ case WM_VSCROLL:SettingsScrollCommand(w,TRUE,LOWORD(wp));return 0;
+ case WM_HSCROLL:SettingsScrollCommand(w,FALSE,LOWORD(wp));return 0;
+ case WM_MOUSEWHEEL:{int delta=GET_WHEEL_DELTA_WPARAM(wp);SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY-(delta/WHEEL_DELTA)*120);return 0;}
+ case WM_DPICHANGED:{SettingsClampToMonitor(w,(const RECT*)lp);SettingsUpdateScrollBars(w);if(g_settingsUiReady){RECT cr;GetClientRect(w,&cr);ABM_D2D_Resize(&g_settingsUi,cr.right,cr.bottom);}InvalidateRect(w,NULL,TRUE);return 0;}
  case WM_KEYDOWN:
   if(wp==VK_ESCAPE){if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}else DestroyWindow(w);return 0;}
   if((GetKeyState(VK_CONTROL)&0x8000)&&wp=='S'){SettingsApply(w);return 0;}
@@ -6539,6 +6581,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    /* Match the Main Player's invalid-region rendering: preserve the rest of
       the window and repaint only what Windows invalidated. */
    ABM_D2D_BeginClip(&g_settingsUi,SETTINGS_BG,&ps.rcPaint);
+   ABM_D2D_SetOffset(&g_settingsUi,(float)-g_settingsScrollX,(float)-g_settingsScrollY);
    ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
    ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_1C9D9D);
@@ -6612,9 +6655,11 @@ static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
- RECT wr={0,0,820,980};AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
- int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;
- g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
+ DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_HSCROLL|WS_VSCROLL|WS_CLIPCHILDREN|WS_POPUP;
+ RECT wr={0,0,820,760};AdjustWindowRectEx(&wr,style,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
+ HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};int workL=0,workT=0,workW=GetSystemMetrics(SM_CXSCREEN),workH=GetSystemMetrics(SM_CYSCREEN);if(GetMonitorInfoW(mon,&mi)){workL=mi.rcWork.left;workT=mi.rcWork.top;workW=mi.rcWork.right-mi.rcWork.left;workH=mi.rcWork.bottom-mi.rcWork.top;}
+ if(ww>workW)ww=workW;if(hh>workH)hh=workH;int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;if(x<workL)x=workL;if(y<workT)y=workT;if(x+ww>workL+workW)x=workL+workW-ww;if(y+hh>workT+workH)y=workT+workH-hh;g_settingsScrollX=0;g_settingsScrollY=0;
+ g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",style,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
