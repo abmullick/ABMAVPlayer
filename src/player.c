@@ -260,6 +260,14 @@ enum { HIT_NONE, HIT_OPEN, HIT_PLAY, HIT_STOP, HIT_PREV, HIT_NEXT, HIT_SEEK, HIT
 #define C_LINE   ABM_UI_COLOR_BORDER
 
 
+/* Map GDI surfaces authored in 96-DPI logical pixels onto the current
+   monitor. Text, geometry and hit targets can then share one coordinate space. */
+static void ABM_GdiUseLogicalDpi(HDC dc,UINT dpi){
+    if(!dc)return;if(!dpi)dpi=96;
+    SetMapMode(dc,MM_ANISOTROPIC);
+    SetWindowExtEx(dc,96,96,NULL);
+    SetViewportExtEx(dc,(int)dpi,(int)dpi,NULL);
+}
 /* ABM-owned modal notification surface. Replaces legacy MessageBox UI while
    preserving the Win32 result codes expected by existing call sites. */
 typedef struct ABMDialogState { const wchar_t *text,*caption; UINT flags; int result; int defaultButton; int focusedButton; RECT buttons[2]; int buttonCount; BOOL done; } ABMDialogState;
@@ -3150,9 +3158,11 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
     case WM_ERASEBKGND:return 1;
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);
-        RECT client;GetClientRect(hwnd,&client);
+        RECT client;GetClientRect(hwnd,&client);UINT dpi=ABM_DpiGetForWindow(hwnd);
+        int logicalW=ABM_DpiUnscale(client.right,dpi),logicalH=ABM_DpiUnscale(client.bottom,dpi);
         HDC mem=CreateCompatibleDC(dc);HBITMAP bmp=CreateCompatibleBitmap(dc,client.right,client.bottom);
         HBITMAP old=(HBITMAP)SelectObject(mem,bmp);
+        ABM_GdiUseLogicalDpi(mem,dpi);client.right=logicalW;client.bottom=logicalH;
         HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(mem,&client,bg);DeleteObject(bg);
         HPEN border=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER_STRONG);HGDIOBJ oldPen=SelectObject(mem,border);
         HBRUSH panel=CreateSolidBrush(ABM_UI_COLOR_SURFACE);HGDIOBJ oldBrush=SelectObject(mem,panel);
@@ -3212,7 +3222,8 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         SelectObject(mem,old);DeleteObject(bmp);DeleteDC(mem);EndPaint(hwnd,&ps);return 0;
     }
     case WM_LBUTTONDOWN:{
-        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        UINT dpi=ABM_DpiGetForWindow(hwnd);
+        int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
         if(y>=354&&y<=386&&x>=30&&x<=649){
             int preset=(x-30)/126;if(preset>4)preset=4;
             EqSetPreset(preset);InvalidateRect(hwnd,NULL,FALSE);return 0;
@@ -3220,7 +3231,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         g_eqDragBand=-2;EqSetFromPoint(hwnd,x,y);SetCapture(hwnd);InvalidateRect(hwnd,NULL,FALSE);return 0;
     }
     case WM_MOUSEMOVE:
-        if(g_eqDragBand==-2&&(wp&MK_LBUTTON)){EqSetFromPoint(hwnd,GET_X_LPARAM(lp),GET_Y_LPARAM(lp));InvalidateRect(hwnd,NULL,FALSE);}return 0;
+        if(g_eqDragBand==-2&&(wp&MK_LBUTTON)){UINT dpi=ABM_DpiGetForWindow(hwnd);EqSetFromPoint(hwnd,ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi));InvalidateRect(hwnd,NULL,FALSE);}return 0;
     case WM_LBUTTONUP:g_eqDragBand=-1;ReleaseCapture();return 0;
     case WM_KEYDOWN:if(wp==VK_ESCAPE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);return 0;}break;
     case WM_CLOSE:SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);return 0;
@@ -3235,14 +3246,15 @@ static void ShowEqualizer(void) {
         RegisterClassExW(&wc);
         g_eqWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_LAYERED|WS_EX_TOPMOST,
             wc.lpszClassName,L"ABM AV Player - Advanced Equalizer",WS_POPUP,
-            CW_USEDEFAULT,CW_USEDEFAULT,680,405,g_main,NULL,wc.hInstance,NULL);
+            CW_USEDEFAULT,CW_USEDEFAULT,ABM_DpiScale(680,ABM_DpiGetForWindow(g_main)),ABM_DpiScale(405,ABM_DpiGetForWindow(g_main)),g_main,NULL,wc.hInstance,NULL);
         if(!g_eqWindow){ABM_MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
         SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);
     }
     RECT owner;GetWindowRect(g_main,&owner);
-    int x=owner.left+(owner.right-owner.left-680)/2;
-    int y=owner.top+(owner.bottom-owner.top-405)/2;
-    SetWindowPos(g_eqWindow,HWND_TOPMOST,x,y,680,405,SWP_SHOWWINDOW);
+    UINT dpi=ABM_DpiGetForWindow(g_main);int ew=ABM_DpiScale(680,dpi),eh=ABM_DpiScale(405,dpi);
+    int x=owner.left+(owner.right-owner.left-ew)/2;
+    int y=owner.top+(owner.bottom-owner.top-eh)/2;
+    SetWindowPos(g_eqWindow,HWND_TOPMOST,x,y,ew,eh,SWP_SHOWWINDOW);
     ShowWindow(g_eqWindow,SW_SHOWNORMAL);SetForegroundWindow(g_eqWindow);SetFocus(g_eqWindow);
     InvalidateRect(g_eqWindow,NULL,TRUE);
 }
@@ -4428,7 +4440,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         TorrentLayout(hwnd);
         RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
-    case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;mm->ptMinTrackSize.x=900;mm->ptMinTrackSize.y=760;return 0; }
+    case WM_GETMINMAXINFO: { MINMAXINFO *mm=(MINMAXINFO*)lp;UINT dpi=ABM_DpiGetForWindow(hwnd);mm->ptMinTrackSize.x=ABM_DpiScale(900,dpi);mm->ptMinTrackSize.y=ABM_DpiScale(760,dpi);return 0; }
     case WM_ERASEBKGND: return 1;
     
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
@@ -4658,7 +4670,7 @@ static void ShowTorrentWindow(HWND owner) {
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_0A111D);wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-    RECT wr;GetWindowRect(owner,&wr);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int w=maxW<1080?maxW:1080,h=maxH<980?maxH:980;if(w<760)w=760;if(h<620)h=620;
+    RECT wr;GetWindowRect(owner,&wr);UINT dpi=ABM_DpiGetForWindow(owner);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int targetW=ABM_DpiScale(1080,dpi),targetH=ABM_DpiScale(980,dpi);int w=maxW<targetW?maxW:targetW,h=maxH<targetH?maxH:targetH;if(w<ABM_DpiScale(760,dpi))w=ABM_DpiScale(760,dpi);if(h<ABM_DpiScale(620,dpi))h=ABM_DpiScale(620,dpi);
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}BOOL dark=TRUE;DwmSetWindowAttribute(g_torrentWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();}
@@ -4714,7 +4726,8 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_PAINT: {
         PAINTSTRUCT ps; HDC dc=BeginPaint(hwnd,&ps);
-        RECT rc; GetClientRect(hwnd,&rc);
+        RECT rc; GetClientRect(hwnd,&rc);UINT dpi=ABM_DpiGetForWindow(hwnd);
+        ABM_GdiUseLogicalDpi(dc,dpi);rc.right=ABM_DpiUnscale(rc.right,dpi);rc.bottom=ABM_DpiUnscale(rc.bottom,dpi);
         HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND); FillRect(dc,&rc,bg); DeleteObject(bg);
         RECT band={0,0,rc.right,7};
         HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_ACCENT); FillRect(dc,&band,accent); DeleteObject(accent);
@@ -5215,7 +5228,8 @@ static void ShowAboutDialog(HWND owner) {
         if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
-    RECT wr={0,0,900,760}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
+    UINT dpi=ABM_DpiGetForWindow(owner);
+    RECT wr={0,0,ABM_DpiScale(900,dpi),ABM_DpiScale(760,dpi)}; AdjustWindowRectEx(&wr,WS_CAPTION|WS_SYSMENU,FALSE,WS_EX_DLGMODALFRAME);
     int w=wr.right-wr.left,h=wr.bottom-wr.top;
     int x=(GetSystemMetrics(SM_CXSCREEN)-w)/2,y=(GetSystemMetrics(SM_CYSCREEN)-h)/2;
     HWND dlg=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerAbout",
