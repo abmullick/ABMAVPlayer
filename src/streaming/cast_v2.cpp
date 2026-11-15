@@ -498,6 +498,7 @@ bool LaunchCastApp(const Receiver &receiver,const wchar_t *appId) {
     return RunCastAppHelper(receiver,L"--launch-app",appId,true)==1;
 }
 bool Launch(const Receiver &r,const wchar_t *video) {
+    const LONG operationGeneration=g_operationGeneration.load();
     Diag(L"Launch requested receiver=%s host=%S port=%u",r.name.c_str(),r.host.c_str(),r.port);
     wchar_t module[MAX_PATH]{};
     if(!GetModuleFileNameW(nullptr,module,MAX_PATH)) { Diag(L"GetModuleFileName failed Win32=%lu",GetLastError());g_error=L"Cannot locate ABM AV Player installation."; return false; }
