@@ -4138,6 +4138,9 @@ static LRESULT CALLBACK TorrentSliderProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp
     case WM_MOUSEMOVE:if(s->dragging&&(wp&MK_LBUTTON))TorrentSliderSetPoint(hwnd,s,GET_X_LPARAM(lp));return 0;
     case WM_LBUTTONUP:if(s->dragging){s->dragging=FALSE;ReleaseCapture();TorrentSliderSetPoint(hwnd,s,GET_X_LPARAM(lp));}return 0;
     case WM_CAPTURECHANGED:s->dragging=FALSE;return 0;
+    case WM_SETFOCUS:case WM_KILLFOCUS:case WM_ENABLE:
+        InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_GETDLGCODE:return DLGC_WANTARROWS;
     case WM_KEYDOWN:if(wp==VK_LEFT||wp==VK_DOWN||wp==VK_RIGHT||wp==VK_UP){
         int p=TorrentSliderToPos(s->kind,s->value)+(wp==VK_LEFT||wp==VK_DOWN?-1:1);
         if(p<0)p=0;if(p>1000)p=1000;s->value=TorrentSliderToValue(s->kind,p);
@@ -4253,7 +4256,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     if(!paintRect||!ABM_D2D_BeginClip(&g_torrentUi,bg,paintRect))return FALSE;
 
     /* Cinematic branded masthead */
-    ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0F2539,ABM_THEME_COLOR_06111D);
+    ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
     ABM_D2D_Fill(&g_torrentUi,0,0,w,2,ABM_THEME_COLOR_226F7A);
     /* Match the main player's signature ABM identity: luminous A/play
        monogram, split ABM + AV PLAYER wordmark, gradient rule and tagline. */
@@ -4290,21 +4293,21 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
         default:engineState=L"CONNECTED";break;
         }
     }
-    r=TorrentMakeRect(w-244,23,w-22,57);TorrentRoundRect(&g_torrentUi,r,16,ABM_THEME_COLOR_0B1C2B);
-    TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_THEME_COLOR_2A5365,0.9f);
+    r=TorrentMakeRect(w-244,23,w-22,57);TorrentRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_SURFACE);
+    TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     ABM_D2D_Round(&g_torrentUi,w-228,36,w-220,44,4,engineDot);
     r=TorrentMakeRect(w-211,25,w-34,55);ABM_D2D_Text(&g_torrentUi,engineState,r,ABM_THEME_COLOR_B4CDDB,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Source card: label above the edit row; no painted text beneath controls. */
     r=TorrentMakeRect(m,sourceTop,w-m,sourceTop+sourceH);
-    TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_THEME_COLOR_11273A,ABM_THEME_COLOR_0A1928);
+    TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_SURFACE);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
     r=TorrentMakeRect(m+14,sourceTop+3,m+250,sourceTop+22);ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Content library card */
     r=TorrentMakeRect(m,contentTop,w-m,contentBottom);
-    TorrentGradientRoundRect(&g_torrentUi,r,16,ABM_THEME_COLOR_0E1F31,ABM_THEME_COLOR_091624);
-    TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_THEME_COLOR_224053,1.0f);
+    TorrentGradientRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
+    TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_BORDER,1.0f);
     r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     r=TorrentMakeRect(w-420,contentTop+5,w-m-14,contentTop+25);
     ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,0,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
@@ -4314,7 +4317,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
 
     /* Playback deck: status, progress and actions each have their own row. */
     r=TorrentMakeRect(m,playbackY,w-m,playbackY+100);
-    TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_THEME_COLOR_112638,ABM_THEME_COLOR_0A1928);
+    TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_SURFACE);
     TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
     r=TorrentMakeRect(m+14,playbackY+2,m+250,playbackY+21);ABM_D2D_Text(&g_torrentUi,L"PLAYBACK & BUFFER",r,accent,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int progress=(int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0);
@@ -4328,10 +4331,10 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
 
     /* Matched utility cards */
     r=TorrentMakeRect(m,networkY,w-m,networkY+76);
-    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
+    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
     r=TorrentMakeRect(m,cacheY,w-m,cacheY+76);
-    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_THEME_COLOR_0F2234,ABM_THEME_COLOR_091725);
+    TorrentGradientRoundRect(&g_torrentUi,r,13,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,13,edge,0.9f);
 
     /* Receiver dock */
@@ -4652,17 +4655,15 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_MEASUREITEM: { MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp; if(mi&&mi->CtlType==ODT_COMBOBOX&&mi->CtlID==ID_TORRENT_TV_COMBO){mi->itemHeight=38;return TRUE;} break; }
     
     case WM_CTLCOLORDLG:
-        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(ABM_THEME_COLOR_12151D);
+        if(!g_torrentSurfaceBrush)g_torrentSurfaceBrush=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);
         return (LRESULT)g_torrentSurfaceBrush;
-    case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_CCE2EE);SetBkMode(dc,OPAQUE);SetBkColor(dc,ABM_THEME_COLOR_0C1B2B);
-        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(ABM_THEME_COLOR_0C1B2B);
-        return (LRESULT)g_torrentControlBrush;
-    }
+    case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX: {
-        HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_EFF7FC);SetBkColor(dc,ABM_THEME_COLOR_0F1F2F);
-        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(ABM_THEME_COLOR_0F1F2F);
+        HDC dc=(HDC)wp;
+        SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
+        SetBkMode(dc,OPAQUE);SetBkColor(dc,ABM_UI_COLOR_INPUT);
+        if(!g_torrentControlBrush)g_torrentControlBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
         return (LRESULT)g_torrentControlBrush;
     }
     case WM_CREATE: {
