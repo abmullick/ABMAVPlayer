@@ -5805,7 +5805,7 @@ static void ScanVlcRuntime(void){
  if(g_vlcPluginDirectoryFound){wchar_t pattern[PATH_CAP]={0};StringCchPrintfW(pattern,_countof(pattern),L"%s\\*",pluginDir);WIN32_FIND_DATAW fd;HANDLE find=FindFirstFileW(pattern,&fd);if(find!=INVALID_HANDLE_VALUE){do{if(!(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)||fd.cFileName[0]==L'.')continue;ScanVlcPluginCategory(pluginDir,fd.cFileName);if(g_vlcPluginInventoryTruncated)break;}while(FindNextFileW(find,&fd));FindClose(find);}}
  g_vlcRuntimeTested=(g_vlc!=NULL&&g_player!=NULL&&version&&*version);
  StringCchCopyW(g_vlcRuntimeTestDetail,_countof(g_vlcRuntimeTestDetail),g_vlcRuntimeTested?L"PASS — LibVLC instance and local player initialized":L"NOT TESTED — runtime/player initialization unavailable");
- VlcCodecVerificationPoll();g_vlcPlaybackVerified=(g_vlcPlaybackSessionSuccessful&&!g_vlcMediaErrorObserved);
+ VlcCodecVerificationPoll();
 }
 static void UpdateVlcReportText(void){
  if(!g_advancedVlcReportEdit)return;wchar_t *r=(wchar_t*)calloc(65536,sizeof(wchar_t));if(!r)return;unsigned int loaded=0;for(unsigned int i=0;i<g_vlcPluginCount;i++)if(g_vlcPlugins[i].loadedInProcess)loaded++;
