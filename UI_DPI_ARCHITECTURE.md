@@ -37,7 +37,7 @@ A top-level window receiving `WM_DPICHANGED` must:
 5. Recompute hit-test rectangles and popup/overlay placement.
 6. Invalidate the affected surface and restore focus/interaction state.
 
-The main player currently applies the suggested rectangle, recalculates video/layout geometry and resizes its Direct2D target. The Settings, Advanced Settings, Torrent, Help, About, Equalizer, licensing dialog, recent popup, fullscreen overlay and Streaming Centre windows now apply the suggested rectangle and invalidate/re-run their existing size/layout paths where available.
+The main player now stores its layout and hit-test rectangles in canonical 96-DPI logical units. Its Direct2D render target receives the effective monitor DPI, its paint clip/client dimensions are converted to logical units, mouse coordinates are converted before hit-testing, partial invalidation rectangles are converted back to physical pixels, and the LibVLC child HWND is positioned/sized in physical pixels. On monitor changes it applies the suggested rectangle, updates the render-target DPI, recalculates layout and resizes the target. The Settings, Advanced Settings, Torrent, Help, About, Equalizer, licensing dialog, recent popup, fullscreen overlay and Streaming Centre windows now apply the suggested rectangle and invalidate/re-run their existing size/layout paths where available.
 
 **Important:** handling the outer rectangle is not proof that every child control, font, hit target or painted element is correctly scaled. The fixed-coordinate surfaces still require dedicated migration and Windows validation.
 
@@ -54,7 +54,7 @@ The current Direct2D bridge historically fixes the HWND render target at 96 DPI 
 
 ## 5. Migration sequence
 
-1. Main player: convert layout, drawing and hit-testing to logical units; scale the LibVLC child HWND at the Win32 boundary; refresh DirectWrite/GDI fonts.
+1. Main player: **logical-coordinate migration implemented** for layout, Direct2D painting, hit-testing, partial invalidation and LibVLC child HWND geometry. Verify mixed-monitor behaviour and review any remaining direct Win32 calls that consume main-player rectangles.
 2. Settings and Advanced Settings: scale all owner-drawn rectangles, input HWNDs, labels, click regions and minimum window geometry from one canonical layout.
 3. Torrent Stream: migrate task cards, native child controls, list rows, sliders, and TV/device panels.
 4. Streaming Centre: migrate browser chrome, WebView2 controller bounds, device panel and custom hit regions; do not alter provider page content or casting ownership.
