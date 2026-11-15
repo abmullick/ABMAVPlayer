@@ -297,7 +297,10 @@ public:
         if(pause)i->second->handle.pause();else i->second->handle.resume();return true;
     }
     bool Remove(uint64_t id,bool delete_data) {
-        if(http_task_id_.load()==id)StopHttpStream();
+        /* Serialize task removal with stream startup. Otherwise a start can
+           publish a listener after this task has already been removed. */
+        std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        if(http_task_id_.load()==id)StopHttpStreamLocked();
         std::lock_guard<std::mutex> g(m_);auto i=tasks_.find(id);
         if(i==tasks_.end()||!session_)return false;
         lt::remove_flags_t flags{};
@@ -424,7 +427,11 @@ public:
     }
     bool StartHttpStreamInternal(uint64_t id,int index,wchar_t *url,unsigned cap,std::wstring &err,bool lan) {
         if(!url||cap==0){err=L"Output URL buffer is unavailable.";return false;}
-        StopHttpStream();
+        /* Hold the lifecycle lock through teardown, validation, bind and
+           accept-thread publication. Concurrent starts/stops become ordered
+           transitions instead of racing over the listener and thread. */
+        std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        StopHttpStreamLocked();
         if(!Select(id,index)){err=L"Select a valid torrent file after metadata is available.";return false;}
         std::shared_ptr<Task> task;
         {std::lock_guard<std::mutex> g(m_);auto it=tasks_.find(id);if(it==tasks_.end()){err=L"Torrent task no longer exists.";return false;}task=it->second;}
@@ -477,7 +484,10 @@ public:
             const uint32_t lanIp=lan?ntohl(address.sin_addr.s_addr):0;
             http_accept_thread_=std::thread([this,listener,token,id,index,size,lan,lanIp,lanMask]{HttpAcceptLoop(listener,token,id,index,size,lan,lanIp,lanMask);});
         } catch(...) {
-            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_.store(0);http_token_.clear();
+            http_stop_.store(true);
+            closesocket(listener);http_socket_=INVALID_SOCKET;http_task_id_.store(0);
+            if(!http_token_.empty())SecureZeroMemory(http_token_.data(),http_token_.size()*sizeof(wchar_t));
+            http_token_.clear();http_file_index_=-1;http_file_size_=0;
             err=L"Could not start the local HTTP stream worker.";return false;
         }
         return true;
@@ -485,17 +495,31 @@ public:
 
     void StopHttpStream() {
         std::lock_guard<std::mutex> life(http_lifecycle_mutex_);
+        StopHttpStreamLocked();
+    }
+
+private:
+
+    /* Caller must hold http_lifecycle_mutex_. Interrupt active client sockets
+       before joining the accept thread so blocked recv/send/range waits can
+       unwind promptly instead of delaying stop for their socket timeouts. */
+    void StopHttpStreamLocked() {
         http_stop_.store(true);
         wait_cancel_generation_.fetch_add(1);
         if(http_socket_!=INVALID_SOCKET)shutdown(http_socket_,SD_BOTH);
+        {
+            std::lock_guard<std::mutex> clients(http_clients_mutex_);
+            for(auto &worker:http_clients_) {
+                if(worker.socket!=INVALID_SOCKET && (!worker.done || !worker.done->load()))
+                    shutdown(worker.socket,SD_BOTH);
+            }
+        }
         if(http_accept_thread_.joinable())http_accept_thread_.join();
         if(http_socket_!=INVALID_SOCKET){closesocket(http_socket_);http_socket_=INVALID_SOCKET;}
         http_task_id_.store(0);http_file_index_=-1;http_file_size_=0;
         if(!http_token_.empty())SecureZeroMemory(http_token_.data(),http_token_.size()*sizeof(wchar_t));
         http_token_.clear();
     }
-
-private:
 
     static bool SendAll(SOCKET client,const char *data,size_t size) {
         while(size) {
@@ -534,6 +558,7 @@ private:
     struct HttpClientWorker {
         std::thread thread;
         std::shared_ptr<std::atomic<bool>> done;
+        SOCKET socket=INVALID_SOCKET;
     };
     static bool IsPrivateIPv4(uint32_t ip) {
         return (ip>>24)==10 || (ip>>20)==0xAC1 || (ip>>16)==0xC0A8;
@@ -590,6 +615,7 @@ private:
                 http_clients_.emplace_back();
                 HttpClientWorker &worker=http_clients_.back();
                 worker.done=done;
+                worker.socket=client;
                 worker.thread=std::thread([this,client,token,id,index,size,done]{
                     try { HandleHttpClient(client,token,id,index,size); }
                     catch(...) { closesocket(client); }
