@@ -5601,13 +5601,14 @@ static void SettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL
               DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 static void SettingsCheckDraw(int l,int t,const wchar_t *label,BOOL checked) {
+ BOOL hot=ABM_PointInRect(g_settingsHoverX,g_settingsHoverY,l,t,l+310,t+22);
  ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)(l+18),(float)(t+18),
                (float)ABM_UI_RADIUS_CONTROL,
-               checked?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_INPUT);
+               checked?ABM_UI_COLOR_ACCENT:(hot?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_INPUT));
  ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
                      (float)(l+17.5f),(float)(t+17.5f),
                      (float)ABM_UI_RADIUS_CONTROL,
-                     checked?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG,0.9f);
+                     hot?ABM_UI_COLOR_FOCUS:(checked?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG),hot?1.6f:0.9f);
  if(checked){
   ABM_D2D_Line(&g_settingsUi,(float)(l+4),(float)(t+9),
                (float)(l+7),(float)(t+12),ABM_UI_COLOR_TEXT,1.8f);
@@ -6540,7 +6541,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsText(L"PLAYBACK  ·  AUDIO  ·  STORAGE  ·  NETWORK",94,49,550,69,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(88,L"GENERAL",L"Playback defaults",226);
    SettingsText(L"Volume (0–100)",40,140,155,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(160,155,264,188);
+   SettingsEditFrame(160,155,264,188);if(GetFocus()==GetDlgItem(w,6207))ABM_D2D_StrokeRound(&g_settingsUi,159,154,265,189,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Playback speed",430,140,550,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(565,155,704,190);
    ABM_D2D_Round(&g_settingsUi,572,160,697,185,5,ABM_THEME_COLOR_102737);
@@ -6553,16 +6554,16 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsCheckDraw(352,281,L"Dynamic range compressor",g_settingsCompressor);
    SettingsSection(336,L"TORRENT & STORAGE",L"Cache, permanent downloads and quota",536);
    SettingsText(L"Cache parent folder  ·  torrent-cache is created inside",40,372,610,394,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(34,396,644,429);SettingsButtonDraw(655,396,780,429,L"Browse…",FALSE);
+   SettingsEditFrame(34,396,644,429);if(GetFocus()==GetDlgItem(w,6201))ABM_D2D_StrokeRound(&g_settingsUi,33,395,645,430,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);SettingsButtonDraw(655,396,780,429,L"Browse…",FALSE);
    SettingsText(L"Permanent downloads folder",40,434,610,456,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(34,457,644,490);SettingsButtonDraw(655,457,780,490,L"Browse…",FALSE);
+   SettingsEditFrame(34,457,644,490);if(GetFocus()==GetDlgItem(w,6202))ABM_D2D_StrokeRound(&g_settingsUi,33,456,645,491,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);SettingsButtonDraw(655,457,780,490,L"Browse…",FALSE);
    SettingsText(L"Cache quota (GiB)",40,495,166,526,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(169,496,279,529);SettingsButtonDraw(655,496,780,529,L"Open cache",FALSE);
+   SettingsEditFrame(169,496,279,529);if(GetFocus()==GetDlgItem(w,6204))ABM_D2D_StrokeRound(&g_settingsUi,168,495,280,530,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);SettingsButtonDraw(655,496,780,529,L"Open cache",FALSE);
    SettingsSection(548,L"NETWORK",L"Torrent bandwidth  ·  0 = unlimited",654);
    SettingsText(L"Download limit (KiB/s)",40,583,202,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(199,599,341,634);
+   SettingsEditFrame(199,599,341,634);if(GetFocus()==GetDlgItem(w,6205))ABM_D2D_StrokeRound(&g_settingsUi,198,598,342,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Upload limit (KiB/s)",400,583,552,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsEditFrame(551,599,693,634);
+   SettingsEditFrame(551,599,693,634);if(GetFocus()==GetDlgItem(w,6206))ABM_D2D_StrokeRound(&g_settingsUi,550,598,694,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsSection(666,L"UPDATES",L"Maintenance",738);
    SettingsButtonDraw(39,681,194,714,L"Check for updates",TRUE);
    SettingsText(L"Checks the latest published GitHub release.",210,682,770,713,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
