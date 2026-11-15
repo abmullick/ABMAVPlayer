@@ -2969,9 +2969,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     HBRUSH black=CreateSolidBrush(ABM_THEME_COLOR_000000);FillRect(mem,&canvas,black);DeleteObject(black);
     SetBkMode(mem,TRANSPARENT);
     SetTextColor(mem,ABM_THEME_COLOR_DADEE4);
-    HFONT font=CreateFontW(13,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,ANTIALIASED_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HFONT oldFont=(HFONT)SelectObject(mem,font);
+    HFONT oldFont=(HFONT)SelectObject(mem,g_smallFont?g_smallFont:GetStockObject(DEFAULT_GUI_FONT));
 
     /* High-contrast fullscreen timeline: thick track, distinct played/unplayed
        segments and a large playhead marker so position is visible at a glance. */
@@ -3035,7 +3033,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     RECT knob={knobX-5,h-41,knobX+5,h-27};
     HBRUSH kb=CreateSolidBrush(ABM_THEME_COLOR_F8F9FA);FillRect(mem,&knob,kb);DeleteObject(kb);
 
-    SelectObject(mem,oldFont);DeleteObject(font);
+    SelectObject(mem,oldFont);
 
     /* UpdateLayeredWindow requires premultiplied BGRA. The overlay is only
        FULLSCREEN_OVERLAY_HEIGHT pixels tall, not monitor-sized, so this
@@ -4116,11 +4114,9 @@ static void TorrentSliderPaint(HWND hwnd,HDC dc,TorrentSliderState *s){
         else if(s->value>=1024)StringCchPrintfW(valueText,_countof(valueText),L"%.1f MiB/s",(double)s->value/1024.0);
         else StringCchPrintfW(valueText,_countof(valueText),L"%d KiB/s",s->value);}
     else StringCchPrintfW(valueText,_countof(valueText),L"%d GiB",s->value);
-    HFONT font=CreateFontW(-12,0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Segoe UI");
-    HGDIOBJ old=SelectObject(dc,font);SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_E7F7F9);
+    HGDIOBJ old=SelectObject(dc,g_smallFont?g_smallFont:GetStockObject(DEFAULT_GUI_FONT));SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_E7F7F9);
     DrawTextW(dc,valueText,-1,&pill,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-    SelectObject(dc,old);DeleteObject(font);
+    SelectObject(dc,old);
 }
 static LRESULT CALLBACK TorrentSliderProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     TorrentSliderState *s=(TorrentSliderState*)GetWindowLongPtrW(hwnd,GWLP_USERDATA);
