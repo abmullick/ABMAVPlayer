@@ -5488,20 +5488,44 @@ static BOOL LoadAdvancedDiagnosticPreview(const wchar_t *path){
  SendMessageW(g_advancedDiagnosticEdit,EM_SETSEL,0,0);SendMessageW(g_advancedDiagnosticEdit,EM_SCROLLCARET,0,0);return TRUE;
 }
 static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){
+ /* Advanced Settings is authored in 96-DPI logical units. Convert incoming
+    pointer coordinates once, at the window-procedure boundary. */
+ if(msg==WM_LBUTTONDOWN){
+  UINT dpi=ABM_DpiGetForWindow(w);
+  int x=ABM_DpiUnscale(GET_X_LPARAM(lp),dpi),y=ABM_DpiUnscale(GET_Y_LPARAM(lp),dpi);
+  lp=MAKELPARAM((short)x,(short)y);
+ }
  switch(msg){
-    case WM_DPICHANGED:
+    case WM_DPICHANGED: {
         ABM_DpiApplySuggestedRect(w,lp);
+        UINT dpi=HIWORD(wp)?HIWORD(wp):ABM_DpiGetForWindow(w);
+        ABM_D2D_SetDpi(&g_advancedSettingsUi,dpi,dpi);
+        RECT client={0};GetClientRect(w,&client);
+        ABM_D2D_Resize(&g_advancedSettingsUi,(UINT)client.right,(UINT)client.bottom);
+        if(g_advancedDiagnosticEdit){
+         SetWindowPos(g_advancedDiagnosticEdit,NULL,ABM_DpiScale(326,dpi),ABM_DpiScale(514,dpi),
+          ABM_DpiScale(684,dpi),ABM_DpiScale(132,dpi),SWP_NOZORDER|SWP_NOACTIVATE);
+         if(g_advancedDiagnosticFont)DeleteObject(g_advancedDiagnosticFont);
+         g_advancedDiagnosticFont=CreateFontW(-ABM_DpiScale(13,dpi),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
+         if(g_advancedDiagnosticFont)SendMessageW(g_advancedDiagnosticEdit,WM_SETFONT,(WPARAM)g_advancedDiagnosticFont,TRUE);
+        }
         InvalidateRect(w,NULL,FALSE);
+        return 0;
+    }
+    case WM_SIZE:
+        if(g_advancedSettingsUiReady)ABM_D2D_Resize(&g_advancedSettingsUi,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
         return 0;
  case WM_CREATE:
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
+  {UINT dpi=ABM_DpiGetForWindow(w);ABM_D2D_SetDpi(&g_advancedSettingsUi,dpi,dpi);}
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=0;
   g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
-  g_advancedDiagnosticFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
+  g_advancedDiagnosticFont=CreateFontW(-ABM_DpiScale(13,ABM_DpiGetForWindow(w)),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
   g_advancedDiagnosticEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"Generate a diagnostic report to preview its contents here.",
    WS_CHILD|WS_VSCROLL|ES_LEFT|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
-   326,514,684,132,w,(HMENU)6408,GetModuleHandleW(NULL),NULL);
+   ABM_DpiScale(326,ABM_DpiGetForWindow(w)),ABM_DpiScale(514,ABM_DpiGetForWindow(w)),
+   ABM_DpiScale(684,ABM_DpiGetForWindow(w)),ABM_DpiScale(132,ABM_DpiGetForWindow(w)),w,(HMENU)6408,GetModuleHandleW(NULL),NULL);
   if(g_advancedDiagnosticEdit){SendMessageW(g_advancedDiagnosticEdit,WM_SETFONT,(WPARAM)(g_advancedDiagnosticFont?g_advancedDiagnosticFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);ShowWindow(g_advancedDiagnosticEdit,SW_HIDE);}
   g_advancedHwDraft=g_advancedHwMode;g_advancedHwEnvOverride=FALSE;
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Video",L"AspectRatio",0,p);g_advancedAspectMode=(v>=0&&v<=3)?v:0;ApplyAdvancedAspectRatio();}
