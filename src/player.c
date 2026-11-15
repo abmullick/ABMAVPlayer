@@ -5283,13 +5283,21 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_DRAWITEM: {
         DRAWITEMSTRUCT *di=(DRAWITEMSTRUCT*)lp;
         if(!di)break;
-        if(di->CtlID==HELP_ID_FIND&&g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
-            RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
-            ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)r.left+1,(float)r.top+1,(float)r.right-1,(float)r.bottom-1,(float)ABM_UI_RADIUS_BUTTON,pressed?ABM_THEME_COLOR_187E74:ABM_UI_COLOR_ACCENT);
-            ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)r.left+1.5f,(float)r.top+1.5f,(float)r.right-1.5f,(float)r.bottom-1.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG,focused?2.0f:1.0f);
-            wchar_t caption[64]=L"SEARCH";if(g_helpFindButton)GetWindowTextW(g_helpFindButton,caption,(int)_countof(caption));
-            RECT label=r;InflateRect(&label,-8,-2);ABM_D2D_CanvasText(&g_helpCanvas,caption,label,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
+        if(di->CtlID==HELP_ID_FIND&&g_helpCanvasReady){
+            BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
+            RECT bounds={0,0,di->rcItem.right-di->rcItem.left,di->rcItem.bottom-di->rcItem.top};
+            if(ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
+                COLORREF fill=pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_185B52;
+                COLORREF edge=focused?ABM_THEME_COLOR_63E1CD:ABM_THEME_COLOR_41BEA5;
+                ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_THEME_COLOR_0C1D2D);
+                RECT face=bounds;InflateRect(&face,-1,-1);
+                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
+                ABM_D2D_CanvasStrokeRound(&g_helpCanvas,0.5f,0.5f,(float)bounds.right-0.5f,(float)bounds.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
+                wchar_t caption[64]=L"SEARCH";if(g_helpFindButton)GetWindowTextW(g_helpFindButton,caption,(int)_countof(caption));
+                RECT label=bounds;InflateRect(&label,-8,-2);
+                ABM_D2D_CanvasText(&g_helpCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                ABM_D2D_CanvasEnd(&g_helpCanvas);return TRUE;
+            }
         }
         if(di->CtlID==HELP_ID_TOPICS&&g_helpCanvasReady){
             wchar_t label[256]={0};if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
