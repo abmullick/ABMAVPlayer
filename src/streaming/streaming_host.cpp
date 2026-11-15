@@ -135,6 +135,25 @@ constexpr UINT ID_STREAM_DEVICE_PULSE_TIMER=0x7A1B;
 std::atomic<bool> g_appProbeRunning{false};
 struct StreamAppChoice { std::wstring label; std::wstring dialApp; bool castV2=false; std::wstring castAppId; };
 struct DialAppProbePayload { std::wstring report; std::vector<StreamAppChoice> choices; };
+/* Worker completion messages transfer heap ownership to StreamingProc.
+   Once workers are joined no producer can post, so reclaim payloads Windows
+   would otherwise discard when the HWND is destroyed with messages queued. */
+void DrainPendingWorkerMessages(HWND hwnd) {
+    MSG message{};
+    while(PeekMessageW(&message,hwnd,WM_APP_DIAL_APPS_READY,WM_APP_CAST_VIDEO_RESULT,PM_REMOVE)) {
+        switch(message.message) {
+            case WM_APP_DIAL_APPS_READY:
+                delete (DialAppProbePayload*)message.lParam;
+                break;
+            case WM_APP_DIAL_APP_LAUNCH:
+            case WM_APP_CAST_VIDEO_RESULT:
+                delete (std::wstring*)message.lParam;
+                break;
+            default:
+                break;
+        }
+    }
+}
 std::vector<StreamAppChoice> g_streamAppChoices;
 int g_streamSelectedIndex=-1;
 bool g_streamSelectedIsDlna=false;
@@ -1887,6 +1906,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_DESTROY:
         g_appProbeRunning.store(false);
         StopManagedWorkers();
+        DrainPendingWorkerMessages(hwnd);
         ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();
         KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
         HideDevicePanel();
