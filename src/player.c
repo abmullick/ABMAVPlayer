@@ -455,6 +455,13 @@ static int EaseToward(int current,int target,int responsePercent) {
     return next;
 }
 static void ResetArtwork(void) {
+    LONG previousGeneration=InterlockedCompareExchange(&g_artworkGeneration,0,0);
+    if(g_dataDir[0] && previousGeneration>0) {
+        wchar_t obsoletePath[PATH_CAP]={0};
+        if(SUCCEEDED(StringCchPrintfW(obsoletePath,_countof(obsoletePath),
+            L"%s\\artwork-%ld.bin",g_dataDir,(long)previousGeneration)))
+            DeleteFileW(obsoletePath);
+    }
     if (g_artMedia) {
         libvlc_event_manager_t *em=libvlc_media_event_manager(g_artMedia);
         libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,
