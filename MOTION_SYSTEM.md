@@ -223,3 +223,18 @@ This is interaction feedback, not a full Queue/Library visual redesign. The Main
 - [ ] Complete cross-window visual consistency review and Windows x64 build/runtime regression validation remain outstanding.
 
 The Equalizer reveal is a source-level change only until it is built and exercised on Windows. Do not treat this status as release validation.
+
+ 
+## Auxiliary-window and Streaming Centre motion — source implementation
+
+Committed source changes on `main`:
+- Settings, Advanced Settings, Help and About now use a short top-level blend transition on entry and their explicit close/Escape paths. The transition is OS-aware: when Windows client-area animation is disabled, windows show/hide immediately.
+- These transitions do not animate window geometry or child HWND positions. Existing native EDIT/RichEdit controls, selection/caret, keyboard dialog navigation, scroll offsets, capture handling, modal owner disabling/re-enabling and message loops remain on their existing paths.
+- Streaming Centre chrome hover now uses the shared `ABMMotionValue` and active-only `ABM_MotionWin` timer host. Service cards and selected browser/cast chrome blend toward hover colours over the QUICK token. The motion timer is separate from the 400 ms receiver refresh and existing receiver pulse timer.
+- Streaming Centre open/close uses a reduced-motion-aware top-level blend. WebView2 controller creation, navigation, fullscreen, crash recovery, receiver discovery, receiver selection and cast actions are not called by the animation code.
+- The Equalizer's existing reveal transition remains part of this pass.
+
+Scope/limitations:
+- Streaming Centre keyboard focus cues and full keyboard traversal for its custom-painted chrome still require a dedicated accessibility pass; this change animates pointer hover only.
+- The top-level blend transitions use the Windows animation API so child controls remain native and are not moved/recreated. They are not a per-pixel custom opacity animation.
+- These are source-level changes only. No MSVC build, runtime, DPI, WebView2 or playback regression validation has been performed here.
