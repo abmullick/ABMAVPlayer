@@ -1642,13 +1642,17 @@ static void DrawUI(HDC dc,RECT client) {
         RECT label={filters[fi].left+2,filters[fi].top,filters[fi].right-2,filters[fi].bottom};
         Txt(dc,filterNames[fi],label,active?ABM_THEME_COLOR_F4FAFF:ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
-    GradientRound(dc,R_GROUP,ABM_THEME_COLOR_122637,ABM_THEME_COLOR_142A3C,8);
-    ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,
-        (float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.7f);
     wchar_t groupLabel[32];
-    if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),g_showFavorites?L"♥ Favorites":L"All tracks");
+    if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),L"♥ Favorites");
     else swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
-    Txt(dc,groupLabel,R_GROUP,g_libraryTab==1&&g_showFavorites?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    if(g_libraryTab==1&&g_showFavorites) {
+        GradientRound(dc,R_GROUP,ABM_THEME_COLOR_452B3B,ABM_THEME_COLOR_352638,8);
+        ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_FFBECD,0.9f);
+    } else {
+        GradientRound(dc,R_GROUP,ABM_THEME_COLOR_122637,ABM_THEME_COLOR_142A3C,8);
+        ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.7f);
+    }
+    Txt(dc,groupLabel,R_GROUP,g_libraryTab==1?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int rowHeight=PlaylistRowHeight();
     int visible=PlaylistVisibleRows(rowHeight);
