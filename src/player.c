@@ -618,7 +618,7 @@ static void EnsureFavoritesInPlaylist(void) {
         if(!found){wcsncpy_s(g_playlist[g_playlistCount++],PATH_CAP,g_favorites[f],_TRUNCATE);changed=TRUE;}
     }
     if(g_selected<0&&g_playlistCount)g_selected=0;
-    if(changed)SavePersistentState();
+    if(changed){RefreshMissingMediaFlags();SavePersistentState();}
 }
 static int CountFilteredMedia(void) {
     int count=0;
@@ -2842,7 +2842,7 @@ static void RelinkMissingMedia(int index) {
     for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],oldPath))wcsncpy_s(g_recent[i],PATH_CAP,replacement,_TRUNCATE);
     RelinkSavedCollections(oldPath,replacement);
     int ri=ResumeFind(oldPath);if(ri>=0)wcsncpy_s(g_resumeEntries[ri].path,PATH_CAP,replacement,_TRUNCATE);
-    for(int i=0;i<g_playlistCount;i++)g_missingMedia[i]=FALSE;
+    for(int i=0;i<g_playlistCount;i++){DWORD a=GetFileAttributesW(g_playlist[i]);g_missingMedia[i]=(a==INVALID_FILE_ATTRIBUTES||(a&FILE_ATTRIBUTE_DIRECTORY));}
     SavePersistentState();ResumeSaveAsync(FALSE);
     SetStatus(L"Media relinked. Library references and viewing progress were preserved.");
     InvalidateRect(g_main,NULL,FALSE);
@@ -3284,7 +3284,7 @@ static void RemovePlaylistItem(int index) {
     else if(index<g_current)g_current--;
     for(int i=index+1;i<g_playlistCount;i++)
         wcsncpy_s(g_playlist[i-1],PATH_CAP,g_playlist[i],_TRUNCATE);
-    g_playlistCount--;SavePersistentState();
+    g_playlistCount--;RefreshMissingMediaFlags();SavePersistentState();
     if(g_playlistCount==0){g_selected=-1;g_current=-1;g_playlistScroll=0;}
     else {
         if(index==g_selected)g_selected=index<g_playlistCount?index:g_playlistCount-1;
@@ -3299,6 +3299,7 @@ static void MovePlaylistItem(int from,int to) {
     if(from<to)for(int i=from;i<to;i++)wcsncpy_s(g_playlist[i],PATH_CAP,g_playlist[i+1],_TRUNCATE);
     else for(int i=from;i>to;i--)wcsncpy_s(g_playlist[i],PATH_CAP,g_playlist[i-1],_TRUNCATE);
     wcsncpy_s(g_playlist[to],PATH_CAP,temp,_TRUNCATE);
+    RefreshMissingMediaFlags();
     if(g_current==from)g_current=to;else if(from<g_current&&to>=g_current)g_current--;else if(from>g_current&&to<=g_current)g_current++;
     g_selected=to;SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
 }
@@ -3514,7 +3515,7 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {7,L"Save as personal library...",g_playlistCount>0,FALSE},
         {8,L"Load saved library...",TRUE,FALSE},
         {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE},
-        {10,L"Relink missing media...",index>=0&&index<g_playlistCount,FALSE},
+        {10,L"Relink missing media...",index>=0&&index<g_playlistCount&&g_missingMedia[index],FALSE},
         {11,L"Continue watching",index>=0&&index<g_playlistCount&&ResumePositionForPath(g_playlist[index])>0,FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
