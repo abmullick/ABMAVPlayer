@@ -484,9 +484,9 @@ static int CountFilteredMedia(void) {
     }
     return count;
 }
-/* Keep the collection usable in compact drawer layouts. A clipped final row is
-   intentional; using ceiling division guarantees that short lists still render
-   at least one visible item instead of looking falsely empty. */
+/* Keep collection rows fully inside the list viewport. Never count a
+   partially visible final row: its title and metadata rectangles would be
+   compressed into one another at the bottom edge of the drawer. */
 static int PlaylistRowHeight(void) {
     int h=R_LIST.bottom-R_LIST.top;
     if(h>=80)return 80;
@@ -497,7 +497,8 @@ static int PlaylistRowHeight(void) {
 static int PlaylistVisibleRows(int rowHeight) {
     int h=R_LIST.bottom-R_LIST.top;
     if(h<=0||rowHeight<=0)return 0;
-    int n=(h+rowHeight-1)/rowHeight;
+    /* Floor division is deliberate: only complete cards are drawable. */
+    int n=h/rowHeight;
     return n>MAX_PLAYLIST?MAX_PLAYLIST:n;
 }
 static int g_visibleRows[MAX_PLAYLIST],g_visibleRowCount=0;
@@ -1630,8 +1631,8 @@ static void DrawUI(HDC dc,RECT client) {
         if(matched++<g_playlistScroll)continue;
         if(shown>=visible)break;
         RECT row={R_LIST.left,R_LIST.top+shown*rowHeight,R_LIST.right,R_LIST.top+(shown+1)*rowHeight};
-        if(row.bottom>R_LIST.bottom)row.bottom=R_LIST.bottom;
-        if(row.bottom<=row.top)break;
+        /* PlaylistVisibleRows() guarantees this complete row fits in R_LIST. */
+        if(row.bottom>R_LIST.bottom||row.bottom<=row.top)break;
         R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
         BOOL current=(i==g_current),selected=(i==g_selected),hot=(i==g_hoverPlaylistIndex);
         /* Every queue entry is a deliberate media card, not bare text on a panel. */
