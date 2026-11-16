@@ -10,11 +10,9 @@ The installer uses the existing Inno Setup AppId and installation directory to u
 
 ## Canonical release version
 
-The current source candidate is **v1.0.8**, prepared from the latest `main` branch after the published `v1.0.7` tag. The change set includes the shared ABM Direct2D/DirectWrite design system across application windows, Settings and Help interaction refinements, VLC runtime diagnostics, structured playback failure reporting, and lifecycle/reliability improvements across local playback, Streaming Centre and Torrent Stream.
+The current source candidate is **v1.0.9**, prepared from the latest `main` branch after the v1.0.8 source candidate. This update adds Queue/Library duration labels backed by asynchronous metadata resolution and a bounded cache, polishes windowed/fullscreen playback controls and seek/volume styling, improves video/control clearance, and records the Motion System 1.0 architecture audit.
 
-The Torrent work includes payload-aware cache quota accounting, stalled-download and transient-error recovery, paused-state corrections, safer HTTP/worker lifetimes and stale-callback rejection. The UI work includes canonical typography and icon-font roles, shared control surfaces, Direct2D fallback/resource recovery, and custom Settings scrollbars.
-
-This is a **source-prepared release candidate**, not a certified installer. A successful Windows x64 build, runtime regression pass, clean-install test and in-place upgrade test are required before publishing. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the detailed change summary.
+This is a **source-prepared release candidate**, not a certified installer. A successful Windows x64 build, runtime scrolling/performance measurement, playback/casting regression pass, clean-install test and in-place upgrade test are required before publishing. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the detailed change summary and [UI_QA_CHECKLIST.md](UI_QA_CHECKLIST.md) for Windows acceptance checks.
 
 ## Publishing a release
 
