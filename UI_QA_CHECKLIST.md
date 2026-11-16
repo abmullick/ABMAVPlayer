@@ -64,6 +64,7 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Branded Yes/No dialogs: Tab, Shift+Tab, Left/Right, Enter, Space and Escape; confirm default-No remains safe.
 - [ ] OK dialogs: Enter and Escape behave consistently.
 - [ ] Custom menus: Up/Down, Enter, Escape and mouse wheel; focus returns to the invoking control after close.
+- [ ] Command Centre: verify five grouped surfaces, section labels on taller windows, compact fallback on shorter windows, ABM brand mark, shortcut pills and teal/amber featured destinations; confirm all 19 original commands, hover states, keyboard selection and click targets still work.
 - [ ] Streaming Centre: Tab through device actions and lists; operate each action with keyboard only.
 - [ ] Verify WebView2 retains browser keyboard behaviour and does not unexpectedly steal focus.
 - [ ] Inspect with Windows Narrator: names, roles, values, selected state and action announcements.
