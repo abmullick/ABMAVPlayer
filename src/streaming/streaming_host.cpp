@@ -248,6 +248,8 @@ EventRegistrationToken g_navigationStartingToken{};
 EventRegistrationToken g_popupToken{};
 EventRegistrationToken g_fullscreenToken{};
 EventRegistrationToken g_processFailedToken{};
+EventRegistrationToken g_acceleratorKeyToken{};
+bool g_acceleratorKeyRegistered=false;
 int g_webViewRecoveryAttempts=0;
 bool g_webViewRecoveryPending=false;
 bool g_webFullscreen=false;
@@ -1619,6 +1621,21 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
         return;
     }
     g_controller=controller;
+    g_acceleratorKeyRegistered=false;
+    HRESULT acceleratorHr=g_controller->add_AcceleratorKeyPressed(
+        Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
+            [](ICoreWebView2Controller*,ICoreWebView2AcceleratorKeyPressedEventArgs *args)->HRESULT{
+                if(!args)return S_OK;
+                COREWEBVIEW2_KEY_EVENT_KIND kind=COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN;
+                UINT key=0;
+                if(SUCCEEDED(args->get_KeyEventKind(&kind))&&kind==COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN&&
+                   SUCCEEDED(args->get_VirtualKey(&key))&&key==VK_F6){
+                    args->put_IsBrowserAcceleratorKeyEnabled(FALSE);
+                    if(g_window&&IsWindow(g_window))PostMessageW(g_window,WM_KEYDOWN,VK_F6,0);
+                }
+                return S_OK;
+            }).Get(),&g_acceleratorKeyToken);
+    g_acceleratorKeyRegistered=SUCCEEDED(acceleratorHr);
     g_controller->get_CoreWebView2(&g_webView);
     if(!g_webView){
         SetStatus(L"Could not initialise the embedded browser.");
@@ -1865,6 +1882,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             CoTaskMemFree(current);
         }
         SetStatus(L"Recovering the streaming browser after an unexpected process failure…");
+        if(g_controller&&g_acceleratorKeyRegistered){g_controller->remove_AcceleratorKeyPressed(g_acceleratorKeyToken);g_acceleratorKeyRegistered=false;}
         if(g_controller)g_controller->Close();
         g_webView.Reset();g_controller.Reset();
         if(!g_environment){SetStatus(L"Browser recovery is unavailable. Reopen the Streaming Centre.");return 0;}
@@ -2326,6 +2344,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         HideDevicePanel();
         g_window=nullptr;
         if(g_infoWindow&&IsWindow(g_infoWindow))DestroyWindow(g_infoWindow);
+        if(g_controller&&g_acceleratorKeyRegistered){g_controller->remove_AcceleratorKeyPressed(g_acceleratorKeyToken);g_acceleratorKeyRegistered=false;}
         if(g_controller)g_controller->Close();
         if(g_webView)g_webView->remove_ProcessFailed(g_processFailedToken);
         if(g_webView)g_webView->remove_NavigationCompleted(g_navigationToken);
