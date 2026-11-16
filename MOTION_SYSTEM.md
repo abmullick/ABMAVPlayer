@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player menu, drawer, transport hover, dashboard-card hover and artwork fade migrated; Windows build and runtime validation pending  
+**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player menu, drawer, transport hover, dashboard-card hover, artwork fade and Queue/Library row-hover feedback migrated; auxiliary-window migration and Windows build/runtime validation pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -206,3 +206,10 @@ The reusable Win32 host is intentionally generic: each window supplies its own m
 The four idle-dashboard cards now retarget shared motion values only when their pointer target changes. Their interpolation runs on the active-only motion timer rather than the operational 33 ms timer. Artwork reveal now uses the shared EMPHASIS duration and ease-out curve; resetting artwork cancels any stale reveal so a previous track cannot continue fading over the next one. Motion ticks invalidate only the video/dashboard paint region and do not reposition the LibVLC child window.
 
 The Main Player's menu, drawer, transport hover, dashboard-card hover and artwork fade now share one per-window timer host. This completes the currently identified Main Player motion-value migration. It does not mean the Main Player has received its full visual redesign, nor that auxiliary windows have been migrated. Queue/library row transitions and auxiliary workspaces remain separate work items.
+
+
+## Phase 1 implementation note — Queue and Library row hover
+
+Queue and Library media-card hover feedback now uses a scalar motion value sampled by the Main Player's existing shared 16 ms motion host. The target changes only when the hovered playlist row changes; row paint uses a small set of existing ABM palette steps and remains allocation-free. During animation only the currently visible affected row is invalidated. Scrolling, filtering, selection, drag/reorder, favourites, playback dispatch and duration lookup are not changed. The existing 33 ms operational timer only detects pointer/row target changes; it does not advance the hover animation. A direct move between rows restarts the incoming row's highlight from rest.
+
+This is interaction feedback, not a full Queue/Library visual redesign. The Main Player motion registry now samples nine scalar values together. Equalizer, Settings, Advanced Settings, Help, About, modal windows and Streaming Centre chrome still need their own focused migrations. Windows compilation, scroll-performance observation and interaction regression checks remain pending.
