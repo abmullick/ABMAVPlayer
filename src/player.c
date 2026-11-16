@@ -80,7 +80,6 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define WM_TORRENT_TV_READY (WM_APP + 16)
 #define TIMER_ID 1
 #define MOTION_TIMER_ID 2
-#define MOTION_TIMER_ID 2
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
 #define MAX_PLAYLIST 256
@@ -671,6 +670,7 @@ static int EaseToward(int current,int target,int responsePercent) {
     if((delta>0&&next>target)||(delta<0&&next<target))return target;
     return next;
 }
+static void EnsureMainMotionTimer(HWND hwnd);
 static void StartMenuMotion(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return;
     if (!g_menuMotionInitialized) {
