@@ -251,6 +251,13 @@ static int64_t g_pendingResumeMs=0;
 static int64_t g_forcedResumeMs=0;
 static BOOL g_useForcedResume=FALSE;
 static unsigned int g_pendingResumeTicks=0;
+#define MAX_RESUME_ENTRIES MAX_PLAYLIST
+typedef struct { wchar_t path[PATH_CAP]; int64_t positionMs; int64_t durationMs; } ABMResumeEntry;
+static ABMResumeEntry g_resumeEntries[MAX_RESUME_ENTRIES];
+static int g_resumeCount=0;
+static HANDLE g_resumeWriteThread=NULL;
+static DWORD g_lastResumeSaveTick=0;
+static BOOL g_missingMedia[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_replayGain=TRUE;
@@ -2684,15 +2691,13 @@ static BOOL EnsureTorrentDownloadDir(void) {
     return attrs!=INVALID_FILE_ATTRIBUTES&&(attrs&FILE_ATTRIBUTE_DIRECTORY)!=0;
 }
 static void SavePersistentState(void);
+/* Missing files remain in the library so users can relink them later. */
 static void PruneUnavailablePlaylistItems(void) {
-    int write=0,removed=0;
-    for(int read=0;read<g_playlistCount;read++){
-        DWORD attrs=GetFileAttributesW(g_playlist[read]);
-        if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY)){removed++;continue;}
-        if(write!=read)wcsncpy_s(g_playlist[write],PATH_CAP,g_playlist[read],_TRUNCATE);
-        write++;
+    for(int i=0;i<MAX_PLAYLIST;i++)g_missingMedia[i]=FALSE;
+    for(int i=0;i<g_playlistCount;i++){
+        DWORD attrs=GetFileAttributesW(g_playlist[i]);
+        g_missingMedia[i]=(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY));
     }
-    if(removed){g_playlistCount=write;g_current=-1;g_selected=write?0:-1;g_playlistScroll=0;SavePersistentState();}
 }
 static void SavePersistentState(void) {
     if(!EnsureDataDirectory())return;
@@ -2755,7 +2760,7 @@ static void LoadPersistentState(void) {
         if(which)g_recentCount=count;else g_playlistCount=count;
     }
     swprintf_s(path,PATH_CAP,L"%s\\favorites.m3u",g_dataDir);
-    {FILE *fav=NULL;if(_wfopen_s(&fav,path,L"rt, ccs=UTF-8")==0&&fav){wchar_t line[PATH_CAP];while(g_favoriteCount<MAX_FAVORITES&&fgetws(line,PATH_CAP,fav)){line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#'||IsFavoritePath(line))continue;DWORD a=GetFileAttributesW(line);if(a==INVALID_FILE_ATTRIBUTES||(a&FILE_ATTRIBUTE_DIRECTORY))continue;wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,line,_TRUNCATE);}fclose(fav);}}
+    {FILE *fav=NULL;if(_wfopen_s(&fav,path,L"rt, ccs=UTF-8")==0&&fav){wchar_t line[PATH_CAP];while(g_favoriteCount<MAX_FAVORITES&&fgetws(line,PATH_CAP,fav)){line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#'||IsFavoritePath(line))continue;wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,line,_TRUNCATE);}fclose(fav);}}
     PruneUnavailablePlaylistItems();
     /* Recent history is a list of playable local files, not a stale log. */
     {
