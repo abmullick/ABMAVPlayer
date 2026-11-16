@@ -3838,14 +3838,21 @@ static void EqSetFromPoint(HWND hwnd,int x,int y) {
 }
 static ABM_D2D_CANVAS g_equalizerCanvas;
 static BOOL g_equalizerCanvasReady=FALSE;
+static ABMMotionValue g_equalizerRevealMotion;
+static BOOL g_equalizerRevealMotionInitialized=FALSE;
+#define EQ_MOTION_TIMER_ID 0x6E10
 static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg){
     case WM_ACTIVATE:
         if(LOWORD(wp)==WA_INACTIVE){SaveAudioPreferences();ShowWindow(hwnd,SW_HIDE);}
         return 0;
     case WM_ERASEBKGND:return 1;
+    case WM_TIMER:
+        if(wp==EQ_MOTION_TIMER_ID){double alpha=244.0;if(!ABM_MotionWinSample(hwnd,EQ_MOTION_TIMER_ID,(ABMMotionValue*[]){&g_equalizerRevealMotion},&alpha,1)){SetLayeredWindowAttributes(hwnd,0,244,LWA_ALPHA);}else{int a=(int)(alpha+0.5);if(a<0)a=0;if(a>244)a=244;SetLayeredWindowAttributes(hwnd,0,(BYTE)a,LWA_ALPHA);}return 0;}
+        break;
     case WM_CREATE:
         g_equalizerCanvasReady=ABM_D2D_CanvasInit(&g_equalizerCanvas);
+        ABM_MotionInit(&g_equalizerRevealMotion,0.0);g_equalizerRevealMotionInitialized=TRUE;
         return 0;
     case WM_DESTROY:
         if(g_equalizerCanvasReady){g_equalizerCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_equalizerCanvas);}
@@ -3931,8 +3938,10 @@ static void ShowEqualizer(void) {
     RECT owner;GetWindowRect(g_main,&owner);
     int x=owner.left+(owner.right-owner.left-680)/2;
     int y=owner.top+(owner.bottom-owner.top-405)/2;
+    SetLayeredWindowAttributes(g_eqWindow,0,0,LWA_ALPHA);
     SetWindowPos(g_eqWindow,HWND_TOPMOST,x,y,680,405,SWP_SHOWWINDOW);
     ShowWindow(g_eqWindow,SW_SHOWNORMAL);SetForegroundWindow(g_eqWindow);SetFocus(g_eqWindow);
+    if(g_equalizerRevealMotionInitialized){ABM_MotionInit(&g_equalizerRevealMotion,0.0);ABM_MotionStart(&g_equalizerRevealMotion,244.0,ABM_MOTION_DURATION_WINDOW,ABM_MOTION_EASE_OUT);if(!ABM_MotionWinSchedule(g_eqWindow,EQ_MOTION_TIMER_ID))SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);}
     InvalidateRect(g_eqWindow,NULL,TRUE);
 }
 
