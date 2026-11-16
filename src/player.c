@@ -1944,8 +1944,8 @@ static void DrawUI(HDC dc,RECT client) {
             /* The hover surface advances on the shared 16 ms motion clock.
                Use restrained palette steps so row painting stays allocation-free. */
             int hoverStep=hot?g_playlistHoverLevel:0;
-            COLORREF rowTop=hoverStep>=67?ABM_THEME_COLOR_1B2F42:(hoverStep>=30?ABM_THEME_COLOR_162A3B:ABM_THEME_COLOR_0F1F2F);
-            COLORREF rowBottom=hoverStep>=67?ABM_THEME_COLOR_18303A:(hoverStep>=30?ABM_THEME_COLOR_142838:ABM_THEME_COLOR_111D2C);
+            COLORREF rowTop=hoverStep>=67?ABM_THEME_COLOR_1B2F42:(hoverStep>=30?ABM_THEME_COLOR_162434:ABM_THEME_COLOR_0F1F2F);
+            COLORREF rowBottom=hoverStep>=67?ABM_THEME_COLOR_18303A:(hoverStep>=30?ABM_THEME_COLOR_142535:ABM_THEME_COLOR_111D2C);
             GradientRound(dc,row,rowTop,rowBottom,13);
         }
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,
@@ -7658,7 +7658,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return 0;
     }
-    case WM_TIMER:if(wp==TIMER_ID){
+    if(wp==TIMER_ID){
         VlcCodecVerificationPoll();
         TorrentCheckPlaybackStall();
         CheckAudioOutputAvailability();
