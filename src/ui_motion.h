@@ -5,6 +5,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#define ABM_MOTION_DURATION_QUICK       120u
+#define ABM_MOTION_DURATION_STANDARD    180u
+#define ABM_MOTION_DURATION_CONTENT     240u
+#define ABM_MOTION_DURATION_WINDOW      260u
+#define ABM_MOTION_DURATION_PANEL      280u
+#define ABM_MOTION_DURATION_EMPHASIS   350u
+
 typedef enum ABMMotionEasing {
     ABM_MOTION_LINEAR = 0,
     ABM_MOTION_EASE_OUT = 1,
