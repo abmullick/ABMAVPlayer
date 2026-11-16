@@ -1632,7 +1632,7 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];
     if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),g_showFavorites?L"♥ Favorites":L"All tracks");
     else swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
-    Txt(dc,groupLabel,R_GROUP,g_libraryTab==1&&g_showFavorites?ABM_THEME_COLOR_F08AAB:ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,groupLabel,R_GROUP,g_libraryTab==1&&g_showFavorites?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int rowHeight=PlaylistRowHeight();
     int visible=PlaylistVisibleRows(rowHeight);
@@ -1708,7 +1708,7 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?ABM_THEME_COLOR_A4C1EF:ABM_THEME_COLOR_74D7D3,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         BOOL favorite=IsFavoritePath(g_playlist[i]);
         RECT heart=R_FAVORITE[shown];
-        Txt(dc,favorite?L"♥":L"♡",heart,favorite?ABM_THEME_COLOR_F08AAB:(hot?ABM_THEME_COLOR_B8D0E0:ABM_THEME_COLOR_71869B),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,favorite?L"♥":L"♡",heart,favorite?ABM_THEME_COLOR_FFBECD:(hot?ABM_THEME_COLOR_BBD2DC:ABM_THEME_COLOR_738297),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         if(current){int cx=row.right-118,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,ABM_THEME_COLOR_5EB7F4,2);}}
         shown++;
     }
