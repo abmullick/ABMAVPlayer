@@ -559,6 +559,7 @@ int ABM_ShowMessageBox(HWND owner,const wchar_t *message,const wchar_t *caption,
 static void PlayIndex(int index);
 static void ResumeCaptureCurrent(void);
 static int64_t ResumePositionForPath(const wchar_t *path);
+static void RefreshMissingMediaFlags(void);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
 static void RefreshAudioDevices(void);
