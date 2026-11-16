@@ -251,7 +251,7 @@ Do not mark this work runtime-validated until the Windows build and interaction 
 - [ ] Verify heart hit targets do not overlap the type pill, title/metadata, active-track visualiser or row selection/playback hit target.
 - [ ] Add and remove favourites; verify filled/outline states update immediately and remain consistent after closing/reopening the drawer.
 - [ ] Restart the application and confirm favourites reload from `favorites.m3u`.
-- [ ] Clear the playback queue and confirm favourites remain intact.
+- [ ] Clear the playback queue and confirm favourites remain intact; reopen Favourites and confirm saved paths are restored into the active media list.
 - [ ] In Library, switch between All tracks and Favourites; verify count, empty state, search, Audio/Video filters and scrolling remain correct.
 - [ ] In Queue, verify Folder/Artist/Album grouping still cycles as before.
 - [ ] Right-click a media row and verify Add/Remove from favourites reflects the current state.
