@@ -106,6 +106,10 @@ static libvlc_renderer_item_t *g_streamSelectedRenderer;
 static BOOL g_rendererApplied = FALSE;
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
+#define MAX_FAVORITES MAX_PLAYLIST
+static wchar_t g_favorites[MAX_FAVORITES][PATH_CAP];
+static int g_favoriteCount=0;
+static BOOL g_showFavorites=FALSE;
 static int g_volume = 70, g_dragSeek = 0, g_dragSeekX = 0, g_dragVolume = 0, g_hover = 0;
 static BOOL g_shuffle = FALSE, g_repeat = FALSE;
 static float g_playbackRate = 1.0f;
@@ -168,7 +172,7 @@ static int64_t g_lastUiTime = -1;
 static int64_t g_overlayLength = 0;
 static BOOL g_overlayPlaying = FALSE;
 static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST, R_AUDIO_BUTTON, R_AUDIO_PANEL, R_AUDIO_ITEMS[12];
-static RECT R_ROW[MAX_PLAYLIST];
+static RECT R_ROW[MAX_PLAYLIST],R_FAVORITE[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
 static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT;
 static int g_homeCardMotion[4]={0,0,0,0};
@@ -472,9 +476,23 @@ static void Txt(HDC dc, const wchar_t *s, RECT r, COLORREF c, HFONT f, UINT flag
 static BOOL Inside(RECT r,int x,int y) { return x>=r.left && x<r.right && y>=r.top && y<r.bottom; }
 static BOOL ContainsTextI(const wchar_t *text,const wchar_t *query) { if(!query||!query[0])return TRUE;if(!text)return FALSE;size_t n=wcslen(query);for(const wchar_t *s=text;*s;s++)if(!_wcsnicmp(s,query,n))return TRUE;return FALSE; }
 static BOOL IsVideoPath(const wchar_t *path) { const wchar_t *d=wcsrchr(path?path:L"",L'.');return d&&(!_wcsicmp(d,L".mp4")||!_wcsicmp(d,L".mkv")||!_wcsicmp(d,L".avi")||!_wcsicmp(d,L".mov")||!_wcsicmp(d,L".wmv")||!_wcsicmp(d,L".webm")||!_wcsicmp(d,L".mpeg")||!_wcsicmp(d,L".mpg")||!_wcsicmp(d,L".m4v")); }
+static void SavePersistentState(void);
+static BOOL IsFavoritePath(const wchar_t *path) {
+    if(!path||!path[0])return FALSE;
+    for(int i=0;i<g_favoriteCount;i++)if(!_wcsicmp(g_favorites[i],path))return TRUE;
+    return FALSE;
+}
+static void ToggleFavoritePath(const wchar_t *path) {
+    if(!path||!path[0])return;
+    int found=-1;for(int i=0;i<g_favoriteCount;i++)if(!_wcsicmp(g_favorites[i],path)){found=i;break;}
+    if(found>=0){for(int i=found+1;i<g_favoriteCount;i++)wcsncpy_s(g_favorites[i-1],PATH_CAP,g_favorites[i],_TRUNCATE);g_favoriteCount--;}
+    else if(g_favoriteCount<MAX_FAVORITES)wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,path,_TRUNCATE);
+    SavePersistentState();if(g_main)InvalidateRect(g_main,&R_SIDEBAR,FALSE);
+}
 static int CountFilteredMedia(void) {
     int count=0;
     for(int i=0;i<g_playlistCount;i++){
+        if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
         BOOL video=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&video)||(g_mediaFilter==2&&!video))continue;
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
@@ -1611,8 +1629,10 @@ static void DrawUI(HDC dc,RECT client) {
     GradientRound(dc,R_GROUP,ABM_THEME_COLOR_122637,ABM_THEME_COLOR_142A3C,8);
     ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,
         (float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.7f);
-    wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
-    Txt(dc,groupLabel,R_GROUP,ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    wchar_t groupLabel[32];
+    if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),g_showFavorites?L"♥ Favorites":L"All tracks");
+    else swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
+    Txt(dc,groupLabel,R_GROUP,g_libraryTab==1&&g_showFavorites?ABM_THEME_COLOR_F08AAB:ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int rowHeight=PlaylistRowHeight();
     int visible=PlaylistVisibleRows(rowHeight);
@@ -1624,6 +1644,7 @@ static void DrawUI(HDC dc,RECT client) {
     int matched=0,shown=0;g_visibleRowCount=0;
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
+        if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
         BOOL isVideo=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
@@ -1663,12 +1684,13 @@ static void DrawUI(HDC dc,RECT client) {
         else
             DrawDefaultMediaArtwork(dc,rowThumb,isVideo,i);
         int textLeft=compactRow?rowThumb.right+9:row.left+82;
+        R_FAVORITE[shown]=(RECT){row.right-34,row.top+(rowHeight-28)/2,row.right-6,row.top+(rowHeight+28)/2};
         RECT name=compactRow
-            ?(RECT){textLeft,row.top+3,row.right-70,row.top+(rowHeight/2)+3}
-            :(RECT){row.left+82,row.top+9,row.right-84,row.top+38};
+            ?(RECT){textLeft,row.top+3,row.right-106,row.top+(rowHeight/2)+3}
+            :(RECT){row.left+82,row.top+9,row.right-108,row.top+38};
         RECT subline=compactRow
-            ?(RECT){textLeft,row.top+(rowHeight/2)-1,row.right-70,row.bottom-2}
-            :(RECT){row.left+82,row.top+40,row.right-84,row.bottom-7};
+            ?(RECT){textLeft,row.top+(rowHeight/2)-1,row.right-106,row.bottom-2}
+            :(RECT){row.left+82,row.top+40,row.right-108,row.bottom-7};
         Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
@@ -1676,15 +1698,18 @@ static void DrawUI(HDC dc,RECT client) {
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
         Txt(dc,metaLine,subline,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         RECT typePill=compactRow
-            ?(RECT){row.right-62,row.top+(row.bottom-row.top-20)/2,row.right-8,row.top+(row.bottom-row.top+20)/2}
-            :(RECT){row.right-74,row.top+24,row.right-10,row.top+49};
+            ?(RECT){row.right-98,row.top+(row.bottom-row.top-20)/2,row.right-42,row.top+(row.bottom-row.top+20)/2}
+            :(RECT){row.right-108,row.top+24,row.right-44,row.top+49};
         GradientRound(dc,typePill,isVideo?ABM_THEME_COLOR_1B2F42:ABM_THEME_COLOR_13414B,
             isVideo?ABM_THEME_COLOR_17273B:ABM_THEME_COLOR_153943,8);
         ABM_D2D_StrokeRound(&g_ui,(float)typePill.left,(float)typePill.top,(float)typePill.right,
             (float)typePill.bottom,8.0f,isVideo?ABM_THEME_COLOR_3D7791:ABM_THEME_COLOR_347077,0.65f);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?ABM_THEME_COLOR_A4C1EF:ABM_THEME_COLOR_74D7D3,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        if(current){int cx=row.right-23,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,ABM_THEME_COLOR_5EB7F4,2);}}
+        BOOL favorite=IsFavoritePath(g_playlist[i]);
+        RECT heart=R_FAVORITE[shown];
+        Txt(dc,favorite?L"♥":L"♡",heart,favorite?ABM_THEME_COLOR_F08AAB:(hot?ABM_THEME_COLOR_B8D0E0:ABM_THEME_COLOR_71869B),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        if(current){int cx=row.right-118,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,ABM_THEME_COLOR_5EB7F4,2);}}
         shown++;
     }
     /* Queue drag insertion guide. The Library tab remains read-only. */
@@ -2530,6 +2555,8 @@ static void SavePersistentState(void) {
         for(int i=0;i<g_playlistCount;i++){int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,NULL,0,NULL,NULL);if(n>1){char *s=(char*)malloc((size_t)n);if(s){WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,s,n,NULL,NULL);fputs(s,fp);fputc('\n',fp);free(s);}}}
         fclose(fp);
     }
+    swprintf_s(path,PATH_CAP,L"%s\\favorites.m3u",g_dataDir);
+    fp=NULL;if(_wfopen_s(&fp,path,L"wb")==0&&fp){fputs("#EXTM3U\n",fp);for(int i=0;i<g_favoriteCount;i++){int n=WideCharToMultiByte(CP_UTF8,0,g_favorites[i],-1,NULL,0,NULL,NULL);if(n>1){char *v=(char*)malloc((size_t)n);if(v){WideCharToMultiByte(CP_UTF8,0,g_favorites[i],-1,v,n,NULL,NULL);fputs(v,fp);fputc('\n',fp);free(v);}}}fclose(fp);}
     swprintf_s(path,PATH_CAP,L"%s\\recent.m3u",g_dataDir);
     fp=NULL;if(_wfopen_s(&fp,path,L"wb")==0&&fp){
         fputs("#EXTM3U\n",fp);
@@ -2580,6 +2607,8 @@ static void LoadPersistentState(void) {
         fclose(fp);
         if(which)g_recentCount=count;else g_playlistCount=count;
     }
+    swprintf_s(path,PATH_CAP,L"%s\\favorites.m3u",g_dataDir);
+    {FILE *fav=NULL;if(_wfopen_s(&fav,path,L"rt, ccs=UTF-8")==0&&fav){wchar_t line[PATH_CAP];while(g_favoriteCount<MAX_FAVORITES&&fgetws(line,PATH_CAP,fav)){line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#'||IsFavoritePath(line))continue;DWORD a=GetFileAttributesW(line);if(a==INVALID_FILE_ATTRIBUTES||(a&FILE_ATTRIBUTE_DIRECTORY))continue;wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,line,_TRUNCATE);}fclose(fav);}}
     PruneUnavailablePlaylistItems();
     /* Recent history is a list of playable local files, not a stale log. */
     {
@@ -3108,6 +3137,30 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     InvalidateRect(hwnd,NULL,FALSE);
 }
 
+static void SavePersonalCollection(void) {
+    if(!g_playlistCount||!EnsureDataDirectory())return;
+    wchar_t folder[PATH_CAP],path[PATH_CAP];
+    if(FAILED(StringCchPrintfW(folder,_countof(folder),L"%s\\collections",g_dataDir)))return;
+    if(!CreateDirectoryW(folder,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return;
+    if(FAILED(StringCchPrintfW(path,_countof(path),L"%s\\My Library.m3u",folder)))return;
+    OPENFILENAMEW ofn={0};ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_main;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;ofn.lpstrFilter=L"ABM personal libraries (*.m3u)\0*.m3u\0";ofn.lpstrDefExt=L"m3u";ofn.lpstrTitle=L"Save personal media library";ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST|OFN_EXPLORER;
+    if(!GetSaveFileNameW(&ofn))return;
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"wb")!=0||!fp){ABM_MessageBoxW(g_main,L"Could not save this personal library.",APP_NAME,MB_ICONERROR);return;}
+    fputs("#EXTM3U\n#ABM_PERSONAL_LIBRARY\n",fp);
+    for(int i=0;i<g_playlistCount;i++){int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,NULL,0,NULL,NULL);if(n>1){char *v=(char*)malloc((size_t)n);if(v){WideCharToMultiByte(CP_UTF8,0,g_playlist[i],-1,v,n,NULL,NULL);fputs(v,fp);fputc('\n',fp);free(v);}}}
+    fclose(fp);SetStatus(L"Personal library saved. Your queue and source files were left unchanged.");
+}
+static void LoadPersonalCollection(void) {
+    if(!EnsureDataDirectory())return;
+    wchar_t folder[PATH_CAP],path[PATH_CAP]=L"";if(FAILED(StringCchPrintfW(folder,_countof(folder),L"%s\\collections",g_dataDir)))return;
+    if(!CreateDirectoryW(folder,NULL)&&GetLastError()!=ERROR_ALREADY_EXISTS)return;
+    OPENFILENAMEW ofn={0};ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_main;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;ofn.lpstrInitialDir=folder;ofn.lpstrFilter=L"ABM personal libraries (*.m3u)\0*.m3u\0All playlists (*.m3u8)\0*.m3u8\0";ofn.lpstrTitle=L"Load saved personal library";ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_EXPLORER;
+    if(!GetOpenFileNameW(&ofn))return;
+    FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rb")!=0||!fp){ABM_MessageBoxW(g_main,L"Could not open this personal library.",APP_NAME,MB_ICONERROR);return;}
+    if(g_hasMedia){PlaybackStopEngine();g_hasMedia=FALSE;}g_playlistCount=0;g_current=-1;g_selected=-1;g_playlistScroll=0;
+    char line[PATH_CAP*4];while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){size_t n=strcspn(line,"\r\n");line[n]=0;if(!line[0]||line[0]=='#')continue;UINT cp=CP_UTF8;int chars=MultiByteToWideChar(cp,MB_ERR_INVALID_CHARS,line,-1,NULL,0);if(chars<=0){cp=CP_ACP;chars=MultiByteToWideChar(cp,0,line,-1,NULL,0);}if(chars>0&&chars<=PATH_CAP)MultiByteToWideChar(cp,0,line,-1,g_playlist[g_playlistCount++],PATH_CAP);}
+    fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;g_libraryTab=1;g_showFavorites=FALSE;SavePersistentState();SetStatus(L"Saved personal library loaded into the playback queue.");InvalidateRect(g_main,NULL,FALSE);
+}
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     if(index>=0&&index<g_playlistCount)g_selected=index;else g_selected=-1;
     ABMMenuItem items[]={
@@ -3117,7 +3170,11 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {4,L"Move down",g_selected>=0&&g_selected<g_playlistCount-1,FALSE},
         {0,L"PLAYLIST",FALSE,TRUE},
         {5,L"Clear playlist",g_playlistCount>0,FALSE},
-        {6,L"Save playlist...",g_playlistCount>0,FALSE}
+        {6,L"Save playlist...",g_playlistCount>0,FALSE},
+        {0,L"PERSONAL LIBRARIES",FALSE,TRUE},
+        {7,L"Save as personal library...",g_playlistCount>0,FALSE},
+        {8,L"Load saved library...",TRUE,FALSE},
+        {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
     switch(cmd){
@@ -3127,6 +3184,9 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         case 4:MovePlaylistItem(g_selected,g_selected+1);break;
         case 5:if(!g_advancedConfirmClearPlaylist||ABM_MessageBoxW(hwnd,L"Remove every item from the playlist? The source files will not be deleted.",APP_NAME,MB_YESNO|MB_ICONWARNING)==IDYES)ClearPlaylist();break;
         case 6:SavePlaylist();break;
+        case 7:SavePersonalCollection();break;
+        case 8:LoadPersonalCollection();break;
+        case 9:if(g_selected>=0&&g_selected<g_playlistCount)ToggleFavoritePath(g_playlist[g_selected]);break;
     }
 }
 
@@ -7477,7 +7537,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_AUDIO,x,y)){g_mediaFilter=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_VIDEO,x,y)){g_mediaFilter=2;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){g_groupMode=(g_groupMode+1)%3;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){if(g_libraryTab==1)g_showFavorites=!g_showFavorites;else g_groupMode=(g_groupMode+1)%3;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
             if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
@@ -7581,6 +7641,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
         if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12){g_dragVolume=1;int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&g_libraryTab==1&&Inside(R_LIST,x,y)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_FAVORITE[ri],x,y)){ToggleFavoritePath(g_playlist[g_visibleRows[ri]]);ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&g_libraryTab==0&&Inside(R_LIST,x,y)) {
             for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)) {
                 g_queueDragPending=TRUE;g_queueDragging=FALSE;
