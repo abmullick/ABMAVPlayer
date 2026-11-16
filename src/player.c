@@ -679,7 +679,8 @@ static void StartMenuMotion(HWND hwnd) {
         g_menuMotionInitialized = TRUE;
     }
     ABM_MotionStart(&g_menuMotion, g_menuOpen ? 100.0 : 0.0,
-                    220, g_menuOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+                    ABM_MOTION_DURATION_STANDARD,
+                    g_menuOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
     if (!g_menuMotion.active) {
         g_menuProgress = g_menuOpen ? 100 : 0;
         PositionVideoWindow();
@@ -709,7 +710,8 @@ static void StartDrawerMotion(HWND hwnd) {
         g_drawerMotionInitialized = TRUE;
     }
     ABM_MotionStart(&g_drawerMotion, g_drawerOpen ? 100.0 : 0.0,
-                    280, g_drawerOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+                    ABM_MOTION_DURATION_PANEL,
+                    g_drawerOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
     /* Reserve the final drawer footprint once at transition start. The video
        child HWND is not resized on subsequent animation frames. */
     UpdateLayout(hwnd);
