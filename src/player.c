@@ -1694,11 +1694,36 @@ static void DrawUI(HDC dc,RECT client) {
         Panel(dc,menu,ABM_THEME_COLOR_0C1420,ABM_THEME_COLOR_314C5E,18);
         RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+4};
         GradientRect(dc,menuTop,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_52CDBE);
-        RECT menuHeader={menu.left+18,menu.top+9,menu.right-18,menu.top+32};
+        RECT brandMark={menu.left+16,menu.top+10,menu.left+50,menu.top+44};
+        RoundBox(dc,brandMark,ABM_THEME_COLOR_126B6A,ABM_UI_RADIUS_CONTROL);
+        ABM_D2D_StrokeRound(&g_ui,(float)brandMark.left,(float)brandMark.top,(float)brandMark.right,(float)brandMark.bottom,
+            (float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_36B1A8,1.0f);
+        Txt(dc,L"A",brandMark,ABM_THEME_COLOR_F2F8FD,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT menuHeader={menu.left+62,menu.top+8,menu.right-16,menu.top+32};
         Txt(dc,L"COMMAND CENTRE",menuHeader,ABM_THEME_COLOR_F2F8FD,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        RECT menuSub={menu.left+18,menu.top+31,menu.right-18,menu.top+48};
+        RECT menuSub={menu.left+63,menu.top+30,menu.right-16,menu.top+47};
         Txt(dc,L"PLAYBACK  ·  LIBRARY  ·  DEVICES  ·  APP",menuSub,ABM_THEME_COLOR_85A3B8,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         DrawLine(dc,menu.left+16,menu.top+51,menu.right-16,menu.top+51,ABM_THEME_COLOR_273A4C,1);
+        /* Group cards use the same ABM surface, border and radius tokens as
+           the rest of the application. Labels collapse gracefully on short windows. */
+        const wchar_t *sectionNames[5]={
+            L"PLAYBACK & MEDIA",L"DEVICES & CASTING",L"PLAYBACK CONTROLS",
+            L"STREAMING & TORRENT",L"APP & SUPPORT"
+        };
+        for(int group=0;group<5;group++){
+            RECT groupBox=R_MENU_GROUPS[group];
+            if(groupBox.bottom<=groupBox.top)continue;
+            RoundBox(dc,groupBox,ABM_THEME_COLOR_0D1926,ABM_UI_RADIUS_CARD);
+            ABM_D2D_StrokeRound(&g_ui,(float)groupBox.left,(float)groupBox.top,(float)groupBox.right,(float)groupBox.bottom,
+                (float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_20384A,0.8f);
+            RECT section=R_MENU_SECTION_LABELS[group];
+            if(section.bottom>section.top){
+                RECT sectionText=section;sectionText.right=section.left+150;
+                Txt(dc,sectionNames[group],sectionText,ABM_THEME_COLOR_62D2C6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                int lineX=sectionText.right+8;
+                if(lineX<section.right)DrawLine(dc,lineX,(section.top+section.bottom)/2,section.right,(section.top+section.bottom)/2,ABM_THEME_COLOR_20384A,1);
+            }
+        }
         const wchar_t *labels[19]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
@@ -1723,20 +1748,21 @@ static void DrawUI(HDC dc,RECT client) {
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             BOOL featured=(i==11||i==12);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=featured?(i==11?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_111D2C;
+            COLORREF fill=featured?(i==11?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_193044;
             COLORREF edge=featured?(i==11?ABM_THEME_COLOR_2B7E7D:ABM_THEME_COLOR_8B5B3B):ABM_THEME_COLOR_1F3041;
-            if(hot){
-                fill=featured?(i==11?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_193743;
-                edge=ABM_THEME_COLOR_53B5AB;
+            if(hot){fill=featured?(i==11?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_1B3A49;edge=ABM_THEME_COLOR_53B5AB;}
+            if(featured||hot){
+                RoundBox(dc,row,fill,featured?ABM_UI_RADIUS_CARD:ABM_UI_RADIUS_CONTROL);
+                ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
+                    featured?(float)ABM_UI_RADIUS_CARD:(float)ABM_UI_RADIUS_CONTROL,hot?ABM_THEME_COLOR_69CFC0:edge,hot?1.25f:0.8f);
+            }else if(i!=0){
+                DrawLine(dc,item.left+46,item.bottom-1,item.right-8,item.bottom-1,ABM_THEME_COLOR_1C3040,1);
             }
-            RoundBox(dc,row,fill,featured?13:9);
-            ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
-                featured?13.0f:9.0f,hot?ABM_THEME_COLOR_69CFC0:edge,hot?1.25f:0.8f);
-            RECT glyph={item.left+(featured?14:10),item.top+(featured?9:5),
-                        item.left+(featured?56:40),item.bottom-(featured?9:5)};
-            COLORREF glyphFill=featured?(i==11?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_89512D):ABM_THEME_COLOR_1B2F42;
+            RECT glyph={item.left+(featured?14:9),item.top+(featured?8:4),
+                        item.left+(featured?56:38),item.bottom-(featured?8:4)};
+            COLORREF glyphFill=featured?(i==11?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_89512D):ABM_THEME_COLOR_183044;
             if(hot)glyphFill=ABM_THEME_COLOR_257471;
-            RoundBox(dc,glyph,glyphFill,featured?10:8);
+            RoundBox(dc,glyph,glyphFill,featured?ABM_UI_RADIUS_CONTROL:ABM_UI_RADIUS_CONTROL);
             Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
                         item.right-112,item.bottom-(featured?6:2)};
