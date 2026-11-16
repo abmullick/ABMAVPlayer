@@ -13,16 +13,14 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
-### Current release highlights — v1.0.8 candidate
+### Current release highlights — v1.0.9 candidate
 
-- Unified typography, iconography, control surfaces and Direct2D/DirectWrite rendering across the Main Player, Streaming Centre, Torrent Stream, Settings, Advanced Settings, Help Centre, About, Equalizer and modal windows.
-- Improved Settings responsiveness, monitor-safe sizing, custom scrollbars, keyboard navigation and focus visibility.
-- Added VLC Runtime & Codecs diagnostics with explicit evidence levels and richer diagnostic reports.
-- Hardened playback, Streaming Centre and Torrent lifecycles, including worker cancellation, callback lifetime, HTTP request handling and resource cleanup.
-- Improved Torrent quota accounting, stalled-download recovery, transient-error recovery and paused-state handling.
-- Expanded Help Centre, user/developer documentation and the Windows QA checklists.
+- Added media duration labels to Queue and Library cards, including Favourites, using background metadata resolution and a bounded cache to keep parsing off the UI thread.
+- Polished windowed and fullscreen playback controls, seek timeline/playhead and volume rail styling, with improved clearance between the video surface and playback controls.
+- Added the Motion System 1.0 architecture audit and staged implementation plan.
+- Carries forward the v1.0.8 shared design system, VLC Runtime & Codecs diagnostics, Help Centre refinements and playback/Streaming Centre/Torrent lifecycle hardening.
 
-This is a source-prepared v1.0.8 candidate. Build and Windows regression/installer upgrade validation are required before publication.
+This is a source-prepared v1.0.9 candidate. Windows x64 build, runtime scrolling/performance measurement, playback/casting regression and installer upgrade validation are required before publication.
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the release notes and [RELEASES.md](RELEASES.md) for build, validation and publishing requirements.
 
