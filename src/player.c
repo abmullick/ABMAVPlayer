@@ -5497,7 +5497,7 @@ static void ShowTorrentWindow(HWND owner) {
         HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
         if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
         TorrentApplyWindowChrome(g_torrentWindow);
-        ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();
+        ABM_ShowWindowMotion(g_torrentWindow);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();
     }
 }
 
