@@ -1691,7 +1691,7 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+4};
         GradientRect(dc,menuTop,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_52CDBE);
         RECT brandMark={menu.left+16,menu.top+10,menu.left+50,menu.top+44};
-        RoundBox(dc,brandMark,ABM_THEME_COLOR_126B6A,ABM_UI_RADIUS_CONTROL);
+        RoundBox(dc,brandMark,ABM_THEME_COLOR_1B7771,ABM_UI_RADIUS_CONTROL);
         ABM_D2D_StrokeRound(&g_ui,(float)brandMark.left,(float)brandMark.top,(float)brandMark.right,(float)brandMark.bottom,
             (float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_36B1A8,1.0f);
         Txt(dc,L"A",brandMark,ABM_THEME_COLOR_F2F8FD,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -1710,16 +1710,16 @@ static void DrawUI(HDC dc,RECT client) {
             RECT groupBox=R_MENU_GROUPS[group];
             if(groupBox.top>=menu.bottom||groupBox.bottom<=groupBox.top)continue;
             if(groupBox.bottom>menu.bottom)groupBox.bottom=menu.bottom;
-            RoundBox(dc,groupBox,ABM_THEME_COLOR_0D1926,ABM_UI_RADIUS_CARD);
+            RoundBox(dc,groupBox,ABM_THEME_COLOR_0D1825,ABM_UI_RADIUS_CARD);
             ABM_D2D_StrokeRound(&g_ui,(float)groupBox.left,(float)groupBox.top,(float)groupBox.right,(float)groupBox.bottom,
-                (float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_20384A,0.8f);
+                (float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_1C3445,0.8f);
             RECT section=R_MENU_SECTION_LABELS[group];
             if(section.bottom>section.top&&section.top<menu.bottom){
                 if(section.bottom>menu.bottom)section.bottom=menu.bottom;
                 RECT sectionText=section;sectionText.right=section.left+150;
-                Txt(dc,sectionNames[group],sectionText,ABM_THEME_COLOR_62D2C6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+                Txt(dc,sectionNames[group],sectionText,ABM_THEME_COLOR_63E1CD,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
                 int lineX=sectionText.right+8;
-                if(lineX<section.right)DrawLine(dc,lineX,(section.top+section.bottom)/2,section.right,(section.top+section.bottom)/2,ABM_THEME_COLOR_20384A,1);
+                if(lineX<section.right)DrawLine(dc,lineX,(section.top+section.bottom)/2,section.right,(section.top+section.bottom)/2,ABM_THEME_COLOR_1C3445,1);
             }
         }
         const wchar_t *labels[19]={
@@ -1746,19 +1746,19 @@ static void DrawUI(HDC dc,RECT client) {
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             BOOL featured=(i==11||i==12);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=featured?(i==11?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_193044;
+            COLORREF fill=featured?(i==11?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_193041;
             COLORREF edge=featured?(i==11?ABM_THEME_COLOR_2B7E7D:ABM_THEME_COLOR_8B5B3B):ABM_THEME_COLOR_1F3041;
-            if(hot){fill=featured?(i==11?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_1B3A49;edge=ABM_THEME_COLOR_53B5AB;}
+            if(hot){fill=featured?(i==11?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_1C3445;edge=ABM_THEME_COLOR_53B5AB;}
             if(featured||hot){
                 RoundBox(dc,row,fill,featured?ABM_UI_RADIUS_CARD:ABM_UI_RADIUS_CONTROL);
                 ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
                     featured?(float)ABM_UI_RADIUS_CARD:(float)ABM_UI_RADIUS_CONTROL,hot?ABM_THEME_COLOR_69CFC0:edge,hot?1.25f:0.8f);
             }else if(i!=0){
-                DrawLine(dc,item.left+46,item.bottom-1,item.right-8,item.bottom-1,ABM_THEME_COLOR_1C3040,1);
+                DrawLine(dc,item.left+46,item.bottom-1,item.right-8,item.bottom-1,ABM_THEME_COLOR_1C2F3D,1);
             }
             RECT glyph={item.left+(featured?14:9),item.top+(featured?8:4),
                         item.left+(featured?56:38),item.bottom-(featured?8:4)};
-            COLORREF glyphFill=featured?(i==11?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_89512D):ABM_THEME_COLOR_183044;
+            COLORREF glyphFill=featured?(i==11?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_89512D):ABM_THEME_COLOR_183449;
             if(hot)glyphFill=ABM_THEME_COLOR_257471;
             RoundBox(dc,glyph,glyphFill,featured?ABM_UI_RADIUS_CONTROL:ABM_UI_RADIUS_CONTROL);
             Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
