@@ -8068,6 +8068,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_hoverPlaylistIndex=playlistHot;
             InvalidatePlaylistRow(hwnd,previousPlaylistHot);
             InvalidatePlaylistRow(hwnd,playlistHot);
+            if(previousPlaylistHot>=0&&playlistHot>=0){
+                /* A direct row-to-row move starts the incoming row from rest. */
+                g_playlistHoverLevel=0;
+                if(!g_playlistHoverMotionInitialized){ABM_MotionInit(&g_playlistHoverMotion,0.0);g_playlistHoverMotionInitialized=TRUE;}
+                else ABM_MotionInit(&g_playlistHoverMotion,0.0);
+            }
             StartPlaylistHoverMotion(hwnd,playlistHot>=0?100:0);
         }
         int menuHot=-1;
