@@ -908,26 +908,33 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_DRAWITEM:{
         DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
-        if(!g_infoAbout&&wp==8102){
-            if(d){bool down=(d->itemState&ODS_SELECTED)!=0;
-                COLORREF fill=down?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_BLUE;
-                Rounded(d->hDC,d->rcItem,fill,ABM_UI_RADIUS_BUTTON);
-                RECT edge=d->rcItem;HPEN p=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);HGDIOBJ op=SelectObject(d->hDC,p),ob=SelectObject(d->hDC,GetStockObject(HOLLOW_BRUSH));
-                RoundRect(d->hDC,edge.left,edge.top,edge.right,edge.bottom,ABM_UI_RADIUS_BUTTON*2,ABM_UI_RADIUS_BUTTON*2);
-                SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(p);
-                SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,ABM_UI_COLOR_TEXT);DrawTextW(d->hDC,L"Find next",-1,&edge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            }return TRUE;
+        if(!g_infoAbout&&wp==8102&&d&&g_infoCanvasReady){
+            BOOL pressed=(d->itemState&ODS_SELECTED)!=0,focused=(d->itemState&ODS_FOCUS)!=0;
+            RECT bounds={0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
+            if(ABM_D2D_CanvasBegin(&g_infoCanvas,d->hDC,&d->rcItem)){
+                COLORREF fill=pressed?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT;
+                COLORREF edge=focused?ABM_UI_COLOR_FOCUS:ABM_UI_COLOR_ACCENT_BRIGHT;
+                ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_THEME_COLOR_0C1D2D);
+                RECT face=bounds;InflateRect(&face,-1,-1);
+                ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
+                ABM_D2D_CanvasStrokeRound(&g_infoCanvas,0.5f,0.5f,(float)bounds.right-0.5f,(float)bounds.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
+                RECT label=bounds;InflateRect(&label,-8,-2);
+                ABM_D2D_CanvasText(&g_infoCanvas,L"FIND NEXT",label,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                ABM_D2D_CanvasEnd(&g_infoCanvas);return TRUE;
+            }
         }
-        if(!g_infoAbout&&wp==8103&&d&&d->itemID!=(UINT)-1){
+        if(!g_infoAbout&&wp==8103&&d&&d->itemID!=(UINT)-1&&g_infoCanvasReady){
             wchar_t label[128]{};SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)label);
-            const bool selected=(d->itemState&ODS_SELECTED)!=0;
-            RECT r=d->rcItem;COLORREF fill=selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE;
-            FillRectColor(d->hDC,r,fill);
-            if(selected){RECT marker={r.left+2,r.top+6,r.left+5,r.bottom-6};FillRectColor(d->hDC,marker,ABM_UI_COLOR_ACCENT_BRIGHT);}
-            SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY);
-            r.left+=14;r.right-=6;DrawTextW(d->hDC,label,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
-            if(d->itemState&ODS_FOCUS)DrawFocusRect(d->hDC,&d->rcItem);
-            return TRUE;
+            BOOL selected=(d->itemState&ODS_SELECTED)!=0,hot=(d->itemState&ODS_HOTLIGHT)!=0;
+            RECT bounds={0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
+            if(ABM_D2D_CanvasBegin(&g_infoCanvas,d->hDC,&d->rcItem)){
+                RECT row=bounds;InflateRect(&row,-6,-2);
+                ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:(hot?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE));
+                RECT textRect=row;textRect.left+=12;textRect.right-=8;
+                ABM_D2D_CanvasText(&g_infoCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_infoCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
+                ABM_D2D_CanvasEnd(&g_infoCanvas);return TRUE;
+            }
         }
         break;
     }
@@ -1004,6 +1011,13 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }else{
             RECT navLabel={24,124,294,142};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT articleLabel={310,124,rc.right-24,142};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            HWND panels[3]={g_infoSearch,g_infoTopics,g_infoArticle};
+            for(int pi=0;pi<3;pi++)if(panels[pi]&&IsWindowVisible(panels[pi])){
+                RECT pr;GetWindowRect(panels[pi],&pr);MapWindowPoints(HWND_DESKTOP,hwnd,(POINT*)&pr,2);
+                InflateRect(&pr,8,8);
+                ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+                ABM_D2D_CanvasStrokeRound(&g_infoCanvas,(float)pr.left+0.5f,(float)pr.top+0.5f,(float)pr.right-0.5f,(float)pr.bottom-0.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,1.0f);
+            }
         }
         if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasEnd(&g_infoCanvas);
         EndPaint(hwnd,&ps);return 0;
