@@ -25,8 +25,9 @@ ULONGLONG ABM_MotionNow(void)
     if (frequency.QuadPart == 0) QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&counter);
     if (frequency.QuadPart <= 0) return GetTickCount64();
-    return (ULONGLONG)((counter.QuadPart * 1000ULL) /
-                       (ULONGLONG)frequency.QuadPart);
+    return (ULONGLONG)(counter.QuadPart / frequency.QuadPart) * 1000ULL +
+           ((ULONGLONG)(counter.QuadPart % frequency.QuadPart) * 1000ULL) /
+           (ULONGLONG)frequency.QuadPart;
 }
 
 void ABM_MotionInit(ABMMotionValue *motion, double value)
