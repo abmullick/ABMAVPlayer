@@ -1708,12 +1708,14 @@ static void DrawUI(HDC dc,RECT client) {
         };
         for(int group=0;group<5;group++){
             RECT groupBox=R_MENU_GROUPS[group];
-            if(groupBox.bottom<=groupBox.top)continue;
+            if(groupBox.top>=menu.bottom||groupBox.bottom<=groupBox.top)continue;
+            if(groupBox.bottom>menu.bottom)groupBox.bottom=menu.bottom;
             RoundBox(dc,groupBox,ABM_THEME_COLOR_0D1926,ABM_UI_RADIUS_CARD);
             ABM_D2D_StrokeRound(&g_ui,(float)groupBox.left,(float)groupBox.top,(float)groupBox.right,(float)groupBox.bottom,
                 (float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_20384A,0.8f);
             RECT section=R_MENU_SECTION_LABELS[group];
-            if(section.bottom>section.top){
+            if(section.bottom>section.top&&section.top<menu.bottom){
+                if(section.bottom>menu.bottom)section.bottom=menu.bottom;
                 RECT sectionText=section;sectionText.right=section.left+150;
                 Txt(dc,sectionNames[group],sectionText,ABM_THEME_COLOR_62D2C6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
                 int lineX=sectionText.right+8;
