@@ -365,8 +365,10 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static ABMMotionValue g_menuMotion;
 static ABMMotionValue g_drawerMotion;
+static ABMMotionValue g_hoverMotion;
 static BOOL g_menuMotionInitialized = FALSE;
 static BOOL g_drawerMotionInitialized = FALSE;
+static BOOL g_hoverMotionInitialized = FALSE;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
 static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
@@ -689,13 +691,26 @@ static void StartMenuMotion(HWND hwnd) {
     EnsureMainMotionTimer(hwnd);
 }
 static void UpdateLayout(HWND hwnd);
+static void StartHoverMotion(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (!g_hoverMotionInitialized) {
+        ABM_MotionInit(&g_hoverMotion, (double)g_hoverLevel);
+        g_hoverMotionInitialized = TRUE;
+    }
+    ABM_MotionStart(&g_hoverMotion, g_hoverButton ? 100.0 : 0.0,
+                    ABM_MOTION_DURATION_QUICK, ABM_MOTION_EASE_OUT);
+    if (!g_hoverMotion.active) g_hoverLevel = g_hoverButton ? 100 : 0;
+    EnsureMainMotionTimer(hwnd);
+}
 static void EnsureMainMotionTimer(HWND hwnd) {
-    if (g_menuMotion.active || g_drawerMotion.active) {
+    if (g_menuMotion.active || g_drawerMotion.active || g_hoverMotion.active) {
         if (!ABM_MotionWinSchedule(hwnd, MOTION_TIMER_ID)) {
             ABM_MotionCancel(&g_menuMotion, NULL);
             ABM_MotionCancel(&g_drawerMotion, NULL);
+            ABM_MotionCancel(&g_hoverMotion, NULL);
             g_menuProgress = g_menuOpen ? 100 : 0;
             g_drawerProgress = g_drawerOpen ? 100 : 0;
+            g_hoverLevel = g_hoverButton ? 100 : 0;
             UpdateLayout(hwnd);
             InvalidateRect(hwnd, NULL, FALSE);
         }
@@ -7249,7 +7264,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
         return 0;
     case WM_CREATE: {
-        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress); g_drawerMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress); g_drawerMotionInitialized=TRUE; ABM_MotionInit(&g_hoverMotion, (double)g_hoverLevel); g_hoverMotionInitialized=TRUE; ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress); g_drawerMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -7512,20 +7527,26 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==MOTION_TIMER_ID){
-        ABMMotionValue *motions[2] = { &g_menuMotion, &g_drawerMotion };
-        double values[2] = { (double)g_menuProgress, (double)g_drawerProgress };
+        ABMMotionValue *motions[3] = { &g_menuMotion, &g_drawerMotion, &g_hoverMotion };
+        double values[3] = { (double)g_menuProgress, (double)g_drawerProgress, (double)g_hoverLevel };
         BOOL menuWasActive = g_menuMotion.active;
         BOOL drawerWasActive = g_drawerMotion.active;
-        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 2);
+        BOOL hoverWasActive = g_hoverMotion.active;
+        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 3);
         g_menuProgress = (int)(values[0] + 0.5);
         g_drawerProgress = (int)(values[1] + 0.5);
+        g_hoverLevel = (int)(values[2] + 0.5);
         if (g_menuProgress < 0) g_menuProgress = 0;
         if (g_menuProgress > 100) g_menuProgress = 100;
         if (g_drawerProgress < 0) g_drawerProgress = 0;
+        if (g_hoverLevel < 0) g_hoverLevel = 0;
+        if (g_hoverLevel > 100) g_hoverLevel = 100;
         if (g_drawerProgress > 100) g_drawerProgress = 100;
         if (!g_menuMotion.active) g_menuProgress = g_menuOpen ? 100 : 0;
         if (!g_drawerMotion.active) g_drawerProgress = g_drawerOpen ? 100 : 0;
+        if (!g_hoverMotion.active) g_hoverLevel = g_hoverButton ? 100 : 0;
         if (menuWasActive) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+        if (hoverWasActive) { InvalidateButton(g_hoverButton); if (g_hoverButton == HIT_NONE) { InvalidateButton(HIT_OPEN); InvalidateButton(HIT_PLAY); InvalidateButton(HIT_STOP); InvalidateButton(HIT_PREV); InvalidateButton(HIT_NEXT); InvalidateButton(HIT_SCAN); } }
         if (drawerWasActive) {
             UpdateLayoutInternal(hwnd, FALSE);
             InvalidateRect(hwnd, &R_SIDEBAR, FALSE);
@@ -7586,16 +7607,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_discovererCount && !g_discoveryTimedOut && g_rendererCount==0 && g_discoveryStartedTick && (DWORD)(GetTickCount()-g_discoveryStartedTick)>=15000){
             g_discoveryTimedOut=TRUE;
             SetStatus(L"No Google Cast receivers found - check Cast support, same Wi-Fi and mDNS");
-        }
-        int oldLevel=g_hoverLevel;
-        g_hoverLevel=EaseToward(g_hoverLevel,g_hoverButton?100:0,32);
-        if(oldLevel!=g_hoverLevel) {
-            InvalidateButton(g_hoverButton);
-            if(g_hoverButton==HIT_NONE) {
-                InvalidateButton(HIT_OPEN);InvalidateButton(HIT_PLAY);
-                InvalidateButton(HIT_STOP);InvalidateButton(HIT_PREV);
-                InvalidateButton(HIT_NEXT);InvalidateButton(HIT_SCAN);
-            }
         }
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
@@ -8021,6 +8032,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(hit!=g_hoverButton){
             int previous=g_hoverButton;
             g_hoverButton=hit;
+            StartHoverMotion(hwnd);
             InvalidateButton(previous);
             InvalidateButton(g_hoverButton);
             RECT hintStrip={0,0,0,0};GetClientRect(hwnd,&hintStrip);
