@@ -806,7 +806,7 @@ BOOL StreamingHelpFindNext(HWND hwnd){
         for(int i=begin;i+qlen<=(size_t)len;i++){
             if(_wcsnicmp(article+i,query,qlen)==0){found=article+i;break;}
         }
-        if(!found&&pass==count-1){
+        if(!found&&topic==g_infoSearchTopic){
             for(int i=0;i<begin&&i+qlen<=(size_t)len;i++){
                 if(_wcsnicmp(article+i,query,qlen)==0){found=article+i;break;}
             }
@@ -910,15 +910,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT subtitle={29,47,rc.right-28,70};
         InfoText(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  HELP CENTRE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        if(g_infoAbout){
-            if(g_infoPortrait){Gdiplus::Graphics graphics(dc);graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));}
-            RECT product={322,98,rc.right-28,138};InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT tagline={322,140,rc.right-28,163};InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creator={322,204,rc.right-28,237};InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT role={322,244,rc.right-28,271};InfoText(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT description={322,362,rc.right-28,412};InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT version={322,420,rc.right-28,446};InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        }else{
+        if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}else{
             RECT intro={28,77,rc.right-28,94};InfoText(dc,L"Browse streaming topics or search the complete guide. Enter searches; F3 finds the next match.",intro,ABM_UI_COLOR_TEXT_MUTED,12,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT navLabel={28,133,278,151};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT articleLabel={302,133,rc.right-28,151};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
