@@ -185,7 +185,7 @@ const wchar_t *g_streamHelpArticles[]={
  L"Cast video inspects the current provider page for a supported handoff. YouTube video IDs can be sent to a compatible Google Cast receiver. A directly addressable media URL may be handed off when the receiver can access and play that URL. Network reachability, codecs, URL lifetime and receiver support affect success.\r\n\r\nProtected or DRM-backed browser streams are not captured, decrypted or relayed by ABM AV Player. Netflix desktop title casting is not supported. Prime Video desktop title handoff is not supported. For Sony LIV and ZEE5, the available DIAL workflow can launch the TV app but does not transfer the desktop browser title or signed-in session. Other services may require their official mobile Cast workflow or native TV app.\r\n\r\nIf a handoff fails, open the service directly on the television or use the provider's official mobile application. Do not interpret app launch as video casting.",
  L"Provider websites control their own accounts, subscriptions, catalogue, advertising, regional availability, content protection and playback policies. ABM AV Player does not host provider content and does not bypass DRM, paywalls, geographic restrictions or subscription checks.\r\n\r\nProvider credentials are entered on the provider website. Supported WebView2 cookies and site data are stored in the current Windows user's Streaming Centre profile. Protect access to your Windows account, especially on shared computers. Use provider sign-out and account security controls when needed.\r\n\r\nNetwork discovery sends local-network protocol traffic to identify compatible receivers and app endpoints. Only perform discovery on networks and devices you are authorised to use.",
  L"Blank or incomplete provider page — Check the network connection, confirm the provider website is reachable in a normal browser, then use Reload. Some websites may block embedded browsers or require an updated WebView2 Runtime.\r\n\r\nRepeated sign-in — Provider cookies may have expired, been cleared or been rejected. Sign in again on the provider's official page. The external browser may have a separate profile.\r\n\r\nVideo will not play — Check provider subscription and regional availability, update Windows/WebView2 Runtime, reload the page and try the provider's own playback controls. Protected playback and hardware/DRM requirements are provider-controlled.\r\n\r\nTV not found — Confirm the PC and TV share a non-guest LAN, disable client isolation where appropriate, check Windows Firewall permissions and run Find TVs again.\r\n\r\nTV app missing — Run Check TV apps again. The receiver must expose a compatible Cast or DIAL endpoint and advertise the application. You can still open the app manually from the TV home screen.\r\n\r\nCast video unavailable — Confirm a receiver is selected and the current page exposes a supported YouTube identifier or directly addressable media URL. DRM-protected streams and unsupported provider handoffs cannot be relayed.\r\n\r\nFullscreen stuck — Press Esc, use the provider's fullscreen button, or close and reopen the Streaming Centre if the page stops responding.",
- L"F11 — Request or leave Streaming Centre fullscreen. Esc — Leave fullscreen or dismiss a provider fullscreen mode. Ctrl+F — Focus the Help search field. Enter — Find the next occurrence of the current search text. F3 — Repeat the search from the next occurrence.\r\n\r\nThe browser's own keyboard shortcuts and provider player shortcuts may also apply while the WebView2 page has focus. Their behaviour is determined by the provider website and may differ between services."
+  L"F6 — Enter or leave Streaming Centre toolbar keyboard navigation. While toolbar navigation is active, Tab/Shift+Tab or the arrow keys move between service cards and toolbar actions; Enter or Space activates the focused item. Esc leaves toolbar navigation and returns focus to the embedded browser (or exits fullscreen when applicable). F11 — Request or leave Streaming Centre fullscreen. Ctrl+F — Focus the Help search field. Enter — Find the next occurrence of the current search text. F3 — Repeat the search from the next occurrence.\r\n\r\nThe browser's own keyboard shortcuts and provider player shortcuts may also apply while the WebView2 page has focus. Their behaviour is determined by the provider website and may differ between services."
 };
 
 ComPtr<ICoreWebView2Environment> g_environment;
@@ -1998,15 +1998,13 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                     SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM((target.left+target.right)/2,(target.top+target.bottom)/2));
                 return 0;
             }
-            if(wp==VK_ESCAPE){
+        }
+        if(wp==VK_ESCAPE){
+            if(g_streamChromeFocus>=0){
                 g_streamChromeFocus=-1;
                 if(g_controller)g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
                 InvalidateRect(hwnd,nullptr,FALSE);
-                return 0;
-            }
-        }
-        if(wp==VK_ESCAPE){
-            if(g_webFullscreen){
+            }else if(g_webFullscreen){
                 if(g_webView)g_webView->ExecuteScript(L"if(document.fullscreenElement)document.exitFullscreen();",nullptr);
                 SetPlatformFullscreen(FALSE);
             }else if(g_controller)g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
