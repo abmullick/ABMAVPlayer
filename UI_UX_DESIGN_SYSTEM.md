@@ -711,7 +711,7 @@ The layout coordinates and existing hit targets are retained. Queue/library swit
 The Media Collection drawer now supports a persistent personal-favourites layer and named M3U-based personal libraries without introducing a second theme system or copying media files.
 
 - A compact heart affordance sits at the trailing edge of each media card. Its filled state uses the shared ABM rose accent; the idle state is muted and gains contrast on hover. The title/metadata column and AUDIO/VIDEO pill are narrowed and repositioned to reserve a dedicated heart hit target.
-- The Library tab's segmented control switches between all tracks and Favourites. The Queue tab retains its existing Folder/Artist/Album grouping cycle.
+- The Library tab's segmented control switches between all tracks and Favourites. Opening Favourites restores any saved favourite paths missing from the active media list, so favourites remain accessible after the queue has been cleared or replaced. The Queue tab retains its existing Folder/Artist/Album grouping cycle.
 - Favourites are stored by original media path in `%APPDATA%\\ABMAVPlayer\\favorites.m3u`, independently from `library.m3u`. Clearing or replacing the playback queue therefore does not clear the favourites list.
 - The row context menu includes Add/Remove from favourites, Save as personal library and Load saved library. Named collections are M3U files under `%APPDATA%\\ABMAVPlayer\\collections\\`; the Save dialog supplies the collection name and the Load dialog opens that collection into the active playback queue.
 - Collections reference the original files; they do not duplicate media. Loading a collection changes the active queue but does not delete or overwrite other saved collection files.
