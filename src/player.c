@@ -104,6 +104,116 @@ static size_t g_streamRendererCount;
 /* Streaming Centre owns an independent selection; local-player routing is untouched. */
 static libvlc_renderer_item_t *g_streamSelectedRenderer;
 static BOOL g_rendererApplied = FALSE;
+
+/* Duration metadata is resolved off the UI thread. The paint path performs
+   only a bounded cache lookup and a non-blocking request enqueue. */
+#define DURATION_CACHE_SIZE 1024
+typedef struct { wchar_t path[PATH_CAP]; int64_t milliseconds; BOOL occupied; BOOL pending; } ABM_DurationEntry;
+static ABM_DurationEntry g_durationCache[DURATION_CACHE_SIZE];
+static SRWLOCK g_durationLock=SRWLOCK_INIT;
+static wchar_t g_durationRequests[MAX_PLAYLIST][PATH_CAP];
+static int g_durationRead=0,g_durationWrite=0,g_durationCount=0;
+static HANDLE g_durationWake=NULL,g_durationThread=NULL;
+static volatile LONG g_durationStop=0;
+static unsigned __int64 DurationPathHash(const wchar_t *path) {
+    unsigned __int64 h=1469598103934665603ULL;
+    for(;path&&*path;path++){wchar_t c=(wchar_t)towlower(*path);h^=(unsigned __int64)c;h*=1099511628211ULL;}
+    return h;
+}
+static int DurationCacheSlot(const wchar_t *path,BOOL create) {
+    unsigned int slot=(unsigned int)(DurationPathHash(path)%DURATION_CACHE_SIZE);
+    for(unsigned int n=0;n<DURATION_CACHE_SIZE;n++,slot=(slot+1)%DURATION_CACHE_SIZE) {
+        ABM_DurationEntry *e=&g_durationCache[slot];
+        if(!e->occupied) {
+            if(!create)return -1;
+            e->occupied=TRUE;e->milliseconds=-1;e->pending=FALSE;
+            wcsncpy_s(e->path,PATH_CAP,path,_TRUNCATE);return (int)slot;
+        }
+        if(!_wcsicmp(e->path,path))return (int)slot;
+    }
+    return -1;
+}
+static void DurationRequest(const wchar_t *path) {
+    if(!path||!path[0]||!g_durationWake||InterlockedCompareExchange(&g_durationStop,0,0))return;
+    AcquireSRWLockExclusive(&g_durationLock);
+    int slot=DurationCacheSlot(path,TRUE);
+    if(slot>=0&&!g_durationCache[slot].pending&&g_durationCache[slot].milliseconds<0&&g_durationCount<MAX_PLAYLIST) {
+        wcsncpy_s(g_durationRequests[g_durationWrite],PATH_CAP,path,_TRUNCATE);
+        g_durationWrite=(g_durationWrite+1)%MAX_PLAYLIST;g_durationCount++;
+        g_durationCache[slot].pending=TRUE;
+        SetEvent(g_durationWake);
+    }
+    ReleaseSRWLockExclusive(&g_durationLock);
+}
+static int64_t DurationLookup(const wchar_t *path) {
+    int64_t value=-1;
+    AcquireSRWLockShared(&g_durationLock);
+    int slot=DurationCacheSlot(path,FALSE);
+    if(slot>=0)value=g_durationCache[slot].milliseconds;
+    ReleaseSRWLockShared(&g_durationLock);
+    return value;
+}
+static DWORD WINAPI DurationMetadataThread(LPVOID unused) {
+    (void)unused;
+    for(;;) {
+        WaitForSingleObject(g_durationWake,INFINITE);
+        if(InterlockedCompareExchange(&g_durationStop,0,0))break;
+        wchar_t path[PATH_CAP]={0};
+        AcquireSRWLockExclusive(&g_durationLock);
+        if(g_durationCount>0) {
+            wcsncpy_s(path,PATH_CAP,g_durationRequests[g_durationRead],_TRUNCATE);
+            g_durationRead=(g_durationRead+1)%MAX_PLAYLIST;g_durationCount--;
+        }
+        BOOL more=g_durationCount>0;
+        ReleaseSRWLockExclusive(&g_durationLock);
+        if(!path[0])continue;
+        int64_t duration=-1;
+        if(g_vlc&&!InterlockedCompareExchange(&g_durationStop,0,0)) {
+            char utf8[PATH_CAP*4];
+            if(WideCharToMultiByte(CP_UTF8,0,path,-1,utf8,sizeof(utf8),NULL,NULL)>0) {
+                libvlc_media_t *media=libvlc_media_new_path(g_vlc,utf8);
+                if(media) {
+                    /* Synchronous parse is safe here: this worker is never the UI thread. */
+                    libvlc_media_parse(media);
+                    duration=libvlc_media_get_duration(media);
+                    libvlc_media_release(media);
+                }
+            }
+        }
+        AcquireSRWLockExclusive(&g_durationLock);
+        int slot=DurationCacheSlot(path,TRUE);
+        if(slot>=0){g_durationCache[slot].milliseconds=duration;g_durationCache[slot].pending=FALSE;}
+        ReleaseSRWLockExclusive(&g_durationLock);
+        if(g_main)PostMessageW(g_main,WM_APP+0x351,0,0);
+        if(more)SetEvent(g_durationWake);
+    }
+    return 0;
+}
+static BOOL DurationMetadataStart(void) {
+    if(g_durationThread)return TRUE;
+    g_durationWake=CreateEventW(NULL,FALSE,FALSE,NULL);
+    if(!g_durationWake)return FALSE;
+    InterlockedExchange(&g_durationStop,0);
+    g_durationThread=CreateThread(NULL,0,DurationMetadataThread,NULL,0,NULL);
+    if(!g_durationThread){CloseHandle(g_durationWake);g_durationWake=NULL;return FALSE;}
+    SetThreadPriority(g_durationThread,THREAD_PRIORITY_BELOW_NORMAL);
+    return TRUE;
+}
+static void DurationMetadataStop(void) {
+    if(!g_durationThread)return;
+    InterlockedExchange(&g_durationStop,1);SetEvent(g_durationWake);
+    WaitForSingleObject(g_durationThread,INFINITE);
+    CloseHandle(g_durationThread);g_durationThread=NULL;
+    CloseHandle(g_durationWake);g_durationWake=NULL;
+}
+static void FormatMediaDuration(int64_t milliseconds,wchar_t *out,size_t capacity) {
+    if(!out||capacity==0)return;
+    if(milliseconds<=0){StringCchCopyW(out,capacity,L"—");return;}
+    unsigned long long seconds=(unsigned long long)(milliseconds/1000);
+    if(seconds>=3600)StringCchPrintfW(out,capacity,L"%llu:%02llu:%02llu",seconds/3600,(seconds/60)%60,seconds%60);
+    else StringCchPrintfW(out,capacity,L"%02llu:%02llu",seconds/60,seconds%60);
+}
+
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
 #define MAX_FAVORITES MAX_PLAYLIST
@@ -1719,6 +1829,10 @@ static void DrawUI(HDC dc,RECT client) {
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
         Txt(dc,metaLine,subline,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        DurationRequest(g_playlist[i]);
+        wchar_t durationText[32];FormatMediaDuration(DurationLookup(g_playlist[i]),durationText,_countof(durationText));
+        RECT durationRect={row.right-164,subline.top,row.right-112,subline.bottom};
+        Txt(dc,durationText,durationRect,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
         RECT typePill=compactRow
             ?(RECT){row.right-98,row.top+(row.bottom-row.top-20)/2,row.right-42,row.top+(row.bottom-row.top+20)/2}
             :(RECT){row.right-108,row.top+24,row.right-44,row.top+49};
@@ -7954,7 +8068,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
             g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
-        ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+        DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -8081,6 +8195,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     else if(savedAudioOut==2)args[argCount++]="--aout=directsound";
     g_vlc=libvlc_new(argCount,args);
     if(!g_vlc){ABM_MessageBoxW(NULL,L"Could not initialize LibVLC. Check the VLC installation and plugins.",APP_NAME,MB_ICONERROR);return 1;}
+    /* Optional metadata worker: failure to start it never blocks playback. */
+    DurationMetadataStart();
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     /* Failure of the optional streaming cast player must not affect local playback. */
     g_streamCastPlayer=libvlc_media_player_new(g_vlc);
