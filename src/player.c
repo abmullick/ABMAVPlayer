@@ -1795,7 +1795,7 @@ static void DrawUI(HDC dc,RECT client) {
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
         if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
-        if(g_libraryTab==1&&g_showContinueWatching&&ResumePositionForPath(g_playlist[i])<=0)continue;
+        if(g_libraryTab==1&&g_showContinueWatching&&!g_hasResume[i])continue;
         BOOL isVideo=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
@@ -2713,6 +2713,7 @@ static void PruneUnavailablePlaylistItems(void) {
         DWORD attrs=GetFileAttributesW(g_playlist[i]);
         g_missingMedia[i]=(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY));
     }
+    RefreshResumeFlags();
 }
 static void SavePersistentState(void) {
     if(!EnsureDataDirectory())return;
@@ -2924,7 +2925,7 @@ static void RecentPlayIndex(HWND owner,int index) {
     int found=-1;
     for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],path)){found=i;break;}
     if(found<0&&g_playlistCount<MAX_PLAYLIST){found=g_playlistCount++;wcsncpy_s(g_playlist[found],PATH_CAP,path,_TRUNCATE);}
-    if(found>=0){g_selected=found;SavePersistentState();PlayIndex(found);}
+    if(found>=0){g_selected=found;RefreshMissingMediaFlags();SavePersistentState();PlayIndex(found);}
     if(IsWindow(owner))InvalidateRect(owner,NULL,FALSE);
 }
 static ABM_D2D_CANVAS g_recentPopupCanvas;
@@ -3267,7 +3268,7 @@ static void AddDroppedFiles(HDROP drop) {
     }
     DragFinish(drop);
     if(g_selected<0&&g_playlistCount>0)g_selected=0;
-    SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
+    RefreshMissingMediaFlags();SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
 }
 static void AddFiles(void) {
     OPENFILENAMEW ofn; wchar_t buf[32768]=L""; ZeroMemory(&ofn,sizeof(ofn));
@@ -3282,12 +3283,12 @@ static void AddFiles(void) {
         while(*p&&g_playlistCount<MAX_PLAYLIST){wchar_t full[PATH_CAP];swprintf_s(full,PATH_CAP,L"%s\\%s",dir,p);wcsncpy_s(g_playlist[g_playlistCount++],PATH_CAP,full,_TRUNCATE);p+=wcslen(p)+1;}
     }
     if(g_selected<0&&g_playlistCount>0)g_selected=0;
-    SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
+    RefreshMissingMediaFlags();SavePersistentState();InvalidateRect(g_main,NULL,FALSE);
 }
 static void ClearPlaylist(void) {
     if(g_hasMedia)PlaybackStopEngine();
     g_hasMedia=FALSE;g_current=-1;g_selected=-1;g_playlistCount=0;g_playlistScroll=0;
-    g_endHandled=FALSE;g_pendingResume=FALSE;ResetArtwork();SavePersistentState();
+    g_endHandled=FALSE;g_pendingResume=FALSE;memset(g_hasResume,0,sizeof(g_hasResume));ResetArtwork();SavePersistentState();
     SetStatus(L"Playlist cleared");InvalidateRect(g_main,NULL,FALSE);
 }
 static void RemovePlaylistItem(int index) {
