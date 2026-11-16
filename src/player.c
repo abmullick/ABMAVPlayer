@@ -5614,6 +5614,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         EndPaint(hwnd,&ps);return 0;
     }
+    case WM_CLOSE:ABM_DestroyWindowMotion(hwnd);return 0;
     case WM_KEYDOWN: if(wp==VK_ESCAPE){ABM_DestroyWindowMotion(hwnd);return 0;} break;
     case WM_DESTROY: if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} if(g_aboutCanvasReady){g_aboutCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_aboutCanvas);} return 0;
     }
@@ -6054,6 +6055,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);
         return (LRESULT)g_helpNavBrush;
     }
+    case WM_CLOSE:ABM_DestroyWindowMotion(hwnd);return 0;
     case WM_KEYDOWN: if(wp==VK_ESCAPE){ABM_DestroyWindowMotion(hwnd);return 0;} break;
     case WM_DESTROY:
         if(g_helpCanvasReady){g_helpCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_helpCanvas);}
