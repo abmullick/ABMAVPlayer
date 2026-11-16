@@ -664,19 +664,6 @@ static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
                (GetBValue(a)*(100-amount)+GetBValue(b)*amount)/100);
 }
 static void SetStatus(const wchar_t *s) { if(s&&s[0]) wcsncpy_s(g_statusText,_countof(g_statusText),s,_TRUNCATE); if(g_main) InvalidateRect(g_main,NULL,FALSE); }
-/* Frame-rate-independent easing for the 30 Hz interface animation loop.
-   Exponential convergence feels softer than fixed-size jumps and snaps cleanly
-   to the target so hit-testing and layout never remain fractionally displaced. */
-static int EaseToward(int current,int target,int responsePercent) {
-    int delta=target-current;
-    if(delta==0)return target;
-    if(delta>=-1&&delta<=1)return target;
-    int step=(delta*responsePercent)/100;
-    if(step==0)step=delta>0?1:-1;
-    int next=current+step;
-    if((delta>0&&next>target)||(delta<0&&next<target))return target;
-    return next;
-}
 static void PositionVideoWindow(void);
 static void EnsureMainMotionTimer(HWND hwnd);
 static void StartMenuMotion(HWND hwnd) {
@@ -788,7 +775,7 @@ static void ResetArtwork(void) {
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
     InterlockedIncrement(&g_artworkGeneration);
-    g_artworkLoaded=FALSE; g_artworkFade=100; if(g_artworkMotionInitialized)ABM_MotionCancel(&g_artworkMotion,NULL);
+    g_artworkLoaded=FALSE; g_artworkFade=100; if(g_artworkMotionInitialized){ABM_MotionCancel(&g_artworkMotion,NULL);ABM_MotionInit(&g_artworkMotion,100.0);}
     g_trackTitle[0]=0; g_trackArtist[0]=0; g_trackAlbum[0]=0; g_trackGenre[0]=0;
     ABM_D2D_ClearImage(&g_ui);
 }
@@ -7318,7 +7305,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             swprintf_s(path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)generation);
         if(generation==InterlockedCompareExchange(&g_artworkGeneration,0,0) && lp && path[0]) {
             g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
-            if(g_artworkLoaded){g_artworkFade=0;StartArtworkMotion(hwnd);}
+            if(g_artworkLoaded){g_artworkFade=0;ABM_MotionInit(&g_artworkMotion,0.0);g_artworkMotionInitialized=TRUE;StartArtworkMotion(hwnd);}
             InvalidateRect(hwnd,NULL,FALSE);
         } else if(path[0]) {
             /* A newer track superseded this download before its completion
