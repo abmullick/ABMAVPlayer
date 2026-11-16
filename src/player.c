@@ -3262,15 +3262,70 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
         float rate=cmd==22005?0.5f:cmd==22007?0.75f:cmd==22010?1.0f:cmd==22012?1.25f:cmd==22015?1.5f:2.0f;
         g_playbackRate=rate;libvlc_media_player_set_rate(g_player,rate);
     } else if(cmd==23002){
-        libvlc_media_t *m=libvlc_media_player_get_media(g_player);wchar_t info[2048]=L"";
+        libvlc_media_t *m=libvlc_media_player_get_media(g_player);
+        wchar_t info[4096]=L"",value[1024]=L"",path[PATH_CAP]=L"";
+        int64_t duration=-1,position=libvlc_media_player_get_time(g_player);
+        unsigned int videoW=0,videoH=0;
+        BOOL haveVideoSize=(libvlc_video_get_size(g_player,0,&videoW,&videoH)==0&&videoW&&videoH);
+        if(g_current>=0&&g_current<g_playlistCount)StringCchCopyW(path,_countof(path),g_playlist[g_current]);
         if(m){
-            const char *title=libvlc_media_get_meta(m,libvlc_meta_Title),*artist=libvlc_media_get_meta(m,libvlc_meta_Artist),*album=libvlc_media_get_meta(m,libvlc_meta_Album);
-            int64_t duration=libvlc_media_get_duration(m);wchar_t wt[512]=L"(unknown)",wa[512]=L"(unknown)",wal[512]=L"(unknown)";
-            if(title){MultiByteToWideChar(CP_UTF8,0,title,-1,wt,512);libvlc_free((void*)title);}
-            if(artist){MultiByteToWideChar(CP_UTF8,0,artist,-1,wa,512);libvlc_free((void*)artist);}
-            if(album){MultiByteToWideChar(CP_UTF8,0,album,-1,wal,512);libvlc_free((void*)album);}
-            swprintf_s(info,2048,L"Title: %s\nArtist: %s\nAlbum: %s\nDuration: %02lld:%02lld",wt,wa,wal,(long long)(duration/60000),(long long)((duration/1000)%60));libvlc_media_release(m);
-        } else wcscpy_s(info,2048,L"Media information is not available yet.");
+            struct {libvlc_meta_t key;const wchar_t *label;} meta[]={
+                {libvlc_meta_Title,L"Title"},{libvlc_meta_Artist,L"Artist"},{libvlc_meta_Album,L"Album"},
+                {libvlc_meta_Genre,L"Genre"},{libvlc_meta_Date,L"Year / date"},{libvlc_meta_Description,L"Description"}
+            };
+            StringCchCatW(info,_countof(info),L"MEDIA OVERVIEW\r\n");
+            for(unsigned int i=0;i<_countof(meta);i++){
+                char *raw=libvlc_media_get_meta(m,meta[i].key);value[0]=0;
+                if(raw){MultiByteToWideChar(CP_UTF8,0,raw,-1,value,(int)_countof(value));libvlc_free(raw);}
+                if(!value[0])StringCchCopyW(value,_countof(value),L"—");
+                StringCchCatW(info,_countof(info),meta[i].label);StringCchCatW(info,_countof(info),L": ");
+                StringCchCatW(info,_countof(info),value);StringCchCatW(info,_countof(info),L"\r\n");
+            }
+            duration=libvlc_media_get_duration(m);
+            libvlc_media_release(m);
+        } else StringCchCatW(info,_countof(info),L"Media metadata is not available yet.\r\n");
+        StringCchCatW(info,_countof(info),L"\r\nFILE\r\nName: ");
+        const wchar_t *base=path[0]?wcsrchr(path,L'\\'):NULL;
+        StringCchCatW(info,_countof(info),base?base+1:(path[0]?path:L"Unknown"));
+        StringCchCatW(info,_countof(info),L"\r\nLocation: ");StringCchCatW(info,_countof(info),path[0]?path:L"Not available");
+        if(path[0]){
+            WIN32_FILE_ATTRIBUTE_DATA fd;
+            if(GetFileAttributesExW(path,GetFileExInfoStandard,&fd)){
+                ULONGLONG bytes=((ULONGLONG)fd.nFileSizeHigh<<32)|fd.nFileSizeLow;
+                StringCchPrintfW(value,_countof(value),L"\r\nSize: %.2f MiB",(double)bytes/(1024.0*1024.0));
+                StringCchCatW(info,_countof(info),value);
+            }
+        }
+        StringCchCatW(info,_countof(info),L"\r\nDuration: ");
+        if(duration>0)StringCchPrintfW(value,_countof(value),L"%02lld:%02lld:%02lld",(long long)(duration/3600000),(long long)((duration/60000)%60),(long long)((duration/1000)%60));
+        else StringCchCopyW(value,_countof(value),L"Unknown");
+        StringCchCatW(info,_countof(info),value);
+        if(position>=0){StringCchPrintfW(value,_countof(value),L"\r\nPosition: %02lld:%02lld:%02lld",(long long)(position/3600000),(long long)((position/60000)%60),(long long)((position/1000)%60));StringCchCatW(info,_countof(info),value);}
+        StringCchCatW(info,_countof(info),L"\r\n\r\nVIDEO / AUDIO STREAMS\r\n");
+        if(haveVideoSize){StringCchPrintfW(value,_countof(value),L"Decoded video size: %u × %u\r\n",videoW,videoH);StringCchCatW(info,_countof(info),value);}
+        else StringCchCatW(info,_countof(info),L"Decoded video size: Not available (audio-only or not yet decoded)\r\n");
+        libvlc_media_t *trackMedia=libvlc_media_player_get_media(g_player);
+        if(trackMedia){
+            libvlc_media_track_t **streams=NULL;unsigned int streamCount=libvlc_media_tracks_get(trackMedia,&streams);
+            unsigned int shown=0;
+            for(unsigned int i=0;streams&&i<streamCount&&shown<12;i++){
+                libvlc_media_track_t *t=streams[i];if(!t)continue;
+                const char *desc=libvlc_media_get_codec_description(t->i_type,t->i_codec);
+                value[0]=0;if(desc)MultiByteToWideChar(CP_UTF8,0,desc,-1,value,(int)_countof(value));
+                if(!value[0])StringCchCopyW(value,_countof(value),L"Unknown codec");
+                wchar_t line[512]=L"";
+                const wchar_t *kind=t->i_type==libvlc_track_video?L"Video":t->i_type==libvlc_track_audio?L"Audio":t->i_type==libvlc_track_text?L"Subtitle":L"Other";
+                BOOL active=(t->i_type==libvlc_track_audio&&t->i_id==libvlc_audio_get_track(g_player))||
+                    (t->i_type==libvlc_track_video&&t->i_id==libvlc_video_get_track(g_player))||
+                    (t->i_type==libvlc_track_text&&t->i_id==libvlc_video_get_spu(g_player));
+                StringCchPrintfW(line,_countof(line),L"%s: %s%s\r\n",kind,value,active?L"  [active]":L"");
+                StringCchCatW(info,_countof(info),line);shown++;
+            }
+            if(streams)libvlc_media_tracks_release(streams,streamCount);
+            libvlc_media_release(trackMedia);
+            if(!shown)StringCchCatW(info,_countof(info),L"No stream details reported by LibVLC.\r\n");
+        }
+        StringCchCatW(info,_countof(info),L"\r\nCodec names and decoded dimensions are reported only when LibVLC exposes them; they do not certify hardware decoding or HDR support.");
         ABM_MessageBoxW(hwnd,info,L"Media information",MB_OK|MB_ICONINFORMATION);
     } else if(cmd==23005){g_replayGain=!g_replayGain;SaveAudioPreferences();}
     else if(cmd==23006){g_compressor=!g_compressor;SaveAudioPreferences();}
