@@ -1977,7 +1977,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_KEYDOWN:{
         const bool ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         const bool shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
-        if(wp==VK_F6){
+        if(wp==VK_F6&&!g_webFullscreen){
             if(g_streamChromeFocus<0)g_streamChromeFocus=shift?16:0;
             else g_streamChromeFocus=-1;
             if(g_streamChromeFocus>=0)SetFocus(hwnd);
