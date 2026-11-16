@@ -221,6 +221,7 @@ static int g_playlistCount, g_current = -1, g_selected = -1;
 static wchar_t g_favorites[MAX_FAVORITES][PATH_CAP];
 static int g_favoriteCount=0;
 static BOOL g_showFavorites=FALSE;
+static BOOL g_showContinueWatching=FALSE;
 static int g_volume = 70, g_dragSeek = 0, g_dragSeekX = 0, g_dragVolume = 0, g_hover = 0;
 static BOOL g_shuffle = FALSE, g_repeat = FALSE;
 static float g_playbackRate = 1.0f;
@@ -623,6 +624,7 @@ static int CountFilteredMedia(void) {
     int count=0;
     for(int i=0;i<g_playlistCount;i++){
         if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
+        if(g_libraryTab==1&&g_showContinueWatching&&ResumePositionForPath(g_playlist[i])<=0)continue;
         BOOL video=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&video)||(g_mediaFilter==2&&!video))continue;
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
@@ -1713,7 +1715,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,stackX+10,stackY+5,stackX+20,stackY,ABM_THEME_COLOR_5EB7F4,2);
     RECT collectionTitle={listHead.left+30,listHead.top,listHead.right-156,listHead.bottom};
     Txt(dc,L"MEDIA COLLECTION",collectionTitle,ABM_THEME_COLOR_D3F4EE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_libraryTab==1&&g_showFavorites?g_favoriteCount:g_playlistCount);
+    wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_libraryTab==1&&g_showFavorites?g_favoriteCount:(g_libraryTab==1&&g_showContinueWatching?CountFilteredMedia():g_playlistCount));
     RECT countR={R_SIDEBAR.right-166,listHead.top+1,R_CLEAR_PLAYLIST.left-8,listHead.bottom-1};
     RoundBox(dc,countR,ABM_THEME_COLOR_132B2B,8);
     ABM_D2D_StrokeRound(&g_ui,(float)countR.left,(float)countR.top,(float)countR.right,(float)countR.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.75f);
@@ -1765,16 +1767,16 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,filterNames[fi],label,active?ABM_THEME_COLOR_F4FAFF:ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     wchar_t groupLabel[32];
-    if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),L"♥ Favorites");
+    if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),g_showFavorites?L"♥ Favorites":(g_showContinueWatching?L"▶ Continue":L"All tracks"));
     else swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
-    if(g_libraryTab==1&&g_showFavorites) {
+    if(g_libraryTab==1&&(g_showFavorites||g_showContinueWatching)) {
         GradientRound(dc,R_GROUP,ABM_THEME_COLOR_311F2B,ABM_THEME_COLOR_1F2226,8);
         ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_FFBECD,0.9f);
     } else {
         GradientRound(dc,R_GROUP,ABM_THEME_COLOR_122637,ABM_THEME_COLOR_142A3C,8);
         ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.7f);
     }
-    Txt(dc,groupLabel,R_GROUP,g_libraryTab==1?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,groupLabel,R_GROUP,g_showContinueWatching?ABM_THEME_COLOR_7DE0D0:(g_libraryTab==1?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int rowHeight=PlaylistRowHeight();
     int visible=PlaylistVisibleRows(rowHeight);
@@ -1787,6 +1789,7 @@ static void DrawUI(HDC dc,RECT client) {
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
         if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
+        if(g_libraryTab==1&&g_showContinueWatching&&ResumePositionForPath(g_playlist[i])<=0)continue;
         BOOL isVideo=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
@@ -1906,7 +1909,8 @@ static void DrawUI(HDC dc,RECT client) {
         const wchar_t *emptyText=g_playlistCount==0
             ?L"Add media to start your library"
             :(g_libraryTab==1&&g_showFavorites&&g_favoriteCount==0?L"Your favourites will appear here"
-              :(g_searchText[0]?L"No matching media":L"No media in this filter"));
+              :(g_libraryTab==1&&g_showContinueWatching?L"Nothing to continue watching right now"
+              :(g_searchText[0]?L"No matching media":L"No media in this filter")));
         RECT emptyLabel={emptyCard.left+8,ecy+10,emptyCard.right-8,emptyCard.bottom-5};
         Txt(dc,emptyText,emptyLabel,ABM_THEME_COLOR_BBD2DC,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
@@ -3495,7 +3499,7 @@ static void LoadPersonalCollection(void) {
     FILE *fp=NULL;if(_wfopen_s(&fp,path,L"rb")!=0||!fp){ABM_MessageBoxW(g_main,L"Could not open this personal library.",APP_NAME,MB_ICONERROR);return;}
     if(g_hasMedia){PlaybackStopEngine();g_hasMedia=FALSE;}g_playlistCount=0;g_current=-1;g_selected=-1;g_playlistScroll=0;
     char line[PATH_CAP*4];while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){size_t n=strcspn(line,"\r\n");line[n]=0;if(!line[0]||line[0]=='#')continue;UINT cp=CP_UTF8;int chars=MultiByteToWideChar(cp,MB_ERR_INVALID_CHARS,line,-1,NULL,0);if(chars<=0){cp=CP_ACP;chars=MultiByteToWideChar(cp,0,line,-1,NULL,0);}if(chars>0&&chars<=PATH_CAP)MultiByteToWideChar(cp,0,line,-1,g_playlist[g_playlistCount++],PATH_CAP);}
-    fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;g_libraryTab=1;g_showFavorites=FALSE;SavePersistentState();SetStatus(L"Saved personal library loaded into the playback queue.");InvalidateRect(g_main,NULL,FALSE);
+    fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;g_libraryTab=1;g_showFavorites=FALSE;g_showContinueWatching=FALSE;SavePersistentState();SetStatus(L"Saved personal library loaded into the playback queue.");InvalidateRect(g_main,NULL,FALSE);
 }
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     if(index>=0&&index<g_playlistCount)g_selected=index;else g_selected=-1;
@@ -7891,7 +7895,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_AUDIO,x,y)){g_mediaFilter=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_VIDEO,x,y)){g_mediaFilter=2;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){if(g_libraryTab==1){g_showFavorites=!g_showFavorites;if(g_showFavorites)EnsureFavoritesInPlaylist();}else g_groupMode=(g_groupMode+1)%3;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){if(g_libraryTab==1){if(g_showFavorites){g_showFavorites=FALSE;g_showContinueWatching=TRUE;}else if(g_showContinueWatching){g_showContinueWatching=FALSE;}else{g_showFavorites=TRUE;EnsureFavoritesInPlaylist();}}else g_groupMode=(g_groupMode+1)%3;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
             if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
