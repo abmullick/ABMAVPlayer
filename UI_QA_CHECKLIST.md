@@ -243,3 +243,24 @@ Do not mark this as runtime-validated until the above checks have been run on Wi
 - [ ] Build with MSVC and verify at 100%, 125%, 150% and 200% scaling, plus a short-height window.
 
 Do not mark this work runtime-validated until the Windows build and interaction checks above pass.
+
+
+## Personal Media Libraries and Favourites
+
+- [ ] Verify every media card displays a clearly visible heart control in both Queue and Library tabs.
+- [ ] Verify heart hit targets do not overlap the type pill, title/metadata, active-track visualiser or row selection/playback hit target.
+- [ ] Add and remove favourites; verify filled/outline states update immediately and remain consistent after closing/reopening the drawer.
+- [ ] Restart the application and confirm favourites reload from `favorites.m3u`.
+- [ ] Clear the playback queue and confirm favourites remain intact.
+- [ ] In Library, switch between All tracks and Favourites; verify count, empty state, search, Audio/Video filters and scrolling remain correct.
+- [ ] In Queue, verify Folder/Artist/Album grouping still cycles as before.
+- [ ] Right-click a media row and verify Add/Remove from favourites reflects the current state.
+- [ ] Save a named personal library; confirm the M3U is created under `%APPDATA%\\ABMAVPlayer\\collections\\` and the active queue is unchanged.
+- [ ] Save two differently named collections; verify neither overwrites the other.
+- [ ] Load each saved collection and confirm the active queue is replaced with its paths, playback selection is reset safely, and all other saved collections and favourites remain unchanged.
+- [ ] Test missing/unavailable paths in a saved collection; confirm unavailable items are pruned without deleting the collection file.
+- [ ] Verify Unicode filenames and collection names, paths containing spaces, overwrite confirmation, cancel, and read/write failure handling.
+- [ ] Build with MSVC and test at 100%, 125%, 150% and 200% scaling, plus compact drawer height. Confirm heart glyph fallback and no text overlap.
+- [ ] Re-run queue drag/drop, click-to-play, double-click playback, context-menu remove/reorder, wheel scrolling, and Clear regression checks.
+
+Do not mark this feature runtime-validated until all Windows build and interaction checks above pass.
