@@ -155,6 +155,8 @@ static int g_playlistScroll = 0, g_hoverButton = 0, g_hoverLevel = 0;
 static int g_hoverChromeControl=0;
 static BOOL g_dragPlaylistScroll = FALSE;
 static int g_playlistScrollGrabY = 0, g_playlistScrollStart = 0;
+static BOOL g_queueDragPending=FALSE,g_queueDragging=FALSE;
+static int g_queueDragSource=-1,g_queueDropBoundary=-1,g_queueDragStartX=0,g_queueDragStartY=0;
 static RECT R_PLAYLIST_SCROLL, R_PLAYLIST_THUMB;
 static DWORD g_lastClickTick = 0;
 static int g_duration = 0;
@@ -1685,6 +1687,18 @@ static void DrawUI(HDC dc,RECT client) {
         if(current){int cx=row.right-23,base=row.top+rowHeight/2;for(int k=0;k<3;k++){int bh=5+(int)(5.0*(0.5+0.5*sin((double)g_visualPulse*0.18+k*1.5)));RECT wave={cx+k*4,base-bh,cx+k*4+2,base+bh};RoundBox(dc,wave,ABM_THEME_COLOR_5EB7F4,2);}}
         shown++;
     }
+    /* Queue drag insertion guide. The Library tab remains read-only. */
+    if(g_queueDragging&&g_libraryTab==0&&g_queueDropBoundary>=0) {
+        int guideY=R_LIST.bottom;
+        for(int ri=0;ri<g_visibleRowCount;ri++) {
+            if(g_visibleRows[ri]>=g_queueDropBoundary){guideY=R_ROW[ri].top;break;}
+            guideY=R_ROW[ri].bottom;
+        }
+        if(guideY<R_LIST.top)guideY=R_LIST.top;
+        if(guideY>R_LIST.bottom)guideY=R_LIST.bottom;
+        RECT guide={R_LIST.left+7,guideY-2,R_LIST.right-9,guideY+2};
+        GradientRect(dc,guide,ABM_THEME_COLOR_63E1CD,ABM_THEME_COLOR_5EB7F4);
+    }
     /* Premium slim scrollbar: quiet rail, luminous gradient thumb and a
        generous hit target. It appears only when the filtered collection overflows. */
     if(maxPlaylistScroll>0 && R_PLAYLIST_SCROLL.bottom>R_PLAYLIST_SCROLL.top) {
@@ -2826,6 +2840,38 @@ static void PlaybackHandleEngineError(void) {
     PlaybackReportFailure(failedIndex,FALSE);
     InvalidateRect(g_main,NULL,FALSE);
 }
+static void QueueMoveItem(int source,int insertBoundary) {
+    if(source<0||source>=g_playlistCount)return;
+    int target=insertBoundary;
+    if(target<0)target=0;
+    if(target>g_playlistCount)target=g_playlistCount;
+    if(source<target)target--;
+    if(target<0)target=0;
+    if(target>=g_playlistCount)target=g_playlistCount-1;
+    if(target==source)return;
+
+    wchar_t moving[PATH_CAP];
+    wcsncpy_s(moving,_countof(moving),g_playlist[source],_TRUNCATE);
+    if(source<target) {
+        memmove(&g_playlist[source][0],&g_playlist[source+1][0],
+            (size_t)(target-source)*sizeof(g_playlist[0]));
+    } else {
+        memmove(&g_playlist[target+1][0],&g_playlist[target][0],
+            (size_t)(source-target)*sizeof(g_playlist[0]));
+    }
+    wcsncpy_s(g_playlist[target],PATH_CAP,moving,_TRUNCATE);
+
+    int *indices[2]={&g_current,&g_selected};
+    for(int n=0;n<2;n++) {
+        int *idx=indices[n];
+        if(*idx==source)*idx=target;
+        else if(source<target&&*idx>source&&*idx<=target)(*idx)--;
+        else if(source>target&&*idx>=target&&*idx<source)(*idx)++;
+    }
+    SavePersistentState();
+    InvalidateRect(g_main,&R_SIDEBAR,FALSE);
+}
+
 static void PlayIndex(int index) {
     if(index<0||index>=g_playlistCount)return;
     if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
@@ -7535,6 +7581,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
         if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12){g_dragVolume=1;int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&g_libraryTab==0&&Inside(R_LIST,x,y)) {
+            for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)) {
+                g_queueDragPending=TRUE;g_queueDragging=FALSE;
+                g_queueDragSource=g_visibleRows[ri];g_queueDropBoundary=g_queueDragSource;
+                g_queueDragStartX=x;g_queueDragStartY=y;
+                SetCapture(hwnd);return 0;
+            }
+        }
         for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){int mediaIndex=g_visibleRows[ri];g_selected=mediaIndex;PlayIndex(mediaIndex);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         ReleaseCapture();return 0;
     }
@@ -7626,9 +7680,29 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(Inside(R_VIDEO,x,y)){ShowPlaybackContextMenu(hwnd,x,y);return 0;}
         break;
     }
-    case WM_LBUTTONDBLCLK: { int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(g_advancedDoubleClickFullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){PlayIndex(g_visibleRows[ri]);return 0;} return 0; }
+    case WM_LBUTTONDBLCLK: { g_queueDragPending=FALSE;g_queueDragging=FALSE;int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(g_advancedDoubleClickFullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){g_selected=g_visibleRows[ri];PlayIndex(g_visibleRows[ri]);return 0;} return 0; }
     case WM_MOUSEMOVE: {
         int mx=GET_X_LPARAM(lp),my=GET_Y_LPARAM(lp),hit=HIT_NONE;
+        if(g_queueDragPending&&g_libraryTab==0&&g_drawerOpen&&!g_fullscreen&&(wp&MK_LBUTTON)) {
+            int dx=abs(mx-g_queueDragStartX),dy=abs(my-g_queueDragStartY);
+            if(!g_queueDragging&&(dx>=GetSystemMetrics(SM_CXDRAG)||dy>=GetSystemMetrics(SM_CYDRAG)))
+                g_queueDragging=TRUE;
+            if(g_queueDragging) {
+                int boundary=g_queueDragSource;
+                if(my>=R_LIST.bottom)boundary=g_playlistCount;
+                else if(my>R_LIST.top) {
+                    boundary=g_playlistCount;
+                    for(int ri=0;ri<g_visibleRowCount;ri++) {
+                        int mid=(R_ROW[ri].top+R_ROW[ri].bottom)/2;
+                        if(my<mid){boundary=g_visibleRows[ri];break;}
+                        boundary=g_visibleRows[ri]+1;
+                    }
+                }
+                g_queueDropBoundary=boundary;
+                InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
+                SetCursor(LoadCursorW(NULL,IDC_SIZEALL));
+            }
+        }
         int playlistHot=-1;
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
@@ -7704,6 +7778,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         break;
     case WM_LBUTTONUP:
+        if(g_queueDragPending) {
+            BOOL didDrag=g_queueDragging;
+            int source=g_queueDragSource,boundary=g_queueDropBoundary;
+            g_queueDragPending=FALSE;g_queueDragging=FALSE;
+            g_queueDragSource=-1;g_queueDropBoundary=-1;
+            if(didDrag&&g_libraryTab==0)QueueMoveItem(source,boundary);
+            else if(!didDrag&&source>=0&&source<g_playlistCount) {
+                g_selected=source;PlayIndex(source);InvalidateRect(hwnd,NULL,FALSE);
+            }
+            ReleaseCapture();return 0;
+        }
         if(g_dragSeek){
             int seekX=g_dragSeekX;
             g_dragSeek=0;
