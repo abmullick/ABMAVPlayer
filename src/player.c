@@ -788,7 +788,7 @@ static void ResetArtwork(void) {
         libvlc_media_release(g_artMedia); g_artMedia=NULL;
     }
     InterlockedIncrement(&g_artworkGeneration);
-    g_artworkLoaded=FALSE; g_artworkFade=100;
+    g_artworkLoaded=FALSE; g_artworkFade=100; if(g_artworkMotionInitialized)ABM_MotionCancel(&g_artworkMotion,NULL);
     g_trackTitle[0]=0; g_trackArtist[0]=0; g_trackAlbum[0]=0; g_trackGenre[0]=0;
     ABM_D2D_ClearImage(&g_ui);
 }
