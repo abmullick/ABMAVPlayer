@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
+#include <richedit.h>
 #include <objbase.h>
 #include <shellapi.h>
 #include <wininet.h>
@@ -133,6 +134,7 @@ bool g_infoAbout=false;
 HWND g_infoSearch=nullptr,g_infoTopics=nullptr,g_infoArticle=nullptr,g_infoFind=nullptr,g_infoArticleTitle=nullptr;
 HBRUSH g_infoSurfaceBrush=nullptr,g_infoInputBrush=nullptr,g_infoArticleBrush=nullptr;
 HFONT g_infoTextFont=nullptr,g_infoHeadingFont=nullptr;
+HMODULE g_infoRichEditModule=nullptr;
 int g_infoTopicIndex=0,g_infoSearchTopic=0,g_infoSearchOffset=0;
 const wchar_t *g_streamHelpTopics[]={
  L"OVERVIEW",L"SUPPORTED STREAMING SERVICES",L"SIGN-IN AND BROWSER PROFILE",
@@ -790,6 +792,14 @@ void StreamingHelpShowTopic(int index){
     if(g_infoTopics)SendMessageW(g_infoTopics,LB_SETCURSEL,index,0);
     if(g_infoArticleTitle)SetWindowTextW(g_infoArticleTitle,g_streamHelpTopics[index]);
     SetWindowTextW(g_infoArticle,g_streamHelpArticles[index]);
+    SendMessageW(g_infoArticle,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
+    int length=GetWindowTextLengthW(g_infoArticle);
+    CHARFORMAT2W cf{};cf.cbSize=sizeof(cf);cf.dwMask=CFM_FACE|CFM_SIZE|CFM_COLOR|CFM_CHARSET|CFM_BOLD;
+    wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),ABM_UI_FONT_FAMILY_TEXT);
+    cf.yHeight=(LONG)(ABM_UI_FONT_SIZE_D2D_BODY*15.0f);cf.crTextColor=ABM_UI_COLOR_TEXT_SECONDARY;cf.bCharSet=DEFAULT_CHARSET;
+    SendMessageW(g_infoArticle,EM_SETSEL,0,-1);SendMessageW(g_infoArticle,EM_SETCHARFORMAT,SCF_SELECTION,(LPARAM)&cf);
+    PARAFORMAT2 pf{};pf.cbSize=sizeof(pf);pf.dwMask=PFM_SPACEAFTER;pf.dySpaceAfter=180;
+    SendMessageW(g_infoArticle,EM_SETPARAFORMAT,0,(LPARAM)&pf);
     SendMessageW(g_infoArticle,EM_SETSEL,0,0);
     SendMessageW(g_infoArticle,EM_SCROLLCARET,0,0);
 }
@@ -840,6 +850,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(g_infoAbout)LoadInfoPortrait();
         g_infoCanvasReady=ABM_D2D_CanvasInit(&g_infoCanvas)!=FALSE;
         if(!g_infoAbout){
+            g_infoRichEditModule=LoadLibraryW(L"Msftedit.dll");
             g_infoSurfaceBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
             g_infoInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
             g_infoArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
@@ -847,11 +858,11 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 0,0,0,0,hwnd,(HMENU)8101,GetModuleHandleW(nullptr),nullptr);
             g_infoFind=CreateWindowExW(0,L"BUTTON",L"Find next",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,
                 0,0,0,0,hwnd,(HMENU)8102,GetModuleHandleW(nullptr),nullptr);
-            g_infoTopics=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|WS_VSCROLL,
+            g_infoTopics=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT|WS_VSCROLL,
                 0,0,0,0,hwnd,(HMENU)8103,GetModuleHandleW(nullptr),nullptr);
             g_infoArticleTitle=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_LEFT|SS_NOPREFIX,
                 0,0,0,0,hwnd,(HMENU)8104,GetModuleHandleW(nullptr),nullptr);
-            g_infoArticle=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
+            g_infoArticle=CreateWindowExW(WS_EX_CLIENTEDGE,L"RICHEDIT50W",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL|ES_DISABLENOSCROLL,
                 0,0,0,0,hwnd,(HMENU)8105,GetModuleHandleW(nullptr),nullptr);
             g_infoTextFont=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
             g_infoHeadingFont=CreateFontW(-16,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
@@ -875,9 +886,14 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(!g_infoAbout&&LOWORD(wp)==8101&&HIWORD(wp)==EN_CHANGE){g_infoSearchTopic=0;g_infoSearchOffset=0;return 0;}
         break;
     case WM_ERASEBKGND:return 1;
+    case WM_MEASUREITEM:{
+        MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;
+        if(!g_infoAbout&&m&&m->CtlID==8103){m->itemHeight=34;return TRUE;}
+        break;
+    }
     case WM_DRAWITEM:{
+        DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
         if(!g_infoAbout&&wp==8102){
-            DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
             if(d){bool down=(d->itemState&ODS_SELECTED)!=0;
                 COLORREF fill=down?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_BLUE;
                 Rounded(d->hDC,d->rcItem,fill,ABM_UI_RADIUS_BUTTON);
@@ -886,7 +902,19 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(p);
                 SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,ABM_UI_COLOR_TEXT);DrawTextW(d->hDC,L"Find next",-1,&edge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }return TRUE;
-        }break;
+        }
+        if(!g_infoAbout&&wp==8103&&d&&d->itemID!=(UINT)-1){
+            wchar_t label[128]{};SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)label);
+            const bool selected=(d->itemState&ODS_SELECTED)!=0;
+            RECT r=d->rcItem;COLORREF fill=selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE;
+            FillRectColor(d->hDC,r,fill);
+            if(selected){RECT marker={r.left+2,r.top+6,r.left+5,r.bottom-6};FillRectColor(d->hDC,marker,ABM_UI_COLOR_ACCENT_BRIGHT);}
+            SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY);
+            r.left+=14;r.right-=6;DrawTextW(d->hDC,label,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
+            if(d->itemState&ODS_FOCUS)DrawFocusRect(d->hDC,&d->rcItem);
+            return TRUE;
+        }
+        break;
     }
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
@@ -967,6 +995,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(g_infoArticleBrush){DeleteObject(g_infoArticleBrush);g_infoArticleBrush=nullptr;}
         if(g_infoTextFont){DeleteObject(g_infoTextFont);g_infoTextFont=nullptr;}
         if(g_infoHeadingFont){DeleteObject(g_infoHeadingFont);g_infoHeadingFont=nullptr;}
+        if(g_infoRichEditModule){FreeLibrary(g_infoRichEditModule);g_infoRichEditModule=nullptr;}
         g_infoSearch=g_infoTopics=g_infoArticle=g_infoFind=g_infoArticleTitle=nullptr;
         delete g_infoPortrait;g_infoPortrait=nullptr;g_infoWindow=nullptr;
         break;
