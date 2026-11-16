@@ -28,6 +28,8 @@
 #include <gdiplus.h>
 #include "../ui_theme.h"
 #include "../ui_d2d.h"
+#include "../ui_motion.h"
+#include "../ui_motion_win.h"
 #include "version.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
@@ -58,6 +60,19 @@ using Microsoft::WRL::ComPtr;
 namespace {
 ABM_D2D_CANVAS g_streamButtonCanvas{};
 bool g_streamButtonCanvasReady=false;
+ABMMotionValue g_streamHoverMotion{};
+bool g_streamHoverMotionReady=false;
+double g_streamHoverLevel=0.0;
+constexpr UINT ID_STREAM_MOTION_TIMER=0x7A20;
+COLORREF StreamHoverColor(COLORREF base,COLORREF hot) {
+    double t=g_streamHoverLevel/100.0;
+    if(t<0.0)t=0.0;if(t>1.0)t=1.0;
+    BYTE r=(BYTE)(GetRValue(base)+(GetRValue(hot)-GetRValue(base))*t);
+    BYTE g=(BYTE)(GetGValue(base)+(GetGValue(hot)-GetGValue(base))*t);
+    BYTE b=(BYTE)(GetBValue(base)+(GetBValue(hot)-GetBValue(base))*t);
+    return RGB(r,g,b);
+}
+
 struct ManagedWorker {
     std::thread thread;
     std::shared_ptr<std::atomic<bool>> finished;
@@ -1375,12 +1390,12 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"STREAMING CENTRE",sub,ABM_THEME_COLOR_9DB1C9,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     g_helpRect=RECT{318,15,390,55};
-    Rounded(dc,g_helpRect,g_hoverControl==5?ABM_THEME_COLOR_244B5E:ABM_THEME_COLOR_142A3C,9);
+    Rounded(dc,g_helpRect,g_hoverControl==5?StreamHoverColor(ABM_THEME_COLOR_142A3C,ABM_THEME_COLOR_244B5E):ABM_THEME_COLOR_142A3C,9);
     DrawFluentGlyph(dc,RECT{g_helpRect.left+3,g_helpRect.top+2,g_helpRect.left+31,g_helpRect.bottom-2},0xE897,ABM_THEME_COLOR_8EE2D3,17);
     RECT helpLabel={g_helpRect.left+29,g_helpRect.top,g_helpRect.right-4,g_helpRect.bottom};
     Text(dc,L"Help",helpLabel,ABM_THEME_COLOR_D2E8F4,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     g_aboutRect=RECT{398,15,470,55};
-    Rounded(dc,g_aboutRect,g_hoverControl==6?ABM_THEME_COLOR_244B5E:ABM_THEME_COLOR_142A3C,9);
+    Rounded(dc,g_aboutRect,g_hoverControl==6?StreamHoverColor(ABM_THEME_COLOR_142A3C,ABM_THEME_COLOR_244B5E):ABM_THEME_COLOR_142A3C,9);
     DrawFluentGlyph(dc,RECT{g_aboutRect.left+3,g_aboutRect.top+2,g_aboutRect.left+31,g_aboutRect.bottom-2},0xE946,ABM_THEME_COLOR_8EE2D3,17);
     RECT aboutLabel={g_aboutRect.left+29,g_aboutRect.top,g_aboutRect.right-4,g_aboutRect.bottom};
     Text(dc,L"About",aboutLabel,ABM_THEME_COLOR_D2E8F4,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -1403,7 +1418,7 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"Find TVs",findTvLabel,receiverReady?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E0FAF5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castVideoRect=RECT{620,15,730,55};
-    Rounded(dc,g_castVideoRect,g_hoverControl==9?ABM_THEME_COLOR_237E6F:ABM_THEME_COLOR_195B50,10);
+    Rounded(dc,g_castVideoRect,g_hoverControl==9?StreamHoverColor(ABM_THEME_COLOR_195B50,ABM_THEME_COLOR_237E6F):ABM_THEME_COLOR_195B50,10);
     HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,g_hoverControl==9?ABM_THEME_COLOR_71EDC6:ABM_THEME_COLOR_39A484);
     HGDIOBJ oldVideoPen=SelectObject(dc,videoPen);
     HGDIOBJ oldVideoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
@@ -1425,7 +1440,7 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"Stop TV",stopTvLabel,ABM_THEME_COLOR_FFEFE8,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_externalRect=RECT{rc.right-190,15,rc.right-22,55};
-    Rounded(dc,g_externalRect,g_hoverControl==7?ABM_THEME_COLOR_225B65:ABM_THEME_COLOR_163140,10);
+    Rounded(dc,g_externalRect,g_hoverControl==7?StreamHoverColor(ABM_THEME_COLOR_163140,ABM_THEME_COLOR_225B65):ABM_THEME_COLOR_163140,10);
     DrawFluentGlyph(dc,RECT{g_externalRect.left+3,g_externalRect.top+2,g_externalRect.left+31,g_externalRect.bottom-2},0xE774,ABM_THEME_COLOR_8EE2D3,17);
     RECT externalLabel={g_externalRect.left+29,g_externalRect.top,g_externalRect.right-6,g_externalRect.bottom};
     Text(dc,L"Open in browser",externalLabel,ABM_THEME_COLOR_B7EBE5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -1442,7 +1457,7 @@ void PaintChrome(HWND hwnd){
     const wchar_t glyphs[5]={0xE72B,0xE72A,0xE72C,0xE80F,0xE740};
     const wchar_t *labels[5]={L"Back",L"Forward",L"Reload",L"Home",L"Fullscreen"};
     for(int i=0;i<5;i++){
-        COLORREF fill=(g_hoverControl==i)?ABM_THEME_COLOR_2B5B71:(i==4?ABM_THEME_COLOR_1F676F:ABM_THEME_COLOR_183449);
+        COLORREF base=(i==4?ABM_THEME_COLOR_1F676F:ABM_THEME_COLOR_183449);COLORREF fill=(g_hoverControl==i)?StreamHoverColor(base,ABM_THEME_COLOR_2B5B71):base;
         Rounded(dc,navButtons[i],fill,12);
         HPEN navPen=CreatePen(PS_SOLID,g_hoverControl==i?2:1,
             g_hoverControl==i?ABM_THEME_COLOR_53D3C7:(i==4?ABM_THEME_COLOR_3E9799:ABM_THEME_COLOR_2B4C63));
@@ -1472,7 +1487,7 @@ void PaintChrome(HWND hwnd){
         bool active=(i==g_activeService),hover=(i==g_hoverService);
         COLORREF baseFill=active?ABM_THEME_COLOR_195B5B:ABM_THEME_COLOR_112335;
         COLORREF hoverFill=active?ABM_THEME_COLOR_227771:ABM_THEME_COLOR_1C364C;
-        COLORREF fill=hover?hoverFill:baseFill;
+        COLORREF fill=hover?StreamHoverColor(baseFill,hoverFill):baseFill;
         Rounded(dc,g_serviceRects[i],fill,14);
         RECT border=g_serviceRects[i];
         COLORREF baseBorder=active?ABM_THEME_COLOR_3FC9BE:ABM_THEME_COLOR_1E3549;
@@ -1744,6 +1759,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_CREATE:{
         g_window=hwnd;
+        ABM_MotionInit(&g_streamHoverMotion,0.0);g_streamHoverMotionReady=true;
         g_streamButtonCanvasReady=ABM_D2D_CanvasInit(&g_streamButtonCanvas)!=FALSE;
         CreateDevicePanel(hwnd);
         SetTimer(hwnd,ID_STREAM_DEVICE_TIMER,400,nullptr);
@@ -1816,6 +1832,14 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         return 0;
     }
     case WM_TIMER:
+        if(wp==ID_STREAM_MOTION_TIMER){
+            double value=0.0;
+            if(ABM_MotionWinSample(hwnd,ID_STREAM_MOTION_TIMER,(ABMMotionValue*[]){&g_streamHoverMotion},&value,1))
+                g_streamHoverLevel=value;
+            else g_streamHoverLevel=g_streamHoverMotion.target_value;
+            InvalidateRect(hwnd,nullptr,FALSE);
+            return 0;
+        }
         if(wp==ID_STREAM_DEVICE_TIMER){
             if(g_devicePanelVisible)RefreshDevicePanel(false);
             if(IsStreamReceiverReady())InvalidateRect(hwnd,&g_castRect,FALSE);
@@ -1846,12 +1870,22 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         else if(PtInRect(&g_castRect,pt))control=8;
         else if(PtInRect(&g_castVideoRect,pt))control=9;
         else if(PtInRect(&g_stopTvRect,pt))control=10;
-        if(service!=g_hoverService||control!=g_hoverControl){g_hoverService=service;g_hoverControl=control;InvalidateRect(hwnd,nullptr,FALSE);}
+        if(service!=g_hoverService||control!=g_hoverControl){
+            g_hoverService=service;g_hoverControl=control;
+            if(g_streamHoverMotionReady){
+                ABM_MotionStart(&g_streamHoverMotion,(service>=0||control>=0)?100.0:0.0,
+                    ABM_MOTION_DURATION_QUICK,ABM_MOTION_EASE_OUT);
+                if(!ABM_MotionWinSchedule(hwnd,ID_STREAM_MOTION_TIMER))g_streamHoverLevel=(service>=0||control>=0)?100.0:0.0;
+            }
+            InvalidateRect(hwnd,nullptr,FALSE);
+        }
         SetCursor((service>=0||control>=0)?LoadCursorW(nullptr,IDC_HAND):LoadCursorW(nullptr,IDC_ARROW));
         return 0;
     }
     case WM_MOUSELEAVE:
-        g_trackingMouseLeave=false;g_hoverService=-1;g_hoverControl=-1;SetCursor(LoadCursorW(nullptr,IDC_ARROW));InvalidateRect(hwnd,nullptr,FALSE);return 0;
+        g_trackingMouseLeave=false;g_hoverService=-1;g_hoverControl=-1;
+        if(g_streamHoverMotionReady){ABM_MotionStart(&g_streamHoverMotion,0.0,ABM_MOTION_DURATION_QUICK,ABM_MOTION_EASE_OUT);if(!ABM_MotionWinSchedule(hwnd,ID_STREAM_MOTION_TIMER))g_streamHoverLevel=0.0;}
+        SetCursor(LoadCursorW(nullptr,IDC_ARROW));InvalidateRect(hwnd,nullptr,FALSE);return 0;
     case WM_GETMINMAXINFO:{MINMAXINFO *info=(MINMAXINFO*)lp;info->ptMinTrackSize.x=960;info->ptMinTrackSize.y=720;return 0;}
     case WM_PAINT:PaintChrome(hwnd);return 0;
     case WM_LBUTTONUP:{
@@ -2211,7 +2245,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         StopManagedWorkers();
         DrainPendingWorkerMessages(hwnd);
         ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();
-        KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
+        KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);ABM_MotionWinStop(hwnd,ID_STREAM_MOTION_TIMER);
         HideDevicePanel();
         g_window=nullptr;
         if(g_infoWindow&&IsWindow(g_infoWindow))DestroyWindow(g_infoWindow);
