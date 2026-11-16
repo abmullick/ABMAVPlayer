@@ -912,7 +912,43 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT subtitle={29,47,rc.right-28,70};
         InfoText(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  HELP CENTRE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}else{
+        if(g_infoAbout){
+            if(!g_infoPortrait){
+                RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_THEME_COLOR_1B8F91,ABM_UI_RADIUS_CARD);
+                InfoText(dc,L"ABM",fallback,ABM_THEME_COLOR_F5FFFF,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            }
+            RECT product={322,98,rc.right-28,138};
+            InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT tagline={322,140,rc.right-28,163};
+            InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creatorLabel={322,174,rc.right-28,197};
+            InfoText(dc,L"THE CREATOR",creatorLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creator={322,204,rc.right-28,237};
+            InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT role={322,244,rc.right-28,271};
+            InfoText(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            RECT contactLabel={322,290,rc.right-28,313};
+            InfoText(dc,L"CONTACT",contactLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT email={322,321,rc.right-28,348};
+            InfoText(dc,L"abmullick@gmail.com",email,ABM_THEME_COLOR_F6FAFF,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT description={322,362,rc.right-28,412};
+            InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT version={322,420,rc.right-28,446};
+            InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT divider={28,455,rc.right-28,456};InfoFill(dc,divider,ABM_THEME_COLOR_233E52);
+            RECT featuresTitle={32,470,rc.right-32,495};
+            InfoText(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT features={32,500,rc.right-32,592};
+            InfoText(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT tributeTitle={32,610,rc.right-32,635};
+            InfoText(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT tribute={32,640,rc.right-32,700};
+            InfoText(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT stackTitle={32,720,rc.right-32,745};
+            InfoText(dc,L"BUILT WITH",stackTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT stack={32,750,rc.right-32,790};
+            InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        }else{
             RECT intro={28,77,rc.right-28,94};InfoText(dc,L"Browse streaming topics or search the complete guide. Enter searches; F3 finds the next match.",intro,ABM_UI_COLOR_TEXT_MUTED,12,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT navLabel={28,133,278,151};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT articleLabel={302,133,rc.right-28,151};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
