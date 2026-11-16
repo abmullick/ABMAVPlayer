@@ -3278,7 +3278,9 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
            receive the click instead of VLC's video surface. */
         if ((g_drawerOpen && !g_fullscreen && PtInRect(&R_SIDEBAR,pt)) ||
             (g_fullscreen && msg == WM_MOUSEMOVE)) {
-            SendMessageW(owner,msg,wp,MAKELPARAM(pt.x,pt.y));
+            /* WM_MOUSEWHEEL carries screen coordinates; preserve LPARAM so
+               the owner can apply the standard ScreenToClient conversion. */
+            SendMessageW(owner,msg,wp,msg==WM_MOUSEWHEEL?lp:MAKELPARAM(pt.x,pt.y));
             return 0;
         }
     }
@@ -7592,6 +7594,31 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CHAR:
         if(g_searchFocused){wchar_t ch=(wchar_t)wp;if(ch>=32&&ch!=127){size_t n=wcslen(g_searchText);if(n<127){g_searchText[n]=ch;g_searchText[n+1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}}return 0;}
         break;
+    case WM_MOUSEWHEEL: {
+        if(g_drawerOpen&&!g_fullscreen) {
+            /* Win32 wheel coordinates are screen-relative, including events
+               forwarded by the LibVLC child window. */
+            POINT wheelPoint={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
+            ScreenToClient(hwnd,&wheelPoint);
+            if(Inside(R_LIST,wheelPoint.x,wheelPoint.y)) {
+                int delta=GET_WHEEL_DELTA_WPARAM(wp);
+                int notches=delta/WHEEL_DELTA;
+                if(notches) {
+                    int visible=PlaylistVisibleRows(PlaylistRowHeight());
+                    int maxScroll=CountFilteredMedia()-visible;
+                    if(maxScroll<0)maxScroll=0;
+                    /* Three media rows per wheel notch, matching Windows list
+                       control behaviour while preserving the existing scrollbar. */
+                    g_playlistScroll-=notches*3;
+                    if(g_playlistScroll<0)g_playlistScroll=0;
+                    if(g_playlistScroll>maxScroll)g_playlistScroll=maxScroll;
+                    InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
+                }
+                return 0;
+            }
+        }
+        break;
+    }
     case WM_RBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
         for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){index=g_visibleRows[ri];break;}
