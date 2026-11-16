@@ -1851,6 +1851,15 @@ static void DrawUI(HDC dc,RECT client) {
             (float)typePill.bottom,8.0f,isVideo?ABM_THEME_COLOR_3D7791:ABM_THEME_COLOR_347077,0.65f);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?ABM_THEME_COLOR_A4C1EF:ABM_THEME_COLOR_74D7D3,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        if(g_missingMedia[i]){
+            RECT missing={row.left+7,row.bottom-22,row.left+92,row.bottom-5};
+            RoundBox(dc,missing,ABM_THEME_COLOR_4B252B,6);
+            Txt(dc,L"MISSING",missing,ABM_THEME_COLOR_F2A0A6,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        }else if(ResumePositionForPath(g_playlist[i])>0){
+            RECT resumeBadge={row.left+7,row.bottom-22,row.left+100,row.bottom-5};
+            RoundBox(dc,resumeBadge,ABM_THEME_COLOR_153B3B,6);
+            Txt(dc,L"CONTINUE",resumeBadge,ABM_THEME_COLOR_7DE0D0,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        }
         BOOL favorite=IsFavoritePath(g_playlist[i]);
         RECT heart=R_FAVORITE[shown];
         Txt(dc,favorite?L"♥":L"♡",heart,favorite?ABM_THEME_COLOR_FFBECD:(hot?ABM_THEME_COLOR_BBD2DC:ABM_THEME_COLOR_738297),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -2251,6 +2260,9 @@ static void StartDiscovery(void) {
                 available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
         }
         SetStatus(L"Receiver discovery could not start");
+        g_missingMedia[index]=TRUE;
+        SetStatus(L"Media file missing. Use the item menu to relink it.");
+        InvalidateRect(g_main,&R_SIDEBAR,FALSE);
         ABM_MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
@@ -2289,6 +2301,7 @@ static int PlaybackStartEngine(void) {
 }
 static BOOL PlaybackSetPaused(BOOL paused) {
     if(!PlaybackPlayerAvailable())return FALSE;
+    if(paused)ResumeCaptureCurrent();
     libvlc_state_t state=libvlc_media_player_get_state(g_player);
     if(paused) {
         if(state!=libvlc_Playing&&state!=libvlc_Buffering)return FALSE;
