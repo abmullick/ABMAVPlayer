@@ -4309,7 +4309,10 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     TorrentGradientRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_BORDER,1.0f);
     r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,accent,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    r=TorrentMakeRect(w-420,contentTop+5,w-m-14,contentTop+25);
+    /* Give the instruction the full header row after the section title.
+       A width-relative left edge could make the right-aligned sentence clip
+       at narrower window sizes or higher DPI settings. */
+    r=TorrentMakeRect(m+270,contentTop+5,w-m-14,contentTop+25);
     ABM_D2D_Text(&g_torrentUi,L"SELECT A MEDIA FILE TO DOWNLOAD, PLAY OR CAST",r,muted,ABM_D2D_TEXT_BODY,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Fill(&g_torrentUi,m+14,contentTop+29,m+62,contentTop+31,accent);
     r=TorrentMakeRect(m+14,contentTop+33,w-m-14,contentTop+53);
