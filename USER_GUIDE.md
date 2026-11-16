@@ -223,7 +223,7 @@ Right-click the video surface while media is playing to access available media a
 - **Load external subtitle:** Load a subtitle file from disk. The file picker exposes SRT, ASS, SSA, SUB and VTT extensions.
 - **Playback speed:** Choose a preset from 0.5x to 2.0x.
 - **Equalizer presets:** Apply an available LibVLC equalizer preset.
-- **Media information:** View title, artist, album and duration when LibVLC provides them.
+- **Media information:** Right-click the playing video and choose **Media information…** to inspect available title/artist/album/genre/date/description tags, file name/location/size, duration and current position, decoded video dimensions, and LibVLC-reported audio/video/subtitle stream codecs with the active track marked. Fields that the file or LibVLC does not expose are shown as unavailable. This is a read-only snapshot; it does not certify HDR or hardware-decoder use.
 - **ReplayGain:** Toggle track-mode loudness normalisation for media opened after changing the setting. Usable ReplayGain tags are required.
 - **Dynamic-range compressor:** Toggle the VLC compressor filter for media opened after changing the setting. This is a dynamic-range effect, not a guaranteed true-peak limiter.
 
