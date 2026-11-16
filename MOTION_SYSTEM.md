@@ -235,6 +235,6 @@ Committed source changes on `main`:
 - The Equalizer's existing reveal transition remains part of this pass.
 
 Scope/limitations:
-- Streaming Centre keyboard focus cues and full keyboard traversal for its custom-painted chrome still require a dedicated accessibility pass; this change animates pointer hover only.
+- Streaming Centre custom-painted chrome now has an explicit F6 keyboard-navigation mode. F6 enters/leaves chrome navigation; Tab/Shift+Tab and arrow keys move through six service cards and eleven toolbar actions; Enter/Space activates the focused item; Esc exits chrome navigation. A two-layer teal focus ring is painted around the active target. Normal WebView2 Tab navigation is unchanged until the user explicitly enters this mode. This is keyboard focus feedback, not a complete UI Automation/screen-reader audit.
 - The top-level blend transitions use the Windows animation API so child controls remain native and are not moved/recreated. They are not a per-pixel custom opacity animation.
 - These are source-level changes only. No MSVC build, runtime, DPI, WebView2 or playback regression validation has been performed here.
