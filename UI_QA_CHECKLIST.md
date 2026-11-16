@@ -285,7 +285,7 @@ This is a source implementation only until the Windows build and runtime checks 
 - [ ] Settings: verify reveal/dismissal with every native edit control, keyboard tab order, scroll dragging, dropdowns, theme changes, resize, DPI scaling and modal owner re-enable.
 - [ ] Advanced Settings: verify all pages, diagnostics generation, VLC report edit, native child controls, page switching, resize and modal focus.
 - [ ] Help/About: verify reveal/dismissal, Help navigation/scrolling, About portrait rendering, keyboard close and owner activation.
-- [ ] Streaming Centre: verify animated hover/focus feedback on service tabs and browser/cast chrome without changing WebView2 navigation, fullscreen, device discovery, casting, or receiver selection. Confirm 400 ms device refresh and device pulse timers remain operational and independent.
+- [ ] Streaming Centre: verify animated hover and F6 keyboard focus feedback on service tabs and browser/cast chrome without changing WebView2 navigation, fullscreen, device discovery, casting, or receiver selection. Confirm 400 ms device refresh and device pulse timers remain operational and independent.
 - [ ] Run the complete Windows x64 build and regression checklist before release; source edits and Git commits alone are not evidence of runtime success.
 
  
@@ -300,5 +300,6 @@ This is a source implementation only until the Windows build and runtime checks 
 - [ ] Streaming Centre: confirm hover motion timer is independent of the 400 ms receiver refresh and device pulse timer.
 - [ ] Streaming Centre: open/close with WebView2 loading, after provider navigation, while device panel is open, and after selecting a receiver; confirm browser/controller and receiver state are unchanged by window animation.
 - [ ] Disable Windows client-area animation and repeat auxiliary/Streaming Centre open-close tests.
-- [ ] Keyboard-only review: confirm existing native dialog traversal and WebView2 focus behaviour; custom Streaming Centre chrome still needs explicit focus cues and traversal before accessibility sign-off.
+- [ ] Streaming Centre keyboard: press F6, traverse all six service cards and eleven toolbar actions with Tab/Shift+Tab and arrows, activate with Enter/Space, and exit with Esc/F6. Confirm visible focus rings and that normal WebView2 Tab navigation is unchanged when chrome mode is inactive.
+- [ ] Keyboard-only review: confirm existing native dialog traversal and WebView2 focus behaviour. Perform a separate screen-reader/UI Automation and high-contrast audit before accessibility sign-off.
 - [ ] Full Windows x64 build, DPI matrix (100/125/150/200%), playback/casting/torrent regression, WebView2 recovery and repeated open/close leak checks.
