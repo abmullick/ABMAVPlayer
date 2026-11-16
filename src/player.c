@@ -84,6 +84,29 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define MAX_DISCOVERERS 16
 #define MAX_PLAYLIST 256
 #define PATH_CAP 1024
+/* Short, OS-aware top-level window transitions. AnimateWindow changes only the
+   top-level presentation: child HWNDs, edit selection, focus, scroll offsets,
+   modal ownership and the existing message loops remain untouched. */
+static BOOL ABM_UIMotionAllowed(void) {
+    BOOL enabled=TRUE;
+#ifdef SPI_GETCLIENTAREAANIMATION
+    if(!SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION,0,&enabled,0))enabled=TRUE;
+#endif
+    return enabled;
+}
+static void ABM_ShowWindowMotion(HWND hwnd) {
+    if(!hwnd)return;
+    if(ABM_UIMotionAllowed()) {
+        if(!AnimateWindow(hwnd,ABM_MOTION_DURATION_STANDARD,AW_BLEND|AW_ACTIVATE))
+            ShowWindow(hwnd,SW_SHOW);
+    } else ShowWindow(hwnd,SW_SHOW);
+}
+static void ABM_DestroyWindowMotion(HWND hwnd) {
+    if(!hwnd||!IsWindow(hwnd))return;
+    if(ABM_UIMotionAllowed())AnimateWindow(hwnd,ABM_MOTION_DURATION_QUICK,AW_BLEND|AW_HIDE);
+    DestroyWindow(hwnd);
+}
+
 
 static libvlc_instance_t *g_vlc;
 static libvlc_media_player_t *g_player;
@@ -2939,7 +2962,7 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         return 0;
     }
     case WM_KEYDOWN:
-        if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;}
+        if(wp==VK_ESCAPE){ABM_DestroyWindowMotion(hwnd);return 0;}
         if(wp==VK_DOWN||wp==VK_UP) {
             if(g_recentCount){if(g_recentPopupHover<0)g_recentPopupHover=0;else g_recentPopupHover=(g_recentPopupHover+(wp==VK_DOWN?1:g_recentCount-1))%g_recentCount;InvalidateRect(hwnd,NULL,FALSE);}
             return 0;
@@ -5591,7 +5614,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         EndPaint(hwnd,&ps);return 0;
     }
-    case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
+    case WM_KEYDOWN: if(wp==VK_ESCAPE){ABM_DestroyWindowMotion(hwnd);return 0;} break;
     case WM_DESTROY: if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} if(g_aboutCanvasReady){g_aboutCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_aboutCanvas);} return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
@@ -6074,7 +6097,7 @@ static void ShowHelpDialog(HWND owner) {
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
     SetWindowPos(dlg,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
-    EnableWindow(owner,FALSE);ShowWindow(dlg,SW_SHOW);UpdateWindow(dlg);
+    EnableWindow(owner,FALSE);ABM_ShowWindowMotion(dlg);UpdateWindow(dlg);
     MSG m;while(IsWindow(dlg)&&GetMessageW(&m,NULL,0,0)>0) {
         if(!IsDialogMessageW(dlg,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
     }
@@ -6105,7 +6128,7 @@ static void ShowAboutDialog(HWND owner) {
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
     SetWindowPos(dlg,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
-    EnableWindow(owner,FALSE); ShowWindow(dlg,SW_SHOW); UpdateWindow(dlg);
+    EnableWindow(owner,FALSE); ABM_ShowWindowMotion(dlg); UpdateWindow(dlg);
     MSG m; while(IsWindow(dlg) && GetMessageW(&m,NULL,0,0)>0) {
         if(!IsDialogMessageW(dlg,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
     }
@@ -6984,7 +7007,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   }
   EndPaint(w,&ps);return 0;
  }
- case WM_CLOSE:DestroyWindow(w);return 0;
+ case WM_CLOSE:ABM_DestroyWindowMotion(w);return 0;
   case WM_CTLCOLOREDIT:{HDC dc=(HDC)wp;if((HWND)lp==g_advancedVlcReportEdit){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);SetBkMode(dc,OPAQUE);if(!g_advancedVlcReportBrush)g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);return (LRESULT)g_advancedVlcReportBrush;}SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);SetBkMode(dc,OPAQUE);if(!g_advancedDiagnosticBrush)g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);return (LRESULT)g_advancedDiagnosticBrush;}
  case WM_DESTROY:
   g_advancedSettingsWindow=NULL;
@@ -7022,7 +7045,7 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
- EnableWindow(owner,FALSE);ShowWindow(g_advancedSettingsWindow,SW_SHOW);UpdateWindow(g_advancedSettingsWindow);
+ EnableWindow(owner,FALSE);ABM_ShowWindowMotion(g_advancedSettingsWindow);UpdateWindow(g_advancedSettingsWindow);
  MSG m;while(IsWindow(g_advancedSettingsWindow)&&GetMessageW(&m,NULL,0,0)>0){
   if(!IsDialogMessageW(g_advancedSettingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
  }
@@ -7205,7 +7228,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,650,27,780,62)){ShowAdvancedSettingsDialog(w);return 0;}
   if(SettingsPoint(x,y,39,681,194,714)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
   if(SettingsPoint(x,y,610,914,735,952)){SettingsApply(w);return 0;}
-  if(SettingsPoint(x,y,744,914,800,952)){DestroyWindow(w);return 0;}
+  if(SettingsPoint(x,y,744,914,800,952)){ABM_DestroyWindowMotion(w);return 0;}
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
@@ -7213,7 +7236,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  case WM_MOUSEWHEEL:{int delta=GET_WHEEL_DELTA_WPARAM(wp);SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY-(delta/WHEEL_DELTA)*72);return 0;}
  case WM_DPICHANGED:{SettingsClampToMonitor(w,(const RECT*)lp);SettingsUpdateScrollBars(w);if(g_settingsUiReady){RECT cr;GetClientRect(w,&cr);ABM_D2D_Resize(&g_settingsUi,cr.right,cr.bottom);}InvalidateRect(w,NULL,TRUE);return 0;}
  case WM_KEYDOWN:
-  if(wp==VK_ESCAPE){if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}else DestroyWindow(w);return 0;}
+  if(wp==VK_ESCAPE){if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}else ABM_DestroyWindowMotion(w);return 0;}
   if((GetKeyState(VK_CONTROL)&0x8000)&&wp=='S'){SettingsApply(w);return 0;}
   if(wp==VK_PRIOR){SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY-GetSystemMetrics(SM_CYSCREEN)/2);return 0;}
   if(wp==VK_NEXT){SettingsSetScroll(w,g_settingsScrollX,g_settingsScrollY+GetSystemMetrics(SM_CYSCREEN)/2);return 0;}
@@ -7310,7 +7333,7 @@ static void ShowSettingsDialog(HWND owner) {
  if(!g_settingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
- EnableWindow(owner,FALSE);ShowWindow(g_settingsWindow,SW_SHOW);UpdateWindow(g_settingsWindow);
+ EnableWindow(owner,FALSE);ABM_ShowWindowMotion(g_settingsWindow);UpdateWindow(g_settingsWindow);
  MSG m;while(IsWindow(g_settingsWindow)&&GetMessageW(&m,NULL,0,0)>0){if(!IsDialogMessageW(g_settingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}
  EnableWindow(owner,TRUE);SetActiveWindow(owner);
 }
