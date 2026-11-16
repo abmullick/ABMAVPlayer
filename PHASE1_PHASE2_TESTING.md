@@ -21,7 +21,7 @@ Right-click the video while media is playing and test the available options:
 - ReplayGain track normalisation: changes apply to media opened after the setting changes; reopen the current track to test.
 - Dynamic-range compressor: changes apply to media opened after the setting changes; reopen the current track to test.
 - Audio-track selection, subtitle selection/disable and external subtitle loading.
-- Media information dialog when metadata is available.
+- Media information: verify metadata, file path/size, duration/position, decoded dimensions and audio/video/subtitle stream listing; test files with missing tags, audio-only media and remote streams.
 
 Listen at matched perceived loudness when comparing EQ curves. Begin conservatively; boosts can reduce headroom and may cause clipping. ReplayGain needs usable track tags. The compressor is not a guaranteed true-peak limiter.
 
