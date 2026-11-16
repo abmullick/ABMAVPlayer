@@ -704,3 +704,17 @@ The expanded Playback & Output drawer's collection area now has a clearer ABM hi
 The layout coordinates and existing hit targets are retained. Queue/library switching, search, media filters, grouping, clear, scrolling, row selection and playback dispatch are unchanged. The collection consumes only existing `ABM_THEME_COLOR_*` tokens from `src/ui_theme.h`; no new local palette or font system is introduced. Compact row artwork remains square and centered within the row bounds.
 
 **Validation status:** source-level palette identifier audit passes against `ui_theme.h`. Windows MSVC build and runtime visual/input verification are still required at normal and compact drawer heights, including 100%, 125%, 150% and 200% scaling. Check that text does not collide with the type pill, the square artwork stays inside the row, and all original collection hit targets remain clickable.
+
+
+## Personal Media Libraries and Favourites — premium collection extension
+
+The Media Collection drawer now supports a persistent personal-favourites layer and named M3U-based personal libraries without introducing a second theme system or copying media files.
+
+- A compact heart affordance sits at the trailing edge of each media card. Its filled state uses the shared ABM rose accent; the idle state is muted and gains contrast on hover. The title/metadata column and AUDIO/VIDEO pill are narrowed and repositioned to reserve a dedicated heart hit target.
+- The Library tab's segmented control switches between all tracks and Favourites. The Queue tab retains its existing Folder/Artist/Album grouping cycle.
+- Favourites are stored by original media path in `%APPDATA%\\ABMAVPlayer\\favorites.m3u`, independently from `library.m3u`. Clearing or replacing the playback queue therefore does not clear the favourites list.
+- The row context menu includes Add/Remove from favourites, Save as personal library and Load saved library. Named collections are M3U files under `%APPDATA%\\ABMAVPlayer\\collections\\`; the Save dialog supplies the collection name and the Load dialog opens that collection into the active playback queue.
+- Collections reference the original files; they do not duplicate media. Loading a collection changes the active queue but does not delete or overwrite other saved collection files.
+- All added card colours use existing `ABM_THEME_COLOR_*` definitions from `src/ui_theme.h`. No local palette, font or radius system is introduced.
+
+This is a source-level feature pass. The Windows build, font glyph fallback for the heart, card hit-target precision, file-dialog behaviour, persistence across restarts, and collection load/save regression checks remain mandatory before release sign-off.
