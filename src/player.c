@@ -14,6 +14,7 @@
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
 #include "ui_theme.h"
+#include "ui_motion.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
 #include "licensing.h"
@@ -77,6 +78,7 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
 #define WM_TORRENT_TV_READY (WM_APP + 16)
 #define TIMER_ID 1
+#define MOTION_TIMER_ID 2
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
 #define MAX_PLAYLIST 256
@@ -360,6 +362,8 @@ static BOOL g_fullscreenMousePosValid = FALSE;
 static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
+static ABMMotionValue g_menuMotion;
+static BOOL g_menuMotionInitialized = FALSE;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
 static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
@@ -662,6 +666,21 @@ static int EaseToward(int current,int target,int responsePercent) {
     int next=current+step;
     if((delta>0&&next>target)||(delta<0&&next<target))return target;
     return next;
+}
+static void StartMenuMotion(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (!g_menuMotionInitialized) {
+        ABM_MotionInit(&g_menuMotion, (double)g_menuProgress);
+        g_menuMotionInitialized = TRUE;
+    }
+    ABM_MotionStart(&g_menuMotion, g_menuOpen ? 100.0 : 0.0,
+                    220, g_menuOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+    if (g_menuMotion.active) SetTimer(hwnd, MOTION_TIMER_ID, 16, NULL);
+    else {
+        KillTimer(hwnd, MOTION_TIMER_ID);
+        g_menuProgress = g_menuOpen ? 100 : 0;
+        InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+    }
 }
 static void ResetArtwork(void) {
     LONG previousGeneration=InterlockedCompareExchange(&g_artworkGeneration,0,0);
@@ -3589,7 +3608,7 @@ static void ToggleFullscreen(HWND hwnd) {
         /* Capture mouse input at the top-level window for the duration of
            fullscreen. VLC can otherwise consume WM_MOUSEMOVE in its child
            HWND, especially after the child is resized to cover the monitor. */
-        g_menuOpen=FALSE;g_receiverPopup=FALSE;
+        g_menuOpen=FALSE;StartMenuMotion(g_main);g_receiverPopup=FALSE;
         if(g_eqWindow)ShowWindow(g_eqWindow,SW_HIDE);
         ShowWindow(g_renderers,SW_HIDE);
         SetWindowLongPtrW(hwnd,GWL_STYLE,(LONG_PTR)(WS_POPUP|WS_VISIBLE|WS_CLIPCHILDREN));
@@ -7185,7 +7204,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
         return 0;
     case WM_CREATE: {
-        g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -7447,6 +7466,22 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return 0;
     }
+    case WM_TIMER:if(wp==MOTION_TIMER_ID){
+        double sampled = (double)g_menuProgress;
+        int previous = g_menuProgress;
+        BOOL active = ABM_MotionSample(&g_menuMotion, &sampled);
+        g_menuProgress = (int)(sampled + 0.5);
+        if (g_menuProgress < 0) g_menuProgress = 0;
+        if (g_menuProgress > 100) g_menuProgress = 100;
+        if (previous != g_menuProgress) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+        if (!active) {
+            g_menuProgress = g_menuOpen ? 100 : 0;
+            KillTimer(hwnd, MOTION_TIMER_ID);
+            if (!g_menuOpen) PositionVideoWindow();
+            InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+        }
+        return 0;
+    }
     case WM_TIMER:if(wp==TIMER_ID){
         VlcCodecVerificationPoll();
         TorrentCheckPlaybackStall();
@@ -7500,15 +7535,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         int oldDrawerProgress=g_drawerProgress;
         g_drawerProgress=EaseToward(g_drawerProgress,g_drawerOpen?100:0,24);
         if(oldDrawerProgress!=g_drawerProgress){UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}
-        int oldMenuProgress=g_menuProgress;
-        g_menuProgress=EaseToward(g_menuProgress,g_menuOpen?100:0,28);
-        if(oldMenuProgress!=g_menuProgress){
-            /* Menu animation is paint-only. Move the LibVLC child window
-               once at open, and once after the closing animation completes. */
-            if(oldMenuProgress>0 && g_menuProgress==0)
-                PositionVideoWindow();
-            InvalidateRect(hwnd,NULL,FALSE);
-        }
         int oldLevel=g_hoverLevel;
         g_hoverLevel=EaseToward(g_hoverLevel,g_hoverButton?100:0,32);
         if(oldLevel!=g_hoverLevel) {
@@ -7627,12 +7653,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateRect(hwnd,&sidebarAccent,FALSE);
         }
         UpdateUI();
-        /* Invalidate on every animation step, including the final transition
-           from 20% to 0%, so no fragment of the menu is left on screen. */
-        if(oldMenuProgress!=g_menuProgress) {
-            RECT dirty=R_MENU_PANEL;
-            InvalidateRect(hwnd,&dirty,FALSE);
-        }
     }return 0;
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
@@ -7668,7 +7688,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             ReleaseCapture();return 0;
         }
-        if(!g_fullscreen&&!g_drawerOpen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=TRUE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_audioPopupOpen=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&!g_drawerOpen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=TRUE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_audioPopupOpen=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;StartMenuMotion(hwnd);SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&max(0,0)==0&&Inside(R_PLAYLIST_SCROLL,x,y)){
             g_dragPlaylistScroll=TRUE;
             g_playlistScrollGrabY=y;
@@ -7697,7 +7717,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_VIDEO,x,y)){g_mediaFilter=2;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){if(g_libraryTab==1){g_showFavorites=!g_showFavorites;if(g_showFavorites)EnsureFavoritesInPlaylist();}else g_groupMode=(g_groupMode+1)%3;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
-            g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
+            g_menuOpen=!g_menuOpen;StartMenuMotion(hwnd);g_receiverPopup=FALSE;
             if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
             PositionVideoWindow();
             SyncRendererComboVisibility();
@@ -7712,6 +7732,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_menuOpen && !Inside(R_MENU_PANEL,x,y)) {
             g_menuOpen=FALSE;
+            StartMenuMotion(hwnd);
             PositionVideoWindow();
             SyncRendererComboVisibility();
             RECT dirty=R_MENU_PANEL;
@@ -7727,6 +7748,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
+                StartMenuMotion(hwnd);
                 PositionVideoWindow();
                 SyncRendererComboVisibility();
                 if(mi==0)AddFiles();
@@ -7823,14 +7845,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
-            if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_ESCAPE){g_menuOpen=FALSE;StartMenuMotion(hwnd);g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_UP){g_menuSelection=(g_menuSelection+18)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_END){g_menuSelection=18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
-        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;StartMenuMotion(hwnd);if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
         if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
@@ -8072,7 +8094,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
             g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
-        DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+        DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);KillTimer(hwnd,MOTION_TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
