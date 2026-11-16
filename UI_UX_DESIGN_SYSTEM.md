@@ -693,3 +693,14 @@ The Command Centre now uses a responsive five-group hierarchy: Playback & Media,
 The implementation consumes the existing ABM typography, colour, spacing and radius tokens and continues to use the Main Player's established text and Direct2D stroke helpers. Menu item indices, hit rectangles, command dispatch, keyboard shortcuts, hover tracking and selection routing remain unchanged. On shorter windows, section captions collapse while group surfaces remain, preserving room for the commands. Group cards and captions are clipped to the animated panel boundary so they cannot paint ahead of the menu reveal.
 
 **Windows runtime validation remains outstanding.** Verify that all 19 commands fit and remain clickable at minimum supported window height and 100%, 125%, 150% and 200% scaling. Confirm that the five section captions appear on taller windows and collapse cleanly on shorter windows.
+
+
+## Media Collection drawer — premium ABM visual pass
+
+**Implementation commits:** `3ada50a3b2ff21d95668ea79555715077f409a8a`, `cc03fe7a7b79ac2ccd17c0575339d4e257fec78a`
+
+The expanded Playback & Output drawer's collection area now has a clearer ABM hierarchy: a dedicated MEDIA COLLECTION heading with a compact layered mark, a restrained track-count capsule, a deliberate clear action, a recessed search surface with a visible focus treatment, more distinct Queue/Library selection states, and quieter segmented filters/group controls. Track cards use deeper navy gradients, a clearer active-track rail, more consistent artwork framing, aligned title/metadata baselines, and restrained AUDIO/VIDEO pills. The empty state is presented as an intentional inset surface rather than bare text.
+
+The layout coordinates and existing hit targets are retained. Queue/library switching, search, media filters, grouping, clear, scrolling, row selection and playback dispatch are unchanged. The collection consumes only existing `ABM_THEME_COLOR_*` tokens from `src/ui_theme.h`; no new local palette or font system is introduced. Compact row artwork remains square and centered within the row bounds.
+
+**Validation status:** source-level palette identifier audit passes against `ui_theme.h`. Windows MSVC build and runtime visual/input verification are still required at normal and compact drawer heights, including 100%, 125%, 150% and 200% scaling. Check that text does not collide with the type pill, the square artwork stays inside the row, and all original collection hit targets remain clickable.
