@@ -2285,6 +2285,7 @@ static BOOL PlaybackPlayerAvailable(void) {
     return g_player != NULL;
 }
 static void PlaybackStopEngine(void) {
+    CaptureResumePosition(TRUE);
     if(PlaybackPlayerAvailable())libvlc_media_player_stop(g_player);
 }
 static BOOL PlaybackSetMedia(libvlc_media_t *media) {
@@ -2963,7 +2964,7 @@ static void RelinkPlaylistItem(int index) {
     wcsncpy_s(replacement,_countof(replacement),leaf,_TRUNCATE);
     OPENFILENAMEW ofn={0};ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_main;
     ofn.lpstrFile=replacement;ofn.nMaxFile=_countof(replacement);
-    ofn.lpstrFilter=L"Media files\\0All files (*.*)\\0*.*\\0";
+    ofn.lpstrFilter=L"Media files\0All files (*.*)\0*.*\0";
     ofn.lpstrTitle=L"Locate replacement for missing media";
     ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_HIDEREADONLY;
     if(!GetOpenFileNameW(&ofn))return;
