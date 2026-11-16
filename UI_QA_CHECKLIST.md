@@ -264,3 +264,16 @@ Do not mark this work runtime-validated until the Windows build and interaction 
 - [ ] Re-run queue drag/drop, click-to-play, double-click playback, context-menu remove/reorder, wheel scrolling, and Clear regression checks.
 
 Do not mark this feature runtime-validated until all Windows build and interaction checks above pass.
+
+
+## Fluidic UI — Queue and Library hover motion
+
+- [ ] Verify hover feedback eases in and out on Queue and Library cards without a flash or stale highlight.
+- [ ] Move the pointer rapidly across adjacent rows and verify the incoming row starts cleanly and the previous row returns to rest.
+- [ ] Move the pointer out of the list, switch tabs, filter, search and scroll while a hover transition is active; verify no stuck highlight or repaint artefact.
+- [ ] Verify heart/favourite controls, row selection, double-click playback, context menus and queue drag/reorder retain their original hit targets and behaviour.
+- [ ] Verify the hover animation does not cause visible scroll stutter on a long collection and that idle motion timer stops when transitions complete.
+- [ ] Verify reduced-motion Windows settings snap the transition without breaking hover state.
+- [ ] Build with MSVC and repeat at 100%, 125%, 150% and 200% scaling.
+
+This is a source implementation only until the Windows build and runtime checks above pass.
