@@ -1833,8 +1833,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_TIMER:
         if(wp==ID_STREAM_MOTION_TIMER){
-            double value=0.0;
-            if(ABM_MotionWinSample(hwnd,ID_STREAM_MOTION_TIMER,(ABMMotionValue*[]){&g_streamHoverMotion},&value,1))
+            double value=0.0;ABMMotionValue *motions[1]={&g_streamHoverMotion};
+            if(ABM_MotionWinSample(hwnd,ID_STREAM_MOTION_TIMER,motions,&value,1))
                 g_streamHoverLevel=value;
             else g_streamHoverLevel=g_streamHoverMotion.target_value;
             InvalidateRect(hwnd,nullptr,FALSE);
