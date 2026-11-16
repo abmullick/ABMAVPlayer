@@ -670,6 +670,7 @@ static int EaseToward(int current,int target,int responsePercent) {
     if((delta>0&&next>target)||(delta<0&&next<target))return target;
     return next;
 }
+static void PositionVideoWindow(void);
 static void EnsureMainMotionTimer(HWND hwnd);
 static void StartMenuMotion(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return;
