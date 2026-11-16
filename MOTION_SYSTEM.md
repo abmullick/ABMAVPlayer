@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Phase 0 audit complete; Phase 1 motion runtime integrated with the Main Player command menu; Windows build and runtime validation pending  
+**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player menu and drawer migrated; Windows build and runtime validation pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -63,7 +63,7 @@ Proposed source files:
 - `src/ui_motion.cpp` — registry, clock, scheduler-facing update and lifecycle.
 - `src/ui_motion_easing.cpp` — easing functions if keeping them separate materially improves testability.
 
-The initial runtime (`src/ui_motion.h/.cpp`) now provides C-compatible, interruptible scalar animations, monotonic QPC timing, named easing modes and Windows client-area-animation preference handling. It deliberately does not own a timer or HWND. The initial implementation should avoid a new permanent 60 Hz timer. The main window should use a dedicated motion timer only while animations are active, with a target cadence around 16 ms. The existing 33 ms operational timer remains unchanged. Other windows should opt in only when their own transitions are implemented.
+The shared runtime (`src/ui_motion.h/.cpp`) provides C-compatible, interruptible scalar animations, monotonic QPC timing, named easing modes and Windows client-area-animation preference handling. The reusable Win32 host (`src/ui_motion_win.h/.cpp`) supplies a standard active-only 16 ms timer schedule/sample/stop contract for any ABM-owned HWND. It does not own layout, painting, hit testing or product state. The existing 33 ms operational timer remains unchanged.
 
 ## 4. Motion tokens
 
@@ -136,7 +136,8 @@ The current `DEVELOPER_GUIDE.md` says this repository workflow commits directly 
 - [x] Motion architecture and safeguards documented.
 - [x] Motion-value engine API and implementation added; build compiles and links `src/ui_motion.cpp`.
 - [ ] C/C++ compile and unit tests (source has not yet been built on Windows).
-- [x] Main Player command-menu migration to the active-only motion timer (drawer and hover migration remain pending).
+- [x] Main Player command menu and drawer use the shared active-only Win32 motion host.
+- [ ] Main Player hover, artwork and auxiliary-window migration.
 - [ ] Auxiliary-window migration.
 - [ ] Windows performance and regression validation.
 
@@ -168,3 +169,25 @@ The Main Player command menu now uses the shared motion-value API:
 - The dedicated timer is killed when the transition completes and during main-window destruction.
 
 This is a scoped first migration, not a claim that the entire Main Player is now on the motion runtime. Drawer, hover, artwork and auxiliary-window transitions remain on their existing paths. Windows compilation and interactive regression testing are still required before treating this phase as validated.
+
+
+## Phase 1 implementation note — reusable Windows host and drawer
+
+Added a generic Win32 timer adapter:
+- `src/ui_motion_win.h/.cpp` exposes C-compatible schedule, stop and multi-value sample helpers.
+- The adapter owns only the Win32 timer lifecycle. It does not know about menus, drawers, media, LibVLC or any ABM feature.
+- Any ABM-owned window can use the same adapter with its own motion values and paint/layout policy.
+- The C11 ABI smoke test now includes both the motion core and Win32 host headers.
+- `build.bat` compiles and links the shared Win32 host.
+
+Main Player integration:
+- The command menu and media drawer share one active-only 16 ms timer and two independent motion values.
+- Drawer transitions use the common 280 ms panel token and ease-in/ease-out direction.
+- The drawer's final video-safe footprint is reserved at transition start. Its panel geometry is updated during motion without moving or resizing the LibVLC child HWND on every frame.
+- The video child is repositioned at transition boundaries, not on each drawer animation tick.
+- The existing 33 ms operational timer remains unchanged.
+- Timer creation failure and Windows reduced-motion preferences snap to a consistent final state.
+
+The adapter is deliberately reusable by Settings, Equalizer, Help, About and Streaming Centre chrome in later migrations. Those windows are not yet migrated. WebView2, receiver discovery, Torrent Stream and all playback/casting engines remain outside this UI layer.
+
+Windows x64 compilation and interactive regression validation remain mandatory; repository commits alone do not establish a successful build.
