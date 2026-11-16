@@ -675,8 +675,13 @@ static void StartMenuMotion(HWND hwnd) {
     }
     ABM_MotionStart(&g_menuMotion, g_menuOpen ? 100.0 : 0.0,
                     220, g_menuOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
-    if (g_menuMotion.active) SetTimer(hwnd, MOTION_TIMER_ID, 16, NULL);
-    else {
+    if (g_menuMotion.active) {
+        if (!SetTimer(hwnd, MOTION_TIMER_ID, 16, NULL)) {
+            ABM_MotionCancel(&g_menuMotion, NULL);
+            g_menuProgress = g_menuOpen ? 100 : 0;
+            InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+        }
+    } else {
         KillTimer(hwnd, MOTION_TIMER_ID);
         g_menuProgress = g_menuOpen ? 100 : 0;
         InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
