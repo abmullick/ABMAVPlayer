@@ -1103,7 +1103,6 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
         ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_9BE5D7,1.25f);
         glyph=ABM_THEME_COLOR_FFFFFF;
     } else {
-        COLORREF base=Blend(ABM_THEME_COLOR_151E29,ABM_THEME_COLOR_263B43,hot?g_hoverLevel:0);
         GradientRound(NULL,r,hot?ABM_THEME_COLOR_263F47:ABM_THEME_COLOR_1B2733,
             hot?ABM_THEME_COLOR_1B3038:ABM_THEME_COLOR_141F2B,radius);
         if(hot) {
