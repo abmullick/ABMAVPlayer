@@ -1420,8 +1420,8 @@ void PaintChrome(HWND hwnd){
     g_castRect=RECT{482,15,612,55};
     const bool receiverReady=IsStreamReceiverReady();
     const bool pulseOn=receiverReady && ((GetTickCount64()/400)%2==0);
-    const COLORREF castFill=receiverReady?(pulseOn?ABM_THEME_COLOR_BE2330:ABM_THEME_COLOR_701622):
-        (g_hoverControl==8?ABM_THEME_COLOR_227070:ABM_THEME_COLOR_184B53);
+    const COLORREF castBase=receiverReady?(pulseOn?ABM_THEME_COLOR_BE2330:ABM_THEME_COLOR_701622):ABM_THEME_COLOR_184B53;
+    const COLORREF castFill=(!receiverReady&&g_hoverControl==8)?StreamHoverColor(castBase,ABM_THEME_COLOR_227070):castBase;
     const COLORREF castEdge=receiverReady?(pulseOn?ABM_THEME_COLOR_FF6970:ABM_THEME_COLOR_DC414C):
         (g_hoverControl==8?ABM_THEME_COLOR_5DE1CF:ABM_THEME_COLOR_308989);
     Rounded(dc,g_castRect,castFill,10);
@@ -1446,7 +1446,7 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"Cast video",castVideoLabel,ABM_THEME_COLOR_E2FFF1,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_stopTvRect=RECT{740,15,850,55};
-    Rounded(dc,g_stopTvRect,g_hoverControl==10?ABM_THEME_COLOR_963722:ABM_THEME_COLOR_642B20,10);
+    Rounded(dc,g_stopTvRect,g_hoverControl==10?StreamHoverColor(ABM_THEME_COLOR_642B20,ABM_THEME_COLOR_963722):ABM_THEME_COLOR_642B20,10);
     HPEN stopPen=CreatePen(PS_SOLID,g_hoverControl==10?2:1,ABM_THEME_COLOR_DC7753);
     HGDIOBJ oldStopPen=SelectObject(dc,stopPen);
     HGDIOBJ oldStopBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
