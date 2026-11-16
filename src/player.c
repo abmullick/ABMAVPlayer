@@ -3473,7 +3473,9 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {0,L"PERSONAL LIBRARIES",FALSE,TRUE},
         {7,L"Save as personal library...",g_playlistCount>0,FALSE},
         {8,L"Load saved library...",TRUE,FALSE},
-        {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE}
+        {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE},
+        {10,L"Relink missing media...",index>=0&&index<g_playlistCount,FALSE},
+        {11,L"Continue watching",index>=0&&index<g_playlistCount&&ResumePositionForPath(g_playlist[index])>0,FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
     switch(cmd){
@@ -3486,6 +3488,8 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         case 7:SavePersonalCollection();break;
         case 8:LoadPersonalCollection();break;
         case 9:if(g_selected>=0&&g_selected<g_playlistCount)ToggleFavoritePath(g_playlist[g_selected]);break;
+        case 10:if(g_selected>=0&&g_selected<g_playlistCount)RelinkMissingMedia(g_selected);break;
+        case 11:if(g_selected>=0&&g_selected<g_playlistCount)PlayIndex(g_selected);break;
     }
 }
 
@@ -7671,6 +7675,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 InvalidateButton(HIT_NEXT);InvalidateButton(HIT_SCAN);
             }
         }
+        if(g_hasMedia&&g_player&&!g_torrentPlaybackActive&&
+           (DWORD)(GetTickCount()-g_lastResumeSaveTick)>=10000)
+            ResumeCaptureCurrent();
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
             if(g_torrentPlaybackActive)
@@ -7910,6 +7917,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ULONGLONG stopStart=GetTickCount64();
             FullscreenDiag("windowed-stop-begin",0);
             if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
+            ResumeCaptureCurrent();
             PlaybackStopEngine();
             FullscreenDiag("windowed-stop-call",GetTickCount64()-stopStart);
             g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;
@@ -8224,7 +8232,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
             g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
-        DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+        ResumeCaptureCurrent();ResumeSaveAsync(TRUE);DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
