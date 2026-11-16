@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Phase 0 architecture audit complete; implementation not yet started  
+**Status:** Phase 0 audit complete; Phase 1 motion-value runtime source added; integration and Windows validation pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -63,7 +63,7 @@ Proposed source files:
 - `src/ui_motion.cpp` — registry, clock, scheduler-facing update and lifecycle.
 - `src/ui_motion_easing.cpp` — easing functions if keeping them separate materially improves testability.
 
-The initial implementation should avoid a new permanent 60 Hz timer. The main window should use a dedicated motion timer only while animations are active, with a target cadence around 16 ms. The existing 33 ms operational timer remains unchanged. Other windows should opt in only when their own transitions are implemented.
+The initial runtime (`src/ui_motion.h/.cpp`) now provides C-compatible, interruptible scalar animations, monotonic QPC timing, named easing modes and Windows client-area-animation preference handling. It deliberately does not own a timer or HWND. The initial implementation should avoid a new permanent 60 Hz timer. The main window should use a dedicated motion timer only while animations are active, with a target cadence around 16 ms. The existing 33 ms operational timer remains unchanged. Other windows should opt in only when their own transitions are implemented.
 
 ## 4. Motion tokens
 
@@ -134,8 +134,24 @@ The current `DEVELOPER_GUIDE.md` says this repository workflow commits directly 
 - [x] Torrent operational timer distinguished from UI animation.
 - [x] Build integration requirements identified.
 - [x] Motion architecture and safeguards documented.
-- [ ] Motion engine implementation.
-- [ ] C/C++ compile and unit tests.
+- [x] Motion-value engine API and implementation added; build compiles and links `src/ui_motion.cpp`.
+- [ ] C/C++ compile and unit tests (source has not yet been built on Windows).
 - [ ] Main Player migration.
 - [ ] Auxiliary-window migration.
 - [ ] Windows performance and regression validation.
+
+
+## Phase 1 implementation note — motion-value runtime
+
+Added to `main`:
+- `src/ui_motion.h`: C-compatible animation value and easing API.
+- `src/ui_motion.cpp`: monotonic QPC-based sampling, interruption-safe retargeting, cancellation, completion and Windows client-area animation preference handling.
+- `build.bat`: compiles and links the new C++ runtime.
+
+This is intentionally an engine-only increment. The existing 33 ms main-window operational timer and current `EaseToward` UI behaviour remain unchanged until the engine passes the Windows compile/test gate. No animation scheduler, window migration or visual behaviour change is claimed yet.
+
+Next implementation gate:
+1. Add deterministic tests for endpoints, all easing curves, interruption, cancellation, zero duration, reduced motion and elapsed-time independence.
+2. Build with the documented x64 MSVC toolchain and verify the C header from both C11 and C++17 translation units.
+3. Integrate a dedicated active-only motion timer into the Main Player, keeping the existing 33 ms operational timer unchanged.
+4. Migrate drawer and menu first; keep drawer layout updates bounded and ensure the LibVLC child HWND is not moved during paint-only animation.
