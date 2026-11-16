@@ -895,10 +895,6 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
     const int menuStarts[5]={0,1,3,11,13};
     const int menuEnds[5]={1,3,11,13,19};
-    const wchar_t *menuSectionNames[5]={
-        L"PLAYBACK & MEDIA",L"DEVICES & CASTING",L"PLAYBACK CONTROLS",
-        L"STREAMING & TORRENT",L"APP & SUPPORT"
-    };
     int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
     int showSectionLabels=(R_MENU_PANEL.bottom-R_MENU_PANEL.top)>=620;
     int sectionHeaderH=showSectionLabels?16:0;
