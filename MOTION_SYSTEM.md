@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player menu and drawer migrated; Windows build and runtime validation pending  
+**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player menu, drawer, transport hover, dashboard-card hover and artwork fade migrated; Windows build and runtime validation pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -199,3 +199,10 @@ Windows x64 compilation and interactive regression validation remain mandatory; 
 The Main Player transport-button hover transition now uses the same shared motion value and active-only Win32 timer as the menu and drawer. Retargeting occurs on pointer hit-target changes; the 33 ms operational timer no longer advances the transport hover animation. The hover state remains presentation-only and does not alter hit testing, playback commands or keyboard shortcuts.
 
 The reusable Win32 host is intentionally generic: each window supplies its own motion values and timer ID, and retains ownership of its layout, invalidation regions and input state. The Main Player currently schedules menu, drawer and transport-hover values together. Home dashboard card motion, artwork fade and auxiliary-window transitions remain separate follow-up work.
+
+
+## Phase 1 implementation note — dashboard and artwork
+
+The four idle-dashboard cards now retarget shared motion values only when their pointer target changes. Their interpolation runs on the active-only motion timer rather than the operational 33 ms timer. Artwork reveal now uses the shared EMPHASIS duration and ease-out curve; resetting artwork cancels any stale reveal so a previous track cannot continue fading over the next one. Motion ticks invalidate only the video/dashboard paint region and do not reposition the LibVLC child window.
+
+The Main Player's menu, drawer, transport hover, dashboard-card hover and artwork fade now share one per-window timer host. This completes the currently identified Main Player motion-value migration. It does not mean the Main Player has received its full visual redesign, nor that auxiliary windows have been migrated. Queue/library row transitions and auxiliary workspaces remain separate work items.
