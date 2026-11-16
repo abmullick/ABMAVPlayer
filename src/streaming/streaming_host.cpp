@@ -127,7 +127,31 @@ HWND g_infoWindow=nullptr;
 Gdiplus::Bitmap *g_infoPortrait=nullptr;
 ABM_D2D_CANVAS g_infoCanvas{};
 bool g_infoCanvasReady=false;
+
 bool g_infoAbout=false;
+HWND g_infoSearch=nullptr,g_infoTopics=nullptr,g_infoArticle=nullptr,g_infoFind=nullptr,g_infoArticleTitle=nullptr;
+HBRUSH g_infoSurfaceBrush=nullptr,g_infoInputBrush=nullptr,g_infoArticleBrush=nullptr;
+int g_infoTopicIndex=0,g_infoSearchTopic=0,g_infoSearchOffset=0;
+const wchar_t *g_streamHelpTopics[]={
+ L"OVERVIEW",L"SUPPORTED STREAMING SERVICES",L"SIGN-IN AND BROWSER PROFILE",
+ L"BROWSER NAVIGATION",L"FULLSCREEN AND EXTERNAL BROWSER",L"TV DISCOVERY AND RECEIVER SELECTION",
+ L"TV APPS: GOOGLE CAST AND DIAL",L"CAST VIDEO: CAPABILITIES AND LIMITS",
+ L"PRIVACY, SECURITY AND DRM",L"TROUBLESHOOTING",L"KEYBOARD SHORTCUTS"
+};
+const wchar_t *g_streamHelpArticles[]={
+ L"The Streaming Centre brings six provider websites into a dedicated WebView2 window. Choose a service card to navigate to that provider's official website. The embedded browser is separate from the Main Player's local-media playback and local renderer controls. Streaming Centre receiver discovery and casting controls operate in this window; opening Help does not start playback, discover devices or change the Main Player's casting state.\\r\\n\\r\\nWhat it does: provides an integrated browser, persistent provider sessions, browser navigation, fullscreen support, an optional external-browser handoff, TV discovery, app availability checks and supported video handoff.\\r\\n\\r\\nWhat it does not do: host a streaming catalogue, provide subscriptions, proxy provider credentials, remove advertisements, decrypt protected streams or guarantee that every provider feature works in an embedded browser.",
+ L"YouTube — Opens the official YouTube website. YouTube video identifiers can be handed off to compatible Google Cast receivers when the current page exposes a recognised video. Playlist Previous/Next controls are intended for supported YouTube playlist navigation.\\r\\n\\r\\nNetflix — Opens the official Netflix website. Desktop-browser title/session transfer to a TV is not supported by this implementation. For TV playback, open Netflix on the television and use its remote or the official Netflix mobile app.\\r\\n\\r\\nPrime Video — Opens the official Prime Video website. Desktop Prime Video title handoff is not supported. Launch the Prime Video app on the television and select content there.\\r\\n\\r\\nJioHotstar — Opens the official JioHotstar website. Provider playback, account features and any supported casting workflow remain controlled by JioHotstar. Do not assume that browser playback can be relayed to a receiver.\\r\\n\\r\\nSony LIV and ZEE5 — Open their official websites. The TV app check can identify supported DIAL app endpoints on a selected receiver and request an app launch where the television advertises that capability. Launching an app does not transfer the desktop browser's sign-in session or selected title.\\r\\n\\r\\nAvailability, catalogue, regional access, subscription tiers, browser compatibility and playback restrictions are determined by each provider and can change independently of ABM AV Player.",
+ L"Sign in on the provider's own website inside the embedded browser. The Streaming Centre uses a dedicated WebView2 user-data profile under the current Windows user's local application data, normally %LOCALAPPDATA%\\\\ABMAVPlayer\\\\WebView2. Supported cookies and website storage can preserve sessions between launches.\\r\\n\\r\\nThe player does not ask you to enter provider passwords into an ABM form and does not intentionally collect or proxy those credentials. Only sign in when the address bar/page belongs to the provider's genuine HTTPS domain. Use the provider's sign-out option if you share the Windows account. Clearing or removing the WebView2 profile can sign you out and remove provider cookies/site data.\\r\\n\\r\\nA provider may require additional verification, a supported browser version, a location check or a fresh sign-in. Session persistence is subject to provider policies, cookie expiry and WebView2 behaviour; it is not guaranteed.",
+ L"Back and Forward move through the current embedded browser's navigation history. They are unavailable when there is no page in the requested direction. Reload refreshes the current provider page and may cause the provider to revalidate the session or restart playback. Home navigates to the selected service's start page.\\r\\n\\r\\nThe service cards switch the embedded browser to the selected provider's official start page. Previous and Next are intended for supported YouTube playlist navigation; they are not universal previous/next episode controls for every service.\\r\\n\\r\\nOpen in browser launches the current page in the Windows default browser. The external browser may use a different profile and may not share the Streaming Centre's cookies or signed-in session. Browser history and session state are not guaranteed to transfer.",
+ L"Use the Streaming Centre Fullscreen toolbar control or F11 to request fullscreen. The provider may also expose its own fullscreen button inside the video player. Press Esc to leave fullscreen. Some providers implement fullscreen differently, and the embedded browser can only request modes exposed by the current page.\\r\\n\\r\\nIf fullscreen does not start, try the provider's own control, click the video once to reveal its controls, or leave fullscreen with Esc and reload the page. Multiple monitors and display scaling can affect the available fullscreen area.\\r\\n\\r\\nOpen in browser moves the current page to the Windows default browser. This is useful when a provider requires a browser feature that is unavailable in WebView2. The external browser may require a separate sign-in.",
+ L"Choose Find TVs to start receiver discovery in the Streaming Centre. Wait for discovery to complete, select the intended receiver in the device panel and choose Use selected TV. The selected receiver is used by Streaming Centre app checks and supported Cast video operations.\\r\\n\\r\\nKeep the PC and television on the same local network. Guest Wi-Fi, client isolation, VLAN rules, VPNs and Windows Firewall can prevent discovery or communication. A receiver may appear but still lack the protocol or application endpoint needed for a particular operation.\\r\\n\\r\\nStreaming Centre discovery is isolated from the Main Player's local playback-output discovery. Selecting a receiver here does not change the Main Player's local renderer selection or start local-player casting.",
+ L"Check TV apps performs read-only capability checks against supported Google Cast YouTube availability and DIAL application endpoints. The app selector should list only launch targets confirmed by those checks; results depend on what the television advertises and which protocols it supports.\\r\\n\\r\\nChoose a confirmed app and select Launch app to send the launch request. A successful request means the television accepted the request; it does not mean a title or browser session was transferred. Use the television remote to browse and select content unless the provider's official mobile app supplies its own casting control.\\r\\n\\r\\nDIAL support varies by TV model, firmware and installed apps. A service can be installed but not expose a compatible endpoint. A failed or missing app check is not proof that the service cannot be opened manually from the TV home screen.",
+ L"Cast video inspects the current provider page for a supported handoff. YouTube video IDs can be sent to a compatible Google Cast receiver. A directly addressable media URL may be handed off when the receiver can access and play that URL. Network reachability, codecs, URL lifetime and receiver support affect success.\\r\\n\\r\\nProtected or DRM-backed browser streams are not captured, decrypted or relayed by ABM AV Player. Netflix desktop title casting is not supported. Prime Video desktop title handoff is not supported. For Sony LIV and ZEE5, the available DIAL workflow can launch the TV app but does not transfer the desktop browser title or signed-in session. Other services may require their official mobile Cast workflow or native TV app.\\r\\n\\r\\nIf a handoff fails, open the service directly on the television or use the provider's official mobile application. Do not interpret app launch as video casting.",
+ L"Provider websites control their own accounts, subscriptions, catalogue, advertising, regional availability, content protection and playback policies. ABM AV Player does not host provider content and does not bypass DRM, paywalls, geographic restrictions or subscription checks.\\r\\n\\r\\nProvider credentials are entered on the provider website. Supported WebView2 cookies and site data are stored in the current Windows user's Streaming Centre profile. Protect access to your Windows account, especially on shared computers. Use provider sign-out and account security controls when needed.\\r\\n\\r\\nNetwork discovery sends local-network protocol traffic to identify compatible receivers and app endpoints. Only perform discovery on networks and devices you are authorised to use.",
+ L"Blank or incomplete provider page — Check the network connection, confirm the provider website is reachable in a normal browser, then use Reload. Some websites may block embedded browsers or require an updated WebView2 Runtime.\\r\\n\\r\\nRepeated sign-in — Provider cookies may have expired, been cleared or been rejected. Sign in again on the provider's official page. The external browser may have a separate profile.\\r\\n\\r\\nVideo will not play — Check provider subscription and regional availability, update Windows/WebView2 Runtime, reload the page and try the provider's own playback controls. Protected playback and hardware/DRM requirements are provider-controlled.\\r\\n\\r\\nTV not found — Confirm the PC and TV share a non-guest LAN, disable client isolation where appropriate, check Windows Firewall permissions and run Find TVs again.\\r\\n\\r\\nTV app missing — Run Check TV apps again. The receiver must expose a compatible Cast or DIAL endpoint and advertise the application. You can still open the app manually from the TV home screen.\\r\\n\\r\\nCast video unavailable — Confirm a receiver is selected and the current page exposes a supported YouTube identifier or directly addressable media URL. DRM-protected streams and unsupported provider handoffs cannot be relayed.\\r\\n\\r\\nFullscreen stuck — Press Esc, use the provider's fullscreen button, or close and reopen the Streaming Centre if the page stops responding.",
+ L"F11 — Request or leave Streaming Centre fullscreen. Esc — Leave fullscreen or dismiss a provider fullscreen mode. Ctrl+F — Focus the Help search field. Enter — Find the next occurrence of the current search text. F3 — Repeat the search from the next occurrence.\\r\\n\\r\\nThe browser's own keyboard shortcuts and provider player shortcuts may also apply while the WebView2 page has focus. Their behaviour is determined by the provider website and may differ between services."
+};
+
 ComPtr<ICoreWebView2Environment> g_environment;
 ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
@@ -749,103 +773,167 @@ void InfoRound(HDC dc,RECT rect,COLORREF color,int radius){
     if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)rect.left,(float)rect.top,(float)rect.right,(float)rect.bottom,(float)radius,color);
     else Rounded(dc,rect,color,radius);
 }
+void StreamingHelpLayout(HWND hwnd){
+    RECT rc{};GetClientRect(hwnd,&rc);
+    const int w=rc.right,h=rc.bottom;
+    if(g_infoSearch)MoveWindow(g_infoSearch,28,98,w-178,34,TRUE);
+    if(g_infoFind)MoveWindow(g_infoFind,w-138,98,110,34,TRUE);
+    if(g_infoTopics)MoveWindow(g_infoTopics,28,154,252,h-184,TRUE);
+    if(g_infoArticleTitle)MoveWindow(g_infoArticleTitle,302,145,w-330,28,TRUE);
+    if(g_infoArticle)MoveWindow(g_infoArticle,302,178,w-330,h-208,TRUE);
+}
+void StreamingHelpShowTopic(int index){
+    if(index<0||index>=(int)_countof(g_streamHelpTopics)||!g_infoArticle)return;
+    g_infoTopicIndex=index;
+    if(g_infoTopics)SendMessageW(g_infoTopics,LB_SETCURSEL,index,0);
+    if(g_infoArticleTitle)SetWindowTextW(g_infoArticleTitle,g_streamHelpTopics[index]);
+    SetWindowTextW(g_infoArticle,g_streamHelpArticles[index]);
+    SendMessageW(g_infoArticle,EM_SETSEL,0,0);
+    SendMessageW(g_infoArticle,EM_SCROLLCARET,0,0);
+}
+BOOL StreamingHelpFindNext(HWND hwnd){
+    if(!g_infoSearch)return FALSE;
+    wchar_t query[256]{};GetWindowTextW(g_infoSearch,query,(int)_countof(query));
+    const size_t qlen=wcslen(query);if(!qlen)return FALSE;
+    const int count=(int)_countof(g_streamHelpTopics);
+    for(int pass=0;pass<count;pass++){
+        int topic=(g_infoSearchTopic+pass)%count;
+        const wchar_t *article=g_streamHelpArticles[topic];
+        const int len=(int)wcslen(article);
+        int begin=(topic==g_infoSearchTopic)?g_infoSearchOffset:0;
+        if(begin<0||begin>=len)begin=0;
+        const wchar_t *found=nullptr;
+        for(int i=begin;i+qlen<=(size_t)len;i++){
+            if(_wcsnicmp(article+i,query,qlen)==0){found=article+i;break;}
+        }
+        if(!found&&pass==count-1){
+            for(int i=0;i<begin&&i+qlen<=(size_t)len;i++){
+                if(_wcsnicmp(article+i,query,qlen)==0){found=article+i;break;}
+            }
+        }
+        if(found){
+            StreamingHelpShowTopic(topic);
+            int pos=(int)(found-article);
+            SendMessageW(g_infoArticle,EM_SETSEL,pos,pos+(LPARAM)qlen);
+            SendMessageW(g_infoArticle,EM_SCROLLCARET,0,0);
+            g_infoSearchTopic=topic;g_infoSearchOffset=pos+(int)qlen;
+            return TRUE;
+        }
+    }
+    MessageBeep(MB_ICONASTERISK);
+    SetWindowTextW(g_infoArticleTitle,L"No further matches — try another search");
+    return FALSE;
+}
+LRESULT CALLBACK StreamingHelpSearchSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref){
+    (void)id;(void)ref;
+    if(msg==WM_KEYDOWN&&(wp==VK_RETURN||wp==VK_F3)){
+        StreamingHelpFindNext(GetParent(edit));return 0;
+    }
+    if(msg==WM_KEYDOWN&&wp==VK_ESCAPE){SetFocus(GetParent(edit));return 0;}
+    return DefSubclassProc(edit,msg,wp,lp);
+}
 LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_CREATE:
-        LoadInfoPortrait();
+        if(g_infoAbout)LoadInfoPortrait();
         g_infoCanvasReady=ABM_D2D_CanvasInit(&g_infoCanvas)!=FALSE;
+        if(!g_infoAbout){
+            g_infoSurfaceBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
+            g_infoInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+            g_infoArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
+            g_infoSearch=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|WS_TABSTOP,
+                0,0,0,0,hwnd,(HMENU)8101,GetModuleHandleW(nullptr),nullptr);
+            g_infoFind=CreateWindowExW(0,L"BUTTON",L"Find next",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,
+                0,0,0,0,hwnd,(HMENU)8102,GetModuleHandleW(nullptr),nullptr);
+            g_infoTopics=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT|WS_VSCROLL,
+                0,0,0,0,hwnd,(HMENU)8103,GetModuleHandleW(nullptr),nullptr);
+            g_infoArticleTitle=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_LEFT|SS_NOPREFIX,
+                0,0,0,0,hwnd,(HMENU)8104,GetModuleHandleW(nullptr),nullptr);
+            g_infoArticle=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
+                0,0,0,0,hwnd,(HMENU)8105,GetModuleHandleW(nullptr),nullptr);
+            HFONT font=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
+            HFONT heading=CreateFontW(-16,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
+            for(HWND c:{g_infoSearch,g_infoFind,g_infoTopics,g_infoArticleTitle,g_infoArticle})if(c)SendMessageW(c,WM_SETFONT,(WPARAM)(c==g_infoArticleTitle?heading:font),TRUE);
+            if(g_infoSearch)SetWindowSubclass(g_infoSearch,StreamingHelpSearchSubclass,1,0);
+            if(g_infoTopics)for(const wchar_t *topic:g_streamHelpTopics)SendMessageW(g_infoTopics,LB_ADDSTRING,0,(LPARAM)topic);
+            RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
+            StreamingHelpLayout(hwnd);StreamingHelpShowTopic(0);
+        }
         return 0;
+    case WM_SIZE:
+        if(!g_infoAbout)StreamingHelpLayout(hwnd);
+        return 0;
+    case WM_HOTKEY:
+        if(!g_infoAbout&&wp==1){SetFocus(g_infoSearch);SendMessageW(g_infoSearch,EM_SETSEL,0,-1);return 0;}
+        if(!g_infoAbout&&wp==2){StreamingHelpFindNext(hwnd);return 0;}
+        break;
+    case WM_COMMAND:
+        if(!g_infoAbout&&LOWORD(wp)==8102&&HIWORD(wp)==BN_CLICKED){StreamingHelpFindNext(hwnd);return 0;}
+        if(!g_infoAbout&&LOWORD(wp)==8103&&HIWORD(wp)==LBN_SELCHANGE){int i=(int)SendMessageW(g_infoTopics,LB_GETCURSEL,0,0);StreamingHelpShowTopic(i);return 0;}
+        if(!g_infoAbout&&LOWORD(wp)==8101&&HIWORD(wp)==EN_CHANGE){g_infoSearchTopic=0;g_infoSearchOffset=0;return 0;}
+        break;
     case WM_ERASEBKGND:return 1;
+    case WM_DRAWITEM:{
+        if(!g_infoAbout&&wp==8102){
+            DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
+            if(d){bool down=(d->itemState&ODS_SELECTED)!=0;
+                COLORREF fill=down?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_BLUE;
+                Rounded(d->hDC,d->rcItem,fill,ABM_UI_RADIUS_BUTTON);
+                RECT edge=d->rcItem;HPEN p=CreatePen(PS_SOLID,1,ABM_UI_COLOR_BORDER);HGDIOBJ op=SelectObject(d->hDC,p),ob=SelectObject(d->hDC,GetStockObject(HOLLOW_BRUSH));
+                RoundRect(d->hDC,edge.left,edge.top,edge.right,edge.bottom,ABM_UI_RADIUS_BUTTON*2,ABM_UI_RADIUS_BUTTON*2);
+                SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(p);
+                SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,ABM_UI_COLOR_TEXT);DrawTextW(d->hDC,L"Find next",-1,&edge,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            }return TRUE;
+        }break;
+    }
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX:{
+        if(!g_infoAbout){
+            HDC dc=(HDC)wp;HWND control=(HWND)lp;
+            SetBkMode(dc,OPAQUE);
+            if(control==g_infoSearch){SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);return (LRESULT)g_infoInputBrush;}
+            if(control==g_infoArticle){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);return (LRESULT)g_infoArticleBrush;}
+            if(control==g_infoArticleTitle){SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);SetBkColor(dc,ABM_UI_COLOR_BACKGROUND);return (LRESULT)g_infoSurfaceBrush;}
+            SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);return (LRESULT)g_infoSurfaceBrush;
+        }break;
+    }
     case WM_PAINT:{
         PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
         if(g_infoCanvasReady&&ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
-            ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,7,ABM_UI_COLOR_ACCENT);
-            if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}
+            ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,6,ABM_UI_COLOR_ACCENT);
             ABM_D2D_CanvasEnd(&g_infoCanvas);
-        }else{
-            FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
-            RECT accent={0,0,rc.right,7};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
-        }
-        if(g_infoAbout&&g_infoPortrait){
-            Gdiplus::Graphics graphics(dc);
-            graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-            graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));
-        }
+        }else{FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);RECT accent={0,0,rc.right,6};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);}
         if(g_infoCanvasReady)ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc);
-        RECT brand={28,20,rc.right-28,54};
+        RECT brand={28,17,rc.right-28,48};
         InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        RECT subtitle={29,49,rc.right-28,72};
-        InfoText(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  USER GUIDE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RECT subtitle={29,47,rc.right-28,70};
+        InfoText(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  HELP CENTRE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_infoAbout){
-            if(!g_infoPortrait){
-                RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_THEME_COLOR_1B8F91,ABM_UI_RADIUS_CARD);
-                InfoText(dc,L"ABM",fallback,ABM_THEME_COLOR_F5FFFF,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            }
-            RECT product={322,98,rc.right-28,138};
-            InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT tagline={322,140,rc.right-28,163};
-            InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creatorLabel={322,174,rc.right-28,197};
-            InfoText(dc,L"THE CREATOR",creatorLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT creator={322,204,rc.right-28,237};
-            InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT role={322,244,rc.right-28,271};
-            InfoText(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
-            RECT contactLabel={322,290,rc.right-28,313};
-            InfoText(dc,L"CONTACT",contactLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT email={322,321,rc.right-28,348};
-            InfoText(dc,L"abmullick@gmail.com",email,ABM_THEME_COLOR_F6FAFF,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT description={322,362,rc.right-28,412};
-            InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT version={322,420,rc.right-28,446};
-            InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT divider={28,455,rc.right-28,456};InfoFill(dc,divider,ABM_THEME_COLOR_233E52);
-            RECT featuresTitle={32,470,rc.right-32,495};
-            InfoText(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT features={32,500,rc.right-32,592};
-            InfoText(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT tributeTitle={32,610,rc.right-32,635};
-            InfoText(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT tribute={32,640,rc.right-32,700};
-            InfoText(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            RECT stackTitle={32,720,rc.right-32,745};
-            InfoText(dc,L"BUILT WITH",stackTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT stack={32,750,rc.right-32,790};
-            InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(g_infoPortrait){Gdiplus::Graphics graphics(dc);graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));}
+            RECT product={322,98,rc.right-28,138};InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT tagline={322,140,rc.right-28,163};InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT creator={322,204,rc.right-28,237};InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT role={322,244,rc.right-28,271};InfoText(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT description={322,362,rc.right-28,412};InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT version={322,420,rc.right-28,446};InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }else{
-            const int left=32,right=rc.right-32;
-            RECT intro={left,91,right,125};
-            InfoText(dc,L"Everything you need to use the ABM Streaming Centre.",intro,ABM_THEME_COLOR_EEF5FC,16,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            const wchar_t *heads[6]={
-                L"1. CHOOSE A SERVICE",L"2. SIGN IN & BROWSER PROFILE",L"3. NAVIGATION CONTROLS",
-                L"4. FULLSCREEN & EXTERNAL BROWSER",L"5. FIND TVs & SELECT A RECEIVER",L"6. CAST VIDEO & TROUBLESHOOT"
-            };
-            const wchar_t *body[6]={
-                L"Choose YouTube, Netflix, Prime Video, JioHotstar, Sony LIV or ZEE5 from the service cards. Each opens the provider's official website in the embedded browser.",
-                L"Sign in directly on the provider's website with your own account. Supported cookies and sessions persist in the current Windows profile at %LOCALAPPDATA%\\ABMAVPlayer\\WebView2. The player does not collect or proxy passwords.",
-                L"Back and Forward navigate browser history. Reload refreshes the current page; Home returns to the service start page. Previous/Next are intended for supported YouTube playlist navigation.",
-                L"Use the Fullscreen toolbar control, F11 or the provider's own video control. Press Esc to leave fullscreen. Open in browser launches the current page in your default desktop browser.",
-                L"Choose Find TVs, select a receiver and click Use selected TV. Check TV apps performs read-only Google Cast YouTube availability and DIAL app-endpoint checks; only confirmed launch targets appear in the app selector.",
-                L"Select a confirmed app and click Launch app to open it on the TV; use the remote to choose content. Cast video supports YouTube handoff and directly addressable media URLs. Desktop Prime Video title handoff is not supported."
-            };
-            int y=140;
-            for(int i=0;i<6;i++){
-                RECT card={left-6,y-3,right,y+82};InfoRound(dc,card,ABM_THEME_COLOR_0F1F30,ABM_UI_RADIUS_CONTROL);
-                RECT h={left,y,right,y+21};
-                InfoText(dc,heads[i],h,ABM_THEME_COLOR_5BE7DC,13,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-                RECT b={left,y+22,right,y+78};
-                InfoText(dc,body[i],b,ABM_THEME_COLOR_EBF2FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
-                y+=94;
-            }
-            RECT note={left,rc.bottom-62,right,rc.bottom-18};
-            InfoText(dc,L"Streaming compatibility, DRM, subscriptions and protected playback are controlled by each provider. ABM AV Player does not host content or bypass provider protections.",note,ABM_THEME_COLOR_BED2E4,12,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            RECT intro={28,77,rc.right-28,94};InfoText(dc,L"Browse streaming topics or search the complete guide. Enter searches; F3 finds the next match.",intro,ABM_UI_COLOR_TEXT_MUTED,12,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT navLabel={28,133,278,151};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT articleLabel={302,133,rc.right-28,151};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }
         if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasEnd(&g_infoCanvas);
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_NCDESTROY:
+        if(g_infoSearch)RemoveWindowSubclass(g_infoSearch,StreamingHelpSearchSubclass,1);
+        UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
         if(g_infoCanvasReady){g_infoCanvasReady=false;ABM_D2D_CanvasDestroy(&g_infoCanvas);}
+        if(g_infoSurfaceBrush){DeleteObject(g_infoSurfaceBrush);g_infoSurfaceBrush=nullptr;}
+        if(g_infoInputBrush){DeleteObject(g_infoInputBrush);g_infoInputBrush=nullptr;}
+        if(g_infoArticleBrush){DeleteObject(g_infoArticleBrush);g_infoArticleBrush=nullptr;}
+        g_infoSearch=g_infoTopics=g_infoArticle=g_infoFind=g_infoArticleTitle=nullptr;
         delete g_infoPortrait;g_infoPortrait=nullptr;g_infoWindow=nullptr;
         break;
     }
@@ -867,15 +955,16 @@ void ShowStreamingInfo(bool about){
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
     }
-    int width=900,height=about?900:760;
+    int width=1120,height=about?900:840;
     RECT owner{};if(g_window)GetWindowRect(g_window,&owner);
     int x=owner.left+(owner.right-owner.left-width)/2;
     int y=owner.top+(owner.bottom-owner.top-height)/2;
     const wchar_t *caption=about?L"About ABM AV Player":L"ABM AV Player - Streaming Help";
     g_infoWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,kInfoClassName,caption,
-        WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,x,y,width,height,g_window,nullptr,instance,nullptr);
+        WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|(about?0:WS_THICKFRAME),x,y,width,height,g_window,nullptr,instance,nullptr);
     if(!g_infoWindow)return;
     BOOL dark=TRUE;DwmSetWindowAttribute(g_infoWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+    if(!about){int corners=2;DwmSetWindowAttribute(g_infoWindow,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));}
     COLORREF captionColor=ABM_UI_COLOR_SURFACE,borderColor=ABM_UI_COLOR_BORDER_STRONG;
     DwmSetWindowAttribute(g_infoWindow,DWMWA_CAPTION_COLOR,&captionColor,sizeof(captionColor));
     DwmSetWindowAttribute(g_infoWindow,DWMWA_BORDER_COLOR,&borderColor,sizeof(borderColor));
