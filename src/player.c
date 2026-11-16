@@ -23,6 +23,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <wctype.h>
 #include <string.h>
 #include <strsafe.h>
 #include <stdlib.h>
@@ -182,7 +183,7 @@ static DWORD WINAPI DurationMetadataThread(LPVOID unused) {
         }
         AcquireSRWLockExclusive(&g_durationLock);
         int slot=DurationCacheSlot(path,TRUE);
-        if(slot>=0){g_durationCache[slot].milliseconds=duration;g_durationCache[slot].pending=FALSE;}
+        if(slot>=0){g_durationCache[slot].milliseconds=duration>0?duration:0;g_durationCache[slot].pending=FALSE;}
         ReleaseSRWLockExclusive(&g_durationLock);
         if(g_main)PostMessageW(g_main,WM_APP+0x351,0,0);
         if(more)SetEvent(g_durationWake);
@@ -7180,6 +7181,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_THEMECHANGED:
         if(g_comboBrush){DeleteObject(g_comboBrush);g_comboBrush=CreateSolidBrush(C_PANEL2);}
         InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_APP+0x351:
+        if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
+        return 0;
     case WM_CREATE: {
         g_main=hwnd; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
