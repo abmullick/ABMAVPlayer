@@ -1630,7 +1630,10 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
                 UINT key=0;
                 if(SUCCEEDED(args->get_KeyEventKind(&kind))&&kind==COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN&&
                    SUCCEEDED(args->get_VirtualKey(&key))&&key==VK_F6){
-                    args->put_IsBrowserAcceleratorKeyEnabled(FALSE);
+                    /* F6 belongs to the native Streaming Centre chrome. Mark the
+                       accelerator handled on the base event-args interface so this
+                       remains compatible with the project's bundled WebView2 SDK. */
+                    args->put_Handled(TRUE);
                     if(g_window&&IsWindow(g_window))PostMessageW(g_window,WM_KEYDOWN,VK_F6,0);
                 }
                 return S_OK;
