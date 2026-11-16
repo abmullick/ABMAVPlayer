@@ -1096,20 +1096,23 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     int radius=diameter/2;
     COLORREF glyph=ABM_THEME_COLOR_E0E7F0;
     if(active) {
-        int pulse=(int)(3.0+3.0*(0.5+0.5*sin((double)g_visualPulse*0.08)));
-        RECT halo=r; InflateRect(&halo,3,3);
-        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_0C3039,ABM_THEME_COLOR_185B63,pulse*2),radius+4);
-        GradientRound(NULL,r,ABM_THEME_COLOR_198F91,ABM_THEME_COLOR_1F6F74,radius);
-        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_69CAC3,1.15f);
+        int pulse=(int)(2.0+2.0*(0.5+0.5*sin((double)g_visualPulse*0.07)));
+        RECT halo=r; InflateRect(&halo,4,4);
+        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_0B3036,ABM_THEME_COLOR_174D50,pulse*2),radius+5);
+        GradientRound(NULL,r,ABM_THEME_COLOR_36B9A8,ABM_THEME_COLOR_197D78,radius);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_9BE5D7,1.25f);
         glyph=ABM_THEME_COLOR_FFFFFF;
     } else {
-        COLORREF base=Blend(ABM_THEME_COLOR_16202B,ABM_THEME_COLOR_263D44,hot?g_hoverLevel:0);
-        RoundBox(NULL,r,base,radius);
+        COLORREF base=Blend(ABM_THEME_COLOR_151E29,ABM_THEME_COLOR_263B43,hot?g_hoverLevel:0);
+        GradientRound(NULL,r,hot?ABM_THEME_COLOR_263F47:ABM_THEME_COLOR_1B2733,
+            hot?ABM_THEME_COLOR_1B3038:ABM_THEME_COLOR_141F2B,radius);
         if(hot) {
-            RECT sheen={r.left+3,r.top+2,r.right-3,r.top+5};
-            GradientRect(NULL,sheen,ABM_THEME_COLOR_2F9D9D,ABM_THEME_COLOR_50B1A4);
+            RECT sheen={r.left+7,r.top+3,r.right-7,r.top+5};
+            GradientRect(NULL,sheen,ABM_THEME_COLOR_3B9F98,ABM_THEME_COLOR_5AB89E);
         }
-        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,hot?ABM_THEME_COLOR_5BA69D:ABM_THEME_COLOR_374C52,1.0f);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,
+            hot?ABM_THEME_COLOR_70B9AE:ABM_THEME_COLOR_40515D,hot?1.15f:0.8f);
+        glyph=hot?ABM_THEME_COLOR_F5FFFD:ABM_THEME_COLOR_C5D2DE;
     }
     if(kind==1) {
         DrawLine(NULL,cx-6,cy-11,cx+10,cy,glyph,2);DrawLine(NULL,cx+10,cy,cx-6,cy+11,glyph,2);DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,2);
@@ -1395,28 +1398,31 @@ static void DrawUI(HDC dc,RECT client) {
     int sel=(int)SendMessageW(g_renderers,CB_GETCURSEL,0,0);
     /* Timeline: a dedicated, readable seek row above the transport dock.
        The seek rectangle and its hit-testing remain unchanged. */
-    RECT timeline={R_SEEK.left,R_SEEK.top-34,R_SEEK.right,R_SEEK.bottom+16};
+    RECT timeline={R_SEEK.left-8,R_SEEK.top-37,R_SEEK.right+8,R_SEEK.bottom+17};
     Fill(dc,timeline,C_BG);
     int pos=0;int64_t len=g_player?libvlc_media_player_get_length(g_player):0;
     int64_t now=g_player?libvlc_media_player_get_time(g_player):0;
     if(len>0){pos=(int)((now*1000)/len);if(pos<0)pos=0;if(pos>1000)pos=1000;}
     wchar_t t1[24],t2[24];
     FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);
-    RECT elapsedLabel={R_SEEK.left,R_SEEK.top-31,R_SEEK.left+92,R_SEEK.top-9};
-    RECT totalLabel={R_SEEK.right-92,R_SEEK.top-31,R_SEEK.right,R_SEEK.top-9};
-    Txt(dc,t1,elapsedLabel,ABM_THEME_COLOR_CDDCE6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    Txt(dc,t2,totalLabel,ABM_THEME_COLOR_879DB1,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
-    RECT track={R_SEEK.left,R_SEEK.top-2,R_SEEK.right,R_SEEK.bottom+2};
-    RoundBox(dc,track,ABM_THEME_COLOR_1F303D,5);
-    RECT prog=track;
+    RECT elapsedLabel={R_SEEK.left,R_SEEK.top-32,R_SEEK.left+92,R_SEEK.top-10};
+    RECT totalLabel={R_SEEK.right-92,R_SEEK.top-32,R_SEEK.right,R_SEEK.top-10};
+    Txt(dc,t1,elapsedLabel,ABM_THEME_COLOR_E8F3F5,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,t2,totalLabel,ABM_THEME_COLOR_8299A9,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    /* A fine recessed rail, luminous progress and a crisp floating playhead. */
+    RECT track={R_SEEK.left,R_SEEK.top-3,R_SEEK.right,R_SEEK.bottom+3};
+    RoundBox(dc,track,ABM_THEME_COLOR_263743,6);
+    RECT trackInner={track.left+1,track.top+1,track.right-1,track.bottom-1};
+    RoundBox(dc,trackInner,ABM_THEME_COLOR_182733,5);
+    RECT prog=trackInner;
     prog.right=prog.left+(prog.right-prog.left)*pos/1000;
-    if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_2AA99E,ABM_THEME_COLOR_70C7A1,5);
+    if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_35B8A7,ABM_THEME_COLOR_8AD6B2,5);
     int seekThumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
-    RECT halo={seekThumb-11,R_SEEK.top-11,seekThumb+11,R_SEEK.bottom+11};
-    RoundBox(dc,halo,ABM_THEME_COLOR_153943,11);
-    RECT dot={seekThumb-5,R_SEEK.top-5,seekThumb+5,R_SEEK.bottom+5};
-    RoundBox(dc,dot,ABM_THEME_COLOR_F2F9FF,8);
-    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,8.0f,ABM_THEME_COLOR_5DC2B5,1.0f);
+    RECT halo={seekThumb-10,R_SEEK.top-10,seekThumb+10,R_SEEK.bottom+10};
+    RoundBox(dc,halo,ABM_THEME_COLOR_174B4B,10);
+    RECT dot={seekThumb-5,R_SEEK.top-6,seekThumb+5,R_SEEK.bottom+6};
+    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D8F5EC,6);
+    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_THEME_COLOR_72D5C2,1.0f);
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
@@ -1838,11 +1844,20 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,L"Bluetooth pairing is managed by Windows",foot,ABM_THEME_COLOR_8097AE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
     }
-    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};RoundBox(dc,vr,ABM_THEME_COLOR_22354D,6);
-    vr.right=vr.left+(vr.right-vr.left)*g_volume/100;GradientRect(dc,vr,ABM_THEME_COLOR_2BB8DC,ABM_THEME_COLOR_7569ED);
+    RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
+    RoundBox(dc,vr,ABM_THEME_COLOR_263743,6);
+    RECT volumeInner={vr.left+1,vr.top+1,vr.right-1,vr.bottom-1};
+    RoundBox(dc,volumeInner,ABM_THEME_COLOR_101E29,5);
+    RECT volumeFill=volumeInner;
+    volumeFill.right=volumeFill.left+(volumeFill.right-volumeFill.left)*g_volume/100;
+    if(volumeFill.right>volumeFill.left)
+        GradientRound(dc,volumeFill,ABM_THEME_COLOR_36B8A8,ABM_THEME_COLOR_8AD6B2,5);
     int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
-    RECT vd={vx-6,R_VOLUME.top-6,vx+6,R_VOLUME.bottom+6};RoundBox(dc,vd,ABM_THEME_COLOR_F5F8FC,8);
-    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,8.0f,ABM_THEME_COLOR_6EA5F2,0.8f);
+    RECT volumeHalo={vx-9,R_VOLUME.top-9,vx+9,R_VOLUME.bottom+9};
+    RoundBox(dc,volumeHalo,ABM_THEME_COLOR_174B4B,9);
+    RECT vd={vx-5,R_VOLUME.top-6,vx+5,R_VOLUME.bottom+6};
+    GradientRound(dc,vd,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D8F5EC,6);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,6.0f,ABM_THEME_COLOR_72D5C2,1.0f);
 
 
 
