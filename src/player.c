@@ -1098,20 +1098,20 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     if(active) {
         int pulse=(int)(2.0+2.0*(0.5+0.5*sin((double)g_visualPulse*0.07)));
         RECT halo=r; InflateRect(&halo,4,4);
-        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_0B3036,ABM_THEME_COLOR_174D50,pulse*2),radius+5);
-        GradientRound(NULL,r,ABM_THEME_COLOR_36B9A8,ABM_THEME_COLOR_197D78,radius);
-        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_9BE5D7,1.25f);
+        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_0C3039,ABM_THEME_COLOR_184B52,pulse*2),radius+5);
+        GradientRound(NULL,r,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_1C7D77,radius);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_91E5D5,1.25f);
         glyph=ABM_THEME_COLOR_FFFFFF;
     } else {
-        GradientRound(NULL,r,hot?ABM_THEME_COLOR_263F47:ABM_THEME_COLOR_1B2733,
-            hot?ABM_THEME_COLOR_1B3038:ABM_THEME_COLOR_141F2B,radius);
+        GradientRound(NULL,r,hot?ABM_THEME_COLOR_253D45:ABM_THEME_COLOR_1B2735,
+            hot?ABM_THEME_COLOR_18303A:ABM_THEME_COLOR_141D2B,radius);
         if(hot) {
             RECT sheen={r.left+7,r.top+3,r.right-7,r.top+5};
-            GradientRect(NULL,sheen,ABM_THEME_COLOR_3B9F98,ABM_THEME_COLOR_5AB89E);
+            GradientRect(NULL,sheen,ABM_THEME_COLOR_3E9799,ABM_THEME_COLOR_5DB097);
         }
         ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,
-            hot?ABM_THEME_COLOR_70B9AE:ABM_THEME_COLOR_40515D,hot?1.15f:0.8f);
-        glyph=hot?ABM_THEME_COLOR_F5FFFD:ABM_THEME_COLOR_C5D2DE;
+            hot?ABM_THEME_COLOR_69BEB1:ABM_THEME_COLOR_394E63,hot?1.15f:0.8f);
+        glyph=hot?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3;
     }
     if(kind==1) {
         DrawLine(NULL,cx-6,cy-11,cx+10,cy,glyph,2);DrawLine(NULL,cx+10,cy,cx-6,cy+11,glyph,2);DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,2);
@@ -1406,22 +1406,22 @@ static void DrawUI(HDC dc,RECT client) {
     FormatTime((int)now,t1,24);FormatTime((int)len,t2,24);
     RECT elapsedLabel={R_SEEK.left,R_SEEK.top-32,R_SEEK.left+92,R_SEEK.top-10};
     RECT totalLabel={R_SEEK.right-92,R_SEEK.top-32,R_SEEK.right,R_SEEK.top-10};
-    Txt(dc,t1,elapsedLabel,ABM_THEME_COLOR_E8F3F5,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    Txt(dc,t2,totalLabel,ABM_THEME_COLOR_8299A9,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,t1,elapsedLabel,ABM_THEME_COLOR_E7F4F8,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,t2,totalLabel,ABM_THEME_COLOR_8097AE,g_smallFont,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
     /* A fine recessed rail, luminous progress and a crisp floating playhead. */
     RECT track={R_SEEK.left,R_SEEK.top-3,R_SEEK.right,R_SEEK.bottom+3};
-    RoundBox(dc,track,ABM_THEME_COLOR_263743,6);
+    RoundBox(dc,track,ABM_THEME_COLOR_243544,6);
     RECT trackInner={track.left+1,track.top+1,track.right-1,track.bottom-1};
-    RoundBox(dc,trackInner,ABM_THEME_COLOR_182733,5);
+    RoundBox(dc,trackInner,ABM_THEME_COLOR_1B2735,5);
     RECT prog=trackInner;
     prog.right=prog.left+(prog.right-prog.left)*pos/1000;
-    if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_35B8A7,ABM_THEME_COLOR_8AD6B2,5);
+    if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_8FD2B8,5);
     int seekThumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
     RECT halo={seekThumb-10,R_SEEK.top-10,seekThumb+10,R_SEEK.bottom+10};
-    RoundBox(dc,halo,ABM_THEME_COLOR_174B4B,10);
+    RoundBox(dc,halo,ABM_THEME_COLOR_1B4C48,10);
     RECT dot={seekThumb-5,R_SEEK.top-6,seekThumb+5,R_SEEK.bottom+6};
-    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D8F5EC,6);
-    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_THEME_COLOR_72D5C2,1.0f);
+    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D3F4EE,6);
+    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_THEME_COLOR_70D3CA,1.0f);
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
@@ -1844,19 +1844,19 @@ static void DrawUI(HDC dc,RECT client) {
     }
     }
     RECT vr={R_VOLUME.left,R_VOLUME.top-3,R_VOLUME.right,R_VOLUME.bottom+3};
-    RoundBox(dc,vr,ABM_THEME_COLOR_263743,6);
+    RoundBox(dc,vr,ABM_THEME_COLOR_243544,6);
     RECT volumeInner={vr.left+1,vr.top+1,vr.right-1,vr.bottom-1};
-    RoundBox(dc,volumeInner,ABM_THEME_COLOR_101E29,5);
+    RoundBox(dc,volumeInner,ABM_THEME_COLOR_111D2C,5);
     RECT volumeFill=volumeInner;
     volumeFill.right=volumeFill.left+(volumeFill.right-volumeFill.left)*g_volume/100;
     if(volumeFill.right>volumeFill.left)
-        GradientRound(dc,volumeFill,ABM_THEME_COLOR_36B8A8,ABM_THEME_COLOR_8AD6B2,5);
+        GradientRound(dc,volumeFill,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_8FD2B8,5);
     int vx=R_VOLUME.left+(R_VOLUME.right-R_VOLUME.left)*g_volume/100;
     RECT volumeHalo={vx-9,R_VOLUME.top-9,vx+9,R_VOLUME.bottom+9};
-    RoundBox(dc,volumeHalo,ABM_THEME_COLOR_174B4B,9);
+    RoundBox(dc,volumeHalo,ABM_THEME_COLOR_1B4C48,9);
     RECT vd={vx-5,R_VOLUME.top-6,vx+5,R_VOLUME.bottom+6};
-    GradientRound(dc,vd,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D8F5EC,6);
-    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,6.0f,ABM_THEME_COLOR_72D5C2,1.0f);
+    GradientRound(dc,vd,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D3F4EE,6);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,6.0f,ABM_THEME_COLOR_70D3CA,1.0f);
 
 
 
@@ -3321,14 +3321,14 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     if(timelineRight-timelineLeft<160){timelineLeft=24;timelineRight=w-24;}
     int playheadX=timelineLeft+(timelineRight-timelineLeft)*pos/1000;
     RECT tr={timelineLeft,h-115,timelineRight,h-107};
-    OverlayRoundRect(mem,tr,ABM_THEME_COLOR_263743,4);
+    OverlayRoundRect(mem,tr,ABM_THEME_COLOR_243544,4);
     RECT trInner={tr.left+1,tr.top+1,tr.right-1,tr.bottom-1};
-    OverlayRoundRect(mem,trInner,ABM_THEME_COLOR_172631,3);
+    OverlayRoundRect(mem,trInner,ABM_THEME_COLOR_162434,3);
     RECT progress=trInner;progress.right=playheadX;
-    if(progress.right>progress.left)OverlayRoundRect(mem,progress,ABM_THEME_COLOR_42BDA9,3);
+    if(progress.right>progress.left)OverlayRoundRect(mem,progress,ABM_THEME_COLOR_41BEA5,3);
     /* Floating pearl playhead with a dark halo for contrast on bright footage. */
     RECT haloRect={playheadX-10,h-126,playheadX+10,h-96};
-    OverlayRoundRect(mem,haloRect,ABM_THEME_COLOR_174B4B,9);
+    OverlayRoundRect(mem,haloRect,ABM_THEME_COLOR_1B4C48,9);
     RECT headRect={playheadX-5,h-122,playheadX+5,h-100};
     OverlayRoundRect(mem,headRect,ABM_THEME_COLOR_FFFFFF,5);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
@@ -3352,15 +3352,15 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     SetTextColor(mem,ABM_THEME_COLOR_CACFD6);
     DrawTextW(mem,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT vt={w-148,h-39,w-38,h-29};
-    OverlayRoundRect(mem,vt,ABM_THEME_COLOR_263743,5);
+    OverlayRoundRect(mem,vt,ABM_THEME_COLOR_243544,5);
     RECT vtInner={vt.left+1,vt.top+1,vt.right-1,vt.bottom-1};
-    OverlayRoundRect(mem,vtInner,ABM_THEME_COLOR_172631,4);
+    OverlayRoundRect(mem,vtInner,ABM_THEME_COLOR_162434,4);
     int volume=g_volume;if(volume<0)volume=0;if(volume>100)volume=100;
     RECT vf=vtInner;vf.right=vf.left+(vf.right-vf.left)*volume/100;
-    if(vf.right>vf.left)OverlayRoundRect(mem,vf,ABM_THEME_COLOR_42BDA9,4);
+    if(vf.right>vf.left)OverlayRoundRect(mem,vf,ABM_THEME_COLOR_41BEA5,4);
     int knobX=vf.right;
     RECT knobHalo={knobX-8,h-46,knobX+8,h-22};
-    OverlayRoundRect(mem,knobHalo,ABM_THEME_COLOR_174B4B,7);
+    OverlayRoundRect(mem,knobHalo,ABM_THEME_COLOR_1B4C48,7);
     RECT knob={knobX-4,h-42,knobX+4,h-26};
     OverlayRoundRect(mem,knob,ABM_THEME_COLOR_FFFFFF,4);
 
