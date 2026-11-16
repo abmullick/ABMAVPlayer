@@ -1,3 +1,27 @@
+# ABM AV Player v1.0.9 — playback UI polish and media library improvements
+
+## What's new
+
+- Added media duration labels to Queue and Library cards, including the Favourites view.
+- Added asynchronous duration metadata resolution with a bounded in-memory cache so media parsing is kept off the UI thread and scrolling/painting performs only a cache lookup and non-blocking request enqueue.
+- Refined windowed and fullscreen playback controls, including the seek timeline, playhead and volume rail styling.
+- Improved windowed video/control clearance so the playback surface leaves room for the seek bar and transport controls.
+- Added the Motion System 1.0 architecture audit and documented the staged path toward consistent, responsive UI transitions.
+
+## Reliability and compatibility
+
+- Kept the existing 33 ms operational playback timer separate from the proposed motion scheduler; the motion engine itself is not yet implemented.
+- Preserved the existing local playback, receiver discovery/casting, Streaming Centre and Torrent Stream boundaries in the source changes described here.
+- Duration metadata is best-effort: files whose duration cannot be resolved display an em dash rather than blocking the interface.
+
+## Release validation
+
+- This is a source-prepared v1.0.9 candidate based on the latest `main` branch.
+- Windows x64 compilation, runtime scrolling/performance measurement, playback and casting regression, clean installation and in-place upgrade have not been performed by this source update.
+- Complete the Windows QA checklist and verify the generated installer before publishing. Do not treat this source candidate as a certified release until those gates pass.
+
+---
+
 # ABM AV Player v1.0.8 — stability, diagnostics and unified design system
 
 ## What's new
