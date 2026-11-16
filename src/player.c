@@ -2258,10 +2258,6 @@ static void StartDiscovery(void) {
                 available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
         }
         SetStatus(L"Receiver discovery could not start");
-        g_missingMedia[index]=TRUE;
-        SetStatus(L"Media file missing. Use the item menu to relink it.");
-        InvalidateRect(g_main,&R_SIDEBAR,FALSE);
-        ABM_MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
 
@@ -3188,6 +3184,9 @@ static void PlayIndex(int index) {
     if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
     DWORD attributes=GetFileAttributesW(g_playlist[index]);
     if(attributes==INVALID_FILE_ATTRIBUTES || (attributes&FILE_ATTRIBUTE_DIRECTORY)){
+        g_missingMedia[index]=TRUE;
+        SetStatus(L"Media file missing. Use the item menu to relink it.");
+        InvalidateRect(g_main,&R_SIDEBAR,FALSE);
         wchar_t message[PATH_CAP+128];
         swprintf_s(message,_countof(message),L"The selected media file is unavailable:\n%s",g_playlist[index]);
         ABM_MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
