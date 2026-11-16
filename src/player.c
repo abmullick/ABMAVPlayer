@@ -556,6 +556,7 @@ static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int coun
 int ABM_ShowMessageBox(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) { return ABM_MessageBoxW(owner,message,caption,flags); }
 
 static void PlayIndex(int index);
+static void ResumeCaptureCurrent(void);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
 static void RefreshAudioDevices(void);
@@ -3153,6 +3154,7 @@ static void PlayIndex(int index) {
     }
     char utf8[PATH_CAP*4]; int n=WideCharToMultiByte(CP_UTF8,0,g_playlist[index],-1,utf8,sizeof(utf8),NULL,NULL); if(n<=0)return;
     libvlc_media_t *m=libvlc_media_new_path(g_vlc,utf8); if(!m){ABM_MessageBoxW(g_main,L"LibVLC could not open this file.",APP_NAME,MB_ICONERROR);return;}
+    ResumeCaptureCurrent();
     PlaybackStopEngine();
     if(g_selectedRenderer&&!g_rendererApplied){
         if(libvlc_media_player_set_renderer(g_player,g_selectedRenderer)!=0){
@@ -3188,6 +3190,8 @@ static void PlayIndex(int index) {
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
     g_pendingResume=FALSE;g_pendingResumeTicks=0;
+    int64_t savedResume=ResumePositionForPath(g_playlist[index]);
+    if(savedResume>0){g_pendingResume=TRUE;g_pendingResumeMs=savedResume;g_pendingResumePause=FALSE;g_pendingResumeTicks=0;SetStatus(L"Restoring your previous playback position...");}
     PositionVideoWindow();
     AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
