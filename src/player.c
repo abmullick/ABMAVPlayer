@@ -1530,6 +1530,10 @@ static void DrawUI(HDC dc,RECT client) {
     int rowHeight=PlaylistRowHeight();
     int visible=PlaylistVisibleRows(rowHeight);
     int filteredCount=CountFilteredMedia();
+    int maxPlaylistScroll=filteredCount-visible;
+    if(maxPlaylistScroll<0)maxPlaylistScroll=0;
+    if(g_playlistScroll<0)g_playlistScroll=0;
+    if(g_playlistScroll>maxPlaylistScroll)g_playlistScroll=maxPlaylistScroll;
     int matched=0,shown=0;g_visibleRowCount=0;
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
@@ -1591,8 +1595,6 @@ static void DrawUI(HDC dc,RECT client) {
     }
     /* Premium slim scrollbar: quiet rail, luminous gradient thumb and a
        generous hit target. It appears only when the filtered collection overflows. */
-    int maxPlaylistScroll=filteredCount-visible;
-    if(maxPlaylistScroll<0)maxPlaylistScroll=0;
     if(maxPlaylistScroll>0 && R_PLAYLIST_SCROLL.bottom>R_PLAYLIST_SCROLL.top) {
         RECT rail=R_PLAYLIST_SCROLL;
         RoundBox(dc,rail,ABM_THEME_COLOR_17273B,3);
