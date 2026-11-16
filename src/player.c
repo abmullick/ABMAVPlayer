@@ -3257,6 +3257,15 @@ static void UpdateUI(void) {
     InvalidateRect(g_main,&timeline,FALSE);
     InvalidateRect(g_main,&timeText,FALSE);
 }
+static void OverlayRoundRect(HDC dc,RECT r,COLORREF color,int radius) {
+    HBRUSH brush=CreateSolidBrush(color);
+    HPEN pen=CreatePen(PS_SOLID,1,color);
+    HGDIOBJ oldBrush=SelectObject(dc,brush);
+    HGDIOBJ oldPen=SelectObject(dc,pen);
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,radius*2,radius*2);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);
+    DeleteObject(brush);DeleteObject(pen);
+}
 static void OverlayButton(HDC dc,RECT r,int kind,BOOL primary) {
     HBRUSH b=CreateSolidBrush(primary?ABM_THEME_COLOR_F7F8FA:ABM_THEME_COLOR_2B2E33);
     HPEN e=CreatePen(PS_SOLID,1,primary?ABM_THEME_COLOR_F7F8FA:ABM_THEME_COLOR_464A50);
@@ -3312,22 +3321,17 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     if(timelineRight>w-24)timelineRight=w-24;
     if(timelineRight-timelineLeft<160){timelineLeft=24;timelineRight=w-24;}
     int playheadX=timelineLeft+(timelineRight-timelineLeft)*pos/1000;
-    RECT tr={timelineLeft,h-116,timelineRight,h-106};
-    HBRUSH track=CreateSolidBrush(ABM_THEME_COLOR_697482);FillRect(mem,&tr,track);DeleteObject(track);
-    RECT progress=tr;progress.right=playheadX;
-    HBRUSH played=CreateSolidBrush(ABM_THEME_COLOR_28D3B9);FillRect(mem,&progress,played);DeleteObject(played);
-    /* A dark halo keeps the bright playhead legible over any video frame. */
-    HBRUSH halo=CreateSolidBrush(ABM_THEME_COLOR_0C131C);
+    RECT tr={timelineLeft,h-115,timelineRight,h-107};
+    OverlayRoundRect(mem,tr,ABM_THEME_COLOR_263743,4);
+    RECT trInner={tr.left+1,tr.top+1,tr.right-1,tr.bottom-1};
+    OverlayRoundRect(mem,trInner,ABM_THEME_COLOR_172631,3);
+    RECT progress=trInner;progress.right=playheadX;
+    if(progress.right>progress.left)OverlayRoundRect(mem,progress,ABM_THEME_COLOR_42BDA9,3);
+    /* Floating pearl playhead with a dark halo for contrast on bright footage. */
     RECT haloRect={playheadX-10,h-126,playheadX+10,h-96};
-    FillRect(mem,&haloRect,halo);DeleteObject(halo);
-    HBRUSH head=CreateSolidBrush(ABM_THEME_COLOR_FFFFFF);
-    RECT headRect={playheadX-5,h-123,playheadX+5,h-99};
-    FillRect(mem,&headRect,head);DeleteObject(head);
-    /* Add a fine vertical locator through the track so the position remains
-       easy to distinguish even against the bright played segment. */
-    RECT locator={playheadX-1,h-130,playheadX+1,h-94};
-    HBRUSH locatorBrush=CreateSolidBrush(ABM_THEME_COLOR_FFFFFF);
-    FillRect(mem,&locator,locatorBrush);DeleteObject(locatorBrush);
+    OverlayRoundRect(mem,haloRect,ABM_THEME_COLOR_174B4B,9);
+    RECT headRect={playheadX-5,h-122,playheadX+5,h-100};
+    OverlayRoundRect(mem,headRect,ABM_THEME_COLOR_FFFFFF,5);
     wchar_t elapsed[24],total[24];FormatTime((int)now,elapsed,24);FormatTime((int)len,total,24);
     RECT et={timelineLeft,h-145,timelineLeft+90,h-124};
     RECT tt={timelineRight-90,h-145,timelineRight,h-124};
@@ -3348,14 +3352,18 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     RECT vl={w-214,h-44,w-160,h-26};
     SetTextColor(mem,ABM_THEME_COLOR_CACFD6);
     DrawTextW(mem,L"VOLUME",-1,&vl,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT vt={w-148,h-36,w-38,h-32};
-    HBRUSH vtrack=CreateSolidBrush(ABM_THEME_COLOR_565B62);FillRect(mem,&vt,vtrack);DeleteObject(vtrack);
+    RECT vt={w-148,h-39,w-38,h-29};
+    OverlayRoundRect(mem,vt,ABM_THEME_COLOR_263743,5);
+    RECT vtInner={vt.left+1,vt.top+1,vt.right-1,vt.bottom-1};
+    OverlayRoundRect(mem,vtInner,ABM_THEME_COLOR_172631,4);
     int volume=g_volume;if(volume<0)volume=0;if(volume>100)volume=100;
-    RECT vf=vt;vf.right=vf.left+(vf.right-vf.left)*volume/100;
-    HBRUSH vfill=CreateSolidBrush(ABM_THEME_COLOR_EEF1F5);FillRect(mem,&vf,vfill);DeleteObject(vfill);
+    RECT vf=vtInner;vf.right=vf.left+(vf.right-vf.left)*volume/100;
+    if(vf.right>vf.left)OverlayRoundRect(mem,vf,ABM_THEME_COLOR_42BDA9,4);
     int knobX=vf.right;
-    RECT knob={knobX-5,h-41,knobX+5,h-27};
-    HBRUSH kb=CreateSolidBrush(ABM_THEME_COLOR_F8F9FA);FillRect(mem,&knob,kb);DeleteObject(kb);
+    RECT knobHalo={knobX-8,h-46,knobX+8,h-22};
+    OverlayRoundRect(mem,knobHalo,ABM_THEME_COLOR_174B4B,7);
+    RECT knob={knobX-4,h-42,knobX+4,h-26};
+    OverlayRoundRect(mem,knob,ABM_THEME_COLOR_FFFFFF,4);
 
     SelectObject(mem,oldFont);
 
