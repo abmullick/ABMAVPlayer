@@ -681,6 +681,7 @@ static void StartMenuMotion(HWND hwnd) {
                     220, g_menuOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
     if (!g_menuMotion.active) {
         g_menuProgress = g_menuOpen ? 100 : 0;
+        PositionVideoWindow();
         InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
     }
     EnsureMainMotionTimer(hwnd);
@@ -708,6 +709,14 @@ static void StartDrawerMotion(HWND hwnd) {
     }
     ABM_MotionStart(&g_drawerMotion, g_drawerOpen ? 100.0 : 0.0,
                     280, g_drawerOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+    /* Reserve the final drawer footprint once at transition start. The video
+       child HWND is not resized on subsequent animation frames. */
+    UpdateLayout(hwnd);
+    if (!g_drawerMotion.active) {
+        g_drawerProgress = g_drawerOpen ? 100 : 0;
+        UpdateLayout(hwnd);
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
     EnsureMainMotionTimer(hwnd);
 }
 static void ResetArtwork(void) {
@@ -2477,6 +2486,7 @@ void ABM_Cast_ShowPicker(HWND owner) {
     g_drawerOpen=TRUE;
     StartDrawerMotion(g_main);
     g_drawerSettingsOpen=TRUE;
+    UpdateLayout(g_main);
     g_receiverPopup=FALSE;
     StartDiscovery();
     SetStatus(L"Choose Playback Output, then select your Google Cast / network receiver. The selection applies to LibVLC media playback.");
