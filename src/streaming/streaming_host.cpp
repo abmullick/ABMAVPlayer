@@ -137,10 +137,10 @@ HFONT g_infoTextFont=nullptr,g_infoHeadingFont=nullptr;
 HMODULE g_infoRichEditModule=nullptr;
 int g_infoTopicIndex=0,g_infoSearchTopic=0,g_infoSearchOffset=0;
 const wchar_t *g_streamHelpTopics[]={
- L"OVERVIEW",L"SUPPORTED STREAMING SERVICES",L"SIGN-IN AND BROWSER PROFILE",
- L"BROWSER NAVIGATION",L"FULLSCREEN AND EXTERNAL BROWSER",L"TV DISCOVERY AND RECEIVER SELECTION",
- L"TV APPS: GOOGLE CAST AND DIAL",L"CAST VIDEO: CAPABILITIES AND LIMITS",
- L"PRIVACY, SECURITY AND DRM",L"TROUBLESHOOTING",L"KEYBOARD SHORTCUTS"
+ L"OVERVIEW",L"SUPPORTED SERVICES",L"BROWSER SESSIONS & SIGN-IN",
+ L"NAVIGATION CONTROLS",L"FULLSCREEN & EXTERNAL BROWSER",L"TV DISCOVERY & RECEIVERS",
+ L"TV APP CHECKS & LAUNCH",L"CAST VIDEO & LIMITS",
+ L"PRIVACY, SECURITY & DRM",L"TROUBLESHOOTING",L"KEYBOARD SHORTCUTS"
 };
 const wchar_t *g_streamHelpArticles[]={
  L"The Streaming Centre brings six provider websites into a dedicated WebView2 window. Choose a service card to navigate to that provider's official website. The embedded browser is separate from the Main Player's local-media playback and local renderer controls. Streaming Centre receiver discovery and casting controls operate in this window; opening Help does not start playback, discover devices or change the Main Player's casting state.\r\n\r\nWhat it does: provides an integrated browser, persistent provider sessions, browser navigation, fullscreen support, an optional external-browser handoff, TV discovery, app availability checks and supported video handoff.\r\n\r\nWhat it does not do: host a streaming catalogue, provide subscriptions, proxy provider credentials, remove advertisements, decrypt protected streams or guarantee that every provider feature works in an embedded browser.",
@@ -862,7 +862,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 0,0,0,0,hwnd,(HMENU)8103,GetModuleHandleW(nullptr),nullptr);
             g_infoArticleTitle=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_LEFT|SS_NOPREFIX,
                 0,0,0,0,hwnd,(HMENU)8104,GetModuleHandleW(nullptr),nullptr);
-            g_infoArticle=CreateWindowExW(WS_EX_CLIENTEDGE,L"RICHEDIT50W",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL|ES_DISABLENOSCROLL,
+            g_infoArticle=CreateWindowExW(WS_EX_CLIENTEDGE,g_infoRichEditModule?L"RICHEDIT50W":L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
                 0,0,0,0,hwnd,(HMENU)8105,GetModuleHandleW(nullptr),nullptr);
             g_infoTextFont=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
             g_infoHeadingFont=CreateFontW(-16,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
