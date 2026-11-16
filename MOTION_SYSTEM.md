@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player menu, drawer, transport hover, dashboard-card hover, artwork fade and Queue/Library row-hover feedback migrated; auxiliary-window migration and Windows build/runtime validation pending  
+**Status:** Shared C/C++ motion core and reusable Win32 timer host added; Main Player, auxiliary windows, Streaming Centre and Torrent Stream top-level transitions have source implementations; Windows build/runtime validation pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -238,3 +238,13 @@ Scope/limitations:
 - Streaming Centre custom-painted chrome now has an explicit F6 keyboard-navigation mode. F6 enters/leaves chrome navigation; Tab/Shift+Tab and arrow keys move through six service cards and eleven toolbar actions; Enter/Space activates the focused item; Esc exits chrome navigation. A two-layer teal focus ring is painted around the active target. Normal WebView2 Tab navigation is unchanged until the user explicitly enters this mode. This is keyboard focus feedback, not a complete UI Automation/screen-reader audit.
 - The top-level blend transitions use the Windows animation API so child controls remain native and are not moved/recreated. They are not a per-pixel custom opacity animation.
 - These are source-level changes only. No MSVC build, runtime, DPI, WebView2 or playback regression validation has been performed here.
+
+
+## Torrent Stream — Fluidic window transition
+
+- Torrent Stream now uses the shared OS-aware top-level blend helpers when it opens and closes. Entry uses the standard reveal duration; dismissal uses the quick hide duration.
+- The transition affects only the Torrent Stream top-level window. Native EDIT/LISTBOX/COMBOBOX controls, Direct2D/DirectWrite painting, focus, selection, slider input, layout and the existing 1-second status/device refresh timer remain unchanged.
+- Torrent engine initialization, DHT/discovery, download/pause/stop/remove, cache policy, buffering, HTTP streaming, playback and DLNA casting are not called by the motion path and remain independent.
+- Windows client-area-animation preference is respected; when disabled, the window appears/disappears immediately.
+- This is the first Fluidic motion pass for Torrent Stream. Its owner-drawn button hover treatment remains palette-based rather than interpolated motion; a dedicated hover-motion pass can follow after the current build is validated.
+- Source implementation only: MSVC build, open/close interaction, DPI and torrent regression checks remain required.
