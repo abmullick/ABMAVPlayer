@@ -15,6 +15,7 @@
 #include "ui_d2d.h"
 #include "ui_theme.h"
 #include "ui_motion.h"
+#include "ui_motion_win.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
 #include "licensing.h"
@@ -78,6 +79,7 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
 #define WM_TORRENT_TV_READY (WM_APP + 16)
 #define TIMER_ID 1
+#define MOTION_TIMER_ID 2
 #define MOTION_TIMER_ID 2
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
@@ -363,7 +365,9 @@ static DWORD_PTR g_savedStyle = 0;
 static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static ABMMotionValue g_menuMotion;
+static ABMMotionValue g_drawerMotion;
 static BOOL g_menuMotionInitialized = FALSE;
+static BOOL g_drawerMotionInitialized = FALSE;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
 static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
@@ -675,17 +679,36 @@ static void StartMenuMotion(HWND hwnd) {
     }
     ABM_MotionStart(&g_menuMotion, g_menuOpen ? 100.0 : 0.0,
                     220, g_menuOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
-    if (g_menuMotion.active) {
-        if (!SetTimer(hwnd, MOTION_TIMER_ID, 16, NULL)) {
-            ABM_MotionCancel(&g_menuMotion, NULL);
-            g_menuProgress = g_menuOpen ? 100 : 0;
-            InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
-        }
-    } else {
-        KillTimer(hwnd, MOTION_TIMER_ID);
+    if (!g_menuMotion.active) {
         g_menuProgress = g_menuOpen ? 100 : 0;
         InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
     }
+    EnsureMainMotionTimer(hwnd);
+}
+static void UpdateLayout(HWND hwnd);
+static void EnsureMainMotionTimer(HWND hwnd) {
+    if (g_menuMotion.active || g_drawerMotion.active) {
+        if (!ABM_MotionWinSchedule(hwnd, MOTION_TIMER_ID)) {
+            ABM_MotionCancel(&g_menuMotion, NULL);
+            ABM_MotionCancel(&g_drawerMotion, NULL);
+            g_menuProgress = g_menuOpen ? 100 : 0;
+            g_drawerProgress = g_drawerOpen ? 100 : 0;
+            UpdateLayout(hwnd);
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+    } else {
+        ABM_MotionWinStop(hwnd, MOTION_TIMER_ID);
+    }
+}
+static void StartDrawerMotion(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (!g_drawerMotionInitialized) {
+        ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress);
+        g_drawerMotionInitialized = TRUE;
+    }
+    ABM_MotionStart(&g_drawerMotion, g_drawerOpen ? 100.0 : 0.0,
+                    280, g_drawerOpen ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+    EnsureMainMotionTimer(hwnd);
 }
 static void ResetArtwork(void) {
     LONG previousGeneration=InterlockedCompareExchange(&g_artworkGeneration,0,0);
@@ -969,8 +992,11 @@ static void PositionVideoWindow(void) {
        renders into a native child HWND, which is composited above the main
        window's GDI/Direct2D paint. Do not let that video HWND extend beneath
        the drawer: reserve the drawer's full footprint while it is open. */
-    if (g_drawerOpen && !g_fullscreen) {
-        int drawerSafeRight = R_SIDEBAR.left - 12;
+    if ((g_drawerOpen || g_drawerProgress > 0) && !g_fullscreen) {
+        RECT client = {0};
+        GetClientRect(g_main, &client);
+        int drawerWidth = R_SIDEBAR.right - R_SIDEBAR.left;
+        int drawerSafeRight = client.right - 18 - drawerWidth - 12;
         int availableW = drawerSafeRight - R_VIDEO.left;
         if (availableW < areaW) areaW = availableW;
     }
@@ -1025,7 +1051,7 @@ static void RefreshVideoGeometry(void) {
         PositionVideoWindow();
     }
 }
-static void UpdateLayout(HWND hwnd) {
+static void UpdateLayoutInternal(HWND hwnd, BOOL positionVideo) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
     /* Keep the LibVLC child HWND above the seek row. The seek bar is painted
        by the main window at h-175; ending the video viewport at h-190 gives
@@ -1148,11 +1174,11 @@ static void UpdateLayout(HWND hwnd) {
         R_NEXT=(RECT){w/2+64,h-60,w/2+112,h-12};
         R_STOP=(RECT){w/2+132,h-60,w/2+180,h-12};
         R_VOLUME=(RECT){w-148,h-43,w-38,h-25};
-        PositionVideoWindow();
+        if(positionVideo)PositionVideoWindow();
         ShowWindow(g_renderers,SW_HIDE);
         return;
     }
-    PositionVideoWindow();
+    if(positionVideo)PositionVideoWindow();
     if(g_renderers)ShowWindow(g_renderers,SW_HIDE);
     R_SEEK=(RECT){left+38,h-175,R_VIDEO.right-10,h-171};
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
@@ -1168,6 +1194,7 @@ static void UpdateLayout(HWND hwnd) {
 /* ABM-branded fallback artwork for library items without embedded art.
    These are vector-rendered locally, so they are crisp at every DPI and need
    no network access, external image assets or per-file cache entries. */
+static void UpdateLayout(HWND hwnd) { UpdateLayoutInternal(hwnd, TRUE); }
 static void DrawDefaultMediaArtwork(HDC dc,RECT r,BOOL video,int variant) {
     int w=r.right-r.left,h=r.bottom-r.top;
     if(w<=2||h<=2)return;
@@ -2448,7 +2475,7 @@ static void StopDiscovery(void) {
 void ABM_Cast_ShowPicker(HWND owner) {
     if(!g_main || !IsWindow(g_main) || (owner && owner!=g_main))return;
     g_drawerOpen=TRUE;
-    g_drawerProgress=100;
+    StartDrawerMotion(g_main);
     g_drawerSettingsOpen=TRUE;
     g_receiverPopup=FALSE;
     StartDiscovery();
@@ -7209,7 +7236,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
         return 0;
     case WM_CREATE: {
-        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress); g_drawerMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -7472,18 +7499,28 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==MOTION_TIMER_ID){
-        double sampled = (double)g_menuProgress;
-        int previous = g_menuProgress;
-        BOOL active = ABM_MotionSample(&g_menuMotion, &sampled);
-        g_menuProgress = (int)(sampled + 0.5);
+        ABMMotionValue *motions[2] = { &g_menuMotion, &g_drawerMotion };
+        double values[2] = { (double)g_menuProgress, (double)g_drawerProgress };
+        BOOL menuWasActive = g_menuMotion.active;
+        BOOL drawerWasActive = g_drawerMotion.active;
+        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 2);
+        g_menuProgress = (int)(values[0] + 0.5);
+        g_drawerProgress = (int)(values[1] + 0.5);
         if (g_menuProgress < 0) g_menuProgress = 0;
         if (g_menuProgress > 100) g_menuProgress = 100;
-        if (previous != g_menuProgress) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
-        if (!active) {
-            g_menuProgress = g_menuOpen ? 100 : 0;
-            KillTimer(hwnd, MOTION_TIMER_ID);
-            if (!g_menuOpen) PositionVideoWindow();
-            InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+        if (g_drawerProgress < 0) g_drawerProgress = 0;
+        if (g_drawerProgress > 100) g_drawerProgress = 100;
+        if (!g_menuMotion.active) g_menuProgress = g_menuOpen ? 100 : 0;
+        if (!g_drawerMotion.active) g_drawerProgress = g_drawerOpen ? 100 : 0;
+        if (menuWasActive) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
+        if (drawerWasActive) {
+            UpdateLayoutInternal(hwnd, FALSE);
+            InvalidateRect(hwnd, &R_SIDEBAR, FALSE);
+        }
+        if (!anyActive) {
+            ABM_MotionWinStop(hwnd, MOTION_TIMER_ID);
+            PositionVideoWindow();
+            InvalidateRect(hwnd, NULL, FALSE);
         }
         return 0;
     }
@@ -7537,9 +7574,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_discoveryTimedOut=TRUE;
             SetStatus(L"No Google Cast receivers found - check Cast support, same Wi-Fi and mDNS");
         }
-        int oldDrawerProgress=g_drawerProgress;
-        g_drawerProgress=EaseToward(g_drawerProgress,g_drawerOpen?100:0,24);
-        if(oldDrawerProgress!=g_drawerProgress){UpdateLayout(hwnd);InvalidateRect(hwnd,NULL,FALSE);}
         int oldLevel=g_hoverLevel;
         g_hoverLevel=EaseToward(g_hoverLevel,g_hoverButton?100:0,32);
         if(oldLevel!=g_hoverLevel) {
@@ -7693,7 +7727,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             ReleaseCapture();return 0;
         }
-        if(!g_fullscreen&&!g_drawerOpen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=TRUE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_audioPopupOpen=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;StartMenuMotion(hwnd);SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
+        if(!g_fullscreen&&!g_drawerOpen&&Inside(R_DRAWER_BUTTON,x,y)){g_drawerOpen=TRUE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_audioPopupOpen=FALSE;g_searchFocused=FALSE;g_menuOpen=FALSE;StartMenuMotion(hwnd);StartDrawerMotion(hwnd);SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&max(0,0)==0&&Inside(R_PLAYLIST_SCROLL,x,y)){
             g_dragPlaylistScroll=TRUE;
             g_playlistScrollGrabY=y;
@@ -7733,6 +7767,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            processing the click so the underlying control still responds. */
         if(g_drawerOpen&&!g_fullscreen&&!Inside(R_SIDEBAR,x,y)&&!Inside(R_DRAWER_BUTTON,x,y)){
             g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_audioPopupOpen=FALSE;g_searchFocused=FALSE;
+            StartDrawerMotion(hwnd);
             SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);
         }
         if(g_menuOpen && !Inside(R_MENU_PANEL,x,y)) {
@@ -7875,7 +7910,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ScreenToClient(hwnd,&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
         if(wp==VK_F1){ShowHelpDialog(hwnd);return 0;}
         if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
-        if(wp==VK_ESCAPE&&g_drawerOpen){g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);return 0;}
+        if(wp==VK_ESCAPE&&g_drawerOpen){g_drawerOpen=FALSE;StartDrawerMotion(hwnd);g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_searchFocused=FALSE;SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(g_searchFocused&&wp==VK_BACK){size_t n=wcslen(g_searchText);if(n)g_searchText[n-1]=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);return 0;}
         if(g_searchFocused&&wp==VK_RETURN){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
         if(g_searchFocused&&(wp==VK_SPACE||wp==VK_LEFT||wp==VK_RIGHT))return 0;
@@ -8099,7 +8134,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
             g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
-        DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);KillTimer(hwnd,MOTION_TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+        DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_MotionWinStop(hwnd,MOTION_TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
