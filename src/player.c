@@ -326,6 +326,9 @@ static DWORD g_audioLastDeviceCheckTick = 0;
 static BOOL g_drawerOpen = FALSE;
 static int g_drawerProgress = 0;
 static int g_hoverPlaylistIndex = -1;
+static int g_playlistHoverLevel = 0;
+static ABMMotionValue g_playlistHoverMotion;
+static BOOL g_playlistHoverMotionInitialized = FALSE;
 static BOOL g_drawerSettingsOpen = FALSE;
 static int64_t g_advancedSubtitleDelayUs=0;
 static int g_advancedSubtitleFontSize=13; /* LibVLC relative subtitle size: 10, 13, 16, 19 */
@@ -696,6 +699,27 @@ static void StartHomeCardMotion(HWND hwnd, int index, int target) {
                     target ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
     if (!g_homeCardMotions[index].active) g_homeCardMotion[index]=target;
     EnsureMainMotionTimer(hwnd);
+}
+static void StartPlaylistHoverMotion(HWND hwnd, int target) {
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (!g_playlistHoverMotionInitialized) {
+        ABM_MotionInit(&g_playlistHoverMotion, (double)g_playlistHoverLevel);
+        g_playlistHoverMotionInitialized = TRUE;
+    }
+    ABM_MotionStart(&g_playlistHoverMotion, (double)target,
+                    ABM_MOTION_DURATION_CONTENT,
+                    target ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+    if (!g_playlistHoverMotion.active) g_playlistHoverLevel=target;
+    EnsureMainMotionTimer(hwnd);
+}
+static void InvalidatePlaylistRow(HWND hwnd, int playlistIndex) {
+    if (!hwnd || playlistIndex < 0) return;
+    for (int ri=0;ri<g_visibleRowCount;ri++) {
+        if (g_visibleRows[ri] == playlistIndex) {
+            InvalidateRect(hwnd, &R_ROW[ri], FALSE);
+            return;
+        }
+    }
 }
 static void StartArtworkMotion(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return;
@@ -1893,11 +1917,17 @@ static void DrawUI(HDC dc,RECT client) {
         /* Every queue entry is a deliberate media card, not bare text on a panel. */
         if(current)GradientRound(dc,row,ABM_THEME_COLOR_183947,ABM_THEME_COLOR_18303A,13);
         else if(selected)GradientRound(dc,row,ABM_THEME_COLOR_1B2F42,ABM_THEME_COLOR_17212E,13);
-        else GradientRound(dc,row,hot?ABM_THEME_COLOR_1B2F42:ABM_THEME_COLOR_0F1F2F,
-            hot?ABM_THEME_COLOR_18303A:ABM_THEME_COLOR_111D2C,13);
+        else {
+            /* The hover surface advances on the shared 16 ms motion clock.
+               Use restrained palette steps so row painting stays allocation-free. */
+            int hoverStep=hot?g_playlistHoverLevel:0;
+            COLORREF rowTop=hoverStep>=67?ABM_THEME_COLOR_1B2F42:(hoverStep>=30?ABM_THEME_COLOR_162A3B:ABM_THEME_COLOR_0F1F2F);
+            COLORREF rowBottom=hoverStep>=67?ABM_THEME_COLOR_18303A:(hoverStep>=30?ABM_THEME_COLOR_142838:ABM_THEME_COLOR_111D2C);
+            GradientRound(dc,row,rowTop,rowBottom,13);
+        }
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,
-            current?ABM_THEME_COLOR_63E1CD:(selected?ABM_THEME_COLOR_45697C:(hot?ABM_THEME_COLOR_415E71:ABM_THEME_COLOR_2B4865)),
-            current?1.25f:(hot?0.95f:0.7f));
+            current?ABM_THEME_COLOR_63E1CD:(selected?ABM_THEME_COLOR_45697C:((hot&&g_playlistHoverLevel>=30)?ABM_THEME_COLOR_415E71:ABM_THEME_COLOR_2B4865)),
+            current?1.25f:((hot&&g_playlistHoverLevel>=67)?0.95f:0.7f));
         if(current){RECT activeRail={row.left+1,row.top+10,row.left+4,row.bottom-10};GradientRect(dc,activeRail,ABM_THEME_COLOR_63E1CD,ABM_THEME_COLOR_28BED3);}
         int compactRow=rowHeight<72;
         RECT rowThumb=compactRow
@@ -7548,20 +7578,24 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==MOTION_TIMER_ID){
-        ABMMotionValue *motions[8] = { &g_menuMotion, &g_drawerMotion, &g_hoverMotion, &g_homeCardMotions[0], &g_homeCardMotions[1], &g_homeCardMotions[2], &g_homeCardMotions[3], &g_artworkMotion };
-        double values[8] = { (double)g_menuProgress, (double)g_drawerProgress, (double)g_hoverLevel, (double)g_homeCardMotion[0], (double)g_homeCardMotion[1], (double)g_homeCardMotion[2], (double)g_homeCardMotion[3], (double)g_artworkFade };
+        ABMMotionValue *motions[9] = { &g_menuMotion, &g_drawerMotion, &g_hoverMotion, &g_homeCardMotions[0], &g_homeCardMotions[1], &g_homeCardMotions[2], &g_homeCardMotions[3], &g_artworkMotion, &g_playlistHoverMotion };
+        double values[9] = { (double)g_menuProgress, (double)g_drawerProgress, (double)g_hoverLevel, (double)g_homeCardMotion[0], (double)g_homeCardMotion[1], (double)g_homeCardMotion[2], (double)g_homeCardMotion[3], (double)g_artworkFade, (double)g_playlistHoverLevel };
         BOOL menuWasActive = g_menuMotion.active;
         BOOL drawerWasActive = g_drawerMotion.active;
         BOOL hoverWasActive = g_hoverMotion.active;
         BOOL homeWasActive = FALSE;
         for (int mi=0;mi<4;mi++) if (g_homeCardMotions[mi].active) homeWasActive=TRUE;
         BOOL artworkWasActive = g_artworkMotion.active;
-        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 8);
+        BOOL playlistHoverWasActive = g_playlistHoverMotion.active;
+        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 9);
         g_menuProgress = (int)(values[0] + 0.5);
         g_drawerProgress = (int)(values[1] + 0.5);
         g_hoverLevel = (int)(values[2] + 0.5);
         for (int mi=0;mi<4;mi++) g_homeCardMotion[mi]=(int)(values[3+mi]+0.5);
         g_artworkFade=(int)(values[7]+0.5);
+        g_playlistHoverLevel=(int)(values[8]+0.5);
+        if (g_playlistHoverLevel < 0) g_playlistHoverLevel=0;
+        if (g_playlistHoverLevel > 100) g_playlistHoverLevel=100;
         if (g_menuProgress < 0) g_menuProgress = 0;
         if (g_menuProgress > 100) g_menuProgress = 100;
         if (g_drawerProgress < 0) g_drawerProgress = 0;
@@ -7578,6 +7612,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (menuWasActive) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
         if (hoverWasActive) { InvalidateButton(g_hoverButton); if (g_hoverButton == HIT_NONE) { InvalidateButton(HIT_OPEN); InvalidateButton(HIT_PLAY); InvalidateButton(HIT_STOP); InvalidateButton(HIT_PREV); InvalidateButton(HIT_NEXT); InvalidateButton(HIT_SCAN); } }
         if (homeWasActive || artworkWasActive) InvalidateRect(hwnd, &R_VIDEO, FALSE);
+        if (playlistHoverWasActive) InvalidatePlaylistRow(hwnd, g_hoverPlaylistIndex);
         if (drawerWasActive) {
             UpdateLayoutInternal(hwnd, FALSE);
             InvalidateRect(hwnd, &R_SIDEBAR, FALSE);
@@ -8028,7 +8063,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         int playlistHot=-1;
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
-        if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
+        if(playlistHot!=g_hoverPlaylistIndex){
+            int previousPlaylistHot=g_hoverPlaylistIndex;
+            g_hoverPlaylistIndex=playlistHot;
+            InvalidatePlaylistRow(hwnd,previousPlaylistHot);
+            InvalidatePlaylistRow(hwnd,playlistHot);
+            StartPlaylistHoverMotion(hwnd,playlistHot>=0?100:0);
+        }
         int menuHot=-1;
         if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
