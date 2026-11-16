@@ -7883,7 +7883,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VK_HOME&&g_hasMedia){PlaybackSeekTo(0);return 0;}
         if(wp=='N'&&g_playlistCount){PlayIndex(GetNextPlaylistIndex());return 0;}
         if(wp=='P'&&g_playlistCount){PlayIndex(g_current>0?g_current-1:g_playlistCount-1);return 0;}
-        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(wp==VK_ESCAPE&&g_menuOpen){g_menuOpen=FALSE;StartMenuMotion(hwnd);PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
         break;
     }
     case WM_CHAR:
