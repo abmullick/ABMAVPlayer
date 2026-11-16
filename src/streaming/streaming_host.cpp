@@ -240,6 +240,8 @@ int g_activeService=-1;
 int g_hoverService=-1;
 int g_hoverControl=-1;
 bool g_trackingMouseLeave=false;
+/* F6 enters the custom chrome focus mode; ordinary WebView2 Tab navigation is untouched. */
+int g_streamChromeFocus=-1;
 bool g_comInitialized=false;
 EventRegistrationToken g_navigationToken{};
 EventRegistrationToken g_navigationStartingToken{};
@@ -1346,6 +1348,36 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:@TEXT_SECONDARY@;
     }
     if(g_window)InvalidateRect(g_window,nullptr,FALSE);
 }
+RECT StreamChromeRect(int index){
+    if(index>=0&&index<kServiceCount)return g_serviceRects[index];
+    switch(index){
+        case 6:return g_backRect;
+        case 7:return g_forwardRect;
+        case 8:return g_reloadRect;
+        case 9:return g_homeRect;
+        case 10:return g_fullscreenRect;
+        case 11:return g_helpRect;
+        case 12:return g_aboutRect;
+        case 13:return g_castRect;
+        case 14:return g_castVideoRect;
+        case 15:return g_stopTvRect;
+        case 16:return g_externalRect;
+        default:return RECT{0,0,0,0};
+    }
+}
+void DrawChromeFocus(HDC dc,const RECT &bounds){
+    RECT r=bounds;InflateRect(&r,-3,-3);
+    HPEN pen=CreatePen(PS_DOT,1,ABM_THEME_COLOR_8EE2D3);
+    HGDIOBJ oldPen=SelectObject(dc,pen);
+    HGDIOBJ oldBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
+    RoundRect(dc,r.left,r.top,r.right,r.bottom,10,10);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
+    RECT inner=r;InflateRect(&inner,-2,-2);
+    HPEN innerPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_3FC9BE);
+    oldPen=SelectObject(dc,innerPen);
+    RoundRect(dc,inner.left,inner.top,inner.right,inner.bottom,8,8);
+    SelectObject(dc,oldPen);DeleteObject(innerPen);
+}
 void PaintChrome(HWND hwnd){
     PAINTSTRUCT ps{};HDC paintDc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
     if(g_webFullscreen){EndPaint(hwnd,&ps);return;}
@@ -1559,6 +1591,7 @@ void PaintChrome(HWND hwnd){
         g_hoverService>=0?kServices[g_hoverService]:g_status;
     RECT status={22,rc.bottom-29,rc.right-18,rc.bottom-5};
     Text(dc,footerText,status,g_hoverControl>=0||g_hoverService>=0?ABM_THEME_COLOR_ADD3DC:ABM_THEME_COLOR_85A4BC,11,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(g_streamChromeFocus>=0)DrawChromeFocus(dc,StreamChromeRect(g_streamChromeFocus));
     if(g_devicePanelVisible)LayoutDevicePanel();
     if(buffer){
         BitBlt(paintDc,0,0,width,height,dc,0,0,SRCCOPY);
@@ -1943,6 +1976,35 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     }
     case WM_KEYDOWN:{
         const bool ctrl=(GetKeyState(VK_CONTROL)&0x8000)!=0;
+        const bool shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
+        if(wp==VK_F6){
+            if(g_streamChromeFocus<0)g_streamChromeFocus=shift?16:0;
+            else g_streamChromeFocus=-1;
+            if(g_streamChromeFocus>=0)SetFocus(hwnd);
+            else if(g_controller)g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+            InvalidateRect(hwnd,nullptr,FALSE);
+            return 0;
+        }
+        if(g_streamChromeFocus>=0){
+            if(wp==VK_TAB||wp==VK_RIGHT||wp==VK_DOWN||wp==VK_LEFT||wp==VK_UP){
+                int direction=(wp==VK_LEFT||wp==VK_UP||((wp==VK_TAB)&&shift))?-1:1;
+                g_streamChromeFocus=(g_streamChromeFocus+direction+17)%17;
+                InvalidateRect(hwnd,nullptr,FALSE);
+                return 0;
+            }
+            if(wp==VK_RETURN||wp==VK_SPACE){
+                RECT target=StreamChromeRect(g_streamChromeFocus);
+                if(target.right>target.left&&target.bottom>target.top)
+                    SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM((target.left+target.right)/2,(target.top+target.bottom)/2));
+                return 0;
+            }
+            if(wp==VK_ESCAPE){
+                g_streamChromeFocus=-1;
+                if(g_controller)g_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+                InvalidateRect(hwnd,nullptr,FALSE);
+                return 0;
+            }
+        }
         if(wp==VK_ESCAPE){
             if(g_webFullscreen){
                 if(g_webView)g_webView->ExecuteScript(L"if(document.fullscreenElement)document.exitFullscreen();",nullptr);
