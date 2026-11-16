@@ -484,6 +484,22 @@ static int CountFilteredMedia(void) {
     }
     return count;
 }
+/* Keep the collection usable in compact drawer layouts. A clipped final row is
+   intentional; using ceiling division guarantees that short lists still render
+   at least one visible item instead of looking falsely empty. */
+static int PlaylistRowHeight(void) {
+    int h=R_LIST.bottom-R_LIST.top;
+    if(h>=80)return 80;
+    if(h>=56)return 56;
+    if(h>=40)return 40;
+    return h>0?h:40;
+}
+static int PlaylistVisibleRows(int rowHeight) {
+    int h=R_LIST.bottom-R_LIST.top;
+    if(h<=0||rowHeight<=0)return 0;
+    int n=(h+rowHeight-1)/rowHeight;
+    return n>MAX_PLAYLIST?MAX_PLAYLIST:n;
+}
 static int g_visibleRows[MAX_PLAYLIST],g_visibleRowCount=0;
 static COLORREF Blend(COLORREF a,COLORREF b,int amount) {
     if(amount<0)amount=0;if(amount>100)amount=100;
@@ -977,7 +993,8 @@ static void UpdateLayout(HWND hwnd) {
     R_STOP=(RECT){dockLeft+596,h-108,dockLeft+652,h-52};
     R_OPEN=(RECT){left+8,h-118,left+158,h-62};
     /* All drawer hit targets are assigned in the collection-first layout above. */
-    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*80,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*80};
+    int rowHeight=PlaylistRowHeight();
+    for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*rowHeight,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*rowHeight};
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
@@ -1510,12 +1527,9 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
     Txt(dc,groupLabel,R_GROUP,ABM_THEME_COLOR_AEC3DC,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
-    int rowHeight=80;
-    int listHeight=R_LIST.bottom-R_LIST.top;
-    /* Render complete rows only; partial final rows previously bled into
-       the volume area and made adjacent titles appear superimposed. */
-    int visible=listHeight>0?listHeight/rowHeight:0;
-    if(visible>MAX_PLAYLIST)visible=MAX_PLAYLIST;
+    int rowHeight=PlaylistRowHeight();
+    int visible=PlaylistVisibleRows(rowHeight);
+    int filteredCount=CountFilteredMedia();
     int matched=0,shown=0;g_visibleRowCount=0;
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
@@ -1529,6 +1543,7 @@ static void DrawUI(HDC dc,RECT client) {
         if(shown>=visible)break;
         RECT row={R_LIST.left,R_LIST.top+shown*rowHeight,R_LIST.right,R_LIST.top+(shown+1)*rowHeight};
         if(row.bottom>R_LIST.bottom)row.bottom=R_LIST.bottom;
+        if(row.bottom<=row.top)break;
         R_ROW[shown]=row;g_visibleRows[shown]=i;g_visibleRowCount=shown+1;
         BOOL current=(i==g_current),selected=(i==g_selected),hot=(i==g_hoverPlaylistIndex);
         /* Every queue entry is a deliberate media card, not bare text on a panel. */
@@ -1537,7 +1552,10 @@ static void DrawUI(HDC dc,RECT client) {
         else RoundBox(dc,row,hot?ABM_THEME_COLOR_1F2D3B:ABM_THEME_COLOR_17212E,13);
         ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,13.0f,current?ABM_THEME_COLOR_468B94:(selected?ABM_THEME_COLOR_45697C:(hot?ABM_THEME_COLOR_415E71:ABM_THEME_COLOR_304052)),current?1.25f:0.75f);
         if(current){RECT activeRail={row.left+1,row.top+12,row.left+4,row.bottom-12};GradientRect(dc,activeRail,ABM_THEME_COLOR_39B2B0,ABM_THEME_COLOR_4D91A0);}
-        RECT rowThumb={row.left+10,row.top+8,row.left+72,row.bottom-8};
+        int compactRow=rowHeight<72;
+        RECT rowThumb=compactRow
+            ?(RECT){row.left+8,row.top+4,row.left+(rowHeight<48?40:48),row.bottom-4}
+            :(RECT){row.left+10,row.top+8,row.left+72,row.bottom-8};
         GradientRect(dc,rowThumb,current?ABM_THEME_COLOR_1B8BA9:RGB(22+(i*13)%22,53+(i*9)%24,82+(i*7)%28),current?ABM_THEME_COLOR_5F4FBE:RGB(55+(i*11)%26,55+(i*7)%24,119+(i*5)%24));
         RoundBox(dc,rowThumb,current?ABM_THEME_COLOR_3167A6:RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),10);
         RECT coverInset={rowThumb.left+5,rowThumb.top+5,rowThumb.right-5,rowThumb.bottom-5};
@@ -1549,15 +1567,22 @@ static void DrawUI(HDC dc,RECT client) {
             if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
             else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,ABM_THEME_COLOR_B6CDE8,2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,ABM_THEME_COLOR_B6CDE8,2);}
         }
-        RECT name={row.left+82,row.top+9,row.right-84,row.top+38};
-        RECT subline={row.left+82,row.top+40,row.right-84,row.bottom-7};
+        int textLeft=compactRow?rowThumb.right+8:row.left+82;
+        RECT name=compactRow
+            ?(RECT){textLeft,row.top+2,row.right-70,row.top+(rowHeight/2)+2}
+            :(RECT){row.left+82,row.top+9,row.right-84,row.top+38};
+        RECT subline=compactRow
+            ?(RECT){textLeft,row.top+(rowHeight/2),row.right-70,row.bottom-2}
+            :(RECT){row.left+82,row.top+40,row.right-84,row.bottom-7};
         Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
         Txt(dc,metaLine,subline,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        RECT typePill={row.right-74,row.top+24,row.right-10,row.top+49};
+        RECT typePill=compactRow
+            ?(RECT){row.right-62,row.top+(row.bottom-row.top-20)/2,row.right-8,row.top+(row.bottom-row.top+20)/2}
+            :(RECT){row.right-74,row.top+24,row.right-10,row.top+49};
         RoundBox(dc,typePill,isVideo?ABM_THEME_COLOR_263653:ABM_THEME_COLOR_13414B,8);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?ABM_THEME_COLOR_A4C1EF:ABM_THEME_COLOR_74D7D3,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -1566,7 +1591,6 @@ static void DrawUI(HDC dc,RECT client) {
     }
     /* Premium slim scrollbar: quiet rail, luminous gradient thumb and a
        generous hit target. It appears only when the filtered collection overflows. */
-    int filteredCount=CountFilteredMedia();
     int maxPlaylistScroll=filteredCount-visible;
     if(maxPlaylistScroll<0)maxPlaylistScroll=0;
     if(maxPlaylistScroll>0 && R_PLAYLIST_SCROLL.bottom>R_PLAYLIST_SCROLL.top) {
@@ -1587,9 +1611,12 @@ static void DrawUI(HDC dc,RECT client) {
     } else {
         R_PLAYLIST_THUMB=R_PLAYLIST_SCROLL;
     }
-    if(shown==0){
-        RECT empty={R_LIST.left+8,R_LIST.top+18,R_LIST.right-8,R_LIST.top+76};
-        Txt(dc,g_searchText[0]?L"No matching media":L"Add media to start your library",empty,ABM_THEME_COLOR_97A8BF,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    if(filteredCount==0){
+        RECT empty={R_LIST.left+8,R_LIST.top+4,R_LIST.right-8,R_LIST.bottom-4};
+        const wchar_t *emptyText=g_playlistCount==0
+            ?L"Add media to start your library"
+            :(g_searchText[0]?L"No matching media":L"No media in this filter");
+        Txt(dc,emptyText,empty,ABM_THEME_COLOR_97A8BF,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
     if(g_receiverPopup) {
         int n=(int)SendMessageW(g_renderers,CB_GETCOUNT,0,0);if(n>MAX_RENDERERS+1)n=MAX_RENDERERS+1;
@@ -7502,7 +7529,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             InvalidateRect(hwnd,&hintStrip,FALSE);
         }
         if(g_dragPlaylistScroll){
-            int visible=(R_LIST.bottom>R_LIST.top)?(R_LIST.bottom-R_LIST.top)/80:0;
+            int visible=PlaylistVisibleRows(PlaylistRowHeight());
             int total=CountFilteredMedia(),maxScroll=total-visible;if(maxScroll<0)maxScroll=0;
             int railH=R_PLAYLIST_SCROLL.bottom-R_PLAYLIST_SCROLL.top;
             int thumbH=(total>0)?(int)((long long)railH*visible/total):railH;
