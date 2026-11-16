@@ -2,6 +2,12 @@
 
 This guide documents the current implementation and maintenance boundaries in the repository. It distinguishes shipped behaviour from capabilities that remain dependent on VLC, Windows, WebView2, network conditions or receiver support.
 
+## Shared Windows UI framework
+
+All ABM-owned windows follow one design and interaction philosophy. See [UI_DESIGN_SYSTEM.md](UI_DESIGN_SYSTEM.md) for the shared visual, accessibility, keyboard, DPI and regression contract, and [MOTION_SYSTEM.md](MOTION_SYSTEM.md) for the reusable C-compatible motion engine and Win32 active-only timer host.
+
+Use the canonical `ui_theme`, `ui_d2d`, `ui_motion` and `ui_motion_win` modules rather than creating window-specific palettes, renderers or animation loops. These modules own presentation primitives only; playback, local casting, Streaming Centre/WebView2, Torrent Stream and audio backends retain their independent ownership and lifecycle.
+
 ## Architecture at a glance
 
 ABM AV Player is a native Windows desktop application. The primary application is written in C and uses Win32 for windowing and input, the ABM Direct2D/DirectWrite UI layer for custom-rendered surfaces, and LibVLC for local media playback.
