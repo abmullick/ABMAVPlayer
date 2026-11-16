@@ -1575,7 +1575,7 @@ static void DrawUI(HDC dc,RECT client) {
     DrawLine(dc,stackX+10,stackY+5,stackX+20,stackY,ABM_THEME_COLOR_5EB7F4,2);
     RECT collectionTitle={listHead.left+30,listHead.top,listHead.right-156,listHead.bottom};
     Txt(dc,L"MEDIA COLLECTION",collectionTitle,ABM_THEME_COLOR_D3F4EE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_playlistCount);
+    wchar_t count[48];swprintf_s(count,48,L"%02d TRACKS",g_libraryTab==1&&g_showFavorites?g_favoriteCount:g_playlistCount);
     RECT countR={R_SIDEBAR.right-166,listHead.top+1,R_CLEAR_PLAYLIST.left-8,listHead.bottom-1};
     RoundBox(dc,countR,ABM_THEME_COLOR_132B2B,8);
     ABM_D2D_StrokeRound(&g_ui,(float)countR.left,(float)countR.top,(float)countR.right,(float)countR.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.75f);
@@ -1757,7 +1757,8 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,ecx,ecy,ecx+9,ecy-5,ABM_THEME_COLOR_5EB7F4,2);
         const wchar_t *emptyText=g_playlistCount==0
             ?L"Add media to start your library"
-            :(g_searchText[0]?L"No matching media":L"No media in this filter");
+            :(g_libraryTab==1&&g_showFavorites&&g_favoriteCount==0?L"Your favourites will appear here"
+              :(g_searchText[0]?L"No matching media":L"No media in this filter"));
         RECT emptyLabel={emptyCard.left+8,ecy+10,emptyCard.right-8,emptyCard.bottom-5};
         Txt(dc,emptyText,emptyLabel,ABM_THEME_COLOR_BBD2DC,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     }
