@@ -46,6 +46,7 @@ ABM AV Player includes a 10-day full-feature trial and offline activation with o
 - [Phase 1 / Phase 2 testing checklist](PHASE1_PHASE2_TESTING.md): Manual validation steps for Windows builds.
 - [Product hardening test plan](PRODUCT_HARDENING_TESTS.md): WebView2 recovery, runtime checks, memory soak and installer upgrade validation.
 - [UI/UX design system](UI_UX_DESIGN_SYSTEM.md): UI audit, shared visual tokens, component standards and staged adoption plan.
+- [Motion System 1.0](MOTION_SYSTEM.md): animation architecture audit, shared motion tokens, integration sequence and regression safeguards.
 - [Final UI QA checklist](UI_QA_CHECKLIST.md): Windows build, DPI, keyboard/accessibility, visual, playback, casting, torrent, performance and installer validation.
 - [Reproducible Windows vcpkg setup](VCPKG_SETUP.md): pinned vcpkg bootstrap, libjuice overlay, dependency-cache restore and cache publishing.
 
