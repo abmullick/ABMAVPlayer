@@ -729,10 +729,6 @@ static void StartHoverMotion(HWND hwnd) {
     ABM_MotionStart(&g_hoverMotion, g_hoverButton ? 100.0 : 0.0,
                     ABM_MOTION_DURATION_QUICK, ABM_MOTION_EASE_OUT);
     if (!g_hoverMotion.active) g_hoverLevel = g_hoverButton ? 100 : 0;
-        for (int mi=0;mi<4;mi++) if (!g_homeCardMotions[mi].active && g_homeCardTarget[mi]>=0) g_homeCardMotion[mi]=g_homeCardTarget[mi];
-        if (!g_artworkMotion.active) g_artworkFade=100;
-            g_artworkFade = 100;
-            for (int i=0;i<4;i++) g_homeCardMotion[i] = g_homeCardTarget[i] < 0 ? 0 : g_homeCardTarget[i];
     EnsureMainMotionTimer(hwnd);
 }
 static void EnsureMainMotionTimer(HWND hwnd) {
@@ -746,6 +742,9 @@ static void EnsureMainMotionTimer(HWND hwnd) {
             g_menuProgress = g_menuOpen ? 100 : 0;
             g_drawerProgress = g_drawerOpen ? 100 : 0;
             g_hoverLevel = g_hoverButton ? 100 : 0;
+            g_artworkFade = 100;
+            for (int i=0;i<4;i++)
+                g_homeCardMotion[i] = g_homeCardTarget[i] < 0 ? 0 : g_homeCardTarget[i];
             UpdateLayout(hwnd);
             InvalidateRect(hwnd, NULL, FALSE);
         }
@@ -7585,6 +7584,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (!g_menuMotion.active) g_menuProgress = g_menuOpen ? 100 : 0;
         if (!g_drawerMotion.active) g_drawerProgress = g_drawerOpen ? 100 : 0;
         if (!g_hoverMotion.active) g_hoverLevel = g_hoverButton ? 100 : 0;
+        for (int mi=0;mi<4;mi++)
+            if (!g_homeCardMotions[mi].active && g_homeCardTarget[mi]>=0)
+                g_homeCardMotion[mi]=g_homeCardTarget[mi];
+        if (!g_artworkMotion.active) g_artworkFade=100;
         if (menuWasActive) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
         if (hoverWasActive) { InvalidateButton(g_hoverButton); if (g_hoverButton == HIT_NONE) { InvalidateButton(HIT_OPEN); InvalidateButton(HIT_PLAY); InvalidateButton(HIT_STOP); InvalidateButton(HIT_PREV); InvalidateButton(HIT_NEXT); InvalidateButton(HIT_SCAN); } }
         if (homeWasActive || artworkWasActive) InvalidateRect(hwnd, &R_VIDEO, FALSE);
