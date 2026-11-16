@@ -682,3 +682,14 @@ Do not mark these windows fully migrated or visually validated until the outstan
 - Native edit fields remain native by design; the custom scrollbar treatment does not replace text-entry, selection, IME, clipboard or accessibility behaviour.
 - Source commits: `460dfb1` (custom scrollbar implementation), `fc1afb8` (drag lifecycle hardening), `97b5f9d` (corrected undefined palette identifiers).
 - Source-level documentation is updated; MSVC build and Windows interaction/visual verification are still required. Do not mark the scrollbar work runtime-validated until tested at multiple window sizes and display scales.
+
+
+## Step 2 follow-up — Premium Command Centre grouping
+
+**Implementation commits:** `4a3a47bfbffad22f7293b24661282a64e82097f2`, `37de958afa3774ca78d67580c606f376fbdd0c84`, `97c58acf4a4ad330ec5cefe4f9569069c661e499`
+
+The Command Centre now uses a responsive five-group hierarchy: Playback & Media, Devices & Casting, Playback Controls, Streaming & Torrent, and App & Support. The panel adds a compact ABM brand mark, shared rounded group surfaces, section labels where vertical space permits, quieter row separators, consistent shortcut pills, and retained teal/amber feature treatments for Streaming and Torrent.
+
+The implementation consumes the existing ABM typography, colour, spacing and radius tokens and continues to use the Main Player's established text and Direct2D stroke helpers. Menu item indices, hit rectangles, command dispatch, keyboard shortcuts, hover tracking and selection routing remain unchanged. On shorter windows, section captions collapse while group surfaces remain, preserving room for the commands.
+
+**Windows runtime validation remains outstanding.** Verify that all 19 commands fit and remain clickable at minimum supported window height and 100%, 125%, 150% and 200% scaling. Confirm that the five section captions appear on taller windows and collapse cleanly on shorter windows.
