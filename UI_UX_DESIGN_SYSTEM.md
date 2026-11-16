@@ -686,10 +686,10 @@ Do not mark these windows fully migrated or visually validated until the outstan
 
 ## Step 2 follow-up — Premium Command Centre grouping
 
-**Implementation commits:** `4a3a47bfbffad22f7293b24661282a64e82097f2`, `37de958afa3774ca78d67580c606f376fbdd0c84`, `97c58acf4a4ad330ec5cefe4f9569069c661e499`
+**Implementation commits:** `4a3a47bfbffad22f7293b24661282a64e82097f2`, `37de958afa3774ca78d67580c606f376fbdd0c84`, `97c58acf4a4ad330ec5cefe4f9569069c661e499`, `9582a63e672f4a8f567a76e87a1ef98c3c12bdb4`
 
 The Command Centre now uses a responsive five-group hierarchy: Playback & Media, Devices & Casting, Playback Controls, Streaming & Torrent, and App & Support. The panel adds a compact ABM brand mark, shared rounded group surfaces, section labels where vertical space permits, quieter row separators, consistent shortcut pills, and retained teal/amber feature treatments for Streaming and Torrent.
 
-The implementation consumes the existing ABM typography, colour, spacing and radius tokens and continues to use the Main Player's established text and Direct2D stroke helpers. Menu item indices, hit rectangles, command dispatch, keyboard shortcuts, hover tracking and selection routing remain unchanged. On shorter windows, section captions collapse while group surfaces remain, preserving room for the commands.
+The implementation consumes the existing ABM typography, colour, spacing and radius tokens and continues to use the Main Player's established text and Direct2D stroke helpers. Menu item indices, hit rectangles, command dispatch, keyboard shortcuts, hover tracking and selection routing remain unchanged. On shorter windows, section captions collapse while group surfaces remain, preserving room for the commands. Group cards and captions are clipped to the animated panel boundary so they cannot paint ahead of the menu reveal.
 
 **Windows runtime validation remains outstanding.** Verify that all 19 commands fit and remain clickable at minimum supported window height and 100%, 125%, 150% and 200% scaling. Confirm that the five section captions appear on taller windows and collapse cleanly on shorter windows.
