@@ -287,3 +287,18 @@ This is a source implementation only until the Windows build and runtime checks 
 - [ ] Help/About: verify reveal/dismissal, Help navigation/scrolling, About portrait rendering, keyboard close and owner activation.
 - [ ] Streaming Centre: verify animated hover/focus feedback on service tabs and browser/cast chrome without changing WebView2 navigation, fullscreen, device discovery, casting, or receiver selection. Confirm 400 ms device refresh and device pulse timers remain operational and independent.
 - [ ] Run the complete Windows x64 build and regression checklist before release; source edits and Git commits alone are not evidence of runtime success.
+
+ 
+## Fluidic UI — auxiliary windows and Streaming Centre implementation checks
+
+- [ ] Settings and Advanced Settings: confirm entry and dismissal blend; with Windows client-area animation disabled, confirm immediate show/hide and no stuck hidden window.
+- [ ] Settings: keep an EDIT field focused, type/select/copy text, scroll horizontally and vertically, resize, change theme, and open Advanced Settings; confirm caret, selection, focus and scroll offsets are preserved.
+- [ ] Advanced Settings: switch every page, generate diagnostics, inspect VLC report, scroll/edit native report controls, press Escape and use the Close button; confirm modal owner reactivation.
+- [ ] Help: search, Find next, select topics, scroll article, press Escape and close from the title bar; confirm RichEdit selection and keyboard navigation remain normal.
+- [ ] About: verify portrait and text paint after entry, close from Escape and title bar, then reopen repeatedly; check GDI/D2D resources.
+- [ ] Streaming Centre: verify service cards and browser/cast chrome hover eases in; rapidly move between cards and leave the window; confirm no stuck hover and motion timer stops at rest.
+- [ ] Streaming Centre: confirm hover motion timer is independent of the 400 ms receiver refresh and device pulse timer.
+- [ ] Streaming Centre: open/close with WebView2 loading, after provider navigation, while device panel is open, and after selecting a receiver; confirm browser/controller and receiver state are unchanged by window animation.
+- [ ] Disable Windows client-area animation and repeat auxiliary/Streaming Centre open-close tests.
+- [ ] Keyboard-only review: confirm existing native dialog traversal and WebView2 focus behaviour; custom Streaming Centre chrome still needs explicit focus cues and traversal before accessibility sign-off.
+- [ ] Full Windows x64 build, DPI matrix (100/125/150/200%), playback/casting/torrent regression, WebView2 recovery and repeated open/close leak checks.
