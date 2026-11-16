@@ -1846,8 +1846,10 @@ static void DrawUI(HDC dc,RECT client) {
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
         BOOL rowMissing=IsMediaMissingCached(g_playlist[i]);
+        int resumeEntry=FindResumeEntry(g_playlist[i]);
         if(rowMissing)swprintf_s(metaLine,_countof(metaLine),L"MISSING  ·  Relink from item menu");
-        Txt(dc,metaLine,subline,rowMissing?ABM_THEME_COLOR_F2B14F:ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        else if(resumeEntry>=0)swprintf_s(metaLine,_countof(metaLine),L"CONTINUE WATCHING  ·  Resume available");
+        Txt(dc,metaLine,subline,rowMissing?ABM_THEME_COLOR_F2B14F:(resumeEntry>=0?ABM_THEME_COLOR_74D7D3:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
         wchar_t durationText[32];FormatMediaDuration(DurationLookup(g_playlist[i]),durationText,_countof(durationText));
         RECT durationRect={row.right-164,subline.top,row.right-112,subline.bottom};
@@ -2938,6 +2940,11 @@ static void LoadResumeState(void) {
         wcscpy_s(pending,_countof(pending),L"0");
     }
     fclose(fp);
+}
+static void RemoveResumeEntry(const wchar_t *path) {
+    int i=FindResumeEntry(path);if(i<0)return;
+    for(int j=i+1;j<g_resumeCount;j++)g_resumeItems[j-1]=g_resumeItems[j];
+    g_resumeCount--;SaveResumeState();
 }
 static void CaptureResumePosition(BOOL force) {
     if(!g_hasMedia||g_current<0||g_current>=g_playlistCount||!g_player||g_torrentPlaybackActive)return;
@@ -7731,6 +7738,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         if(g_hasMedia&&!g_endHandled&&libvlc_media_player_get_state(g_player)==libvlc_Ended) {
+            if(g_current>=0&&g_current<g_playlistCount)RemoveResumeEntry(g_playlist[g_current]);
             g_endHandled=TRUE;
             if(g_repeat)PlayIndex(g_current);
             else if(g_playlistCount>1)PlayIndex(GetNextPlaylistIndex());
