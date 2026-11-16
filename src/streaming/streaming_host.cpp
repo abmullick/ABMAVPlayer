@@ -880,7 +880,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(!g_infoAbout&&wp==2){StreamingHelpFindNext();return 0;}
         break;
     case WM_COMMAND:
-        if(!g_infoAbout&&LOWORD(wp)==8102&&HIWORD(wp)==BN_CLICKED){StreamingHelpFindNext(hwnd);return 0;}
+        if(!g_infoAbout&&LOWORD(wp)==8102&&HIWORD(wp)==BN_CLICKED){StreamingHelpFindNext();return 0;}
         if(!g_infoAbout&&LOWORD(wp)==8103&&HIWORD(wp)==LBN_SELCHANGE){int i=(int)SendMessageW(g_infoTopics,LB_GETCURSEL,0,0);StreamingHelpShowTopic(i);return 0;}
         if(!g_infoAbout&&LOWORD(wp)==8101&&HIWORD(wp)==EN_CHANGE){g_infoSearchTopic=0;g_infoSearchOffset=0;return 0;}
         break;
