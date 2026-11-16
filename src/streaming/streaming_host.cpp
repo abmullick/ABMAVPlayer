@@ -780,11 +780,23 @@ void InfoRound(HDC dc,RECT rect,COLORREF color,int radius){
 void StreamingHelpLayout(HWND hwnd){
     RECT rc{};GetClientRect(hwnd,&rc);
     const int w=rc.right,h=rc.bottom;
-    if(g_infoSearch)MoveWindow(g_infoSearch,28,98,w-178,34,TRUE);
-    if(g_infoFind)MoveWindow(g_infoFind,w-138,98,110,34,TRUE);
-    if(g_infoTopics)MoveWindow(g_infoTopics,28,154,252,h-184,TRUE);
-    if(g_infoArticleTitle)MoveWindow(g_infoArticleTitle,302,145,w-330,28,TRUE);
-    if(g_infoArticle)MoveWindow(g_infoArticle,302,178,w-330,h-208,TRUE);
+    const int margin=24,buttonW=(w<620?104:132),searchY=74,searchH=40;
+    int searchW=w-margin*2-buttonW-12;if(searchW<120)searchW=120;
+    if(g_infoSearch)MoveWindow(g_infoSearch,margin,searchY,searchW,searchH,TRUE);
+    if(g_infoFind)MoveWindow(g_infoFind,w-margin-buttonW,searchY,buttonW,searchH,TRUE);
+    if(w<760){
+        int topicH=h<620?116:156,topicY=146,articleY=topicY+topicH+12,articleH=h-articleY-58;
+        if(articleH<120)articleH=120;
+        if(g_infoTopics)MoveWindow(g_infoTopics,margin,topicY,w-margin*2,topicH,TRUE);
+        if(g_infoArticleTitle)MoveWindow(g_infoArticleTitle,margin,articleY,w-margin,26,TRUE);
+        if(g_infoArticle)MoveWindow(g_infoArticle,margin,articleY+30,w-margin*2,articleH,TRUE);
+    }else{
+        int contentH=h-226;if(contentH<150)contentH=150;
+        int top=146,topicW=(w<900?220:270),gap=16;
+        if(g_infoTopics)MoveWindow(g_infoTopics,margin,top,topicW,contentH,TRUE);
+        if(g_infoArticleTitle)MoveWindow(g_infoArticleTitle,margin+topicW+gap,top,w-(margin+topicW+gap)-margin,26,TRUE);
+        if(g_infoArticle)MoveWindow(g_infoArticle,margin+topicW+gap,top+30,w-(margin+topicW+gap)-margin,contentH-30,TRUE);
+    }
 }
 void StreamingHelpShowTopic(int index){
     if(index<0||index>=(int)_countof(g_streamHelpTopics)||!g_infoArticle)return;
@@ -793,6 +805,8 @@ void StreamingHelpShowTopic(int index){
     if(g_infoArticleTitle)SetWindowTextW(g_infoArticleTitle,g_streamHelpTopics[index]);
     SetWindowTextW(g_infoArticle,g_streamHelpArticles[index]);
     SendMessageW(g_infoArticle,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
+    SendMessageW(g_infoArticle,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(26,26));
+    SendMessageW(g_infoArticle,EM_SETOPTIONS,ECOOP_OR,ECO_AUTOWORDSELECTION);
     CHARFORMAT2W cf{};cf.cbSize=sizeof(cf);cf.dwMask=CFM_FACE|CFM_SIZE|CFM_COLOR|CFM_CHARSET|CFM_BOLD;
     wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),ABM_UI_FONT_FAMILY_TEXT);
     cf.yHeight=(LONG)(ABM_UI_FONT_SIZE_D2D_BODY*15.0f);cf.crTextColor=ABM_UI_COLOR_TEXT_SECONDARY;cf.bCharSet=DEFAULT_CHARSET;
@@ -853,21 +867,23 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             g_infoSurfaceBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);
             g_infoInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
             g_infoArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);
-            g_infoSearch=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|WS_TABSTOP,
+            g_infoSearch=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|WS_TABSTOP,
                 0,0,0,0,hwnd,(HMENU)8101,GetModuleHandleW(nullptr),nullptr);
             g_infoFind=CreateWindowExW(0,L"BUTTON",L"Find next",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,
                 0,0,0,0,hwnd,(HMENU)8102,GetModuleHandleW(nullptr),nullptr);
-            g_infoTopics=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT|WS_VSCROLL,
+            g_infoTopics=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT|WS_VSCROLL,
                 0,0,0,0,hwnd,(HMENU)8103,GetModuleHandleW(nullptr),nullptr);
             g_infoArticleTitle=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_LEFT|SS_NOPREFIX,
                 0,0,0,0,hwnd,(HMENU)8104,GetModuleHandleW(nullptr),nullptr);
-            g_infoArticle=CreateWindowExW(WS_EX_CLIENTEDGE,g_infoRichEditModule?L"RICHEDIT50W":L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
+            g_infoArticle=CreateWindowExW(0,g_infoRichEditModule?L"RICHEDIT50W":L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
                 0,0,0,0,hwnd,(HMENU)8105,GetModuleHandleW(nullptr),nullptr);
-            g_infoTextFont=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
-            g_infoHeadingFont=CreateFontW(-16,0,0,0,FW_BOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
+            g_infoTextFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
+            g_infoHeadingFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_HEADING),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
             for(HWND c:{g_infoSearch,g_infoFind,g_infoTopics,g_infoArticleTitle,g_infoArticle})if(c)SendMessageW(c,WM_SETFONT,(WPARAM)(c==g_infoArticleTitle?g_infoHeadingFont:g_infoTextFont),TRUE);
             if(g_infoSearch)SetWindowSubclass(g_infoSearch,StreamingHelpSearchSubclass,1,0);
-            if(g_infoTopics)for(const wchar_t *topic:g_streamHelpTopics)SendMessageW(g_infoTopics,LB_ADDSTRING,0,(LPARAM)topic);
+            if(g_infoTopics){SendMessageW(g_infoTopics,LB_SETITEMHEIGHT,0,40);SetWindowTheme(g_infoTopics,L"DarkMode_Explorer",NULL);for(const wchar_t *topic:g_streamHelpTopics)SendMessageW(g_infoTopics,LB_ADDSTRING,0,(LPARAM)topic);}
+            if(g_infoSearch){SendMessageW(g_infoSearch,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(16,16));SendMessageW(g_infoSearch,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search all streaming topics  ·  e.g. YouTube, DRM, DIAL, receiver");SetWindowTheme(g_infoSearch,L"DarkMode_Explorer",NULL);}
+            if(g_infoArticle)SetWindowTheme(g_infoArticle,L"DarkMode_Explorer",NULL);
             RegisterHotKey(hwnd,1,MOD_CONTROL,'F');RegisterHotKey(hwnd,2,0,VK_F3);
             StreamingHelpLayout(hwnd);StreamingHelpShowTopic(0);
         }
@@ -937,10 +953,18 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }else{FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);RECT accent={0,0,rc.right,6};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);}
         if(g_infoAbout&&g_infoPortrait){Gdiplus::Graphics graphics(dc);graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));}
         if(g_infoCanvasReady)ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc);
-        RECT brand={28,17,rc.right-28,48};
-        InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        RECT subtitle={29,47,rc.right-28,70};
-        InfoText(dc,g_infoAbout?L"THE CREATOR":L"STREAMING CENTRE  •  HELP CENTRE",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        if(g_infoAbout){
+            RECT brand={28,17,rc.right-28,48};
+            InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT subtitle={29,47,rc.right-28,70};
+            InfoText(dc,L"THE CREATOR",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        }else{
+            RECT kicker={34,7,rc.right-28,29};
+            InfoText(dc,L"ABM AV PLAYER   /   STREAMING CENTRE HELP",kicker,ABM_UI_COLOR_ACCENT_BRIGHT,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT intro={34,31,rc.right-28,57};
+            InfoText(dc,L"Provider-specific guidance for streaming services, browser sessions and TV receivers.",intro,ABM_UI_COLOR_TEXT_SECONDARY,16,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT accentLine={0,60,rc.right,63};InfoFill(dc,accentLine,ABM_UI_COLOR_ACCENT);
+        }
         if(g_infoAbout){
             if(!g_infoPortrait){
                 RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_THEME_COLOR_1B8F91,ABM_UI_RADIUS_CARD);
@@ -978,9 +1002,8 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT stack={32,750,rc.right-32,790};
             InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }else{
-            RECT intro={28,77,rc.right-28,94};InfoText(dc,L"Browse streaming topics or search the complete guide. Enter searches; F3 finds the next match.",intro,ABM_UI_COLOR_TEXT_MUTED,12,400,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT navLabel={28,133,278,151};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT articleLabel={302,133,rc.right-28,151};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT navLabel={24,124,294,142};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT articleLabel={310,124,rc.right-24,142};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }
         if(g_infoCanvasReady&&g_infoCanvas.drawing)ABM_D2D_CanvasEnd(&g_infoCanvas);
         EndPaint(hwnd,&ps);return 0;
