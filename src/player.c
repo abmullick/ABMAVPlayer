@@ -2896,8 +2896,8 @@ static void LoadPersistentState(void) {
     {
         int write=0;
         for(int read=0;read<g_recentCount;read++) {
-            DWORD attrs=GetFileAttributesW(g_recent[read]);
-            if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY))continue;
+            /* Keep unavailable recent paths too: selecting one routes through
+               PlayIndex, which flags it and offers the normal relink workflow. */
             BOOL duplicate=FALSE;
             for(int j=0;j<write;j++)if(!_wcsicmp(g_recent[j],g_recent[read])){duplicate=TRUE;break;}
             if(duplicate)continue;
