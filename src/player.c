@@ -892,7 +892,10 @@ static void RefreshVideoGeometry(void) {
 }
 static void UpdateLayout(HWND hwnd) {
     RECT c; GetClientRect(hwnd,&c); int w=c.right,h=c.bottom;
-    int left=28,top=104,bottom=150;
+    /* Keep the LibVLC child HWND above the seek row. The seek bar is painted
+       by the main window at h-175; ending the video viewport at h-190 gives
+       it a dedicated 15 px gap so the native video surface cannot cover it. */
+    int left=28,top=104,bottom=190;
     int side=w>=1700?640:(w>=1400?600:(w>=1180?540:460));
     int drawerWidth=side*g_drawerProgress/100;
     int videoW=w-left*2; if(videoW<260)videoW=260;
