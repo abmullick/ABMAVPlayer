@@ -7641,7 +7641,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
         if(y>=R_SEEK.top-12&&y<=R_SEEK.bottom+14){g_dragSeek=1;SeekAt(x);ReleaseCapture();return 0;}
         if(y>=R_VOLUME.top-12&&y<=R_VOLUME.bottom+12){g_dragVolume=1;int v=(x-R_VOLUME.left)*100/(R_VOLUME.right-R_VOLUME.left);if(v<0)v=0;if(v>100)v=100;g_volume=v;libvlc_audio_set_volume(g_player,v);InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&g_libraryTab==1&&Inside(R_LIST,x,y)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_FAVORITE[ri],x,y)){ToggleFavoritePath(g_playlist[g_visibleRows[ri]]);ReleaseCapture();return 0;}}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_LIST,x,y)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_FAVORITE[ri],x,y)){ToggleFavoritePath(g_playlist[g_visibleRows[ri]]);ReleaseCapture();return 0;}}
         if(g_drawerOpen&&!g_fullscreen&&g_libraryTab==0&&Inside(R_LIST,x,y)) {
             for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)) {
                 g_queueDragPending=TRUE;g_queueDragging=FALSE;
