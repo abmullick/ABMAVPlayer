@@ -1770,9 +1770,12 @@ static void DrawUI(HDC dc,RECT client) {
     wchar_t groupLabel[32];
     if(g_libraryTab==1)StringCchCopyW(groupLabel,_countof(groupLabel),g_showFavorites?L"♥ Favorites":(g_showContinueWatching?L"▶ Continue":L"All tracks"));
     else swprintf_s(groupLabel,32,L"Group: %s",g_groupMode==1?L"Artist":(g_groupMode==2?L"Album":L"Folder"));
-    if(g_libraryTab==1&&(g_showFavorites||g_showContinueWatching)) {
+    if(g_libraryTab==1&&g_showFavorites) {
         GradientRound(dc,R_GROUP,ABM_THEME_COLOR_311F2B,ABM_THEME_COLOR_1F2226,8);
         ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_FFBECD,0.9f);
+    } else if(g_libraryTab==1&&g_showContinueWatching) {
+        GradientRound(dc,R_GROUP,ABM_THEME_COLOR_123A39,ABM_THEME_COLOR_102A31,8);
+        ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_55CBBE,0.9f);
     } else {
         GradientRound(dc,R_GROUP,ABM_THEME_COLOR_122637,ABM_THEME_COLOR_142A3C,8);
         ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.7f);
@@ -3516,7 +3519,7 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {7,L"Save as personal library...",g_playlistCount>0,FALSE},
         {8,L"Load saved library...",TRUE,FALSE},
         {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE},
-        {10,L"Relink missing media...",index>=0&&index<g_playlistCount&&g_missingMedia[index],FALSE},
+        {10,L"Relink missing media...",index>=0&&index<g_playlistCount&&(g_missingMedia[index]||GetFileAttributesW(g_playlist[index])==INVALID_FILE_ATTRIBUTES),FALSE},
         {11,L"Continue watching",index>=0&&index<g_playlistCount&&ResumePositionForPath(g_playlist[index])>0,FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
