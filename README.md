@@ -96,7 +96,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Recent-media list, shuffle and repeat-current-track modes.
 - Playback speed presets from 0.5x to 2.0x.
 - Fullscreen playback and keyboard controls.
-- Basic media information (title, artist, album and duration), when available.
+- Read-only Media Information view from the playback context menu: available metadata tags, file path/size, duration/position, decoded video dimensions and LibVLC-reported stream codecs/active tracks.
 
 ### Audio, video and subtitles
 - Common formats include MP3, WAV, FLAC, AAC, M4A, OGG, MP4, MKV, AVI, MOV, WMV and WebM; actual support depends on VLC codecs/plugins.
