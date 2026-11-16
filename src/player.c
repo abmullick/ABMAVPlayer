@@ -259,6 +259,7 @@ static int g_resumeCount=0;
 static HANDLE g_resumeWriteThread=NULL;
 static DWORD g_lastResumeSaveTick=0;
 static BOOL g_missingMedia[MAX_PLAYLIST];
+static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_replayGain=TRUE;
@@ -560,6 +561,7 @@ static void PlayIndex(int index);
 static void ResumeCaptureCurrent(void);
 static int64_t ResumePositionForPath(const wchar_t *path);
 static void RefreshMissingMediaFlags(void);
+static void RefreshResumeFlags(void);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
 static void RefreshAudioDevices(void);
@@ -625,7 +627,7 @@ static int CountFilteredMedia(void) {
     int count=0;
     for(int i=0;i<g_playlistCount;i++){
         if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
-        if(g_libraryTab==1&&g_showContinueWatching&&ResumePositionForPath(g_playlist[i])<=0)continue;
+        if(g_libraryTab==1&&g_showContinueWatching&&!g_hasResume[i])continue;
         BOOL video=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&video)||(g_mediaFilter==2&&!video))continue;
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
@@ -1843,11 +1845,11 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_missingMedia[i])swprintf_s(metaLine,320,L"MISSING MEDIA  ·  %s",isVideo?L"VIDEO":L"AUDIO");
-        else if(ResumePositionForPath(g_playlist[i])>0)swprintf_s(metaLine,320,L"CONTINUE WATCHING  ·  %s",isVideo?L"VIDEO":L"AUDIO");
+        else if(g_hasResume[i])swprintf_s(metaLine,320,L"CONTINUE WATCHING  ·  %s",isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
-        Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_F2A0A6:(ResumePositionForPath(g_playlist[i])>0?ABM_THEME_COLOR_7DE0D0:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_F2A0A6:(g_hasResume[i]?ABM_THEME_COLOR_7DE0D0:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
         wchar_t durationText[32];FormatMediaDuration(DurationLookup(g_playlist[i]),durationText,_countof(durationText));
         RECT durationRect={row.right-164,subline.top,row.right-112,subline.bottom};
@@ -2749,6 +2751,10 @@ static int ResumeFind(const wchar_t *path) {
 static int64_t ResumePositionForPath(const wchar_t *path) {
     int i=ResumeFind(path);return i>=0?g_resumeEntries[i].positionMs:0;
 }
+static void RefreshResumeFlags(void) {
+    for(int i=0;i<MAX_PLAYLIST;i++)g_hasResume[i]=FALSE;
+    for(int i=0;i<g_playlistCount;i++)g_hasResume[i]=(ResumeFind(g_playlist[i])>=0);
+}
 typedef struct { int count; ABMResumeEntry entries[MAX_RESUME_ENTRIES]; wchar_t file[PATH_CAP]; } ABMResumeWrite;
 static DWORD WINAPI ResumeWriteThreadProc(LPVOID parameter) {
     ABMResumeWrite *job=(ABMResumeWrite*)parameter;
@@ -2804,7 +2810,7 @@ static void ResumeCaptureCurrent(void) {
         wcsncpy_s(g_resumeEntries[i].path,PATH_CAP,g_playlist[g_current],_TRUNCATE);
         g_resumeEntries[i].positionMs=pos;g_resumeEntries[i].durationMs=dur;
     }
-    g_lastResumeSaveTick=GetTickCount();ResumeSaveAsync(FALSE);
+    RefreshResumeFlags();g_lastResumeSaveTick=GetTickCount();ResumeSaveAsync(FALSE);
 }
 static void RelinkSavedCollections(const wchar_t *oldPath,const wchar_t *newPath) {
     wchar_t folder[PATH_CAP],pattern[PATH_CAP];
@@ -2847,7 +2853,7 @@ static void RelinkMissingMedia(int index) {
     for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],oldPath))wcsncpy_s(g_recent[i],PATH_CAP,replacement,_TRUNCATE);
     RelinkSavedCollections(oldPath,replacement);
     int ri=ResumeFind(oldPath);if(ri>=0)wcsncpy_s(g_resumeEntries[ri].path,PATH_CAP,replacement,_TRUNCATE);
-    for(int i=0;i<g_playlistCount;i++){DWORD a=GetFileAttributesW(g_playlist[i]);g_missingMedia[i]=(a==INVALID_FILE_ATTRIBUTES||(a&FILE_ATTRIBUTE_DIRECTORY));}
+    RefreshMissingMediaFlags();
     SavePersistentState();ResumeSaveAsync(FALSE);
     SetStatus(L"Media relinked. Library references and viewing progress were preserved.");
     InvalidateRect(g_main,NULL,FALSE);
@@ -2857,6 +2863,7 @@ static void RefreshMissingMediaFlags(void) {
         DWORD attrs=GetFileAttributesW(g_playlist[i]);
         g_missingMedia[i]=(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY));
     }
+    RefreshResumeFlags();
 }
 static void LoadPersistentState(void) {
     if(!EnsureDataDirectory())return;
@@ -2892,7 +2899,7 @@ static void LoadPersistentState(void) {
     swprintf_s(path,PATH_CAP,L"%s\\favorites.m3u",g_dataDir);
     {FILE *fav=NULL;if(_wfopen_s(&fav,path,L"rt, ccs=UTF-8")==0&&fav){wchar_t line[PATH_CAP];while(g_favoriteCount<MAX_FAVORITES&&fgetws(line,PATH_CAP,fav)){line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#'||IsFavoritePath(line))continue;wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,line,_TRUNCATE);}fclose(fav);}}
     PruneUnavailablePlaylistItems();
-    LoadResumeState();
+    LoadResumeState();RefreshResumeFlags();
     /* Recent history is a list of playable local files, not a stale log. */
     {
         int write=0;
