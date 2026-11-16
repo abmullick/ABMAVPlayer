@@ -878,7 +878,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             g_infoArticle=CreateWindowExW(0,g_infoRichEditModule?L"RICHEDIT50W":L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|ES_READONLY|ES_NOHIDESEL,
                 0,0,0,0,hwnd,(HMENU)8105,GetModuleHandleW(nullptr),nullptr);
             g_infoTextFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
-            g_infoHeadingFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_HEADING),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
+            g_infoHeadingFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_SECTION),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
             for(HWND c:{g_infoSearch,g_infoFind,g_infoTopics,g_infoArticleTitle,g_infoArticle})if(c)SendMessageW(c,WM_SETFONT,(WPARAM)(c==g_infoArticleTitle?g_infoHeadingFont:g_infoTextFont),TRUE);
             if(g_infoSearch)SetWindowSubclass(g_infoSearch,StreamingHelpSearchSubclass,1,0);
             if(g_infoTopics){SendMessageW(g_infoTopics,LB_SETITEMHEIGHT,0,40);SetWindowTheme(g_infoTopics,L"DarkMode_Explorer",NULL);for(const wchar_t *topic:g_streamHelpTopics)SendMessageW(g_infoTopics,LB_ADDSTRING,0,(LPARAM)topic);}
@@ -903,7 +903,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     case WM_ERASEBKGND:return 1;
     case WM_MEASUREITEM:{
         MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;
-        if(!g_infoAbout&&m&&m->CtlID==8103){m->itemHeight=34;return TRUE;}
+        if(!g_infoAbout&&m&&m->CtlID==8103){m->itemHeight=40;return TRUE;}
         break;
     }
     case WM_DRAWITEM:{
