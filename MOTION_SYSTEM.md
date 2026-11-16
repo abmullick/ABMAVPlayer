@@ -213,3 +213,13 @@ The Main Player's menu, drawer, transport hover, dashboard-card hover and artwor
 Queue and Library media-card hover feedback now uses a scalar motion value sampled by the Main Player's existing shared 16 ms motion host. The target changes only when the hovered playlist row changes; row paint uses a small set of existing ABM palette steps and remains allocation-free. During animation only the currently visible affected row is invalidated. Scrolling, filtering, selection, drag/reorder, favourites, playback dispatch and duration lookup are not changed. The existing 33 ms operational timer only detects pointer/row target changes; it does not advance the hover animation. A direct move between rows restarts the incoming row's highlight from rest.
 
 This is interaction feedback, not a full Queue/Library visual redesign. The Main Player motion registry now samples nine scalar values together. Equalizer, Settings, Advanced Settings, Help, About, modal windows and Streaming Centre chrome still need their own focused migrations. Windows compilation, scroll-performance observation and interaction regression checks remain pending.
+
+
+## Auxiliary-window migration update — 16 November 2026
+
+- [x] Equalizer reveal now uses the shared `ABMMotionValue` runtime and active-only `ABM_MotionWin` timer host (260 ms ease-out). The existing layered-window alpha is animated; the Equalizer's paint path, pointer-driven band editing, preset selection, audio application and persistence remain unchanged.
+- [ ] Settings, Advanced Settings, Help and About transitions remain to be migrated individually. Settings and Advanced Settings contain native child controls and modal message-loop/focus behaviour; their transitions must be added without moving child controls independently, stealing focus, or changing modal ownership.
+- [ ] Streaming Centre chrome feedback remains to be migrated from immediate hover-state repaint to the shared motion runtime. Its 400 ms device refresh and existing receiver pulse timers are operational and must remain separate.
+- [ ] Complete cross-window visual consistency review and Windows x64 build/runtime regression validation remain outstanding.
+
+The Equalizer reveal is a source-level change only until it is built and exercised on Windows. Do not treat this status as release validation.
