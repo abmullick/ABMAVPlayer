@@ -996,6 +996,65 @@ static void UpdateLayout(HWND hwnd) {
     int rowHeight=PlaylistRowHeight();
     for(int i=0;i<MAX_PLAYLIST;i++) R_ROW[i]=(RECT){R_LIST.left,R_LIST.top+(i-g_playlistScroll)*rowHeight,R_LIST.right,R_LIST.top+(i-g_playlistScroll+1)*rowHeight};
 }
+/* ABM-branded fallback artwork for library items without embedded art.
+   These are vector-rendered locally, so they are crisp at every DPI and need
+   no network access, external image assets or per-file cache entries. */
+static void DrawDefaultMediaArtwork(HDC dc,RECT r,BOOL video,int variant) {
+    int w=r.right-r.left,h=r.bottom-r.top;
+    if(w<=2||h<=2)return;
+    RECT inner={r.left+1,r.top+1,r.right-1,r.bottom-1};
+    if(video) {
+        COLORREF top=(variant%3==0)?ABM_THEME_COLOR_0D1825:
+                     (variant%3==1)?ABM_THEME_COLOR_183449:ABM_THEME_COLOR_1C3445;
+        COLORREF bottom=(variant%2)?ABM_THEME_COLOR_1B7771:ABM_THEME_COLOR_1E6F77;
+        GradientRect(dc,inner,top,bottom);
+        /* Cinematic horizon, distant ridgelines and a luminous play motif. */
+        int horizon=inner.top+h*64/100;
+        DrawLine(dc,inner.left+3,horizon,inner.right-3,horizon,ABM_THEME_COLOR_63E1CD,1);
+        DrawLine(dc,inner.left+w/10,horizon,inner.left+w/3,inner.top+h/3,ABM_THEME_COLOR_5EB7F4,1);
+        DrawLine(dc,inner.left+w/3,inner.top+h/3,inner.left+w*55/100,horizon,ABM_THEME_COLOR_5EB7F4,1);
+        DrawLine(dc,inner.left+w*42/100,horizon,inner.left+w*68/100,inner.top+h/4,ABM_THEME_COLOR_74D7D3,1);
+        DrawLine(dc,inner.left+w*68/100,inner.top+h/4,inner.right-w/12,horizon,ABM_THEME_COLOR_74D7D3,1);
+        if(w>=48&&h>=48) {
+            int cx=inner.left+w*72/100,cy=inner.top+h*30/100,rad=w/12;
+            RECT sun={cx-rad,cy-rad,cx+rad,cy+rad};
+            RoundBox(dc,sun,ABM_THEME_COLOR_A4C1EF,rad);
+            int px=inner.left+w/2,py=inner.top+h/2,sz=w/10;
+            DrawLine(dc,px-sz,py-sz,px+sz,py,ABM_THEME_COLOR_FFFFFF,2);
+            DrawLine(dc,px+sz,py,px-sz,py+sz,ABM_THEME_COLOR_FFFFFF,2);
+            DrawLine(dc,px-sz,py+sz,px-sz,py-sz,ABM_THEME_COLOR_FFFFFF,2);
+        } else {
+            int cx=(inner.left+inner.right)/2,cy=(inner.top+inner.bottom)/2,sz=(w<h?w:h)/5;
+            DrawLine(dc,cx-sz,cy-sz,cx+sz,cy,ABM_THEME_COLOR_FFFFFF,2);
+            DrawLine(dc,cx+sz,cy,cx-sz,cy+sz,ABM_THEME_COLOR_FFFFFF,2);
+            DrawLine(dc,cx-sz,cy+sz,cx-sz,cy-sz,ABM_THEME_COLOR_FFFFFF,2);
+        }
+    } else {
+        GradientRect(dc,inner,ABM_THEME_COLOR_0B1727,
+                     (variant%2)?ABM_THEME_COLOR_1C3445:ABM_THEME_COLOR_1B7771);
+        /* Equalizer-inspired cover: a balanced, repeatable waveform. */
+        int cx=(inner.left+inner.right)/2,cy=(inner.top+inner.bottom)/2;
+        int bars=w>=48?9:5;
+        int step=(w-12)/bars;if(step<3)step=3;
+        int barW=step>4?3:2;
+        for(int b=0;b<bars;b++) {
+            int wave=(b*7+variant*3)%11;
+            int bh=(h>=48?h/5: h/7)+(wave*(h>=48?h/28:1));
+            if(bh>h-8)bh=h-8;
+            RECT bar={cx-(bars*step)/2+b*step,cy-bh/2,
+                      cx-(bars*step)/2+b*step+barW,cy+bh/2};
+            GradientRect(dc,bar,(b%2)?ABM_THEME_COLOR_28BED3:ABM_THEME_COLOR_63E1CD,
+                         (b%3)?ABM_THEME_COLOR_5EB7F4:ABM_THEME_COLOR_6F69EF);
+        }
+        if(w>=48&&h>=48) {
+            RECT frame={inner.left+5,inner.top+5,inner.right-5,inner.bottom-5};
+            ABM_D2D_StrokeRound(&g_ui,(float)frame.left,(float)frame.top,
+                (float)frame.right,(float)frame.bottom,7.0f,ABM_THEME_COLOR_63E1CD,0.55f);
+        }
+    }
+    ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,
+        (float)r.bottom,8.0f,video?ABM_THEME_COLOR_5EB7F4:ABM_THEME_COLOR_63E1CD,0.8f);
+}
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
     int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
@@ -1564,13 +1623,11 @@ static void DrawUI(HDC dc,RECT client) {
         RoundBox(dc,rowThumb,current?ABM_THEME_COLOR_3167A6:RGB(32+(i*5)%14,49+(i*4)%15,72+(i*3)%18),10);
         RECT coverInset={rowThumb.left+5,rowThumb.top+5,rowThumb.right-5,rowThumb.bottom-5};
         ABM_D2D_StrokeRound(&g_ui,(float)coverInset.left,(float)coverInset.top,(float)coverInset.right,(float)coverInset.bottom,7.0f,ABM_THEME_COLOR_91B8DA,0.65f);
-        if(current&&g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)rowThumb.left+2,(float)rowThumb.top+2,(float)rowThumb.right-2,(float)rowThumb.bottom-2);
-        else {
-            int cx=(rowThumb.left+rowThumb.right)/2,cy=(rowThumb.top+rowThumb.bottom)/2;
-            COLORREF iconColor=current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_ABC6E5;
-            if(isVideo){DrawLine(dc,cx-5,cy-7,cx+7,cy,iconColor,2);DrawLine(dc,cx+7,cy,cx-5,cy+7,iconColor,2);DrawLine(dc,cx-5,cy+7,cx-5,cy-7,iconColor,2);}
-            else {DrawLine(dc,cx-7,cy-6,cx-7,cy+6,ABM_THEME_COLOR_B6CDE8,2);DrawLine(dc,cx+7,cy-6,cx+7,cy+6,ABM_THEME_COLOR_B6CDE8,2);}
-        }
+        if(current&&g_artworkLoaded)
+            ABM_D2D_DrawImage(&g_ui,(float)rowThumb.left+2,(float)rowThumb.top+2,
+                (float)rowThumb.right-2,(float)rowThumb.bottom-2);
+        else
+            DrawDefaultMediaArtwork(dc,rowThumb,isVideo,i);
         int textLeft=compactRow?rowThumb.right+8:row.left+82;
         RECT name=compactRow
             ?(RECT){textLeft,row.top+2,row.right-70,row.top+(rowHeight/2)+2}
