@@ -905,8 +905,10 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(g_infoCanvasReady&&ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,6,ABM_UI_COLOR_ACCENT);
+            if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}
             ABM_D2D_CanvasEnd(&g_infoCanvas);
         }else{FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);RECT accent={0,0,rc.right,6};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);}
+        if(g_infoAbout&&g_infoPortrait){Gdiplus::Graphics graphics(dc);graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));}
         if(g_infoCanvasReady)ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc);
         RECT brand={28,17,rc.right-28,48};
         InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
