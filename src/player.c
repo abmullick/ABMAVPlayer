@@ -562,6 +562,7 @@ static void ResumeCaptureCurrent(void);
 static int64_t ResumePositionForPath(const wchar_t *path);
 static void RefreshMissingMediaFlags(void);
 static void RefreshResumeFlags(void);
+static void FormatResumeLabel(const wchar_t *path,wchar_t *out,size_t capacity);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
 static void RefreshAudioDevices(void);
@@ -1845,7 +1846,7 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_missingMedia[i])swprintf_s(metaLine,320,L"MISSING MEDIA  ·  %s",isVideo?L"VIDEO":L"AUDIO");
-        else if(g_hasResume[i])swprintf_s(metaLine,320,L"CONTINUE WATCHING  ·  %s",isVideo?L"VIDEO":L"AUDIO");
+        else if(g_hasResume[i])FormatResumeLabel(g_playlist[i],metaLine,_countof(metaLine));
         else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
@@ -2751,6 +2752,15 @@ static int ResumeFind(const wchar_t *path) {
 }
 static int64_t ResumePositionForPath(const wchar_t *path) {
     int i=ResumeFind(path);return i>=0?g_resumeEntries[i].positionMs:0;
+}
+static void FormatResumeLabel(const wchar_t *path,wchar_t *out,size_t capacity) {
+    if(!out||capacity==0)return;
+    int i=ResumeFind(path);if(i<0){StringCchCopyW(out,capacity,L"");return;}
+    int64_t duration=g_resumeEntries[i].durationMs,position=g_resumeEntries[i].positionMs;
+    if(duration<=0){StringCchCopyW(out,capacity,L"CONTINUE WATCHING");return;}
+    int percent=(int)((position*100)/duration);if(percent<0)percent=0;if(percent>99)percent=99;
+    wchar_t remaining[32];FormatMediaDuration(duration-position,remaining,_countof(remaining));
+    StringCchPrintfW(out,capacity,L"CONTINUE  %d%%  ·  %s LEFT",percent,remaining);
 }
 static void RefreshResumeFlags(void) {
     for(int i=0;i<MAX_PLAYLIST;i++)g_hasResume[i]=FALSE;
