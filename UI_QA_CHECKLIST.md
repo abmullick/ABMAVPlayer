@@ -277,3 +277,13 @@ Do not mark this feature runtime-validated until all Windows build and interacti
 - [ ] Build with MSVC and repeat at 100%, 125%, 150% and 200% scaling.
 
 This is a source implementation only until the Windows build and runtime checks above pass.
+
+
+## Fluidic UI — auxiliary windows and Streaming Centre follow-up
+
+- [ ] Equalizer: verify 260 ms reveal, rapid reopen, focus loss/hide, Escape, close, repeated preset changes and audio persistence. Confirm the active-only motion timer stops at completion and the 33 ms player timer is unaffected.
+- [ ] Settings: verify reveal/dismissal with every native edit control, keyboard tab order, scroll dragging, dropdowns, theme changes, resize, DPI scaling and modal owner re-enable.
+- [ ] Advanced Settings: verify all pages, diagnostics generation, VLC report edit, native child controls, page switching, resize and modal focus.
+- [ ] Help/About: verify reveal/dismissal, Help navigation/scrolling, About portrait rendering, keyboard close and owner activation.
+- [ ] Streaming Centre: verify animated hover/focus feedback on service tabs and browser/cast chrome without changing WebView2 navigation, fullscreen, device discovery, casting, or receiver selection. Confirm 400 ms device refresh and device pulse timers remain operational and independent.
+- [ ] Run the complete Windows x64 build and regression checklist before release; source edits and Git commits alone are not evidence of runtime success.
