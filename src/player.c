@@ -557,6 +557,7 @@ int ABM_ShowMessageBox(HWND owner,const wchar_t *message,const wchar_t *caption,
 
 static void PlayIndex(int index);
 static void ResumeCaptureCurrent(void);
+static int64_t ResumePositionForPath(const wchar_t *path);
 static void TorrentStopPlayback(void);
 static void SaveAudioPreferences(void);
 static void RefreshAudioDevices(void);
@@ -1834,10 +1835,12 @@ static void DrawUI(HDC dc,RECT client) {
             :(RECT){row.left+82,row.top+40,row.right-108,row.bottom-7};
         Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
-        if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
+        if(g_missingMedia[i])swprintf_s(metaLine,320,L"MISSING MEDIA  ·  %s",isVideo?L"VIDEO":L"AUDIO");
+        else if(ResumePositionForPath(g_playlist[i])>0)swprintf_s(metaLine,320,L"CONTINUE WATCHING  ·  %s",isVideo?L"VIDEO":L"AUDIO");
+        else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
-        Txt(dc,metaLine,subline,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_F2A0A6:(ResumePositionForPath(g_playlist[i])>0?ABM_THEME_COLOR_7DE0D0:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
         wchar_t durationText[32];FormatMediaDuration(DurationLookup(g_playlist[i]),durationText,_countof(durationText));
         RECT durationRect={row.right-164,subline.top,row.right-112,subline.bottom};
@@ -1851,15 +1854,6 @@ static void DrawUI(HDC dc,RECT client) {
             (float)typePill.bottom,8.0f,isVideo?ABM_THEME_COLOR_3D7791:ABM_THEME_COLOR_347077,0.65f);
         RECT typeText={typePill.left+3,typePill.top+1,typePill.right-3,typePill.bottom-1};
         Txt(dc,isVideo?L"VIDEO":L"AUDIO",typeText,isVideo?ABM_THEME_COLOR_A4C1EF:ABM_THEME_COLOR_74D7D3,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        if(g_missingMedia[i]){
-            RECT missing={row.left+7,row.bottom-22,row.left+92,row.bottom-5};
-            RoundBox(dc,missing,ABM_THEME_COLOR_4B252B,6);
-            Txt(dc,L"MISSING",missing,ABM_THEME_COLOR_F2A0A6,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        }else if(ResumePositionForPath(g_playlist[i])>0){
-            RECT resumeBadge={row.left+7,row.bottom-22,row.left+100,row.bottom-5};
-            RoundBox(dc,resumeBadge,ABM_THEME_COLOR_153B3B,6);
-            Txt(dc,L"CONTINUE",resumeBadge,ABM_THEME_COLOR_7DE0D0,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        }
         BOOL favorite=IsFavoritePath(g_playlist[i]);
         RECT heart=R_FAVORITE[shown];
         Txt(dc,favorite?L"♥":L"♡",heart,favorite?ABM_THEME_COLOR_FFBECD:(hot?ABM_THEME_COLOR_BBD2DC:ABM_THEME_COLOR_738297),g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -2794,7 +2788,7 @@ static void LoadResumeState(void) {
     fclose(fp);
 }
 static void ResumeCaptureCurrent(void) {
-    if(!g_hasMedia||!g_player||g_current<0||g_current>=g_playlistCount||g_torrentPlaybackActive)return;
+    if(!g_hasMedia||!g_player||g_current<0||g_current>=g_playlistCount)return;
     int64_t pos=libvlc_media_player_get_time(g_player),dur=libvlc_media_player_get_length(g_player);
     if(pos<0||dur<=0)return;
     int i=ResumeFind(g_playlist[g_current]);
