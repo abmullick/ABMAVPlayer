@@ -228,6 +228,11 @@ static BOOL g_endHandled = FALSE;
 #define MAX_RECENT 12
 static wchar_t g_recent[MAX_RECENT][PATH_CAP];
 static int g_recentCount=0;
+#define MAX_RESUME_ITEMS MAX_PLAYLIST
+typedef struct { wchar_t path[PATH_CAP]; int64_t positionMs; } ABMResumeEntry;
+static ABMResumeEntry g_resumeItems[MAX_RESUME_ITEMS];
+static int g_resumeCount=0;
+static ULONGLONG g_resumeLastSaveTick=0;
 static HWND g_recentPopupWindow=NULL;
 static int g_recentPopupHover=-1;
 static wchar_t g_dataDir[PATH_CAP];
@@ -588,6 +593,11 @@ static BOOL Inside(RECT r,int x,int y) { return x>=r.left && x<r.right && y>=r.t
 static BOOL ContainsTextI(const wchar_t *text,const wchar_t *query) { if(!query||!query[0])return TRUE;if(!text)return FALSE;size_t n=wcslen(query);for(const wchar_t *s=text;*s;s++)if(!_wcsnicmp(s,query,n))return TRUE;return FALSE; }
 static BOOL IsVideoPath(const wchar_t *path) { const wchar_t *d=wcsrchr(path?path:L"",L'.');return d&&(!_wcsicmp(d,L".mp4")||!_wcsicmp(d,L".mkv")||!_wcsicmp(d,L".avi")||!_wcsicmp(d,L".mov")||!_wcsicmp(d,L".wmv")||!_wcsicmp(d,L".webm")||!_wcsicmp(d,L".mpeg")||!_wcsicmp(d,L".mpg")||!_wcsicmp(d,L".m4v")); }
 static void SavePersistentState(void);
+static void SaveResumeState(void);
+static void LoadResumeState(void);
+static void CaptureResumePosition(BOOL force);
+static BOOL IsMediaPathAvailable(const wchar_t *path);
+static void RelinkPlaylistItem(int index);
 static BOOL IsFavoritePath(const wchar_t *path) {
     if(!path||!path[0])return FALSE;
     for(int i=0;i<g_favoriteCount;i++)if(!_wcsicmp(g_favorites[i],path))return TRUE;
@@ -1829,7 +1839,9 @@ static void DrawUI(HDC dc,RECT client) {
         if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
-        Txt(dc,metaLine,subline,ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        BOOL rowMissing=!IsMediaPathAvailable(g_playlist[i]);
+        if(rowMissing)swprintf_s(metaLine,_countof(metaLine),L"MISSING  ·  Relink from item menu");
+        Txt(dc,metaLine,subline,rowMissing?ABM_THEME_COLOR_F2B14F:ABM_THEME_COLOR_91A6BE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
         wchar_t durationText[32];FormatMediaDuration(DurationLookup(g_playlist[i]),durationText,_countof(durationText));
         RECT durationRect={row.right-164,subline.top,row.right-112,subline.bottom};
@@ -2684,16 +2696,13 @@ static BOOL EnsureTorrentDownloadDir(void) {
     return attrs!=INVALID_FILE_ATTRIBUTES&&(attrs&FILE_ATTRIBUTE_DIRECTORY)!=0;
 }
 static void SavePersistentState(void);
-static void PruneUnavailablePlaylistItems(void) {
-    int write=0,removed=0;
-    for(int read=0;read<g_playlistCount;read++){
-        DWORD attrs=GetFileAttributesW(g_playlist[read]);
-        if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY)){removed++;continue;}
-        if(write!=read)wcsncpy_s(g_playlist[write],PATH_CAP,g_playlist[read],_TRUNCATE);
-        write++;
-    }
-    if(removed){g_playlistCount=write;g_current=-1;g_selected=write?0:-1;g_playlistScroll=0;SavePersistentState();}
+static BOOL IsMediaPathAvailable(const wchar_t *path) {
+    if(!path||!path[0])return FALSE;
+    DWORD attrs=GetFileAttributesW(path);
+    return attrs!=INVALID_FILE_ATTRIBUTES && !(attrs&FILE_ATTRIBUTE_DIRECTORY);
 }
+/* Missing files remain in the library so they can be relinked later. */
+static void PruneUnavailablePlaylistItems(void) { (void)0; }
 static void SavePersistentState(void) {
     if(!EnsureDataDirectory())return;
     wchar_t path[PATH_CAP];swprintf_s(path,PATH_CAP,L"%s\\library.m3u",g_dataDir);
@@ -2710,6 +2719,7 @@ static void SavePersistentState(void) {
         for(int i=0;i<g_recentCount;i++){int n=WideCharToMultiByte(CP_UTF8,0,g_recent[i],-1,NULL,0,NULL,NULL);if(n>1){char *s=(char*)malloc((size_t)n);if(s){WideCharToMultiByte(CP_UTF8,0,g_recent[i],-1,s,n,NULL,NULL);fputs(s,fp);fputc('\n',fp);free(s);}}}
         fclose(fp);
     }
+    SaveResumeState();
     swprintf_s(path,PATH_CAP,L"%s\\settings.ini",g_dataDir);
     wchar_t settings[256];swprintf_s(settings,256,L"Volume=%d\r\nShuffle=%d\r\nRepeat=%d\r\nRate=%.2f\r\n",g_volume,g_shuffle,g_repeat,g_playbackRate);
     wchar_t value[32];
@@ -2755,14 +2765,13 @@ static void LoadPersistentState(void) {
         if(which)g_recentCount=count;else g_playlistCount=count;
     }
     swprintf_s(path,PATH_CAP,L"%s\\favorites.m3u",g_dataDir);
-    {FILE *fav=NULL;if(_wfopen_s(&fav,path,L"rt, ccs=UTF-8")==0&&fav){wchar_t line[PATH_CAP];while(g_favoriteCount<MAX_FAVORITES&&fgetws(line,PATH_CAP,fav)){line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#'||IsFavoritePath(line))continue;DWORD a=GetFileAttributesW(line);if(a==INVALID_FILE_ATTRIBUTES||(a&FILE_ATTRIBUTE_DIRECTORY))continue;wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,line,_TRUNCATE);}fclose(fav);}}
+    {FILE *fav=NULL;if(_wfopen_s(&fav,path,L"rt, ccs=UTF-8")==0&&fav){wchar_t line[PATH_CAP];while(g_favoriteCount<MAX_FAVORITES&&fgetws(line,PATH_CAP,fav)){line[wcscspn(line,L"\r\n")]=0;if(!line[0]||line[0]==L'#'||IsFavoritePath(line))continue;wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,line,_TRUNCATE);}fclose(fav);}}
     PruneUnavailablePlaylistItems();
-    /* Recent history is a list of playable local files, not a stale log. */
+    LoadResumeState();
+    /* Keep recent history even when its source drive is temporarily unavailable. */
     {
         int write=0;
         for(int read=0;read<g_recentCount;read++) {
-            DWORD attrs=GetFileAttributesW(g_recent[read]);
-            if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY))continue;
             BOOL duplicate=FALSE;
             for(int j=0;j<write;j++)if(!_wcsicmp(g_recent[j],g_recent[read])){duplicate=TRUE;break;}
             if(duplicate)continue;
@@ -2876,6 +2885,97 @@ static void AddRecent(const wchar_t *path) {
     int end=g_recentCount<MAX_RECENT?g_recentCount++:MAX_RECENT-1;
     for(int i=end;i>0;i--)wcsncpy_s(g_recent[i],PATH_CAP,g_recent[i-1],_TRUNCATE);
     wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();
+}
+
+static int FindResumeEntry(const wchar_t *path) {
+    for(int i=0;i<g_resumeCount;i++)if(!_wcsicmp(g_resumeItems[i].path,path))return i;
+    return -1;
+}
+static void SaveResumeState(void) {
+    if(!EnsureDataDirectory())return;
+    wchar_t filePath[PATH_CAP];swprintf_s(filePath,_countof(filePath),L"%s\\resume.m3u",g_dataDir);
+    FILE *fp=NULL;if(_wfopen_s(&fp,filePath,L"wb")!=0||!fp)return;
+    fputs("#EXTM3U\n",fp);
+    for(int i=0;i<g_resumeCount;i++){
+        if(g_resumeItems[i].positionMs<=0||!g_resumeItems[i].path[0])continue;
+        fprintf(fp,"#ABMRESUME:%lld\n",(long long)g_resumeItems[i].positionMs);
+        int bytes=WideCharToMultiByte(CP_UTF8,0,g_resumeItems[i].path,-1,NULL,0,NULL,NULL);
+        if(bytes>1){char *u=(char*)malloc((size_t)bytes);if(u){WideCharToMultiByte(CP_UTF8,0,g_resumeItems[i].path,-1,u,bytes,NULL,NULL);fputs(u,fp);fputc('\n',fp);free(u);}}
+    }
+    fclose(fp);
+}
+static void LoadResumeState(void) {
+    g_resumeCount=0;
+    wchar_t filePath[PATH_CAP];swprintf_s(filePath,_countof(filePath),L"%s\\resume.m3u",g_dataDir);
+    FILE *fp=NULL;if(_wfopen_s(&fp,filePath,L"rt, ccs=UTF-8")!=0||!fp)return;
+    wchar_t line[PATH_CAP],pending[64]=L"0";
+    while(g_resumeCount<MAX_RESUME_ITEMS&&fgetws(line,_countof(line),fp)){
+        line[wcscspn(line,L"\\r\\n")]=0;if(!line[0]||!wcscmp(line,L"#EXTM3U"))continue;
+        if(!_wcsnicmp(line,L"#ABMRESUME:",11)){wcsncpy_s(pending,_countof(pending),line+11,_TRUNCATE);continue;}
+        if(line[0]==L'#')continue;
+        wchar_t *end=NULL;long long ms=_wcstoi64(pending,&end,10);
+        if(ms>0&&end&&!*end){int i=FindResumeEntry(line);if(i<0)i=g_resumeCount++;wcsncpy_s(g_resumeItems[i].path,PATH_CAP,line,_TRUNCATE);g_resumeItems[i].positionMs=(int64_t)ms;}
+        wcscpy_s(pending,_countof(pending),L"0");
+    }
+    fclose(fp);
+}
+static void CaptureResumePosition(BOOL force) {
+    if(!g_hasMedia||g_current<0||g_current>=g_playlistCount||!g_player||g_torrentPlaybackActive)return;
+    ULONGLONG now=GetTickCount64();
+    if(!force&&g_resumeLastSaveTick&&now-g_resumeLastSaveTick<5000)return;
+    libvlc_state_t state=libvlc_media_player_get_state(g_player);
+    if(state!=libvlc_Playing&&state!=libvlc_Paused&&state!=libvlc_Buffering)return;
+    int64_t pos=libvlc_media_player_get_time(g_player),len=libvlc_media_player_get_length(g_player);
+    if(pos<5000)return;
+    int i=FindResumeEntry(g_playlist[g_current]);
+    if(len>0&&pos>=len-15000){
+        if(i>=0){for(int j=i+1;j<g_resumeCount;j++)g_resumeItems[j-1]=g_resumeItems[j];g_resumeCount--;SaveResumeState();}
+        g_resumeLastSaveTick=now;return;
+    }
+    if(i<0){if(g_resumeCount>=MAX_RESUME_ITEMS)i=MAX_RESUME_ITEMS-1;else i=g_resumeCount++;}
+    wcsncpy_s(g_resumeItems[i].path,PATH_CAP,g_playlist[g_current],_TRUNCATE);
+    g_resumeItems[i].positionMs=pos;
+    SaveResumeState();g_resumeLastSaveTick=now;
+}
+static void RelinkPlaylistItem(int index) {
+    if(index<0||index>=g_playlistCount||IsMediaPathAvailable(g_playlist[index]))return;
+    wchar_t replacement[PATH_CAP]=L"";
+    const wchar_t *leaf=wcsrchr(g_playlist[index],L'\\');leaf=leaf?leaf+1:g_playlist[index];
+    wcsncpy_s(replacement,_countof(replacement),leaf,_TRUNCATE);
+    OPENFILENAMEW ofn={0};ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=g_main;
+    ofn.lpstrFile=replacement;ofn.nMaxFile=_countof(replacement);
+    ofn.lpstrFilter=L"Media files\\0All files (*.*)\\0*.*\\0";
+    ofn.lpstrTitle=L"Locate replacement for missing media";
+    ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_HIDEREADONLY;
+    if(!GetOpenFileNameW(&ofn))return;
+    if(!IsMediaPathAvailable(replacement)){ABM_MessageBoxW(g_main,L"The selected replacement is not an accessible file.",APP_NAME,MB_ICONWARNING);return;}
+    wchar_t oldPath[PATH_CAP];wcsncpy_s(oldPath,_countof(oldPath),g_playlist[index],_TRUNCATE);
+    for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],oldPath))wcsncpy_s(g_playlist[i],PATH_CAP,replacement,_TRUNCATE);
+    for(int i=0;i<g_favoriteCount;i++)if(!_wcsicmp(g_favorites[i],oldPath))wcsncpy_s(g_favorites[i],PATH_CAP,replacement,_TRUNCATE);
+    for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],oldPath))wcsncpy_s(g_recent[i],PATH_CAP,replacement,_TRUNCATE);
+    int ri=FindResumeEntry(oldPath);if(ri>=0)wcsncpy_s(g_resumeItems[ri].path,PATH_CAP,replacement,_TRUNCATE);
+    /* Rewrite saved collection references without changing other entries. */
+    wchar_t folder[PATH_CAP],pattern[PATH_CAP];
+    swprintf_s(folder,_countof(folder),L"%s\\collections",g_dataDir);
+    swprintf_s(pattern,_countof(pattern),L"%s\\*.m3u",folder);
+    WIN32_FIND_DATAW fd;HANDLE h=FindFirstFileW(pattern,&fd);
+    if(h!=INVALID_HANDLE_VALUE){
+        do{
+            wchar_t p[PATH_CAP];swprintf_s(p,_countof(p),L"%s\\%s",folder,fd.cFileName);
+            FILE *in=NULL;if(_wfopen_s(&in,p,L"rt, ccs=UTF-8")!=0||!in)continue;
+            wchar_t lines[MAX_PLAYLIST][PATH_CAP];int count=0;
+            while(count<MAX_PLAYLIST&&fgetws(lines[count],PATH_CAP,in)){
+                lines[count][wcscspn(lines[count],L"\\r\\n")]=0;
+                if(!_wcsicmp(lines[count],oldPath))wcsncpy_s(lines[count],PATH_CAP,replacement,_TRUNCATE);
+                count++;
+            }
+            fclose(in);FILE *out=NULL;
+            if(_wfopen_s(&out,p,L"wt, ccs=UTF-8")==0&&out){for(int j=0;j<count;j++)fwprintf(out,L"%s\\n",lines[j]);fclose(out);}
+        }while(FindNextFileW(h,&fd));FindClose(h);
+    }
+    SavePersistentState();SaveResumeState();
+    SetStatus(L"Media relinked successfully. Saved libraries and favourites were updated.");
+    InvalidateRect(g_main,NULL,FALSE);
 }
 
 static void SaveAudioPreferences(void) {
@@ -3095,6 +3195,14 @@ static void PlayIndex(int index) {
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
     g_pendingResume=FALSE;g_pendingResumeTicks=0;
+    int resumeIndex=-1;for(int ri=0;ri<g_resumeCount;ri++)if(!_wcsicmp(g_resumeItems[ri].path,g_playlist[index])){resumeIndex=ri;break;}
+    if(resumeIndex>=0&&g_resumeItems[resumeIndex].positionMs>5000){
+        int64_t saved=g_resumeItems[resumeIndex].positionMs;
+        wchar_t prompt[PATH_CAP+160];
+        swprintf_s(prompt,_countof(prompt),L"Continue from the previous position (%02lld:%02lld)?\n\n%s",(long long)(saved/60000),(long long)((saved/1000)%60),g_playlist[index]);
+        if(ABM_MessageBoxW(g_main,prompt,APP_NAME,MB_YESNO|MB_ICONQUESTION)==IDYES){g_pendingResume=TRUE;g_pendingResumeMs=saved;g_pendingResumePause=FALSE;g_pendingResumeTicks=0;}
+        else {for(int ri=resumeIndex+1;ri<g_resumeCount;ri++)g_resumeItems[ri-1]=g_resumeItems[ri];g_resumeCount--;SaveResumeState();}
+    }
     PositionVideoWindow();
     AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
@@ -3376,7 +3484,8 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {0,L"PERSONAL LIBRARIES",FALSE,TRUE},
         {7,L"Save as personal library...",g_playlistCount>0,FALSE},
         {8,L"Load saved library...",TRUE,FALSE},
-        {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE}
+        {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE},
+        {10,L"Relink missing media...",index>=0&&index<g_playlistCount&&!IsMediaPathAvailable(g_playlist[index]),FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
     switch(cmd){
@@ -3389,6 +3498,7 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         case 7:SavePersonalCollection();break;
         case 8:LoadPersonalCollection();break;
         case 9:if(g_selected>=0&&g_selected<g_playlistCount)ToggleFavoritePath(g_playlist[g_selected]);break;
+        case 10:RelinkPlaylistItem(g_selected);break;
     }
 }
 
@@ -7249,6 +7359,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);VlcAttachPlaybackEvents();SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_CLOSE:
+        CaptureResumePosition(TRUE);
         if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
         DestroyWindow(hwnd);return 0;
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
@@ -7574,6 +7685,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 InvalidateButton(HIT_NEXT);InvalidateButton(HIT_SCAN);
             }
         }
+        CaptureResumePosition(FALSE);
         if(g_hasMedia && g_player && !g_pendingResume &&
            libvlc_media_player_get_state(g_player)==libvlc_Error){
             if(g_torrentPlaybackActive)
