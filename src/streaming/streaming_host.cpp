@@ -793,7 +793,6 @@ void StreamingHelpShowTopic(int index){
     if(g_infoArticleTitle)SetWindowTextW(g_infoArticleTitle,g_streamHelpTopics[index]);
     SetWindowTextW(g_infoArticle,g_streamHelpArticles[index]);
     SendMessageW(g_infoArticle,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
-    int length=GetWindowTextLengthW(g_infoArticle);
     CHARFORMAT2W cf{};cf.cbSize=sizeof(cf);cf.dwMask=CFM_FACE|CFM_SIZE|CFM_COLOR|CFM_CHARSET|CFM_BOLD;
     wcscpy_s(cf.szFaceName,_countof(cf.szFaceName),ABM_UI_FONT_FAMILY_TEXT);
     cf.yHeight=(LONG)(ABM_UI_FONT_SIZE_D2D_BODY*15.0f);cf.crTextColor=ABM_UI_COLOR_TEXT_SECONDARY;cf.bCharSet=DEFAULT_CHARSET;
@@ -803,7 +802,7 @@ void StreamingHelpShowTopic(int index){
     SendMessageW(g_infoArticle,EM_SETSEL,0,0);
     SendMessageW(g_infoArticle,EM_SCROLLCARET,0,0);
 }
-BOOL StreamingHelpFindNext(HWND hwnd){
+BOOL StreamingHelpFindNext(){
     if(!g_infoSearch)return FALSE;
     wchar_t query[256]{};GetWindowTextW(g_infoSearch,query,(int)_countof(query));
     const size_t qlen=wcslen(query);if(!qlen)return FALSE;
@@ -839,7 +838,7 @@ BOOL StreamingHelpFindNext(HWND hwnd){
 LRESULT CALLBACK StreamingHelpSearchSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref){
     (void)id;(void)ref;
     if(msg==WM_KEYDOWN&&(wp==VK_RETURN||wp==VK_F3)){
-        StreamingHelpFindNext(GetParent(edit));return 0;
+        StreamingHelpFindNext();return 0;
     }
     if(msg==WM_KEYDOWN&&wp==VK_ESCAPE){SetFocus(GetParent(edit));return 0;}
     return DefSubclassProc(edit,msg,wp,lp);
@@ -878,7 +877,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         return 0;
     case WM_HOTKEY:
         if(!g_infoAbout&&wp==1){SetFocus(g_infoSearch);SendMessageW(g_infoSearch,EM_SETSEL,0,-1);return 0;}
-        if(!g_infoAbout&&wp==2){StreamingHelpFindNext(hwnd);return 0;}
+        if(!g_infoAbout&&wp==2){StreamingHelpFindNext();return 0;}
         break;
     case WM_COMMAND:
         if(!g_infoAbout&&LOWORD(wp)==8102&&HIWORD(wp)==BN_CLICKED){StreamingHelpFindNext(hwnd);return 0;}
