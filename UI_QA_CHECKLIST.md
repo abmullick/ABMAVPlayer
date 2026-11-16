@@ -303,3 +303,17 @@ This is a source implementation only until the Windows build and runtime checks 
 - [ ] Streaming Centre keyboard: press F6, traverse all six service cards and eleven toolbar actions with Tab/Shift+Tab and arrows, activate with Enter/Space, and exit with Esc/F6. Confirm visible focus rings and that normal WebView2 Tab navigation is unchanged when chrome mode is inactive.
 - [ ] Keyboard-only review: confirm existing native dialog traversal and WebView2 focus behaviour. Perform a separate screen-reader/UI Automation and high-contrast audit before accessibility sign-off.
 - [ ] Full Windows x64 build, DPI matrix (100/125/150/200%), playback/casting/torrent regression, WebView2 recovery and repeated open/close leak checks.
+
+
+## Fluidic UI — Torrent Stream window
+
+- [ ] Open Torrent Stream and verify the standard-duration reveal; close via title-bar X and verify quick dismissal.
+- [ ] Repeat open/close rapidly; confirm no orphaned window, stale HWND, focus loss or stuck animation.
+- [ ] Disable Windows client-area animation and confirm immediate show/hide.
+- [ ] Keep magnet edit focused and selected while interacting with the window; verify native caret, selection, IME and keyboard traversal are unchanged.
+- [ ] Verify file-list selection, TV combo popup, sliders, owner-drawn buttons and resize/layout remain unchanged.
+- [ ] Confirm the 1-second status/device refresh timer continues normally and stops on destruction.
+- [ ] During a long download and active stream/cast, open/close Torrent Stream; confirm download, cache, buffering, playback and DLNA casting continue without interruption.
+- [ ] Build with MSVC and repeat at 100%, 125%, 150% and 200% scaling; inspect CPU/handle counts after repeated open/close.
+
+Source-level transition only; do not mark runtime-validated until Windows build and regression checks pass.
