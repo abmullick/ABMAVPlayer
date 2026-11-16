@@ -228,3 +228,18 @@ Windows runtime validation remains mandatory:
 - [ ] Verify no child EDIT field becomes detached from its painted frame while scrolling or resizing.
 
 Do not mark this as runtime-validated until the above checks have been run on Windows.
+
+
+## Playback & Output — premium Media Collection drawer
+
+- [ ] Verify the MEDIA COLLECTION heading, count capsule and Clear action remain aligned at compact and expanded drawer heights.
+- [ ] Verify search focus border, typed query and placeholder do not clip or overlap.
+- [ ] Verify Queue and Library tabs retain correct active state and both remain clickable.
+- [ ] Verify All, Audio and Video filters and Group cycling retain their existing behavior.
+- [ ] Verify track cards show square centered fallback artwork, readable title and metadata, and non-overlapping AUDIO/VIDEO pills.
+- [ ] Verify active, selected and hovered track states are distinguishable without departing from the global ABM palette.
+- [ ] Verify the empty-state card appears only when no filtered results exist and its message matches empty queue, search miss or filter miss.
+- [ ] Verify scrolling, scrollbar dragging, track selection, double-click playback and Clear action still work.
+- [ ] Build with MSVC and verify at 100%, 125%, 150% and 200% scaling, plus a short-height window.
+
+Do not mark this work runtime-validated until the Windows build and interaction checks above pass.
