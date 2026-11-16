@@ -489,6 +489,16 @@ static void ToggleFavoritePath(const wchar_t *path) {
     else if(g_favoriteCount<MAX_FAVORITES)wcsncpy_s(g_favorites[g_favoriteCount++],PATH_CAP,path,_TRUNCATE);
     SavePersistentState();if(g_main)InvalidateRect(g_main,&R_SIDEBAR,FALSE);
 }
+static void EnsureFavoritesInPlaylist(void) {
+    BOOL changed=FALSE;
+    for(int f=0;f<g_favoriteCount&&g_playlistCount<MAX_PLAYLIST;f++) {
+        BOOL found=FALSE;
+        for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],g_favorites[f])){found=TRUE;break;}
+        if(!found){wcsncpy_s(g_playlist[g_playlistCount++],PATH_CAP,g_favorites[f],_TRUNCATE);changed=TRUE;}
+    }
+    if(g_selected<0&&g_playlistCount)g_selected=0;
+    if(changed)SavePersistentState();
+}
 static int CountFilteredMedia(void) {
     int count=0;
     for(int i=0;i<g_playlistCount;i++){
@@ -7538,7 +7548,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_ALL,x,y)){g_mediaFilter=0;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_AUDIO,x,y)){g_mediaFilter=1;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_FILTER_VIDEO,x,y)){g_mediaFilter=2;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){if(g_libraryTab==1)g_showFavorites=!g_showFavorites;else g_groupMode=(g_groupMode+1)%3;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_GROUP,x,y)){if(g_libraryTab==1){g_showFavorites=!g_showFavorites;if(g_showFavorites)EnsureFavoritesInPlaylist();}else g_groupMode=(g_groupMode+1)%3;g_playlistScroll=0;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(!g_fullscreen&&Inside(R_MENU_BUTTON,x,y)){
             g_menuOpen=!g_menuOpen;g_receiverPopup=FALSE;
             if(g_menuOpen){g_menuSelection=0;g_hoverMenuItem=-1;}
