@@ -245,7 +245,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
 static RECT R_ADVANCED_SETTINGS_BUTTON;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
@@ -887,23 +887,38 @@ static void UpdateLayout(HWND hwnd) {
     R_AUDIO_BUTTON=(RECT){R_SIDEBAR.right-70,R_SIDEBAR.bottom-65,R_SIDEBAR.right-18,R_SIDEBAR.bottom-15};
     R_MENU_BUTTON=(RECT){w-244,16,w-156,72};
     R_DRAWER_BUTTON=(RECT){w-144,16,w-20,72};
-    /* Wider command surface gives labels and shortcut hints room to breathe. */
+    /* Premium Command Centre: compact responsive groups, shared ABM spacing,
+       typography and surfaces. Action indices remain unchanged for input routing. */
     R_MENU_PANEL=(RECT){w-430,74,w-20,74+690};
-    /* Keep the complete command menu inside the client area at supported sizes. */
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    /* Streaming Centre and Torrent Stream remain featured two-line destinations.
-       The weighted grid preserves all 18 actions at shorter window heights. */
+    const int menuStarts[5]={0,1,3,11,13};
+    const int menuEnds[5]={1,3,11,13,19};
+    const wchar_t *menuSectionNames[5]={
+        L"PLAYBACK & MEDIA",L"DEVICES & CASTING",L"PLAYBACK CONTROLS",
+        L"STREAMING & TORRENT",L"APP & SUPPORT"
+    };
     int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
-    int menuUnit=menuUsable/21;
-    if(menuUnit<1)menuUnit=1;
+    int showSectionLabels=(R_MENU_PANEL.bottom-R_MENU_PANEL.top)>=620;
+    int sectionHeaderH=showSectionLabels?16:0;
+    int sectionGap=showSectionLabels?5:3;
+    int sectionSpace=5*sectionHeaderH+5*sectionGap;
+    int menuUnit=(menuUsable-sectionSpace)/21;
+    if(menuUnit<15)menuUnit=15;
     int menuY=R_MENU_PANEL.top+54;
-    for(int i=0;i<19;i++){
-        int weight=(i==11||i==12)?2:1;
-        int rowH=menuUnit*weight;
-        R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+12,menuY,R_MENU_PANEL.right-12,menuY+rowH-4};
-        menuY+=rowH;
+    for(int group=0;group<5;group++){
+        R_MENU_SECTION_LABELS[group]=(RECT){R_MENU_PANEL.left+16,menuY,R_MENU_PANEL.right-16,menuY+sectionHeaderH};
+        menuY+=sectionHeaderH;
+        int groupTop=menuY;
+        for(int i=menuStarts[group];i<menuEnds[group];i++){
+            int weight=(i==11||i==12)?2:1;
+            int rowH=menuUnit*weight;
+            R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+12,menuY,R_MENU_PANEL.right-12,menuY+rowH-3};
+            menuY+=rowH;
+        }
+        R_MENU_GROUPS[group]=(RECT){R_MENU_PANEL.left+12,groupTop,R_MENU_PANEL.right-12,menuY-1};
+        menuY+=sectionGap;
     }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
     /* Keep the four dashboard actions strictly inside the green hero panel.
