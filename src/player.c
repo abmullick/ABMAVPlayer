@@ -2262,6 +2262,7 @@ static void StartDiscovery(void) {
                 available[0]?available:L"(none)",failed[0]?failed:L"(not reported)");
         }
         SetStatus(L"Receiver discovery could not start");
+        ABM_MessageBoxW(g_main,message,APP_NAME,MB_ICONWARNING);
         return;
     }
 
