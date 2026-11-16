@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Phase 0 audit complete; Phase 1 motion-value runtime source added; integration and Windows validation pending  
+**Status:** Phase 0 audit complete; Phase 1 motion runtime integrated with the Main Player command menu; Windows build and runtime validation pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -136,7 +136,7 @@ The current `DEVELOPER_GUIDE.md` says this repository workflow commits directly 
 - [x] Motion architecture and safeguards documented.
 - [x] Motion-value engine API and implementation added; build compiles and links `src/ui_motion.cpp`.
 - [ ] C/C++ compile and unit tests (source has not yet been built on Windows).
-- [ ] Main Player migration.
+- [x] Main Player command-menu migration to the active-only motion timer (drawer and hover migration remain pending).
 - [ ] Auxiliary-window migration.
 - [ ] Windows performance and regression validation.
 
@@ -155,3 +155,16 @@ Next implementation gate:
 2. Build with the documented x64 MSVC toolchain and verify the C header from both C11 and C++17 translation units.
 3. Integrate a dedicated active-only motion timer into the Main Player, keeping the existing 33 ms operational timer unchanged.
 4. Migrate drawer and menu first; keep drawer layout updates bounded and ensure the LibVLC child HWND is not moved during paint-only animation.
+
+
+## Phase 1 implementation note — Main Player command menu
+
+The Main Player command menu now uses the shared motion-value API:
+- Menu open/close transitions use a dedicated 16 ms timer that is started only while the transition is active.
+- The existing 33 ms operational timer remains responsible for playback polling and unrelated UI/application work.
+- Menu progress is sampled from monotonic elapsed time and uses ease-out when opening and ease-in when closing.
+- The menu remains paint-only during animation; the LibVLC video child is not resized on each motion tick.
+- All identified mouse, keyboard, fullscreen and drawer-triggered menu dismissal paths start or retarget the transition.
+- The dedicated timer is killed when the transition completes and during main-window destruction.
+
+This is a scoped first migration, not a claim that the entire Main Player is now on the motion runtime. Drawer, hover, artwork and auxiliary-window transitions remain on their existing paths. Windows compilation and interactive regression testing are still required before treating this phase as validated.
