@@ -290,6 +290,11 @@ static RECT R_ROW[MAX_PLAYLIST],R_FAVORITE[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
 static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT;
 static int g_homeCardMotion[4]={0,0,0,0};
+static int g_homeCardTarget[4]={-1,-1,-1,-1};
+static ABMMotionValue g_homeCardMotions[4];
+static ABMMotionValue g_artworkMotion;
+static BOOL g_homeMotionInitialized=FALSE;
+static BOOL g_artworkMotionInitialized=FALSE;
 static RECT R_SEARCH, R_TAB_QUEUE, R_TAB_LIBRARY, R_FILTER_ALL, R_FILTER_AUDIO, R_FILTER_VIDEO, R_GROUP;
 static wchar_t g_searchText[128]=L"";
 static BOOL g_searchFocused=FALSE;
@@ -691,6 +696,30 @@ static void StartMenuMotion(HWND hwnd) {
     EnsureMainMotionTimer(hwnd);
 }
 static void UpdateLayout(HWND hwnd);
+static void StartHomeCardMotion(HWND hwnd, int index, int target) {
+    if (!hwnd || !IsWindow(hwnd) || index < 0 || index >= 4) return;
+    if (!g_homeMotionInitialized) {
+        for (int i=0;i<4;i++) ABM_MotionInit(&g_homeCardMotions[i], (double)g_homeCardMotion[i]);
+        g_homeMotionInitialized=TRUE;
+    }
+    if (g_homeCardTarget[index] == target) return;
+    g_homeCardTarget[index]=target;
+    ABM_MotionStart(&g_homeCardMotions[index], (double)target,
+                    ABM_MOTION_DURATION_STANDARD,
+                    target ? ABM_MOTION_EASE_OUT : ABM_MOTION_EASE_IN);
+    if (!g_homeCardMotions[index].active) g_homeCardMotion[index]=target;
+    EnsureMainMotionTimer(hwnd);
+}
+static void StartArtworkMotion(HWND hwnd) {
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (!g_artworkMotionInitialized) {
+        ABM_MotionInit(&g_artworkMotion, (double)g_artworkFade);
+        g_artworkMotionInitialized=TRUE;
+    }
+    ABM_MotionStart(&g_artworkMotion, 100.0, ABM_MOTION_DURATION_EMPHASIS, ABM_MOTION_EASE_OUT);
+    if (!g_artworkMotion.active) g_artworkFade=100;
+    EnsureMainMotionTimer(hwnd);
+}
 static void StartHoverMotion(HWND hwnd) {
     if (!hwnd || !IsWindow(hwnd)) return;
     if (!g_hoverMotionInitialized) {
@@ -700,14 +729,20 @@ static void StartHoverMotion(HWND hwnd) {
     ABM_MotionStart(&g_hoverMotion, g_hoverButton ? 100.0 : 0.0,
                     ABM_MOTION_DURATION_QUICK, ABM_MOTION_EASE_OUT);
     if (!g_hoverMotion.active) g_hoverLevel = g_hoverButton ? 100 : 0;
+        for (int mi=0;mi<4;mi++) if (!g_homeCardMotions[mi].active && g_homeCardTarget[mi]>=0) g_homeCardMotion[mi]=g_homeCardTarget[mi];
+        if (!g_artworkMotion.active) g_artworkFade=100;
+            g_artworkFade = 100;
+            for (int i=0;i<4;i++) g_homeCardMotion[i] = g_homeCardTarget[i] < 0 ? 0 : g_homeCardTarget[i];
     EnsureMainMotionTimer(hwnd);
 }
 static void EnsureMainMotionTimer(HWND hwnd) {
-    if (g_menuMotion.active || g_drawerMotion.active || g_hoverMotion.active) {
+    if (g_menuMotion.active || g_drawerMotion.active || g_hoverMotion.active || g_artworkMotion.active || g_homeCardMotions[0].active || g_homeCardMotions[1].active || g_homeCardMotions[2].active || g_homeCardMotions[3].active) {
         if (!ABM_MotionWinSchedule(hwnd, MOTION_TIMER_ID)) {
             ABM_MotionCancel(&g_menuMotion, NULL);
             ABM_MotionCancel(&g_drawerMotion, NULL);
             ABM_MotionCancel(&g_hoverMotion, NULL);
+            ABM_MotionCancel(&g_artworkMotion, NULL);
+            for (int i=0;i<4;i++) ABM_MotionCancel(&g_homeCardMotions[i], NULL);
             g_menuProgress = g_menuOpen ? 100 : 0;
             g_drawerProgress = g_drawerOpen ? 100 : 0;
             g_hoverLevel = g_hoverButton ? 100 : 0;
@@ -7264,7 +7299,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
         return 0;
     case WM_CREATE: {
-        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress); g_drawerMotionInitialized=TRUE; ABM_MotionInit(&g_hoverMotion, (double)g_hoverLevel); g_hoverMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
+        g_main=hwnd; ABM_MotionInit(&g_menuMotion, (double)g_menuProgress); g_menuMotionInitialized=TRUE; ABM_MotionInit(&g_drawerMotion, (double)g_drawerProgress); g_drawerMotionInitialized=TRUE; ABM_MotionInit(&g_hoverMotion, (double)g_hoverLevel); g_hoverMotionInitialized=TRUE; ABM_MotionInit(&g_artworkMotion, (double)g_artworkFade); g_artworkMotionInitialized=TRUE; for(int mi=0;mi<4;mi++) ABM_MotionInit(&g_homeCardMotions[mi], (double)g_homeCardMotion[mi]); g_homeMotionInitialized=TRUE; LoadPersistentState(); LoadAudioPreferences(); ApplyAudioOutputDevice(); if(!ABM_D2D_Init(&g_ui,hwnd)){ABM_MessageBoxW(hwnd,L"Direct2D / DirectWrite initialization failed.",APP_NAME,MB_ICONERROR);return -1;} g_video=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|SS_BLACKRECT,0,0,640,360,hwnd,NULL,GetModuleHandleW(NULL),NULL);
         DragAcceptFiles(hwnd,TRUE);
         /* Hidden item store; the visible selector and popup are Direct2D. */
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
@@ -7284,7 +7319,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             swprintf_s(path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)generation);
         if(generation==InterlockedCompareExchange(&g_artworkGeneration,0,0) && lp && path[0]) {
             g_artworkLoaded=ABM_D2D_LoadImage(&g_ui,path);
-            if(g_artworkLoaded)g_artworkFade=0;
+            if(g_artworkLoaded){g_artworkFade=0;StartArtworkMotion(hwnd);}
             InvalidateRect(hwnd,NULL,FALSE);
         } else if(path[0]) {
             /* A newer track superseded this download before its completion
@@ -7527,15 +7562,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         return 0;
     }
     case WM_TIMER:if(wp==MOTION_TIMER_ID){
-        ABMMotionValue *motions[3] = { &g_menuMotion, &g_drawerMotion, &g_hoverMotion };
-        double values[3] = { (double)g_menuProgress, (double)g_drawerProgress, (double)g_hoverLevel };
+        ABMMotionValue *motions[8] = { &g_menuMotion, &g_drawerMotion, &g_hoverMotion, &g_homeCardMotions[0], &g_homeCardMotions[1], &g_homeCardMotions[2], &g_homeCardMotions[3], &g_artworkMotion };
+        double values[8] = { (double)g_menuProgress, (double)g_drawerProgress, (double)g_hoverLevel, (double)g_homeCardMotion[0], (double)g_homeCardMotion[1], (double)g_homeCardMotion[2], (double)g_homeCardMotion[3], (double)g_artworkFade };
         BOOL menuWasActive = g_menuMotion.active;
         BOOL drawerWasActive = g_drawerMotion.active;
         BOOL hoverWasActive = g_hoverMotion.active;
-        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 3);
+        BOOL homeWasActive = FALSE;
+        for (int mi=0;mi<4;mi++) if (g_homeCardMotions[mi].active) homeWasActive=TRUE;
+        BOOL artworkWasActive = g_artworkMotion.active;
+        BOOL anyActive = ABM_MotionWinSample(hwnd, MOTION_TIMER_ID, motions, values, 8);
         g_menuProgress = (int)(values[0] + 0.5);
         g_drawerProgress = (int)(values[1] + 0.5);
         g_hoverLevel = (int)(values[2] + 0.5);
+        for (int mi=0;mi<4;mi++) g_homeCardMotion[mi]=(int)(values[3+mi]+0.5);
+        g_artworkFade=(int)(values[7]+0.5);
         if (g_menuProgress < 0) g_menuProgress = 0;
         if (g_menuProgress > 100) g_menuProgress = 100;
         if (g_drawerProgress < 0) g_drawerProgress = 0;
@@ -7547,6 +7587,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (!g_hoverMotion.active) g_hoverLevel = g_hoverButton ? 100 : 0;
         if (menuWasActive) InvalidateRect(hwnd, &R_MENU_PANEL, FALSE);
         if (hoverWasActive) { InvalidateButton(g_hoverButton); if (g_hoverButton == HIT_NONE) { InvalidateButton(HIT_OPEN); InvalidateButton(HIT_PLAY); InvalidateButton(HIT_STOP); InvalidateButton(HIT_PREV); InvalidateButton(HIT_NEXT); InvalidateButton(HIT_SCAN); } }
+        if (homeWasActive || artworkWasActive) InvalidateRect(hwnd, &R_VIDEO, FALSE);
         if (drawerWasActive) {
             UpdateLayoutInternal(hwnd, FALSE);
             InvalidateRect(hwnd, &R_SIDEBAR, FALSE);
@@ -7637,29 +7678,16 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             else if(g_playlistCount>1)PlayIndex(GetNextPlaylistIndex());
             else {g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);}
         }
-        /* Lightweight 30 Hz hover easing for idle dashboard cards.
-           This is paint-only: no video child movement, decoding or I/O. */
+        /* Retarget dashboard cards only when the pointer target changes. */
         if(!g_hasMedia&&!g_drawerOpen&&!g_menuOpen&&!g_fullscreen) {
             POINT homeMouse={-1,-1};BOOL haveHomeMouse=GetCursorPos(&homeMouse)&&ScreenToClient(hwnd,&homeMouse);
             RECT homeCards[4]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT};
-            BOOL changed=FALSE;
-            for(int ci=0;ci<4;ci++) {
-                int target=haveHomeMouse&&Inside(homeCards[ci],homeMouse.x,homeMouse.y)?100:0;
-                int before=g_homeCardMotion[ci];
-                g_homeCardMotion[ci]=EaseToward(before,target,34);
-                if(before!=g_homeCardMotion[ci])changed=TRUE;
-            }
-            if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            for(int ci=0;ci<4;ci++)
+                StartHomeCardMotion(hwnd,ci,haveHomeMouse&&Inside(homeCards[ci],homeMouse.x,homeMouse.y)?100:0);
         } else {
-            BOOL changed=FALSE;for(int ci=0;ci<4;ci++){int before=g_homeCardMotion[ci];g_homeCardMotion[ci]=EaseToward(before,0,40);if(before!=g_homeCardMotion[ci])changed=TRUE;}
-            if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            for(int ci=0;ci<4;ci++) StartHomeCardMotion(hwnd,ci,0);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
-        if (g_artworkLoaded && g_artworkFade < 100) {
-            g_artworkFade += 5;
-            if (g_artworkFade > 100) g_artworkFade = 100;
-            InvalidateRect(hwnd,&R_VIDEO,FALSE);
-        }
         /* Fullscreen video geometry is already established for the active
            output. Avoid extra synchronous LibVLC output queries on the UI
            thread while fullscreen input and playback controls are active. */
