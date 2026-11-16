@@ -5466,7 +5466,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }break;
     case WM_TIMER:if(wp==1){TorrentRefreshStatus();TorrentRefreshTvDevices();if((GetTickCount64()%15000)<1000)TorrentRefreshCacheStatus();return 0;}break;
-    case WM_CLOSE:DestroyWindow(hwnd);return 0;
+    case WM_CLOSE:ABM_DestroyWindowMotion(hwnd);return 0;
     case WM_DESTROY:
         KillTimer(hwnd,1);
         /* Closing the manager while startup buffering is pending cancels that
@@ -6054,7 +6054,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE);
         return (LRESULT)g_helpNavBrush;
     }
-    case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
+    case WM_KEYDOWN: if(wp==VK_ESCAPE){ABM_DestroyWindowMotion(hwnd);return 0;} break;
     case WM_DESTROY:
         if(g_helpCanvasReady){g_helpCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_helpCanvas);}
         UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
@@ -6732,7 +6732,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
-  if(AdvancedSettingsPoint(x,y,914,694,1040,738)){DestroyWindow(w);return 0;}
+  if(AdvancedSettingsPoint(x,y,914,694,1040,738)){ABM_DestroyWindowMotion(w);return 0;}
   return 0;
  }
  case WM_LBUTTONUP:{
@@ -6742,7 +6742,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   break;
  }
  case WM_KEYDOWN:
-  if(wp==VK_ESCAPE){DestroyWindow(w);return 0;}
+  if(wp==VK_ESCAPE){ABM_DestroyWindowMotion(w);return 0;}
   if(wp==VK_UP||wp==VK_DOWN){
    int n=(int)_countof(g_advancedSettingsPages);
    g_advancedSettingsPage=(g_advancedSettingsPage+(wp==VK_DOWN?1:n-1))%n;
@@ -7312,7 +7312,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   }
   EndPaint(w,&ps);return 0;
  }
- case WM_CLOSE:DestroyWindow(w);return 0;
+ case WM_CLOSE:ABM_DestroyWindowMotion(w);return 0;
  case WM_DESTROY:
   g_settingsWindow=NULL;
   if(g_settingsUiReady){ABM_D2D_Destroy(&g_settingsUi);g_settingsUiReady=FALSE;}
