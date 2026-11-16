@@ -137,7 +137,8 @@ The current `DEVELOPER_GUIDE.md` says this repository workflow commits directly 
 - [x] Motion-value engine API and implementation added; build compiles and links `src/ui_motion.cpp`.
 - [ ] C/C++ compile and unit tests (source has not yet been built on Windows).
 - [x] Main Player command menu and drawer use the shared active-only Win32 motion host.
-- [ ] Main Player hover, artwork and auxiliary-window migration.
+- [x] Main Player transport-button hover feedback migrated to the shared motion host.
+- [ ] Main Player home-card hover and artwork fade migration.
 - [ ] Auxiliary-window migration.
 - [ ] Windows performance and regression validation.
 
@@ -191,3 +192,10 @@ Main Player integration:
 The adapter is deliberately reusable by Settings, Equalizer, Help, About and Streaming Centre chrome in later migrations. Those windows are not yet migrated. WebView2, receiver discovery, Torrent Stream and all playback/casting engines remain outside this UI layer.
 
 Windows x64 compilation and interactive regression validation remain mandatory; repository commits alone do not establish a successful build.
+
+
+## Phase 1 implementation note — transport hover feedback
+
+The Main Player transport-button hover transition now uses the same shared motion value and active-only Win32 timer as the menu and drawer. Retargeting occurs on pointer hit-target changes; the 33 ms operational timer no longer advances the transport hover animation. The hover state remains presentation-only and does not alter hit testing, playback commands or keyboard shortcuts.
+
+The reusable Win32 host is intentionally generic: each window supplies its own motion values and timer ID, and retains ownership of its layout, invalidation regions and input state. The Main Player currently schedules menu, drawer and transport-hover values together. Home dashboard card motion, artwork fade and auxiliary-window transitions remain separate follow-up work.
