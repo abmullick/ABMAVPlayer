@@ -60,6 +60,15 @@ Advanced preferences are persisted in `%APPDATA%\\ABMAVPlayer\\settings.ini`, gr
 
 See [SETTINGS.md](SETTINGS.md) for the user-facing values and semantics.
 
+### Continue Watching and missing-media recovery
+
+- Local playback progress is persisted in `%APPDATA%\\ABMAVPlayer\\resume.m3u` as UTF-8 M3U records with an ABM resume-time comment. Progress is sampled on the existing main-window timer at a five-second cadence and captured again whenever the local playback engine is stopped or the application closes.
+- Selecting a title with saved progress offers a Continue Watching confirmation. Accepting it uses the existing pending-resume/LibVLC seek path; declining it clears that title's saved position. Completed titles have their resume record removed.
+- The Queue and Library retain paths that are temporarily unavailable. Missing state is cached outside painting and shown in the media-row metadata. Right-click a missing row and choose **Relink missing media...** to select its replacement.
+- Relinking updates duplicate references in the active playlist, favourites, recent history, saved M3U collections and resume records. The source file is never moved, copied or deleted.
+- The missing-state cache is refreshed when persistent library state is loaded or changed. Do not add filesystem queries to row painting or scrolling. A later enhancement may move periodic drive revalidation to a worker if live hot-plug detection is required.
+- Torrent playback and Streaming Centre remain outside the local-file resume path.
+
 ## Build environment
 
 The maintainer workflow targets Windows x64 with Visual Studio C/C++ Build Tools, a matching 64-bit LibVLC runtime/SDK, the WebView2 SDK and the pinned torrent dependencies.
