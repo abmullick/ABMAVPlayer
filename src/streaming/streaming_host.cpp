@@ -60,6 +60,23 @@ using Microsoft::WRL::ComPtr;
 namespace {
 ABM_D2D_CANVAS g_streamButtonCanvas{};
 bool g_streamButtonCanvasReady=false;
+bool StreamMotionAllowed(){
+    BOOL enabled=TRUE;
+#ifdef SPI_GETCLIENTAREAANIMATION
+    if(!SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION,0,&enabled,0))enabled=TRUE;
+#endif
+    return enabled!=FALSE;
+}
+void StreamShowMotion(HWND hwnd){
+    if(!hwnd)return;
+    if(!StreamMotionAllowed()||!AnimateWindow(hwnd,ABM_MOTION_DURATION_WINDOW,AW_BLEND|AW_ACTIVATE))
+        ShowWindow(hwnd,SW_SHOW);
+}
+void StreamHideMotion(HWND hwnd){
+    if(!hwnd)return;
+    if(StreamMotionAllowed())AnimateWindow(hwnd,ABM_MOTION_DURATION_QUICK,AW_BLEND|AW_HIDE);
+}
+
 ABMMotionValue g_streamHoverMotion{};
 bool g_streamHoverMotionReady=false;
 double g_streamHoverLevel=0.0;
@@ -2239,7 +2256,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }
         break;
     }
-    case WM_CLOSE:DestroyWindow(hwnd);return 0;
+    case WM_CLOSE:StreamHideMotion(hwnd);DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
         g_appProbeRunning.store(false);
         StopManagedWorkers();
@@ -2312,5 +2329,5 @@ extern "C" void ABM_Streaming_RefreshTheme(void){
 
 extern "C" void ABM_Streaming_Close(void){
     g_mainWindow=nullptr;
-    if(g_window&&IsWindow(g_window))DestroyWindow(g_window);
+    if(g_window&&IsWindow(g_window)){StreamHideMotion(g_window);DestroyWindow(g_window);}
 }
