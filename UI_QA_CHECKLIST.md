@@ -277,6 +277,7 @@ Do not mark this feature runtime-validated until all Windows build and interacti
 - [ ] Play a resumable item and verify LibVLC seeks to the saved position after entering Playing state.
 - [ ] Switch between media items and outputs; verify the previous local item position is saved and existing receiver selection / cast failure isolation remains unchanged.
 - [ ] Verify the Library filter cycles All tracks → Favourites → Continue Watching → All tracks, with correct counts, search, media filters and empty state.
+- [ ] Verify Continue Watching rows display an accurate saved-progress percentage and remaining duration, including long-form media formatting.
 - [ ] Verify completed items (at or above 95% duration) are removed from Continue Watching and replay from the beginning.
 - [ ] Verify short items, unknown-duration media, live/torrent playback and failed playback do not create invalid resume records.
 - [ ] Force-close during playback and verify the last periodic checkpoint is restored; confirm normal exit flushes the final position.
