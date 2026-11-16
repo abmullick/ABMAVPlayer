@@ -33,6 +33,22 @@ This is a targeted source inspection, not a formal static-analysis report or a c
 - [ ] Check startup with missing optional WebView2 runtime, unavailable VLC plugins, and no network; errors should remain understandable and recoverable.
 - [ ] Confirm no unexpected native message boxes or legacy-looking application popup menus appear during normal use.
 
+## Continue Watching and missing-media recovery
+
+- [ ] Play a local video for at least 15 seconds, close ABM AV Player, relaunch and select the same title; confirm the Continue Watching prompt shows a sensible saved position.
+- [ ] Accept resume; confirm seeking occurs after LibVLC reaches Playing and playback continues from the saved position.
+- [ ] Decline resume; confirm playback starts at zero and the old resume record is cleared.
+- [ ] Pause and stop playback, then relaunch; confirm the most recent position is retained.
+- [ ] Complete a title; confirm its resume entry is removed and it does not prompt to resume near the end.
+- [ ] Verify progress survives application restart and is stored in `%APPDATA%\\ABMAVPlayer\\resume.m3u`.
+- [ ] Remove/rename a media file or disconnect its drive, relaunch, and confirm Queue/Library/Favourites retain the item with a visible MISSING state.
+- [ ] Right-click a missing row, choose Relink missing media, select the replacement and confirm the row becomes available without duplicate entries.
+- [ ] Verify relinking updates favourites, recent history, resume metadata and every saved M3U collection reference.
+- [ ] Confirm an unavailable personal collection entry is not silently discarded when that collection is loaded.
+- [ ] Scroll a large library while monitoring responsiveness; confirm painting uses cached missing-state data and performs no filesystem scan.
+- [ ] Confirm Torrent playback and Streaming Centre behaviour is unchanged by local resume persistence.
+- [ ] Test paths containing spaces, Unicode characters, long directory names and non-system drive letters.
+
 ## 3. Display, DPI and window geometry
 
 Run at 100%, 125%, 150% and 200% Windows display scaling.
