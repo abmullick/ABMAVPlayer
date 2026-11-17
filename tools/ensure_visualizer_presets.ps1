@@ -11,7 +11,7 @@ if (-not $existing) {
     $extract = Join-Path $env:TEMP "abm-projectm-cream-of-the-crop"
     if (Test-Path $extract) { Remove-Item -LiteralPath $extract -Recurse -Force }
     Write-Host "Downloading the official projectM Cream of the Crop preset collection..."
-    Invoke-WebRequest -Uri "https://codeload.github.com/projectM-visualizer/presets-cream-of-the-crop/zip/refs/heads/master" -OutFile $zip
+    Invoke-WebRequest -Uri "https://codeload.github.com/projectM-visualizer/presets-cream-of-the-crop/zip/0180df21f5e0bd39b9060cc5de420ed2f1f9e509" -OutFile $zip
     Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
     $source = Get-ChildItem -LiteralPath $extract -Directory | Select-Object -First 1
     if (-not $source) { throw "The projectM preset archive did not contain its expected root folder." }
@@ -19,7 +19,7 @@ if (-not $existing) {
     Remove-Item -LiteralPath $zip -Force
     Remove-Item -LiteralPath $extract -Recurse -Force
 }
-$licenseUrl = "https://raw.githubusercontent.com/projectM-visualizer/presets-cream-of-the-crop/master/LICENSE.md"
+$licenseUrl = "https://raw.githubusercontent.com/projectM-visualizer/presets-cream-of-the-crop/0180df21f5e0bd39b9060cc5de420ed2f1f9e509/LICENSE.md"
 Invoke-WebRequest -Uri $licenseUrl -OutFile (Join-Path $assetRoot "PRESET-LICENSE.md")
 $notice = @"
 ABM AV Player uses the projectM Milkdrop-compatible visualization engine.
@@ -27,7 +27,7 @@ ABM AV Player uses the projectM Milkdrop-compatible visualization engine.
 Preset collection:
 Cream of the Crop, maintained by the projectM community.
 Source: https://github.com/projectM-visualizer/presets-cream-of-the-crop
-The collection's upstream LICENSE.md explains that most presets were released without
+The collection is pinned to upstream commit 0180df21f5e0bd39b9060cc5de420ed2f1f9e509. Its upstream LICENSE.md explains that most presets were released without
 specific licences and that the maintainers consider the freely released collection
 public domain; individual preset authors retain their rights and can request removal.
 The upstream licence notice is included as PRESET-LICENSE.md.
