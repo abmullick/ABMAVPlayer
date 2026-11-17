@@ -3413,8 +3413,14 @@ static void ShowSubtitleTrackMenu(HWND owner){
     if(!n)items[count++]=(ABMMenuItem){0,L"No embedded subtitle tracks",FALSE,FALSE};
     int cmd=ABM_ShowMenu(owner,items,count);
     if(cmd==21000)libvlc_video_set_spu(g_player,-1);
-    else if(cmd>=26000&&cmd<26064){int wanted=cmd-26000;libvlc_track_description_t *again=libvlc_video_get_spu_description(g_player);for(int i=0;again&&i<=wanted;i++,again=again->p_next)if(i==wanted){libvlc_video_set_spu(g_player,again->i_id);break;}if(again||wanted==0){/* track list is released below; the selected ID was applied above */}}
-    if(cmd>=26000&&cmd<26064){libvlc_track_description_t *again=libvlc_video_get_spu_description(g_player);int wanted=cmd-26000;for(int i=0;again&&i<wanted;i++)again=again->p_next;if(again)libvlc_video_set_spu(g_player,again->i_id);if(again)libvlc_track_description_list_release(again);}
+    else if(cmd>=26000&&cmd<26064){
+        int wanted=cmd-26000;
+        libvlc_track_description_t *again=libvlc_video_get_spu_description(g_player);
+        libvlc_track_description_t *selected=again;
+        for(int i=0;selected&&i<wanted;i++)selected=selected->p_next;
+        if(selected)libvlc_video_set_spu(g_player,selected->i_id);
+        if(again)libvlc_track_description_list_release(again);
+    }
 }
 static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(!g_hasMedia)return;
