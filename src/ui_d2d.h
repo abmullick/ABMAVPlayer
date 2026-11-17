@@ -88,6 +88,7 @@ void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, float b, flo
 BOOL ABM_AudioVisualizer_Start(void);
 void ABM_AudioVisualizer_Stop(void);
 void ABM_AudioVisualizer_GetBands(float *outBands, int count);
+void ABM_AudioVisualizer_GetSamples(float *outSamples, int count);
 
 #ifdef __cplusplus
 }
