@@ -8198,6 +8198,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
+        if(g_visualizerActive&&!g_visualizerTimerRunning)++g_visualizerFrame;
         if (g_artworkLoaded && g_artworkFade < 100) {
             g_artworkFade += 5;
             if (g_artworkFade > 100) g_artworkFade = 100;
@@ -8219,8 +8220,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             if(g_visualizerActive) {
                 if(!g_visualizerTimerRunning) {
-                    SetTimer(hwnd,VISUALIZER_TIMER_ID,16,NULL);
-                    g_visualizerTimerRunning=TRUE;
+                    g_visualizerTimerRunning=(SetTimer(hwnd,VISUALIZER_TIMER_ID,16,NULL)!=0);
                 }
                 /* Hide the native VLC child in both windowed and fullscreen
                    modes; it would otherwise cover the owner-painted visuals. */
