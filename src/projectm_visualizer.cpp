@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <gl/GL.h>
 #include <projectM-4/projectM.h>
-#include <projectM-4/playlist.h>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -24,7 +23,6 @@ HWND g_parent=nullptr, g_window=nullptr;
 HDC g_dc=nullptr;
 HGLRC g_gl=nullptr;
 projectm_handle g_projectm=nullptr;
-projectm_playlist_handle g_playlist=nullptr;
 std::vector<std::string> g_presets;
 size_t g_presetIndex=0;
 DWORD64 g_lastPresetTick=0;
@@ -142,7 +140,7 @@ extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,c
     g_window=CreateWindowExW(0,wc.lpszClassName,L"",WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,
         0,0,1,1,parent,nullptr,wc.hInstance,nullptr);
     if(!g_window)return FALSE;
-    if(!CreateModernContext(g_window)) { DestroyWindow(g_window);g_window=nullptr;return FALSE; }
+    if(!CreateModernContext(g_window)) { if(g_dc)ReleaseDC(g_window,g_dc);g_dc=nullptr;DestroyWindow(g_window);g_window=nullptr;return FALSE; }
     g_projectm=projectm_create();
     if(!g_projectm) { wglMakeCurrent(nullptr,nullptr);wglDeleteContext(g_gl);g_gl=nullptr;ReleaseDC(g_window,g_dc);g_dc=nullptr;DestroyWindow(g_window);g_window=nullptr;return FALSE; }
     projectm_set_window_size(g_projectm,1,1);
@@ -194,10 +192,9 @@ extern "C" void ABM_ProjectM_Destroy(void) {
     if(g_destroying)return;g_destroying=true;
     HWND oldWindow=g_window;
     if(g_dc&&g_gl)wglMakeCurrent(g_dc,g_gl);
-    if(g_playlist){projectm_playlist_destroy(g_playlist);g_playlist=nullptr;}
     if(g_projectm){projectm_destroy(g_projectm);g_projectm=nullptr;}
     if(g_gl){wglMakeCurrent(nullptr,nullptr);wglDeleteContext(g_gl);g_gl=nullptr;}
-    if(g_window){DestroyWindow(g_window);g_window=nullptr;}
     if(g_dc&&oldWindow)ReleaseDC(oldWindow,g_dc);
+    if(g_window){DestroyWindow(g_window);g_window=nullptr;}
     g_dc=nullptr;g_parent=nullptr;g_presets.clear();g_ready=false;g_destroying=false;
 }
