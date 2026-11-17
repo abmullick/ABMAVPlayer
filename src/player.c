@@ -7304,8 +7304,24 @@ static int g_settingsScrollX=0,g_settingsScrollY=0;
 #define SETTINGS_CONTENT_HEIGHT 1120
 static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
 static void SettingsMoveChildControls(HWND w){
+ /* Move every native EDIT as one layout transaction. Moving them one at a
+    time lets Windows paint intermediate positions over the translated
+    Direct2D surface, which looks like controls and labels are scrambling
+    while the user scrolls. */
  static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29},{6208,39,730,600,30}};
- for(int i=0;i<(int)_countof(items);i++){HWND child=GetDlgItem(w,items[i].id);if(child)SetWindowPos(child,NULL,items[i].x-g_settingsScrollX,items[i].y-g_settingsScrollY,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE);}
+ HDWP batch=BeginDeferWindowPos((int)_countof(items));
+ for(int i=0;i<(int)_countof(items);i++){
+  HWND child=GetDlgItem(w,items[i].id);
+  if(!child)continue;
+  int x=items[i].x-g_settingsScrollX,y=items[i].y-g_settingsScrollY;
+  if(batch)batch=DeferWindowPos(batch,child,NULL,x,y,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);
+  else SetWindowPos(child,NULL,x,y,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOREDRAW);
+ }
+ if(batch)EndDeferWindowPos(batch);
+ for(int i=0;i<(int)_countof(items);i++){
+  HWND child=GetDlgItem(w,items[i].id);
+  if(child)InvalidateRect(child,NULL,TRUE);
+ }
 }
 #define SETTINGS_SCROLLBAR_SIZE 12
 #define SETTINGS_SCROLLBAR_MIN_THUMB 28
@@ -7387,7 +7403,12 @@ static void SettingsUpdateScrollDrag(HWND w,int x,int y){
 static void SettingsSetScroll(HWND w,int x,int y){
  RECT rc;GetClientRect(w,&rc);int maxX=SETTINGS_CONTENT_WIDTH-(rc.right-SETTINGS_SCROLLBAR_SIZE);if(maxX<0)maxX=0;int maxY=SETTINGS_CONTENT_HEIGHT-(rc.bottom-SETTINGS_SCROLLBAR_SIZE);if(maxY<0)maxY=0;
  x=SettingsClampInt(x,0,maxX);y=SettingsClampInt(y,0,maxY);if(x==g_settingsScrollX&&y==g_settingsScrollY)return;
- g_settingsScrollX=x;g_settingsScrollY=y;SettingsMoveChildControls(w);InvalidateRect(w,NULL,FALSE);
+ g_settingsScrollX=x;g_settingsScrollY=y;
+ SettingsMoveChildControls(w);
+ /* Repaint the complete content viewport after the atomic child-layout move.
+    This keeps card surfaces, labels, edit frames and native EDIT controls on
+    the same scroll origin instead of leaving stale pixels in exposed areas. */
+ RedrawWindow(w,NULL,NULL,RDW_INVALIDATE|RDW_NOERASE|RDW_ALLCHILDREN);
 }
 static void SettingsClampToMonitor(HWND w,const RECT *suggested){
  RECT target=*suggested;HMONITOR mon=MonitorFromRect(&target,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};
