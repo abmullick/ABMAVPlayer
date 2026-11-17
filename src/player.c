@@ -270,6 +270,7 @@ static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
+static BOOL g_autoPresetTransitions=TRUE;
 static int g_visualizerMode=2; /* 0 Spectrum, 1 Fluid Waves, 2 Particle Visualizer */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
@@ -3647,10 +3648,10 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(23009,L"Home Theatre...",TRUE);
     ABM_ADD(23007,L"Subtitle Manager...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
-    ABM_HEAD(L"LIVE MUSIC VISUALIZER");
-    ABM_ADD(25200,g_visualizerMode==0?L"✓ Spectrum":L"Spectrum",TRUE);
-    ABM_ADD(25201,g_visualizerMode==1?L"✓ Fluid Waves":L"Fluid Waves",TRUE);
-    ABM_ADD(25202,g_visualizerMode==2?L"✓ Particle Visualizer":L"Particle Visualizer",TRUE);
+    ABM_HEAD(L"MILKDROP VISUALIZER");
+    ABM_ADD(25200,L"Next visual preset",TRUE);
+    ABM_ADD(25201,L"Previous visual preset",TRUE);
+    ABM_ADD(25202,g_autoPresetTransitions?L"✓ Automatic preset transitions":L"Automatic preset transitions",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
