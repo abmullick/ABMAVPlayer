@@ -3271,17 +3271,54 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
         wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerRecentPopup";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;
     }
-    POINT pt={x,y};ClientToScreen(hwnd,&pt);
-    int width=520,height=68+g_recentCount*42+10;
-    RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
-    if(pt.x+width>work.right)pt.x=work.right-width;
-    if(pt.y+height>work.bottom)pt.y=work.bottom-height;
-    if(pt.x<work.left)pt.x=work.left;if(pt.y<work.top)pt.y=work.top;
+
+    /* Anchor to the actual Recent control, not the mouse-down point. The old
+       fixed 520px popup could be pushed off-screen or detached from the control
+       in compact/resized layouts. */
+    RECT anchor=R_RECENT;
+    POINT anchorTL={anchor.left,anchor.top},anchorBR={anchor.right,anchor.bottom};
+    ClientToScreen(hwnd,&anchorTL);ClientToScreen(hwnd,&anchorBR);
+    if(anchor.right<=anchor.left || anchor.bottom<=anchor.top) {
+        POINT cursor={x,y};ClientToScreen(hwnd,&cursor);
+        anchorTL=cursor;anchorBR=cursor;
+    }
+
+    RECT work;
+    if(!SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0)) {
+        HMONITOR monitor=MonitorFromWindow(hwnd,MONITOR_DEFAULTTONEAREST);
+        MONITORINFO mi={sizeof(mi)};
+        if(GetMonitorInfoW(monitor,&mi))work=mi.rcWork;
+        else {work.left=0;work.top=0;work.right=GetSystemMetrics(SM_CXSCREEN);work.bottom=GetSystemMetrics(SM_CYSCREEN);}
+    }
+    const int margin=12;
+    int availableW=work.right-work.left-2*margin;
+    int availableH=work.bottom-work.top-2*margin;
+    if(availableW<240 || availableH<180)return;
+    int width=520;
+    if(width>availableW)width=availableW;
+    int height=68+g_recentCount*42+10;
+    if(height>availableH)height=availableH;
+
+    /* Prefer opening below the button, aligned to its right edge. If that
+       would leave insufficient room, open above it; clamp both axes to the
+       monitor work area. */
+    int px=anchorBR.x-width;
+    if(px<work.left+margin)px=anchorTL.x;
+    if(px+width>work.right-margin)px=work.right-margin-width;
+    int py=anchorBR.y+6;
+    if(py+height>work.bottom-margin)py=anchorTL.y-height-6;
+    if(py<work.top+margin)py=work.top+margin;
+    if(px<work.left+margin)px=work.left+margin;
+    if(px+width>work.right-margin)px=work.right-margin-width;
+
     HWND popup=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayerRecentPopup",L"Recently played",
-        WS_POPUP,pt.x,pt.y,width,height,hwnd,NULL,inst,NULL);
+        WS_POPUP,px,py,width,height,hwnd,NULL,inst,NULL);
     if(!popup)return;
     SetWindowLongPtrW(popup,GWLP_USERDATA,(LONG_PTR)hwnd);g_recentPopupWindow=popup;
-    g_recentPopupHover=-1;ShowWindow(popup,SW_SHOW);SetForegroundWindow(popup);SetFocus(popup);InvalidateRect(popup,NULL,TRUE);
+    g_recentPopupHover=-1;
+    ShowWindow(popup,SW_SHOW);
+    SetWindowPos(popup,HWND_TOPMOST,px,py,width,height,SWP_SHOWWINDOW|SWP_NOACTIVATE);
+    SetForegroundWindow(popup);SetFocus(popup);InvalidateRect(popup,NULL,TRUE);
 }
 static void AddRecent(const wchar_t *path) {
     for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],path)){for(int j=i;j>0;j--)wcsncpy_s(g_recent[j],PATH_CAP,g_recent[j-1],_TRUNCATE);wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();return;}
