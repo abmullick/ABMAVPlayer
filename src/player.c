@@ -7031,7 +7031,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(L"Audio synchronization",322,540,510,580,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(720,540,820,580,L"− 50 ms",FALSE);AdvancedSettingsButtonDraw(830,540,930,580,L"+ 50 ms",FALSE);AdvancedSettingsButtonDraw(940,540,1018,580,L"Reset",FALSE);
     AdvancedSettingsButtonDraw(322,594,440,638,L"Audio track",FALSE);
-    AdvancedSettingsButtonDraw(452,594,660,638,L"10-band equalizer",FALSE);
+    AdvancedSettingsButtonDraw(452,594,660,638,L"Advanced equalizer",FALSE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
     wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     if(g_advancedAudioOutMessage[0])AdvancedSettingsText(g_advancedAudioOutMessage,322,642,1032,660,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
