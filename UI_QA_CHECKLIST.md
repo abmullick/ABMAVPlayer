@@ -282,6 +282,10 @@ Do not mark this feature runtime-validated until all Windows build and interacti
 - [ ] Play a local audio file and a video for more than 10 seconds; verify progress is checkpointed to `%APPDATA%\\ABMAVPlayer\\resume.tsv` without blocking the 33 ms UI timer.
 - [ ] Pause playback and close the application; relaunch and verify the same item is marked CONTINUE WATCHING in Library.
 - [ ] Play a resumable item and verify LibVLC seeks to the saved position after entering Playing state.
+- [ ] Right-click a row with a checkpoint in both Queue and Library; verify **Continue from checkpoint** resumes at the saved position.
+- [ ] Choose **Start from beginning**; verify playback starts at 00:00 and the old checkpoint is cleared only after playback successfully starts. Simulate a failed start and verify the old checkpoint remains.
+- [ ] Right-click existing media and choose **Open source folder**; verify File Explorer opens the containing folder and selects the file.
+- [ ] For a missing-media row, choose **Open source folder**; verify the stored parent folder opens when accessible, otherwise a non-blocking status message is shown.
 - [ ] Switch between media items and outputs; verify the previous local item position is saved and existing receiver selection / cast failure isolation remains unchanged.
 - [ ] Verify the Library filter cycles All tracks → Favourites → Continue Watching → All tracks, with correct counts, search, media filters and empty state.
 - [ ] Verify Continue Watching rows display an accurate saved-progress percentage and remaining duration, including long-form media formatting.
