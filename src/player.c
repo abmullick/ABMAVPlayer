@@ -15,6 +15,7 @@
 #include "ui_d2d.h"
 #include "ui_theme.h"
 #include "tmdb_metadata.h"
+#include "tmdb_home_theatre.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
 #include "licensing.h"
@@ -1481,9 +1482,9 @@ static void DrawUI(HDC dc,RECT client) {
            remains visible only while the player is idle. */
         {
             RECT cards[4]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT};
-            const wchar_t *titles[4]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Recent media"};
-            const wchar_t *subs[4]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Continue where you left off"};
-            const wchar_t *glyphs[4]={L"+",L"TV",L"↗",L"↶"};
+            const wchar_t *titles[4]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Home Theatre"};
+            const wchar_t *subs[4]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Movies, shows and artwork"};
+            const wchar_t *glyphs[4]={L"+",L"TV",L"↗",L"▶"};
             for(int i=0;i<4;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
@@ -3454,6 +3455,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABMMenuItem items[160];wchar_t trackLabels[64][256];int count=0,trackCount=0;
 #define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
+    ABM_ADD(23009,L"Home Theatre...",TRUE);
     ABM_ADD(23007,L"Subtitle Manager...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
@@ -3494,7 +3496,8 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     int cmd=ABM_ShowMenu(hwnd,x,y,items,count);
 #undef ABM_ADD
 #undef ABM_HEAD
-    if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
+    if(cmd==23009){const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
+    else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
     else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
     else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
@@ -8178,7 +8181,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_HOME_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
             if(Inside(R_HOME_STREAM,x,y)){ABM_Streaming_Show(hwnd);ReleaseCapture();return 0;}
             if(Inside(R_HOME_TORRENT,x,y)){ShowTorrentWindow(hwnd);ReleaseCapture();return 0;}
-            if(Inside(R_HOME_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
+            if(Inside(R_HOME_RECENT,x,y)){const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);ReleaseCapture();return 0;}
         }
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
