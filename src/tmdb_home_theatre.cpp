@@ -124,7 +124,7 @@ struct Result {
     MovieItem items[24];
     wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},error[256]={};
 };
-static void ParseDetails(const wchar_t *json,Result *r) {
+static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster) {
     const wchar_t *end=json+wcslen(json);
     CopyJsonString(json,end,L"overview",r->overview,_countof(r->overview));
     CopyJsonString(json,end,L"release_date",r->year,_countof(r->year));
@@ -142,7 +142,7 @@ static void ParseDetails(const wchar_t *json,Result *r) {
         const wchar_t *crew=wcsstr(credits,L"\"crew\"");if(crew){const wchar_t *p=crew;while((p=wcsstr(p,L"\"job\""))){wchar_t job[64]={};CopyJsonString(p,end,L"job",job,_countof(job));if(!_wcsicmp(job,L"Director")){CopyJsonString(p,end,L"name",r->director,_countof(r->director));break;}p+=5;}}
     }
     wchar_t poster[256]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
-    if(!poster[0]&&r->index>=0&&r->index<g_itemCount)StringCchCopyW(poster,_countof(poster),g_items[r->index].poster);
+    if(!poster[0]&&fallbackPoster)StringCchCopyW(poster,_countof(poster),fallbackPoster);
     wchar_t folder[MAX_PATH]={};if(ImageFolder(folder,_countof(folder))&&poster[0]){
         StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\%d.jpg",folder,r->index);
         if(!ABM_TMDB_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
@@ -164,7 +164,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
     } else if(w->kind==2&&w->index>=0&&w->index<g_itemCount) {
         MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
         r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
-        if(r->ok)ParseDetails(json.data(),r);
+        if(r->ok)ParseDetails(json.data(),r,item.poster);
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your connection and TMDB token.");
     }
     if(!IsWindow(w->target)||!PostMessageW(w->target,w->kind==1?HT_SEARCH_DONE:HT_DETAILS_DONE,0,(LPARAM)r))delete r;
@@ -203,7 +203,7 @@ static void Draw(HWND w) {
     if(g_selected>=0&&g_selected<g_itemCount) {
         MovieItem &m=g_items[g_selected];
         ABM_D2D_Text(&g_canvas,m.title,(RECT){380,150,c.right-390,196},TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        wchar_t meta[160];StringCchPrintfW(meta,_countof(meta),L"%s  ·  %s",m.type==1?L"MOVIE":L"TELEVISION",g_year[0]?g_year:(m.date[0]?m.date:L"Year unavailable"));
+        wchar_t meta[160];StringCchPrintfW(meta,_countof(meta),L"%s  ·  %s%s%s",m.type==1?L"MOVIE":L"TELEVISION",g_year[0]?g_year:(m.date[0]?m.date:L"Year unavailable"),g_runtime[0]?L"  ·  ":L"",g_runtime);
         ABM_D2D_Text(&g_canvas,meta,(RECT){380,198,c.right-390,224},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_posterFile[0]) {
             ABM_D2D_Round(&g_canvas,380,244,590,550,12,RGB(7,12,20));
@@ -289,6 +289,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case HT_SEARCH_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;
         if(r->ok){g_itemCount=r->count;for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a result to load its cinematic details.");}
+        EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
         else SetStatus(r->error[0]?r->error:L"No results found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
@@ -305,6 +306,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             if(g_posterFile[0])ABM_D2D_LoadImage(&g_canvas,g_posterFile);
             SetStatus(g_localMatch>=0?L"Metadata ready. A matching local file is available to play.":L"Metadata ready. No matching local file was found in the current library.");
         } else SetStatus(r->error[0]?r->error:L"Details unavailable.");
+        EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
     case WM_PAINT:Draw(w);return 0;
