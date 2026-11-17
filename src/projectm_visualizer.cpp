@@ -140,7 +140,7 @@ extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,c
     g_parent=parent;
     WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.style=CS_OWNDC;wc.hInstance=GetModuleHandleW(nullptr);
     wc.lpfnWndProc=VisualizerWndProc;wc.lpszClassName=L"ABMProjectMEmbeddedSurface";
-    wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);
+    wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));
     RegisterClassExW(&wc);
     g_window=CreateWindowExW(0,wc.lpszClassName,L"",WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,
         0,0,1,1,parent,nullptr,wc.hInstance,nullptr);
