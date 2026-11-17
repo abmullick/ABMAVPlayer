@@ -8114,8 +8114,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         if (!g_hasMedia || g_visualizerActive) {
-            /* Keep the idle equalizer and audio spectrum fluid at the 30 Hz UI tick. */
-            InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            /* Fullscreen audio visualization is painted by the owner window,
+               not the hidden LibVLC child. Invalidate the entire fullscreen
+               client surface so every animation frame is presented. The
+               windowed path retains its bounded video-stage invalidation. */
+            if(g_fullscreen) {
+                RECT fullClient;
+                GetClientRect(hwnd,&fullClient);
+                InvalidateRect(hwnd,&fullClient,FALSE);
+            } else {
+                InvalidateRect(hwnd,&R_VIDEO,FALSE);
+            }
         } else if ((g_visualPulse % 3u) == 0u) {
             RECT glow=R_VIDEO;
             InflateRect(&glow,4,4);
