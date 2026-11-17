@@ -197,7 +197,7 @@ static void Draw(HWND w) {
     ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(15,42,57),RGB(10,25,40));
     ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(40,94,111),0.9f);
     ABM_D2D_Text(&g_canvas,L"ABM  /  HOME THEATRE",MakeRect(34,22,c.right-34,52),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_canvas,L"YOUR LOCAL COLLECTION, ENRICHED WITH TMDB",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"DISCOVER MOVIES & SHOWS  ·  MATCH TO LOCAL MEDIA",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
     ABM_D2D_Text(&g_canvas,L"DISCOVER",MakeRect(34,142,320,170),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -251,7 +251,9 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_play,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         EnableWindow(g_play,FALSE);Layout(w);return 0;
+    case WM_GETMINMAXINFO: { MINMAXINFO *m=(MINMAXINFO*)lp;if(m){m->ptMinTrackSize.x=900;m->ptMinTrackSize.y=620;}return 0; }
     case WM_SIZE:Layout(w);if(g_canvasReady)ABM_D2D_Resize(&g_canvas,LOWORD(lp),HIWORD(lp));InvalidateRect(w,nullptr,FALSE);return 0;
+    case WM_ERASEBKGND:return 1;
     case WM_COMMAND:
         if(LOWORD(wp)==HT_SEARCH&&HIWORD(wp)==BN_CLICKED){SearchNow();return 0;}
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_UPDATE)return 0;
