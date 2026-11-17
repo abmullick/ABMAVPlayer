@@ -29,6 +29,31 @@ Try searches such as `buffering`, `D3D11VA`, `subtitle delay`, `WASAPI`, `torren
 
 The playlist stores references to media files. Removing an item from the playlist does not delete the original file from disk.
 
+## Library, Continue Watching and missing media recovery
+
+The Library keeps track of media paths; it does not take ownership of, move or copy the original files. Use the Library view selector to cycle through **All tracks**, **Favourites** and **Continue Watching**. The Favourites view contains the items you have marked as favourites. Continue Watching shows items with a saved playback position and displays an approximate progress percentage and remaining time.
+
+### Resume playback
+
+- Play a local media item for at least a few seconds. ABM AV Player periodically checkpoints its playback position and also captures a checkpoint when you pause, change media, stop or close the application.
+- When you play an item that has a saved checkpoint, the player seeks to that position after LibVLC reports that playback has started. You do not need to select a separate Resume command.
+- The checkpoint is stored per media path in the current Windows user's application data, in `%APPDATA%\\ABMAVPlayer\\resume.tsv`. It is local application state, not embedded in or written back to the media file.
+- Very early positions are not retained. Items at or beyond approximately 95% completion are treated as finished and removed from Continue Watching.
+- Resume state is best-effort. If the file has moved, been renamed or is unavailable, restore access to the file first using the missing-media workflow below. A different path is a different media reference until it is relinked.
+
+### Missing media and relinking
+
+A playlist or saved collection stores file paths. If a file is moved, renamed, disconnected or deleted, its entry is retained and flagged **MISSING MEDIA** instead of being silently removed. This lets you recover the library entry if the file is still available elsewhere.
+
+1. Open the Library/Queue drawer so the player can refresh availability flags.
+2. Find the row marked **MISSING MEDIA**.
+3. Open that row's context menu and choose **Relink missing media...**.
+4. Select the replacement file in the Windows file picker. Cancel leaves the existing reference unchanged.
+5. The player updates matching references in the active playlist, Favourites, Recent media, resume state and saved personal M3U collections.
+
+Relinking changes the stored path reference; it does not copy, move, rename or repair the file itself. Choose the correct replacement file. If the replacement is a different edit, episode or version, its saved resume position may not be meaningful. Network shares and removable drives can appear missing while disconnected; reconnect the drive/share and reopen the drawer to refresh the status.
+
+
 ## 2. Application settings
 
 Open **Settings** from the Command Centre. Main Settings contains General, Audio, Torrent & Storage, Network, Updates and Color Theme. Choose **Advanced…** for decoder, output, subtitle, caching, performance, behaviour and diagnostics controls.
