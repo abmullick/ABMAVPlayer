@@ -179,6 +179,14 @@ extern "C" BOOL ABM_TMDB_GetDetails(ABM_TMDB_MEDIA_TYPE type, int tmdbId,
     std::vector<BYTE> body;
     return HttpRequest(path, body, kReceiveTimeout) && JsonToWide(body, jsonUtf8, jsonCapacity);
 }
+extern "C" BOOL ABM_TMDB_GetSeasonDetails(int tvId, int seasonNumber,
+                                               wchar_t *jsonUtf8, size_t jsonCapacity) {
+    if (tvId <= 0 || seasonNumber < 0 || !jsonUtf8 || jsonCapacity == 0) return FALSE;
+    wchar_t path[160] = {};
+    StringCchPrintfW(path, _countof(path), L"/3/tv/%d/season/%d", tvId, seasonNumber);
+    std::vector<BYTE> body;
+    return HttpRequest(path, body, kReceiveTimeout) && JsonToWide(body, jsonUtf8, jsonCapacity);
+}
 extern "C" BOOL ABM_TMDB_DownloadImage(const wchar_t *imagePath, const wchar_t *destination, DWORD timeoutMs) {
     if (!imagePath || !destination || imagePath[0] != L'/' || wcsstr(imagePath, L"..")) return FALSE;
     std::wstring path = L"https://image.tmdb.org/t/p/w500" + std::wstring(imagePath);
