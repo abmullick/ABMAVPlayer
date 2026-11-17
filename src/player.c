@@ -4132,6 +4132,13 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
     return DefSubclassProc(video, msg, wp, lp);
 }
 
+static BOOL CALLBACK SubclassVideoDescendant(HWND child, LPARAM ownerParam) {
+    HWND owner=(HWND)ownerParam;
+    if(IsWindow(child) && child!=g_video && IsWindow(owner))
+        SetWindowSubclass(child,VideoKeyboardSubclass,2,(DWORD_PTR)owner);
+    return TRUE;
+}
+
 static void ToggleFullscreen(HWND hwnd) {
     ULONGLONG transitionStart=GetTickCount64();
     FullscreenDiag(g_fullscreen?"fullscreen-exit-begin":"fullscreen-enter-begin",0);
@@ -8149,6 +8156,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             return 0;
         }
         if(wp==TIMER_ID){
+        /* LibVLC may create an additional native child HWND for the actual
+           video output after playback starts. Keep the input bridge attached
+           to those descendants as well as the supplied drawable window. */
+        if(IsWindow(g_video))EnumChildWindows(g_video,SubclassVideoDescendant,(LPARAM)hwnd);
         VlcCodecVerificationPoll();
         TorrentCheckPlaybackStall();
         CheckAudioOutputAvailability();
