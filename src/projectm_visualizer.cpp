@@ -76,14 +76,19 @@ bool CreateModernContext(HWND hwnd) {
     int pf=ChoosePixelFormat(g_dc,&pfd);
     if(!pf||!SetPixelFormat(g_dc,pf,&pfd))return false;
     HGLRC bootstrap=wglCreateContext(g_dc);
-    if(!bootstrap||!wglMakeCurrent(g_dc,bootstrap))return false;
-    auto create=(CreateContextAttribsFn)wglGetProcAddress("wglCreateContextAttribsARB");
-    if(!create) { wglMakeCurrent(nullptr,nullptr);wglDeleteContext(bootstrap);return false; }
+    if(!bootstrap)return false;
+    if(!wglMakeCurrent(g_dc,bootstrap)){wglDeleteContext(bootstrap);return false;}
+    PROC createProc=wglGetProcAddress("wglCreateContextAttribsARB");
+    if(!createProc||createProc==(PROC)1||createProc==(PROC)2||createProc==(PROC)3||createProc==(PROC)-1) {
+        wglMakeCurrent(nullptr,nullptr);wglDeleteContext(bootstrap);return false;
+    }
+    auto create=(CreateContextAttribsFn)createProc;
     const int attrs[]={WGL_CONTEXT_MAJOR_VERSION_ARB,3,WGL_CONTEXT_MINOR_VERSION_ARB,3,
         WGL_CONTEXT_PROFILE_MASK_ARB,WGL_CONTEXT_CORE_PROFILE_BIT_ARB,0};
     HGLRC modern=create(g_dc,nullptr,attrs);
     wglMakeCurrent(nullptr,nullptr);wglDeleteContext(bootstrap);
-    if(!modern||!wglMakeCurrent(g_dc,modern))return false;
+    if(!modern)return false;
+    if(!wglMakeCurrent(g_dc,modern)){wglDeleteContext(modern);return false;}
     g_gl=modern;
     return true;
 }
@@ -133,7 +138,7 @@ extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,c
     if(g_ready)return TRUE;
     if(!parent)return FALSE;
     g_parent=parent;
-    WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.hInstance=GetModuleHandleW(nullptr);
+    WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.style=CS_OWNDC;wc.hInstance=GetModuleHandleW(nullptr);
     wc.lpfnWndProc=VisualizerWndProc;wc.lpszClassName=L"ABMProjectMEmbeddedSurface";
     wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);
     RegisterClassExW(&wc);
