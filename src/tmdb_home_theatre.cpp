@@ -162,9 +162,9 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
         StringCchPrintfW(r->backdropFile,_countof(r->backdropFile),L"%s\\tmdb-%d-backdrop.jpg",folder,tmdbId);
         if(GetFileAttributesW(r->backdropFile)==INVALID_FILE_ATTRIBUTES&&!ABM_TMDB_DownloadImage(backdrop,r->backdropFile,12000))r->backdropFile[0]=0;
     }
-    const wchar_t *rec=wcsstr(json,L"\\"recommendations\\"");
+    const wchar_t *rec=wcsstr(json,L"\"recommendations\"");
     if(rec)ParseSearchJson(rec,mediaType==2?2:1,r->recommendations,&r->recommendationCount);
-    const wchar_t *season=wcsstr(json,L"\\"seasons\\"");
+    const wchar_t *season=wcsstr(json,L"\"seasons\"");
     if(season) {
         const wchar_t *p=wcschr(season,L'[');if(p)p++;
         while(p&&*p&&r->seasonCount<24) {
