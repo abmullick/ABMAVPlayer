@@ -109,15 +109,21 @@ Overview is a live, read-only snapshot. Its panels show the current playback sta
 
 Choose **Automatic**, **Software decoding**, or **Direct3D 11 Video Acceleration (D3D11VA)**, then select **Apply preference**. Automatic lets LibVLC select an available decoder; Software requests CPU decoding and is useful for GPU/driver troubleshooting; D3D11VA requests the Direct3D 11 hardware path. The preference is saved and requires an application restart. An `ABM_VLC_HW` environment variable override takes precedence over the saved choice. Actual hardware support depends on codec/profile, VLC build, GPU and driver.
 
-### Audio Engine
+### Audio Engine and Advanced Audio Centre
 
-Choose **Automatic**, **Windows Audio Session API (WASAPI)** or **DirectSound**, then **Apply preference** and restart ABM AV Player. Automatic lets LibVLC choose; WASAPI requests the Windows audio-session module; DirectSound is an alternative compatibility path. This selects the output engine; it is not an exclusive-mode/bit-perfect switch and does not add a dedicated device picker. The existing main-window Output selector remains separate.
+The **Advanced Audio Centre** is available from the playback surface's right-click menu. It brings together the output-engine preference, ReplayGain normalisation, dynamic-range compression, audio synchronization and the 10-band equalizer.
+
+Choose **Automatic**, **Windows Audio Session API (WASAPI)** or **DirectSound**, then **Apply output engine** and restart ABM AV Player to activate the engine change. Automatic lets LibVLC choose; WASAPI requests the Windows audio-session module; DirectSound is an alternative compatibility path. This selects the output engine; it is not an exclusive-mode/bit-perfect switch. The active physical device remains selected from the main player's speaker/output selector.
+
+ReplayGain and the compressor are saved to audio.ini and are passed when media is opened; reopen the current item to compare those processing changes. Audio synchronization adjusts the current player in 50 ms steps, from −10,000 to +10,000 ms, and is saved for subsequent local and torrent playback. The **10-band equalizer** button opens the existing ABM graphic equalizer; its fixed profiles are not a parametric EQ.
 
 ### Video Output
 
 Choose **Original**, **16:9**, **4:3** or **21:9**. A selection applies immediately through LibVLC and is saved for future playback. Aspect ratio changes display geometry, not the encoded media; letterboxing or cropping can depend on the source and output. The page also reports the video window, decoded dimensions and client area. It does not currently expose every monitor-specific scaling, colour-management or calibration control.
 
-### Subtitles
+### Subtitle Manager
+
+Open **Subtitle Manager** from the playback surface's right-click menu. The manager provides direct actions to choose an embedded subtitle track, disable subtitles or load an external subtitle file. Supported external formats are SRT, ASS, SSA, SUB and VTT. Track availability depends on the media and LibVLC.
 
 - **Timing:** use −50 ms or +50 ms for 50 ms steps; Reset returns to zero. The supported range is ±10,000 ms.
 - **Font size:** choose 10, 13, 16 or 19 (LibVLC relative-size values).
