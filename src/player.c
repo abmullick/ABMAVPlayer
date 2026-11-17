@@ -7447,7 +7447,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
-   int left=40+col*185,top=880+row*46;
+   int left=40+col*185,top=918+row*46;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
     g_settingsThemePreset=preset;
     ABMThemeApplyPreset((ABMThemePreset)preset);
