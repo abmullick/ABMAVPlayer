@@ -305,6 +305,7 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Disable subtitles, then load external SRT, ASS, SSA, SUB and VTT samples; verify invalid/unreadable files report failure without stopping playback.
 - [ ] Adjust subtitle delay in 50 ms steps, reset it, and verify font size, colour, bold, outline and vertical-position controls remain usable.
 - [ ] Open **Advanced Audio Centre** from the same menu; verify the Automatic, WASAPI and DirectSound choices can be selected and the restart-required notice is clear.
+- [ ] Choose each available embedded audio track from the Advanced Audio Centre; verify the active audio stream changes and the no-track state is handled cleanly.
 - [ ] Toggle ReplayGain and the dynamic-range compressor; verify preferences persist after restarting the application and are applied to newly opened media.
 - [ ] Adjust audio delay in both directions, reset it, and verify the value persists and applies to local and torrent playback after start.
 - [ ] Open the 10-band equalizer from the centre; verify the existing equalizer remains functional and its window can be closed without affecting playback.
