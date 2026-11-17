@@ -229,7 +229,7 @@ static BOOL g_showFavorites=FALSE;
 static BOOL g_showContinueWatching=FALSE;
 static int g_volume = 70, g_dragSeek = 0, g_dragSeekX = 0, g_dragVolume = 0, g_hover = 0;
 static BOOL g_shuffle = FALSE;
-/* 0=Off, 1=Repeat all, 2=Repeat current. Legacy Repeat=1 maps to current. */
+/* 0=Off, 1=Repeat current, 2=Repeat all. Preserves legacy Repeat=1 settings. */
 static int g_repeat = 0;
 static float g_playbackRate = 1.0f;
 static BOOL g_endHandled = FALSE;
@@ -1894,7 +1894,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT toolsHead={R_SIDEBAR.left+18,R_SIDEBAR.top+198,R_SIDEBAR.right-18,R_SIDEBAR.top+218};
     Txt(dc,L"QUICK CONTROLS",toolsHead,ABM_THEME_COLOR_77B1A4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT actions[4]={R_SHUFFLE,R_REPEAT,R_SPEED,R_RECENT};
-    const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat==1?L"Repeat all":(g_repeat==2?L"Repeat current":L"Repeat off"),L"Speed",L"Recent"};
+    const wchar_t *actionLabels[4]={g_shuffle?L"Shuffle on":L"Shuffle",g_repeat==2?L"Repeat all":(g_repeat==1?L"Repeat current":L"Repeat off"),L"Speed",L"Recent"};
     const wchar_t *actionIcons[4]={L"S",L"R",L"1x",L"..."};
     BOOL actionActive[4]={g_shuffle,g_repeat!=0,g_playbackRate!=1.0f,FALSE};
     for(int ai=0;ai<4;ai++) {
@@ -2329,7 +2329,7 @@ static void DrawUI(HDC dc,RECT client) {
         for(int i=0;i<19;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
-            if(i==9)labels[9]=g_repeat==1?L"Repeat all: On":(g_repeat==2?L"Repeat current: On":L"Repeat: Off");
+            if(i==9)labels[9]=g_repeat==2?L"Repeat all: On":(g_repeat==1?L"Repeat current: On":L"Repeat: Off");
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
@@ -3753,7 +3753,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(23006,g_compressor?L"Disable dynamic-range compressor":L"Enable dynamic-range compressor",TRUE);
     ABM_ADD(23002,L"Media information...",TRUE);
     ABM_ADD(23003,g_shuffle?L"Disable shuffle":L"Enable shuffle",TRUE);
-    ABM_ADD(23004,g_repeat==0?L"Repeat: Off (cycle mode)":(g_repeat==1?L"Repeat all (cycle mode)":L"Repeat current (cycle mode)"),TRUE);
+    ABM_ADD(23004,g_repeat==0?L"Repeat: Off (cycle mode)":(g_repeat==2?L"Repeat all (cycle mode)":L"Repeat current (cycle mode)"),TRUE);
     int cmd=ABM_ShowMenu(hwnd,x,y,items,count);
 #undef ABM_ADD
 #undef ABM_HEAD
@@ -3849,7 +3849,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==23006){g_compressor=!g_compressor;SaveAudioPreferences();}
     else if(cmd>=25100&&cmd<=25103){g_eqProfile=cmd-25100;ApplyEqProfile();SaveAudioPreferences();}
     else if(cmd==23003)g_shuffle=!g_shuffle;
-    else if(cmd==23004)g_repeat=(g_repeat+1)%3;
+    else if(cmd==23004)g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);
     else if(cmd>=25000&&cmd<=25009){
         libvlc_equalizer_t *eqp=libvlc_audio_equalizer_new_from_preset(cmd-25000);
         if(eqp){libvlc_audio_equalizer_set_preamp(eqp,0.0f);libvlc_media_player_set_equalizer(g_player,eqp);libvlc_audio_equalizer_release(eqp);g_eqProfile=10+(cmd-25000);SaveAudioPreferences();}
@@ -7048,7 +7048,7 @@ static BOOL GenerateAdvancedDiagnosticReport(wchar_t *reportPath,size_t reportPa
  {unsigned int loaded=0;for(unsigned int vi=0;vi<g_vlcPluginCount;vi++)if(g_vlcPlugins[vi].loadedInProcess)loaded++;fwprintf(fp,L"File Found: %u plugin DLLs\r\nDLL Mapped: %u DLLs mapped in process\r\nRuntime Tested: %s\r\nPlayback Session: %s\r\nCurrent media: %s\r\nContainer/extension hint: %s\r\nStream detected: %s\r\nPlayback session successful: %s\r\nPlayback error: %s\r\nSelected audio ID: %d\r\nSelected video ID: %d\r\nSelected subtitle ID: %d\r\nDecoder module identified: %s\r\nEvent monitoring: %s\r\n",g_vlcPluginCount,loaded,g_vlcRuntimeTestDetail,g_vlcPlaybackTestDetail,g_vlcMediaPath[0]?g_vlcMediaPath:L"Not recorded",g_vlcContainer,g_vlcTrackSnapshotReady?L"Yes":L"No",g_vlcPlaybackSessionSuccessful?L"Yes":L"No",g_vlcMediaErrorObserved?L"Yes":L"No",g_vlcSelectedAudioId,g_vlcSelectedVideoId,g_vlcSelectedSubtitleId,g_vlcDecoderModuleIdentified?g_vlcDecoderModule:L"Unknown — not exposed by public API",g_vlcPlaybackEventManager?L"Attached":L"Polling only");for(unsigned int ti=0;ti<g_vlcTrackEvidenceCount;ti++)fwprintf(fp,L"Track %d | type %d | codec %s | FourCC %08X | selected %s\r\n",g_vlcTrackEvidence[ti].id,(int)g_vlcTrackEvidence[ti].type,g_vlcTrackEvidence[ti].description,g_vlcTrackEvidence[ti].codec,g_vlcTrackEvidence[ti].selected?L"Yes":L"No");for(unsigned int vi=0;vi<g_vlcPluginCount;vi++)fwprintf(fp,L"Plugin [%s] %s: File %s; Loaded %s\r\n",g_vlcPlugins[vi].category,g_vlcPlugins[vi].name,g_vlcPlugins[vi].fileFound?L"Found":L"Missing",g_vlcPlugins[vi].loadedInProcess?L"Yes":L"No");}
  fwprintf(fp,L"\r\n[System]\r\nLogical processors: %lu\r\nPhysical memory: %llu MB\r\nAvailable physical memory: %llu MB\r\nMemory load: %lu%%\r\n",si.dwNumberOfProcessors,(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL)),(unsigned long long)(mem.ullAvailPhys/(1024ULL*1024ULL)),mem.dwMemoryLoad);
  fwprintf(fp,L"\r\n[ABM AV Player process]\r\nWorking set: %llu MB\r\nPage file usage: %llu MB\r\n", (unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)),(unsigned long long)(pmc.PagefileUsage/(1024ULL*1024ULL)));
- fwprintf(fp,L"\r\n[Playback]\r\nState: %s\r\nVideo dimensions: %u x %u\r\nPlaylist entries: %d\r\nRecent entries: %d\r\nVolume: %d%%\r\nPlayback speed: %.2fx\r\nShuffle: %s\r\nRepeat mode: %s\r\n",playback,g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount,g_volume,(double)g_playbackRate,g_shuffle?L"On":L"Off",g_repeat==1?L"All":(g_repeat==2?L"Current":"Off"));
+ fwprintf(fp,L"\r\n[Playback]\r\nState: %s\r\nVideo dimensions: %u x %u\r\nPlaylist entries: %d\r\nRecent entries: %d\r\nVolume: %d%%\r\nPlayback speed: %.2fx\r\nShuffle: %s\r\nRepeat mode: %s\r\n",playback,g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount,g_volume,(double)g_playbackRate,g_shuffle?L"On":L"Off",g_repeat==2?L"All":(g_repeat==1?L"Current":"Off"));
  fwprintf(fp,L"\r\n[Advanced settings]\r\nDecoder threads: %s\r\nDrop late frames: %s\r\nSkip frames: %s\r\nNetwork caching: %d ms\r\nFile caching: %d ms\r\nLive caching: %d ms\r\nHardware acceleration selection: %d\r\nAudio output selection: %d\r\nAspect ratio selection: %d\r\n",g_advancedDecoderThreads==0?L"Automatic":g_advancedDecoderThreads==2?L"2":g_advancedDecoderThreads==4?L"4":L"8",g_advancedDropLateFrames?L"Enabled":L"Disabled",g_advancedSkipFrames?L"Enabled":L"Disabled",g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching,g_advancedHwMode,g_advancedAudioOutMode,g_advancedAspectMode);
  fwprintf(fp,L"\r\n[Notes]\r\nThis report contains local application, system and playback configuration details. It does not include media file contents or upload anything. Review it before sharing.\r\n");
  fclose(fp);return TRUE;
@@ -7446,7 +7446,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      StringCchPrintfW(row2,_countof(row2),L"Video dimensions: %u × %u",g_videoWidth,g_videoHeight);
      StringCchPrintfW(row3,_countof(row3),L"Volume: %d%%     Speed: %.2fx",g_volume,(double)g_playbackRate);
      StringCchPrintfW(row4,_countof(row4),L"Playlist: %d item(s)     Current index: %d",g_playlistCount,g_current>=0?g_current+1:0);
-     StringCchPrintfW(row5,_countof(row5),L"Shuffle: %s     Repeat: %s",g_shuffle?L"On":L"Off",g_repeat==1?L"All":(g_repeat==2?L"Current":L"Off"));
+     StringCchPrintfW(row5,_countof(row5),L"Shuffle: %s     Repeat: %s",g_shuffle?L"On":L"Off",g_repeat==2?L"All":(g_repeat==1?L"Current":L"Off"));
     }else if(g_advancedSettingsPage==6){
      int threadIndex=0;for(int j=0;j<4;j++)if(g_advancedThreadChoices[j]==g_advancedDecoderThreads)threadIndex=j;
      AdvancedSettingsText(L"Decoder thread count",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -7820,7 +7820,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,565,155,704,190)){g_settingsRateOpen=!g_settingsRateOpen;InvalidateRect(w,NULL,FALSE);return 0;}
   if(g_settingsRateOpen&&SettingsPoint(x,y,565,190,704,372)){int idx=(y-190)/26;if(idx>=0&&idx<7)g_settingsRateIndex=idx;g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);return 0;}
   if(SettingsPoint(x,y,38,198,300,224)){g_settingsShuffle=!g_settingsShuffle;InvalidateRect(w,NULL,FALSE);return 0;}
-  if(SettingsPoint(x,y,340,198,610,224)){g_settingsRepeat=(g_settingsRepeat+1)%3;InvalidateRect(w,NULL,FALSE);return 0;}
+  if(SettingsPoint(x,y,340,198,610,224)){g_settingsRepeat=(g_settingsRepeat==0)?2:(g_settingsRepeat==2?1:0);InvalidateRect(w,NULL,FALSE);return 0;}
   if(SettingsPoint(x,y,38,280,340,306)){g_settingsReplayGain=!g_settingsReplayGain;InvalidateRect(w,NULL,FALSE);return 0;}
   if(SettingsPoint(x,y,350,280,680,306)){g_settingsCompressor=!g_settingsCompressor;InvalidateRect(w,NULL,FALSE);return 0;}
   if(SettingsPoint(x,y,655,396,780,428)){SettingsBrowse(w);return 0;}
@@ -7869,7 +7869,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsText(g_settingsRateLabels[g_settingsRateIndex],579,160,670,185,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Line(&g_settingsUi,681,169,686,175,SETTINGS_ACCENT,1.8f);ABM_D2D_Line(&g_settingsUi,686,175,691,169,SETTINGS_ACCENT,1.8f);
    SettingsCheckDraw(40,202,L"Shuffle by default",g_settingsShuffle);
-   SettingsCheckDraw(342,202,g_settingsRepeat==0?L"Repeat mode: Off":(g_settingsRepeat==1?L"Repeat mode: All":L"Repeat mode: Current item"),g_settingsRepeat!=0);
+   SettingsCheckDraw(342,202,g_settingsRepeat==0?L"Repeat mode: Off":(g_settingsRepeat==2?L"Repeat mode: All":L"Repeat mode: Current item"),g_settingsRepeat!=0);
    SettingsSection(238,L"AUDIO",L"Processing",324);
    SettingsCheckDraw(40,281,L"ReplayGain normalisation",g_settingsReplayGain);
    SettingsCheckDraw(352,281,L"Dynamic range compressor",g_settingsCompressor);
@@ -8332,8 +8332,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(g_hasMedia&&!g_endHandled&&libvlc_media_player_get_state(g_player)==libvlc_Ended) {
             g_endHandled=TRUE;
-            if(g_repeat==2)PlayIndex(g_current);
-            else if(g_playlistCount>1 && (g_repeat==1 || g_shuffle || g_current<g_playlistCount-1))PlayIndex(GetNextPlaylistIndex());
+            if(g_repeat==1)PlayIndex(g_current);
+            else if(g_playlistCount>1 && (g_repeat==2 || g_shuffle || g_current<g_playlistCount-1))PlayIndex(GetNextPlaylistIndex());
             else {g_hasMedia=FALSE;ResetArtwork();InvalidateRect(hwnd,NULL,FALSE);}
         }
         /* Lightweight 30 Hz hover easing for idle dashboard cards.
@@ -8556,7 +8556,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==6)SavePlaylist();
                 else if(mi==7){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
                 else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
-                else if(mi==9){g_repeat=(g_repeat+1)%3;SavePersistentState();}
+                else if(mi==9){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();}
                 else if(mi==10)ShowEqualizer();
                 else if(mi==11)ABM_Streaming_Show(hwnd);
                 else if(mi==12)ShowTorrentWindow(hwnd);
@@ -8602,7 +8602,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             return 0;
         }
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_SHUFFLE,x,y)){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
-        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_REPEAT,x,y)){g_repeat=!g_repeat;SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_REPEAT,x,y)){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_SPEED,x,y)){
             if(g_playbackRate<0.99f)g_playbackRate=1.0f;
             else if(g_playbackRate<1.24f)g_playbackRate=1.25f;
@@ -8663,7 +8663,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
-        if(ctrl && !shift && wp=='R'){g_repeat=(g_repeat+1)%3;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
+        if(ctrl && !shift && wp=='R'){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ScreenToClient(hwnd,&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
         if(wp==VK_F1){ShowHelpDialog(hwnd);return 0;}
         if(g_searchFocused&&wp==VK_ESCAPE){g_searchFocused=FALSE;InvalidateRect(hwnd,&R_SEARCH,FALSE);return 0;}
