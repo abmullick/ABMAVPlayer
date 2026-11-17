@@ -1271,21 +1271,21 @@ static void DrawVisualizer(HDC dc,RECT area) {
             ABM_D2D_Round(&g_ui,(float)x,(float)(base-bh),(float)(x+bw),(float)base,(float)(bw/2),col);
             RECT cap={x,base-bh-5,x+bw,base-bh-3};Fill(dc,cap,ABM_THEME_COLOR_BEE5FF);}
     } else if(g_visualizerMode==1) {
-        for(int layer=0;layer<3;layer++){int px0=in.left,py0=cy;COLORREF col=layer==0?ABM_THEME_COLOR_64CAA6:(layer==1?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_3C7C9A);
+        for(int layer=0;layer<3;layer++){int px0=in.left,py0=cy;COLORREF col=layer==0?ABM_THEME_COLOR_64CAA6:(layer==1?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_397C89);
             for(int n=1;n<96;n++){int band=(n*24)/96;float amp=levels[band]*(float)(h*(0.18f+0.10f*layer));float phase=(float)g_visualPulse*0.075f+n*0.105f+layer*1.7f;
-                int px=in.left+n*w/95,py=cy+(int)(sinf(phase)*amp);DrawLine(dc,px0,py0,px,py,col,layer==0?2.4f:1.5f);px0=px;py0=py;}}
+                int px=in.left+n*w/95,py=cy+(int)(sinf(phase)*amp);DrawLine(dc,px0,py0,px,py,col,layer==0?2:1);px0=px;py0=py;}}
     } else {
         float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f,treble=0;for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
         float energy=bass*0.72f+treble*0.28f;int radius=(h<w?h:w)/3;
         for(int ring=0;ring<3;ring++){int rr=radius+(int)(sinf(g_visualPulse*0.045f+ring*1.9f)*energy*radius*0.24f)+ring*18;
-            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),(float)rr,ring?ABM_THEME_COLOR_1B414B:ABM_THEME_COLOR_23747A,0.8f);}
+            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),(float)rr,ring?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_23747A,0.8f);}
         for(int i=0;i<112;i++){float angle=i*2.39996323f+g_visualPulse*(0.0035f+(i%7)*0.00035f);int band=(i*13)%24;float v=levels[band];
             float orbit=0.22f+(i%17)/22.0f,pulse=0.5f+0.5f*sinf(g_visualPulse*0.06f+i*1.31f);float r=radius*(orbit+v*0.58f+pulse*energy*0.13f);
             float turbulence=sinf(angle*3.0f+g_visualPulse*0.025f)*treble*13.0f;int x=cx+(int)(cosf(angle)*r+turbulence),y=cy+(int)(sinf(angle)*r+turbulence*0.65f);
-            int d=2+(int)(v*5.0f)+(i%13==0?2:0);COLORREF col=i%3==0?ABM_THEME_COLOR_64CAA6:(i%3==1?ABM_THEME_COLOR_43A9B0:ABM_THEME_COLOR_8BD9C0);
+            int d=2+(int)(v*5.0f)+(i%13==0?2:0);COLORREF col=i%3==0?ABM_THEME_COLOR_64CAA6:(i%3==1?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_8EE2D3);
             ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),(float)d,col);}
         for(int i=0;i<24;i++){float a=i*6.2831853f/24.0f+g_visualPulse*0.009f;float r0=radius*0.18f,r1=r0+radius*(0.20f+levels[i]*0.52f);
-            DrawLine(dc,cx+(int)(cosf(a)*r0),cy+(int)(sinf(a)*r0),cx+(int)(cosf(a)*r1),cy+(int)(sinf(a)*r1),i%2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_64CAA6,1.2f);}
+            DrawLine(dc,cx+(int)(cosf(a)*r0),cy+(int)(sinf(a)*r0),cx+(int)(cosf(a)*r1),cy+(int)(sinf(a)*r1),i%2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_64CAA6,1);}
     }
     RECT base={in.left,in.bottom-2,in.right,in.bottom-1};Fill(dc,base,ABM_THEME_COLOR_2B4344);
 }
