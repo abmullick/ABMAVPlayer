@@ -238,6 +238,7 @@ static wchar_t g_recent[MAX_RECENT][PATH_CAP];
 static int g_recentCount=0;
 static HWND g_recentPopupWindow=NULL;
 static int g_recentPopupHover=-1;
+static BOOL g_recentOpenPending=FALSE;
 static wchar_t g_dataDir[PATH_CAP];
 static wchar_t g_torrentCacheBaseDir[PATH_CAP];
 static wchar_t g_torrentDownloadDir[PATH_CAP];
@@ -3294,7 +3295,14 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
     int availableW=work.right-work.left-2*margin;
     int availableH=work.bottom-work.top-2*margin;
     if(availableW<240 || availableH<180)return;
+    RECT client={0};GetClientRect(hwnd,&client);
+    int ownerW=client.right-client.left;
     int width=520;
+    /* Keep the Recent surface proportionate to compact player windows while
+       retaining the full desktop width on larger layouts. */
+    int ownerFit=ownerW-24;
+    if(ownerFit<240)ownerFit=240;
+    if(width>ownerFit)width=ownerFit;
     if(width>availableW)width=availableW;
     int height=68+g_recentCount*42+10;
     if(height>availableH)height=availableH;
@@ -8659,7 +8667,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             libvlc_media_player_set_rate(g_player,g_playbackRate);
             SavePersistentState();InvalidateRect(hwnd,&R_SIDEBAR,FALSE);ReleaseCapture();return 0;
         }
-        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,x,y)){ShowRecentMenu(hwnd,x,y);ReleaseCapture();return 0;}
+        if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,x,y)){g_recentOpenPending=TRUE;ReleaseCapture();return 0;}
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_AUDIO_BUTTON,x,y)){RefreshAudioDevices();g_audioPopupOpen=!g_audioPopupOpen;g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECEIVER,x,y)){g_receiverPopup=!g_receiverPopup;InvalidateRect(hwnd,NULL,FALSE);ReleaseCapture();return 0;}
         if(g_receiverPopup){g_receiverPopup=FALSE;InvalidateRect(hwnd,NULL,FALSE);}
@@ -8888,6 +8896,18 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         break;
     case WM_LBUTTONUP:
+        /* Open Recent only after the initiating click has been fully released.
+           Showing a separate popup during WM_LBUTTONDOWN lets Windows route
+           that same release into the new popup; depending on compact-window
+           overlap and z-order, it can immediately consume/dismiss the menu. */
+        if(g_recentOpenPending) {
+            g_recentOpenPending=FALSE;
+            int rx=GET_X_LPARAM(lp),ry=GET_Y_LPARAM(lp);
+            if(g_drawerOpen&&g_drawerSettingsOpen&&Inside(R_RECENT,rx,ry))
+                ShowRecentMenu(hwnd,rx,ry);
+            ReleaseCapture();
+            return 0;
+        }
         if(g_queueDragPending) {
             BOOL didDrag=g_queueDragging;
             int source=g_queueDragSource,boundary=g_queueDropBoundary;
