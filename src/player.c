@@ -1287,7 +1287,6 @@ static void DrawVisualizer(HDC dc,RECT area) {
        drawing surface are shared; no common particle/ribbon/halo overlay is
        painted across modes. */
     const COLORREF ink=RGB(3,7,18);
-    const COLORREF deep=RGB(5,12,29);
     const COLORREF cyan=RGB(40,218,235);
     const COLORREF blue=RGB(55,112,255);
     const COLORREF violet=RGB(158,82,255);
@@ -1441,7 +1440,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
             float z=fmodf(seed+time*0.00072f,1.0f);
             float nx=(float)((i*193+41)%991)/991.0f-0.5f;
             float ny=(float)((i*317+83)%983)/983.0f-0.5f;
-            int band=(i*7)%24;float v=levels[band];
+            int band=(i*7)%24;
             float persp=0.13f+z*1.95f;
             float x=vanishX+nx*width*0.34f*persp;
             float y=vanishY+ny*height*0.34f*persp;
@@ -7101,7 +7100,7 @@ static BOOL GenerateAdvancedDiagnosticReport(wchar_t *reportPath,size_t reportPa
  {unsigned int loaded=0;for(unsigned int vi=0;vi<g_vlcPluginCount;vi++)if(g_vlcPlugins[vi].loadedInProcess)loaded++;fwprintf(fp,L"File Found: %u plugin DLLs\r\nDLL Mapped: %u DLLs mapped in process\r\nRuntime Tested: %s\r\nPlayback Session: %s\r\nCurrent media: %s\r\nContainer/extension hint: %s\r\nStream detected: %s\r\nPlayback session successful: %s\r\nPlayback error: %s\r\nSelected audio ID: %d\r\nSelected video ID: %d\r\nSelected subtitle ID: %d\r\nDecoder module identified: %s\r\nEvent monitoring: %s\r\n",g_vlcPluginCount,loaded,g_vlcRuntimeTestDetail,g_vlcPlaybackTestDetail,g_vlcMediaPath[0]?g_vlcMediaPath:L"Not recorded",g_vlcContainer,g_vlcTrackSnapshotReady?L"Yes":L"No",g_vlcPlaybackSessionSuccessful?L"Yes":L"No",g_vlcMediaErrorObserved?L"Yes":L"No",g_vlcSelectedAudioId,g_vlcSelectedVideoId,g_vlcSelectedSubtitleId,g_vlcDecoderModuleIdentified?g_vlcDecoderModule:L"Unknown — not exposed by public API",g_vlcPlaybackEventManager?L"Attached":L"Polling only");for(unsigned int ti=0;ti<g_vlcTrackEvidenceCount;ti++)fwprintf(fp,L"Track %d | type %d | codec %s | FourCC %08X | selected %s\r\n",g_vlcTrackEvidence[ti].id,(int)g_vlcTrackEvidence[ti].type,g_vlcTrackEvidence[ti].description,g_vlcTrackEvidence[ti].codec,g_vlcTrackEvidence[ti].selected?L"Yes":L"No");for(unsigned int vi=0;vi<g_vlcPluginCount;vi++)fwprintf(fp,L"Plugin [%s] %s: File %s; Loaded %s\r\n",g_vlcPlugins[vi].category,g_vlcPlugins[vi].name,g_vlcPlugins[vi].fileFound?L"Found":L"Missing",g_vlcPlugins[vi].loadedInProcess?L"Yes":L"No");}
  fwprintf(fp,L"\r\n[System]\r\nLogical processors: %lu\r\nPhysical memory: %llu MB\r\nAvailable physical memory: %llu MB\r\nMemory load: %lu%%\r\n",si.dwNumberOfProcessors,(unsigned long long)(mem.ullTotalPhys/(1024ULL*1024ULL)),(unsigned long long)(mem.ullAvailPhys/(1024ULL*1024ULL)),mem.dwMemoryLoad);
  fwprintf(fp,L"\r\n[ABM AV Player process]\r\nWorking set: %llu MB\r\nPage file usage: %llu MB\r\n", (unsigned long long)(pmc.WorkingSetSize/(1024ULL*1024ULL)),(unsigned long long)(pmc.PagefileUsage/(1024ULL*1024ULL)));
- fwprintf(fp,L"\r\n[Playback]\r\nState: %s\r\nVideo dimensions: %u x %u\r\nPlaylist entries: %d\r\nRecent entries: %d\r\nVolume: %d%%\r\nPlayback speed: %.2fx\r\nShuffle: %s\r\nRepeat mode: %s\r\n",playback,g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount,g_volume,(double)g_playbackRate,g_shuffle?L"On":L"Off",g_repeat==2?L"All":(g_repeat==1?L"Current":"Off"));
+ fwprintf(fp,L"\r\n[Playback]\r\nState: %s\r\nVideo dimensions: %u x %u\r\nPlaylist entries: %d\r\nRecent entries: %d\r\nVolume: %d%%\r\nPlayback speed: %.2fx\r\nShuffle: %s\r\nRepeat mode: %s\r\n",playback,g_videoWidth,g_videoHeight,g_playlistCount,g_recentCount,g_volume,(double)g_playbackRate,g_shuffle?L"On":L"Off",g_repeat==2?L"All":(g_repeat==1?L"Current":L"Off"));
  fwprintf(fp,L"\r\n[Advanced settings]\r\nDecoder threads: %s\r\nDrop late frames: %s\r\nSkip frames: %s\r\nNetwork caching: %d ms\r\nFile caching: %d ms\r\nLive caching: %d ms\r\nHardware acceleration selection: %d\r\nAudio output selection: %d\r\nAspect ratio selection: %d\r\n",g_advancedDecoderThreads==0?L"Automatic":g_advancedDecoderThreads==2?L"2":g_advancedDecoderThreads==4?L"4":L"8",g_advancedDropLateFrames?L"Enabled":L"Disabled",g_advancedSkipFrames?L"Enabled":L"Disabled",g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching,g_advancedHwMode,g_advancedAudioOutMode,g_advancedAspectMode);
  fwprintf(fp,L"\r\n[Notes]\r\nThis report contains local application, system and playback configuration details. It does not include media file contents or upload anything. Review it before sharing.\r\n");
  fclose(fp);return TRUE;
