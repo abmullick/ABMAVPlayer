@@ -545,3 +545,8 @@ The VLC Runtime & Codecs report now distinguishes stream discovery from track se
 Each detected stream is listed with its type, ID, codec and whether that ID is currently selected. The report separately shows whether media time progressed after Playing (or the stream reached EndReached), whether LibVLC reported a playback error, and whether event monitoring attached successfully. A detected stream is not automatically a selected stream; a selected track is not by itself proof of a successful playback session.
 
 **Decoder module identified** is reported as unknown when LibVLC does not expose the actual internal decoder module. ABM does not guess the module from the codec name or plugin inventory. The evidence is scoped to the active media session; it is not a certification of every alternate track or every file using the same extension.
+
+
+### Live music visualizers
+
+When an audio-only track is playing, ABM renders the live visualizer in the existing main media stage. Right-click the media stage and choose one of the **Live Music Visualizer** modes: **Spectrum**, **Fluid Waves**, or **Particle Visualizer**. The selected mode is applied immediately without restarting playback. Album artwork and track information remain visible, with the live visualization composed into the information area. The analysis currently uses WASAPI loopback on the Windows default render endpoint; other applications playing through that endpoint can therefore influence the visualization. Process-specific capture is not implemented.
