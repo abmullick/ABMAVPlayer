@@ -313,7 +313,7 @@ static void Layout(HWND w) {
     if(g_edit)MoveWindow(g_edit,28,83,width-190,36,TRUE);
     if(GetDlgItem(w,HT_SEARCH))MoveWindow(GetDlgItem(w,HT_SEARCH),width-150,83,122,36,TRUE);
     if(g_results)MoveWindow(g_results,28,144,300,height-230,TRUE);
-    if(g_status)MoveWindow(g_status,28,height-70,width-240,24,TRUE);
+    if(g_status)MoveWindow(g_status,28,height-70,320,24,TRUE);
     if(g_play)MoveWindow(g_play,width-176,height-78,148,42,TRUE);
 }
 static RECT MakeRect(LONG l,LONG t,LONG r,LONG b) { RECT value={l,t,r,b};return value; }
@@ -474,7 +474,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             StringCchCopyW(g_director,_countof(g_director),r->director);
             StringCchCopyW(g_posterFile,_countof(g_posterFile),r->posterFile);
             StringCchCopyW(g_backdropFile,_countof(g_backdropFile),r->backdropFile);g_showBackdrop=FALSE;
-            if(g_posterFile[0])ABM_D2D_LoadImage(&g_canvas,g_posterFile);
+            if(g_posterFile[0])ABM_D2D_LoadImage(&g_canvas,g_posterFile);else if(g_backdropFile[0]){g_showBackdrop=TRUE;ABM_D2D_LoadImage(&g_canvas,g_backdropFile);SetWindowTextW(g_artButton,L"Show poster");}
             g_recommendationCount=r->recommendationCount;for(int i=0;i<g_recommendationCount;i++)g_recommendations[i]=r->recommendations[i];
             g_seasonCount=r->seasonCount;for(int i=0;i<g_seasonCount;i++)g_seasons[i]=r->seasons[i];
             g_tvId=g_items[g_selected].id;g_tvType=g_items[g_selected].type;
