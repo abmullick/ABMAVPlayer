@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cwctype>
 #include <new>
+#include <cwchar>
+#include <cstdlib>
 #include <dwmapi.h>
 #include <uxtheme.h>
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -187,42 +189,43 @@ static void Layout(HWND w) {
     if(g_status)MoveWindow(g_status,28,height-70,width-56,24,TRUE);
     if(g_play)MoveWindow(g_play,width-176,height-78,148,42,TRUE);
 }
+static RECT MakeRect(LONG l,LONG t,LONG r,LONG b) { RECT value={l,t,r,b};return value; }
 static void Draw(HWND w) {
     PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT c;GetClientRect(w,&c);
     if(!g_canvasReady){FillRect(dc,&c,(HBRUSH)GetStockObject(BLACK_BRUSH));EndPaint(w,&ps);return;}
     ABM_D2D_Begin(&g_canvas,BG);
     ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(15,42,57),RGB(10,25,40));
     ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(40,94,111),0.9f);
-    ABM_D2D_Text(&g_canvas,L"ABM  /  HOME THEATRE",(RECT){34,22,c.right-34,52},TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_canvas,L"YOUR LOCAL COLLECTION, ENRICHED WITH TMDB",(RECT){36,50,c.right-34,66},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"ABM  /  HOME THEATRE",MakeRect(34,22,c.right-34,52),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"YOUR LOCAL COLLECTION, ENRICHED WITH TMDB",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
-    ABM_D2D_Text(&g_canvas,L"DISCOVER",(RECT){34,142,320,170},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"DISCOVER",MakeRect(34,142,320,170),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
     if(g_selected>=0&&g_selected<g_itemCount) {
         MovieItem &m=g_items[g_selected];
-        ABM_D2D_Text(&g_canvas,m.title,(RECT){380,150,c.right-390,196},TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        ABM_D2D_Text(&g_canvas,m.title,MakeRect(380,150,c.right-390,196),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t meta[160];StringCchPrintfW(meta,_countof(meta),L"%s  ·  %s%s%s",m.type==1?L"MOVIE":L"TELEVISION",g_year[0]?g_year:(m.date[0]?m.date:L"Year unavailable"),g_runtime[0]?L"  ·  ":L"",g_runtime);
-        ABM_D2D_Text(&g_canvas,meta,(RECT){380,198,c.right-390,224},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,meta,MakeRect(380,198,c.right-390,224),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if(g_posterFile[0]) {
             ABM_D2D_Round(&g_canvas,380,244,590,550,12,RGB(7,12,20));
             ABM_D2D_DrawImage(&g_canvas,386,250,584,544);
         } else {
             ABM_D2D_GradientRound(&g_canvas,380,244,590,550,12,RGB(24,59,69),RGB(12,26,40));
-            ABM_D2D_Text(&g_canvas,L"ABM",(RECT){390,330,580,410},MUTED,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(390,330,580,410),MUTED,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         int tx=612,tw=c.right-tx-42;
-        ABM_D2D_Text(&g_canvas,L"OVERVIEW",(RECT){tx,244,tx+tw,270},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_Text(&g_canvas,g_overview[0]?g_overview:(m.overview[0]?m.overview:L"No synopsis supplied by TMDB."),(RECT){tx,274,tx+tw,420},TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
-        ABM_D2D_Text(&g_canvas,L"GENRES",(RECT){tx,432,tx+tw,454},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_Text(&g_canvas,g_genres[0]?g_genres:L"Not available",(RECT){tx,456,tx+tw,480},TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        ABM_D2D_Text(&g_canvas,L"CAST",(RECT){tx,490,tx+tw,512},ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_Text(&g_canvas,g_cast[0]?g_cast:L"Not available",(RECT){tx,514,tx+tw,556},TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
-        if(g_director[0])ABM_D2D_Text(&g_canvas,g_director,(RECT){tx,566,tx+tw,590},MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,L"OVERVIEW",MakeRect(tx,244,tx+tw,270),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,g_overview[0]?g_overview:(m.overview[0]?m.overview:L"No synopsis supplied by TMDB."),MakeRect(tx,274,tx+tw,420),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
+        ABM_D2D_Text(&g_canvas,L"GENRES",MakeRect(tx,432,tx+tw,454),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,g_genres[0]?g_genres:L"Not available",MakeRect(tx,456,tx+tw,480),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        ABM_D2D_Text(&g_canvas,L"CAST",MakeRect(tx,490,tx+tw,512),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,g_cast[0]?g_cast:L"Not available",MakeRect(tx,514,tx+tw,556),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
+        if(g_director[0])ABM_D2D_Text(&g_canvas,g_director,MakeRect(tx,566,tx+tw,590),MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     } else {
-        ABM_D2D_Text(&g_canvas,L"Select a title to explore its details",(RECT){380,170,c.right-40,215},TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_Text(&g_canvas,L"Search by movie or television title. Select a result to load its synopsis, artwork, genres and credits. ABM will offer playback only when a matching local file is found in your current library.",(RECT){380,224,c.right-60,340},MUTED,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
+        ABM_D2D_Text(&g_canvas,L"Select a title to explore its details",MakeRect(380,170,c.right-40,215),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,L"Search by movie or television title. Select a result to load its synopsis, artwork, genres and credits. ABM will offer playback only when a matching local file is found in your current library.",MakeRect(380,224,c.right-60,340),MUTED,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
     }
     ABM_D2D_End(&g_canvas);EndPaint(w,&ps);
 }
