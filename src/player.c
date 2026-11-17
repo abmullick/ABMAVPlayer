@@ -1357,8 +1357,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
            underglow and fine harmonic threads. */
         for(int layer=5;layer>=0;layer--) {
             int px0=inner.left,py0=cy;
-            COLORREF col=layer<2?ABM_THEME_COLOR_8EE2D3:
-                (layer<4?ABM_THEME_COLOR_64CAA6:ABM_THEME_COLOR_23747A);
+            COLORREF col=palette[(layer*2+1)%9];
             for(int n=1;n<240;n++) {
                 float pos=(float)n/239.0f;
                 int band=(int)(pos*23.0f);
@@ -1368,12 +1367,16 @@ static void DrawVisualizer(HDC dc,RECT area) {
                 float amp=(float)h*(0.12f+0.055f*layer)*envelope*(0.18f+local*1.7f);
                 int px=inner.left+n*w/239;
                 int py=cy+(int)(sinf(phase)*amp+sinf(phase*0.47f+layer)*amp*0.36f);
-                if(layer<2) {
+                int hue=(int)(pos*8.0f+layer*1.35f);
+                int hueIndex=hue%8;
+                COLORREF segment=Blend(palette[hueIndex],palette[hueIndex+1],
+                    (int)((pos*8.0f+layer*1.35f-hue)*100.0f));
+                if(layer<3) {
                     ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,
-                        Blend(ABM_THEME_COLOR_071018,col,25),5.0f-layer*1.4f);
+                        Blend(ABM_THEME_COLOR_071018,segment,25),5.0f-layer*1.1f);
                 }
-                ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,col,
-                    layer==0?2.2f:(layer==1?1.7f:0.9f));
+                ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,segment,
+                    layer==0?2.4f:(layer==1?1.8f:0.9f));
                 px0=px;py0=py;
             }
         }
@@ -1426,8 +1429,9 @@ static void DrawVisualizer(HDC dc,RECT area) {
             float tailX=x-cosf(angle)*((2.0f+v*13.0f));
             float tailY=y-sinf(angle)*((2.0f+v*13.0f));
             int d=1+(int)(v*3.0f)+(i%19==0?2:0);
-            COLORREF col=i%4==0?ABM_THEME_COLOR_BEE5FF:
-                (i%3==0?ABM_THEME_COLOR_8EE2D3:ABM_THEME_COLOR_64CAA6);
+            int hueIndex=(i*5+band*2)%8;
+            COLORREF col=Blend(palette[hueIndex],palette[hueIndex+1],
+                (int)((flicker)*100.0f));
             ABM_D2D_Line(&g_ui,tailX,tailY,x,y,Blend(ABM_THEME_COLOR_071018,col,28),2.8f);
             ABM_D2D_Round(&g_ui,x-d-2.0f,y-d-2.0f,x+d+2.0f,y+d+2.0f,
                 (float)d+2.0f,Blend(ABM_THEME_COLOR_071018,col,22));
@@ -1436,7 +1440,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         /* Bright central reactor with concentric pulse rings. */
         ABM_D2D_StrokeRound(&g_ui,(float)(cx-core-8),(float)(cy-core-8),
             (float)(cx+core+8),(float)(cy+core+8),(float)(core+8),
-            Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,(int)(energy*70.0f)),1.4f);
+            Blend(palette[2],palette[7],(int)(energy*70.0f)),1.4f);
         ABM_D2D_GradientRound(&g_ui,(float)(cx-core),(float)(cy-core),
             (float)(cx+core),(float)(cy+core),(float)core,
             ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3);
