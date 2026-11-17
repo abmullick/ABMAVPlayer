@@ -1288,6 +1288,24 @@ static void DrawVisualizer(HDC dc,RECT area) {
     for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
     float energy=bass*0.48f+mid*0.32f+treble*0.20f;
     float pulse=(float)g_visualPulse;
+    /* Extended spectral palette: deep indigo, electric blue, cyan, jade,
+       emerald, amber, coral, magenta and violet. Kept local to the renderer. */
+    const COLORREF palette[9]={
+        RGB(42,72,190),RGB(35,145,235),RGB(42,218,224),
+        RGB(42,218,151),RGB(153,235,75),RGB(255,205,66),
+        RGB(255,112,78),RGB(235,76,166),RGB(143,100,255)
+    };
+    /* A slow chromatic aurora wash behind the active geometry. */
+    for(int band=0;band<18;band++) {
+        float p=(float)band/17.0f;
+        int x=inner.left+(int)(p*w);
+        int drift=(int)(sinf(pulse*0.009f+band*0.63f)*w*0.018f);
+        RECT wash={x+drift,inner.top+12,x+drift+w/13,inner.bottom-8};
+        COLORREF tint=palette[(band/2)%9];
+        ABM_D2D_GradientRound(&g_ui,(float)wash.left,(float)wash.top,
+            (float)wash.right,(float)wash.bottom,18.0f,
+            Blend(ABM_THEME_COLOR_071018,tint,9),Blend(ABM_THEME_COLOR_071018,tint,2));
+    }
 
     if(g_visualizerMode==0) {
         /* Symmetric, high-density spectrum with a soft halo and a crisp
@@ -1309,13 +1327,20 @@ static void DrawVisualizer(HDC dc,RECT area) {
             int bh=5+(int)(v*(0.72f+curve*0.28f)*maxH);
             if(bh>maxH)bh=maxH;
             int x=inner.left+i*(bw+gap);
-            COLORREF col=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,(int)(pos*100));
+            int paletteSlot=(int)(pos*8.0f);
+            COLORREF col=Blend(palette[paletteSlot],palette[paletteSlot+1],
+                (int)((pos*8.0f-paletteSlot)*100.0f));
             float radius=(float)(bw<8?bw/2:4);
-            /* Diffused glow, then the main bar and mirrored reflection. */
-            ABM_D2D_Round(&g_ui,(float)x-2,(float)(midY-bh-3),(float)(x+bw)+2,(float)(midY+bh+3),radius+2,
-                Blend(ABM_THEME_COLOR_071018,col,24));
+            /* Multi-hue bloom, glass-like body and hot centre highlight. */
+            ABM_D2D_Round(&g_ui,(float)x-3,(float)(midY-bh-5),(float)(x+bw)+3,(float)(midY+bh+5),radius+3,
+                Blend(ABM_THEME_COLOR_071018,col,22));
             ABM_D2D_GradientRound(&g_ui,(float)x,(float)(midY-bh),(float)(x+bw),(float)(midY+bh),
-                radius,Blend(ABM_THEME_COLOR_23747A,col,25),col);
+                radius,Blend(col,palette[(paletteSlot+2)%9],42),col);
+            if(bh>18) {
+                ABM_D2D_Round(&g_ui,(float)x+1.0f,(float)(midY-bh+4),
+                    (float)(x+bw)-1.0f,(float)(midY-bh+7),1.5f,
+                    Blend(col,RGB(255,255,255),48));
+            }
             int capY=midY-bh-7;
             ABM_D2D_Round(&g_ui,(float)x,(float)capY,(float)(x+bw),(float)(capY+2),1.0f,ABM_THEME_COLOR_BEE5FF);
             RECT reflection={x,midY+bh+5,x+bw,midY+bh+5+(bh/3)};
