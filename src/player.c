@@ -14,6 +14,7 @@
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
 #include "ui_theme.h"
+#define ABM_PROJECTM_DISABLED 1 /* keep unstable in-process OpenGL renderer out of playback process */
 #include "projectm_visualizer.h"
 #include "tmdb_metadata.h"
 #include "tmdb_home_theatre.h"
