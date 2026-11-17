@@ -7425,7 +7425,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
-  wchar_t tmdbToken[4096]={0};ABM_TMDB_GetReadToken(tmdbToken,_countof(tmdbToken)); HWND tmdbEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",tmdbToken,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_PASSWORD,39,700,600,30,w,(HMENU)6208,NULL,NULL); if(tmdbEdit)SendMessageW(tmdbEdit,EM_SETLIMITTEXT,4096,0); SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); for(int id=6201;id<=6208;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
+  wchar_t tmdbToken[4096]={0};ABM_TMDB_GetReadToken(tmdbToken,_countof(tmdbToken)); HWND tmdbEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",tmdbToken,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_PASSWORD,39,714,600,30,w,(HMENU)6208,NULL,NULL); if(tmdbEdit)SendMessageW(tmdbEdit,EM_SETLIMITTEXT,4096,0); SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); for(int id=6201;id<=6208;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
   return 0;
  }
  case WM_THEMECHANGED:
