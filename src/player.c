@@ -1273,14 +1273,14 @@ static void DrawVisualizer(HDC dc,RECT area) {
     if(width<100||height<70)return;
 
     /* Deep, atmospheric canvas with a subtle lower vignette. */
-    GradientRect(dc,area,ABM_THEME_COLOR_071018,ABM_THEME_COLOR_0A1B20);
+    GradientRect(dc,area,RGB(7,16,24),RGB(10,27,32));
     RECT inner=area;InflateRect(&inner,-18,-20);
     int w=inner.right-inner.left,h=inner.bottom-inner.top;
     int cx=inner.left+w/2,cy=inner.top+h/2;
     const wchar_t *name=g_visualizerMode==0?L"SPECTRUM  /  LIVE AUDIO":
         (g_visualizerMode==1?L"WAVEFORM  /  LIVE AUDIO":L"PARTICLE FIELD  /  LIVE AUDIO");
     RECT label={area.left+22,area.top+8,area.right-22,area.top+28};
-    Txt(dc,name,label,ABM_THEME_COLOR_8BBDB6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,name,label,RGB(139,189,182),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f;
     float mid=0,treble=0;
@@ -1304,7 +1304,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         COLORREF tint=palette[(band/2)%9];
         ABM_D2D_GradientRound(&g_ui,(float)wash.left,(float)wash.top,
             (float)wash.right,(float)wash.bottom,18.0f,
-            Blend(ABM_THEME_COLOR_071018,tint,9),Blend(ABM_THEME_COLOR_071018,tint,2));
+            Blend(RGB(7,16,24),tint,9),Blend(RGB(7,16,24),tint,2));
     }
 
     if(g_visualizerMode==0) {
@@ -1337,7 +1337,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
             float radius=(float)(bw<8?bw/2:4);
             /* Multi-hue bloom, glass-like body and hot centre highlight. */
             ABM_D2D_Round(&g_ui,(float)x-3,(float)(midY-bh-5),(float)(x+bw)+3,(float)(midY+bh+5),radius+3,
-                Blend(ABM_THEME_COLOR_071018,col,22));
+                Blend(RGB(7,16,24),col,22));
             ABM_D2D_GradientRound(&g_ui,(float)x,(float)(midY-bh),(float)(x+bw),(float)(midY+bh),
                 radius,Blend(col,palette[(paletteSlot+2)%9],42),col);
             if(bh>18) {
@@ -1352,7 +1352,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
             if(reflection.bottom>reflection.top)
                 ABM_D2D_GradientRound(&g_ui,(float)reflection.left,(float)reflection.top,
                     (float)reflection.right,(float)reflection.bottom,radius,
-                    Blend(ABM_THEME_COLOR_071018,col,18),Blend(ABM_THEME_COLOR_071018,col,5));
+                    Blend(RGB(7,16,24),col,18),Blend(RGB(7,16,24),col,5));
         }
         ABM_D2D_Line(&g_ui,(float)inner.left,(float)midY,(float)inner.right,(float)midY,
             Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,20),0.8f);
@@ -1377,7 +1377,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
                     (int)((pos*8.0f+layer*1.35f-hue)*100.0f));
                 if(layer<3) {
                     ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,
-                        Blend(ABM_THEME_COLOR_071018,segment,25),5.0f-layer*1.1f);
+                        Blend(RGB(7,16,24),segment,25),5.0f-layer*1.1f);
                 }
                 ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,segment,
                     layer==0?2.4f:(layer==1?1.8f:0.9f));
@@ -1405,7 +1405,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
             int rr=radius+ring*13+(int)(wobble*energy*radius*0.22f);
             COLORREF rc=ring<2?ABM_THEME_COLOR_64CAA6:ABM_THEME_COLOR_23747A;
             ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),
-                (float)rr,Blend(ABM_THEME_COLOR_071018,rc,ring==0?70:32),ring==0?1.8f:0.8f);
+                (float)rr,Blend(RGB(7,16,24),rc,ring==0?70:32),ring==0?1.8f:0.8f);
         }
         /* Radial equalizer spokes. */
         for(int i=0;i<72;i++) {
@@ -1436,9 +1436,9 @@ static void DrawVisualizer(HDC dc,RECT area) {
             int hueIndex=(i*5+band*2)%8;
             COLORREF col=Blend(palette[hueIndex],palette[hueIndex+1],
                 (int)((flicker)*100.0f));
-            ABM_D2D_Line(&g_ui,tailX,tailY,x,y,Blend(ABM_THEME_COLOR_071018,col,28),2.8f);
+            ABM_D2D_Line(&g_ui,tailX,tailY,x,y,Blend(RGB(7,16,24),col,28),2.8f);
             ABM_D2D_Round(&g_ui,x-d-2.0f,y-d-2.0f,x+d+2.0f,y+d+2.0f,
-                (float)d+2.0f,Blend(ABM_THEME_COLOR_071018,col,22));
+                (float)d+2.0f,Blend(RGB(7,16,24),col,22));
             ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1.0f,y+d+1.0f,(float)d,col);
         }
         /* Bright central reactor with concentric pulse rings. */
