@@ -318,6 +318,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_canvasReady){ABM_D2D_Destroy(&g_canvas);g_canvasReady=FALSE;}
         if(g_darkBrush){DeleteObject(g_darkBrush);g_darkBrush=nullptr;}
         g_window=g_edit=g_results=g_play=g_status=nullptr;g_itemCount=0;g_selected=-1;g_localMatch=-1;
+        HWND owner=GetWindow(w,GW_OWNER);if(owner&&IsWindow(owner)){EnableWindow(owner,TRUE);SetActiveWindow(owner);}
         return 0;
     }
     return DefWindowProcW(w,msg,wp,lp);
@@ -336,5 +337,6 @@ extern "C" void ABM_HomeTheatre_Show(HWND owner,const wchar_t *const *mediaPaths
     if(!g_window)return;
     BOOL dark=TRUE;DwmSetWindowAttribute(g_window, DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     g_canvasReady=ABM_D2D_Init(&g_canvas,g_window);
+    EnableWindow(owner,FALSE);
     ShowWindow(g_window,SW_SHOW);UpdateWindow(g_window);
 }
