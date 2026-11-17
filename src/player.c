@@ -1327,9 +1327,13 @@ static void DrawVisualizer(HDC dc,RECT area) {
             int bh=5+(int)(v*(0.72f+curve*0.28f)*maxH);
             if(bh>maxH)bh=maxH;
             int x=inner.left+i*(bw+gap);
-            int paletteSlot=(int)(pos*8.0f);
+            float huePosition=pos*8.0f;
+            int paletteSlot=(int)huePosition;
+            if(paletteSlot>7)paletteSlot=7;
+            float hueFraction=huePosition-(float)paletteSlot;
+            if(hueFraction>1.0f)hueFraction=1.0f;
             COLORREF col=Blend(palette[paletteSlot],palette[paletteSlot+1],
-                (int)((pos*8.0f-paletteSlot)*100.0f));
+                (int)(hueFraction*100.0f));
             float radius=(float)(bw<8?bw/2:4);
             /* Multi-hue bloom, glass-like body and hot centre highlight. */
             ABM_D2D_Round(&g_ui,(float)x-3,(float)(midY-bh-5),(float)(x+bw)+3,(float)(midY+bh+5),radius+3,
