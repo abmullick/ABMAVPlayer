@@ -1275,159 +1275,188 @@ static void DrawVisualizer(HDC dc,RECT area) {
     int width=area.right-area.left,height=area.bottom-area.top;
     if(width<160||height<120)return;
 
-    /* Direct2D's default HWND render target is hardware accelerated. Draw
-       directly into the existing player surface at its native client size:
-       no bitmap upscaling, child window, video-surface replacement or worker
-       thread UI access. Geometry is normalized to this entire stage. */
-    const COLORREF bg=RGB(3,5,18);
-    GradientRect(dc,area,RGB(4,7,24),RGB(12,8,30));
+    /* Each mode is a separate composition. Only the FFT snapshot, clock and
+       drawing surface are shared; no common particle/ribbon/halo overlay is
+       painted across modes. */
+    const COLORREF ink=RGB(3,7,18);
+    const COLORREF deep=RGB(5,12,29);
+    const COLORREF cyan=RGB(40,218,235);
+    const COLORREF blue=RGB(55,112,255);
+    const COLORREF violet=RGB(158,82,255);
+    const COLORREF pink=RGB(255,74,164);
+    const COLORREF mint=RGB(70,245,190);
+    const COLORREF gold=RGB(255,190,76);
+    const float scale=(float)height/1080.0f;
+    const float s=scale<0.72f?0.72f:(scale>2.2f?2.2f:scale);
+    const float time=(float)g_visualizerFrame;
+    const float pi=3.14159265358979323846f;
     int cx=area.left+width/2,cy=area.top+height/2;
     float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f;
     float mid=0.0f,treble=0.0f;
     for(int i=4;i<16;i++)mid+=levels[i]/12.0f;
     for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
-    float energy=bass*0.48f+mid*0.32f+treble*0.20f;
-    float pixelScale=(float)height/1080.0f;
-    if(pixelScale<0.75f)pixelScale=0.75f;
-    if(pixelScale>2.5f)pixelScale=2.5f;
-    float t=(float)g_visualizerFrame;
-    const COLORREF palette[12]={
-        RGB(40,104,255),RGB(0,190,255),RGB(0,238,220),RGB(30,220,155),
-        RGB(144,244,90),RGB(255,220,70),RGB(255,148,55),RGB(255,72,126),
-        RGB(238,65,220),RGB(177,84,255),RGB(105,105,255),RGB(68,170,255)
-    };
 
-    /* Full-canvas atmospheric colour volumes. These deliberately extend
-       beyond the centre line so the visual field reads edge-to-edge. */
-    for(int i=0;i<9;i++) {
-        float p=(float)i/8.0f;
-        float x=area.left+p*width+sinf(t*0.006f+i*0.8f)*width*0.018f;
-        float y=cy+sinf(t*0.004f+i*1.17f)*height*0.12f;
-        float rw=width*(0.13f+0.025f*treble);
-        float rh=height*(0.19f+0.04f*bass);
-        COLORREF c=palette[(i*3+2)%12];
-        ABM_D2D_GradientRound(&g_ui,x-rw,y-rh,x+rw,y+rh,rh*0.42f,
-            Blend(bg,c,15+(int)(energy*9.0f)),Blend(bg,c,2));
-    }
-
-    /* A deep, full-screen star/particle field. Positions are deterministic;
-       only the inexpensive phase and audio displacement change per frame. */
-    for(int i=0;i<210;i++) {
-        float fx=(float)((i*197+31)%997)/997.0f;
-        float fy=(float)((i*431+73)%991)/991.0f;
-        float phase=t*(0.004f+(i%7)*0.0007f)+i*1.71f;
-        float drift=sinf(phase);
-        int x=area.left+(int)(fx*width+drift*(5.0f+treble*15.0f));
-        int y=area.top+(int)(fy*height+sinf(phase*0.73f)*height*(0.006f+bass*0.018f));
-        int d=(int)(((i%19==0)?3:((i%5==0)?2:1))*pixelScale);if(d<1)d=1;
-        COLORREF c=palette[(i*5)%12];
-        ABM_D2D_Round(&g_ui,(float)x-d-2,(float)y-d-2,(float)x+d+2,(float)y+d+2,
-            (float)d+2,Blend(bg,c,(i%19==0)?32:13));
-        if(i%3==0)ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,(float)y+d+1,
-            (float)d,c);
-    }
-
-    /* Nine broad, independently moving spectral ribbons. Each ribbon uses
-       the 24-band FFT snapshot along its length, with a soft under-glow and a
-       crisp coloured core. Segment count scales down on compact surfaces. */
-    int samples=width>2200?220:(width>1200?180:140);
-    for(int layer=8;layer>=0;layer--) {
-        float points[512*2];
-        for(int n=0;n<=samples;n++) {
-            float p=(float)n/(float)samples;
-            int band=(int)(p*23.0f);if(band>23)band=23;
-            float v=levels[band];
-            float envelope=0.18f+0.82f*sinf(p*3.14159265f);
-            float phase=p*(10.0f+layer*0.63f)+t*(0.009f+layer*0.0008f)+layer*0.74f;
-            float amp=height*(0.055f+layer*0.009f)*envelope*
-                (0.28f+v*2.25f+mid*0.55f);
-            float y=(float)cy+sinf(phase)*amp+
-                sinf(phase*0.47f-t*0.004f+layer)*amp*0.43f+
-                cosf(p*21.0f-t*0.012f+layer*0.31f)*height*(0.012f+bass*0.025f);
-            points[n*2]=(float)(area.left+(int)(p*width));
-            points[n*2+1]=y;
-        }
-        COLORREF c=palette[(layer*2+4)%12];
-        if(layer<4)ABM_D2D_Polyline(&g_ui,points,samples+1,
-            Blend(bg,c,layer<2?38:23),(layer<2?5.0f:3.0f)*pixelScale);
-        ABM_D2D_Polyline(&g_ui,points,samples+1,c,
-            (layer<3?1.8f:1.0f)*pixelScale);
-    }
-
-    /* Frequency-linked travelling sparks ride above and below the ribbons. */
-    for(int i=0;i<112;i++) {
-        float p=fmodf((float)i/112.0f+t*0.00055f,1.0f);
-        int band=(i*7)%24;
-        float v=levels[band];
-        float x=area.left+p*width;
-        float y=cy+sinf(p*18.0f+t*0.012f+i*0.17f)*height*(0.13f+v*0.30f);
-        int d=(int)((1.0f+v*4.0f+(i%17==0?2.0f:0.0f))*pixelScale);if(d<1)d=1;
-        COLORREF c=palette[(i*5+band)%12];
-        ABM_D2D_Round(&g_ui,x-d-3,y-d-3,x+d+3,y+d+3,(float)d+3,Blend(bg,c,32));
-        ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
-    }
-
-    /* Keep the three menu-selected looks distinct while sharing the same
-       full-canvas renderer and audio-analysis feed. */
     if(g_visualizerMode==0) {
-        /* Spectrum: a broad 144-spoke frequency crown, colour-mapped by band. */
-        for(int i=0;i<144;i++) {
-            float a=(float)i*6.2831853f/144.0f+t*0.0018f;
-            int band=(i*24)/144;
-            float v=levels[band];
-            float r0=(float)(height<width?height:width)*0.12f;
-            float r1=r0+(float)(height<width?height:width)*(0.13f+v*0.42f);
-            COLORREF c=palette[(band+i/12)%12];
-            float x0=cx+cosf(a)*r0,y0=cy+sinf(a)*r0;
-            float x1=cx+cosf(a)*r1,y1=cy+sinf(a)*r1;
-            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,Blend(bg,c,26),3.2f*pixelScale);
-            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,c,0.9f*pixelScale);
-        }
-    } else if(g_visualizerMode==2) {
-        /* Particle mode: three orbiting, audio-deformed particle streams. */
-        for(int orbit=0;orbit<3;orbit++) {
-            float points[512*2];
-            int count=180;
-            for(int n=0;n<=count;n++) {
-                float a=(float)n*6.2831853f/(float)count;
-                int band=(n*24)/count;if(band>23)band=23;
-                float v=levels[band];
-                float r=(float)(height<width?height:width)*
-                    (0.20f+orbit*0.105f+v*0.075f)+
-                    sinf(a*(3.0f+orbit)+t*0.012f)*height*(0.012f+bass*0.025f);
-                points[n*2]=(float)cx+cosf(a+t*(0.0008f+orbit*0.0003f))*r;
-                points[n*2+1]=(float)cy+sinf(a)*r*(0.66f+orbit*0.10f);
+        /* SPECTRUM: layered, elliptical 3-D frequency architecture. Four
+           independently displaced spectral contours form a rotating crown. */
+        GradientRect(dc,area,RGB(3,8,24),RGB(15,7,34));
+        ABM_D2D_GradientRound(&g_ui,(float)cx-width*0.27f,(float)cy-height*0.28f,
+            (float)cx+width*0.27f,(float)cy+height*0.28f,height*0.20f,
+            RGB(15,54,103),ink);
+        const int pointsCount=240;
+        for(int ring=3;ring>=0;ring--) {
+            float xy[512*2];
+            float base=(float)(height<width?height:width)*(0.145f+ring*0.075f);
+            float phase=time*(0.0012f+ring*0.00019f)+ring*0.42f;
+            for(int n=0;n<=pointsCount;n++) {
+                float a=(float)n*2.0f*pi/(float)pointsCount;
+                float bandPos=(float)n*24.0f/(float)pointsCount;
+                int band=(int)bandPos;if(band>23)band=23;
+                int next=band<23?band+1:23;
+                float frac=bandPos-(float)band;
+                float v=levels[band]*(1.0f-frac)+levels[next]*frac;
+                float harmonic=0.5f+0.5f*sinf(a*6.0f+phase*2.0f+ring);
+                float r=base+v*(height*(0.105f+ring*0.012f))+
+                    harmonic*height*(0.012f+treble*0.018f);
+                float wobble=sinf(a*3.0f-phase)*height*(0.008f+bass*0.018f);
+                xy[n*2]=(float)cx+cosf(a+phase*0.18f)*r;
+                xy[n*2+1]=(float)cy+sinf(a+phase*0.18f)*r*0.62f+wobble;
             }
-            COLORREF c=palette[(orbit*4+8)%12];
-            ABM_D2D_Polyline(&g_ui,points,count+1,Blend(bg,c,24),3.0f*pixelScale);
-            ABM_D2D_Polyline(&g_ui,points,count+1,c,0.85f*pixelScale);
+            COLORREF c=ring==0?cyan:(ring==1?blue:(ring==2?violet:pink));
+            ABM_D2D_Polyline(&g_ui,xy,pointsCount+1,Blend(ink,c,ring==0?45:25),(ring==0?5.0f:3.0f)*s);
+            ABM_D2D_Polyline(&g_ui,xy,pointsCount+1,c,(ring==0?1.9f:1.05f)*s);
         }
-    }
-
-    /* A large, slow spectral halo adds depth without becoming a narrow ring. */
-    int radius=(height<width?height:width)*34/100;
-    for(int ring=4;ring>=0;ring--) {
-        float rr=(float)radius*(1.0f+ring*0.115f)+bass*height*(0.025f+ring*0.006f);
-        COLORREF c=palette[(ring*2+1)%12];
-        ABM_D2D_StrokeRound(&g_ui,cx-(float)rr,cy-(float)rr*0.70f,
-            cx+(float)rr,cy+(float)rr*0.70f,rr*0.62f,
-            Blend(bg,c,ring==0?34:15),ring==0?1.8f:0.9f);
-    }
-
-    /* Full-width low-profile spectrum floor: 120 bars, each mapped to FFT
-       bands with interpolation-like repetition for a continuous colour run. */
-    int bars=120;
-    float gap=(float)width/(float)bars;
-    for(int i=0;i<bars;i++) {
-        int band=(i*24)/bars;
-        float v=levels[band];
-        float modulation=0.5f+0.5f*sinf(t*0.018f+i*0.19f);
-        float bh=height*(0.012f+v*0.105f+energy*0.018f)*(0.78f+modulation*0.22f);
-        float x=area.left+i*gap+gap*0.18f;
-        float bw=gap*0.64f;
-        COLORREF c=palette[(i*12/bars)%12];
-        ABM_D2D_GradientRound(&g_ui,x,(float)area.bottom-bh-8.0f,x+bw,(float)area.bottom-5.0f,
-            bw*0.45f,Blend(bg,c,62),Blend(bg,c,18));
+        /* Twenty-four calibrated frequency pillars rise from the inner ring. */
+        for(int band=0;band<24;band++) {
+            float a=(float)band*2.0f*pi/24.0f-time*0.0014f;
+            float v=levels[band];
+            float r0=(float)(height<width?height:width)*0.105f;
+            float r1=r0+(float)(height<width?height:width)*(0.075f+v*0.31f);
+            float x0=(float)cx+cosf(a)*r0,y0=(float)cy+sinf(a)*r0*0.62f;
+            float x1=(float)cx+cosf(a)*r1,y1=(float)cy+sinf(a)*r1*0.62f;
+            COLORREF c=band<5?gold:(band<13?mint:(band<19?cyan:violet));
+            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,Blend(ink,c,30),4.0f*s);
+            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,c,1.15f*s);
+        }
+        /* Central optical core and fine elliptical depth guides. */
+        for(int r=3;r>=0;r--) {
+            float rw=(float)(height<width?height:width)*(0.075f+r*0.026f);
+            ABM_D2D_StrokeRound(&g_ui,cx-rw,cy-rw*0.62f,cx+rw,cy+rw*0.62f,
+                rw*0.55f,Blend(ink,r==0?cyan:blue,18+r*4), (r==0?2.0f:0.8f)*s);
+        }
+        ABM_D2D_GradientRound(&g_ui,cx-7*s,cy-7*s,cx+7*s,cy+7*s,7*s,
+            RGB(205,255,255),RGB(36,150,255));
+    } else if(g_visualizerMode==1) {
+        /* FLUID WAVES: layered continuous liquid sheets. Each ribbon has its
+           own phase, frequency response and vertical flow; no radial spectrum
+           or particle field is reused from the other modes. */
+        GradientRect(dc,area,RGB(2,13,25),RGB(7,8,29));
+        ABM_D2D_GradientRound(&g_ui,(float)area.left+width*0.12f,(float)area.top+height*0.16f,
+            (float)area.right-width*0.12f,(float)area.bottom-height*0.08f,height*0.30f,
+            RGB(8,65,88),ink);
+        const int samples=220;
+        for(int layer=8;layer>=0;layer--) {
+            float xy[512*2];
+            float pLayer=(float)layer/8.0f;
+            float baseline=(float)cy+(pLayer-0.5f)*height*0.50f;
+            float amp=height*(0.045f+pLayer*0.025f);
+            for(int n=0;n<=samples;n++) {
+                float p=(float)n/(float)samples;
+                float bandPos=p*23.0f;
+                int band=(int)bandPos;if(band>23)band=23;
+                int next=band<23?band+1:23;
+                float frac=bandPos-(float)band;
+                float v=levels[band]*(1.0f-frac)+levels[next]*frac;
+                float envelope=0.24f+0.76f*sinf(p*pi);
+                float flow=p*(7.0f+layer*0.31f)-time*(0.008f+layer*0.00065f)+layer*0.83f;
+                float swell=sinf(flow)*amp*envelope*(0.30f+mid*0.75f+v*1.75f);
+                float detail=sinf(flow*2.35f+time*0.002f)*amp*0.22f*(0.25f+treble);
+                float undertow=cosf(p*18.0f-time*0.006f+layer)*height*(0.012f+bass*0.026f);
+                xy[n*2]=(float)area.left+p*(float)width;
+                xy[n*2+1]=baseline+swell+detail+undertow;
+            }
+            COLORREF c=layer<3?mint:(layer<6?cyan:(layer==6?blue:violet));
+            ABM_D2D_Polyline(&g_ui,xy,samples+1,Blend(ink,c,layer<3?35:20),(layer<3?6.0f:3.4f)*s);
+            ABM_D2D_Polyline(&g_ui,xy,samples+1,c,(layer<3?1.8f:0.95f)*s);
+        }
+        /* Cross-current filaments create a woven, fluid interference field. */
+        for(int strand=0;strand<4;strand++) {
+            float xy[512*2];
+            for(int n=0;n<=samples;n++) {
+                float p=(float)n/(float)samples;
+                float a=p*10.0f+time*(0.005f+strand*0.0008f)+strand*1.7f;
+                float band=(float)((strand*5+(int)(p*23.0f))%24);
+                float v=levels[(int)band];
+                float y=(float)cy+sinf(a)*height*(0.10f+v*0.14f)+
+                    cosf(a*0.43f-time*0.003f)*height*0.08f;
+                xy[n*2]=(float)area.left+p*(float)width;
+                xy[n*2+1]=y;
+            }
+            ABM_D2D_Polyline(&g_ui,xy,samples+1,Blend(ink,strand&1?violet:blue,22),1.15f*s);
+        }
+        /* A quiet luminous horizon anchors the liquid volume. */
+        ABM_D2D_Line(&g_ui,(float)area.left,(float)cy+height*0.31f,
+            (float)area.right,(float)cy+height*0.31f,Blend(ink,cyan,18),1.0f*s);
+    } else {
+        /* PARTICLE UNIVERSE: a perspective star tunnel with a fixed vanishing
+           point. Depth, apparent size, trails and turbulence are derived from
+           each particle's Z position and the live frequency bands. */
+        GradientRect(dc,area,RGB(1,3,13),RGB(7,8,27));
+        ABM_D2D_GradientRound(&g_ui,cx-width*0.19f,cy-height*0.19f,
+            cx+width*0.19f,cy+height*0.19f,height*0.16f,
+            RGB(30,38,112),ink);
+        const float vanishX=(float)cx;
+        const float vanishY=(float)cy-height*0.025f;
+        /* Long perspective streaks converge into the centre before the
+           particles cross the near plane. */
+        for(int ray=0;ray<36;ray++) {
+            float a=(float)ray*2.0f*pi/36.0f;
+            float xy[4];
+            float r0=(float)(height<width?height:width)*0.035f;
+            float r1=(float)(height<width?height:width)*0.73f;
+            xy[0]=vanishX+cosf(a)*r0;xy[1]=vanishY+sinf(a)*r0;
+            xy[2]=vanishX+cosf(a)*r1;xy[3]=vanishY+sinf(a)*r1;
+            ABM_D2D_Polyline(&g_ui,xy,2,Blend(ink,(ray%3==0)?violet:blue,12),0.8f*s);
+        }
+        /* A compact set of audio-modulated trails; particles themselves are
+           projected independently so the scene reads as a 3-D volume. */
+        for(int i=0;i<42;i++) {
+            float seed=(float)((i*73+19)%997)/997.0f;
+            float z=fmodf(seed+time*0.00072f,1.0f);
+            float nx=(float)((i*193+41)%991)/495.5f-1.0f;
+            float ny=(float)((i*317+83)%983)/491.5f-1.0f;
+            int band=(i*7)%24;float v=levels[band];
+            float persp=0.13f+z*1.95f;
+            float x=vanishX+nx*width*0.34f*persp;
+            float y=vanishY+ny*height*0.34f*persp;
+            float tailZ=z>0.10f?z-0.10f:0.0f;
+            float tailScale=0.13f+tailZ*1.95f;
+            float xy[4]={vanishX+nx*width*0.34f*tailScale,
+                vanishY+ny*height*0.34f*tailScale,x,y};
+            COLORREF c=band<5?gold:(band<13?cyan:(band<19?violet:pink));
+            ABM_D2D_Polyline(&g_ui,xy,2,Blend(ink,c,35), (1.0f+z*2.0f)*s);
+        }
+        for(int i=0;i<260;i++) {
+            float seed=(float)((i*197+31)%997)/997.0f;
+            float z=fmodf(seed+time*(0.00048f+(i%5)*0.000055f),1.0f);
+            float nx=(float)((i*193+41)%991)/495.5f-1.0f;
+            float ny=(float)((i*317+83)%983)/491.5f-1.0f;
+            int band=(i*11)%24;float v=levels[band];
+            float turbulence=sinf(time*0.006f+i*1.37f)*0.018f*(bass+v);
+            float persp=0.13f+z*1.95f;
+            float x=vanishX+(nx+turbulence)*width*0.34f*persp;
+            float y=vanishY+(ny+cosf(time*0.005f+i)*0.018f*(mid+v))*height*0.34f*persp;
+            float radius=(0.7f+z*3.1f+v*2.2f)*s;
+            COLORREF c=band<5?gold:(band<13?cyan:(band<19?violet:pink));
+            if(i%7==0)ABM_D2D_Round(&g_ui,x-radius*2.8f,y-radius*2.8f,
+                x+radius*2.8f,y+radius*2.8f,radius*2.8f,Blend(ink,c,24));
+            ABM_D2D_Round(&g_ui,x-radius,y-radius,x+radius,y+radius,radius,c);
+        }
+        /* Bass pulses distort the event horizon rather than adding another
+           generic audio ring to the other two visualizer styles. */
+        float pulse=(float)(height<width?height:width)*(0.025f+bass*0.035f);
+        ABM_D2D_StrokeRound(&g_ui,cx-pulse,cy-pulse,cx+pulse,cy+pulse,
+            pulse*0.8f,Blend(ink,cyan,34),1.5f*s);
     }
 }
 static void DrawUI(HDC dc,RECT client) {
