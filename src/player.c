@@ -1777,13 +1777,13 @@ static void DrawUI(HDC dc,RECT client) {
         GradientRound(dc,R_GROUP,ABM_THEME_COLOR_311F2B,ABM_THEME_COLOR_1F2226,8);
         ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_FFBECD,0.9f);
     } else if(g_libraryTab==1&&g_showContinueWatching) {
-        GradientRound(dc,R_GROUP,ABM_THEME_COLOR_123A39,ABM_THEME_COLOR_102A31,8);
-        ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_55CBBE,0.9f);
+        GradientRound(dc,R_GROUP,ABM_THEME_COLOR_12373B,ABM_THEME_COLOR_0C3039,8);
+        ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_52CDBE,0.9f);
     } else {
         GradientRound(dc,R_GROUP,ABM_THEME_COLOR_122637,ABM_THEME_COLOR_142A3C,8);
         ABM_D2D_StrokeRound(&g_ui,(float)R_GROUP.left,(float)R_GROUP.top,(float)R_GROUP.right,(float)R_GROUP.bottom,8.0f,ABM_THEME_COLOR_2B586F,0.7f);
     }
-    Txt(dc,groupLabel,R_GROUP,g_showContinueWatching?ABM_THEME_COLOR_7DE0D0:(g_libraryTab==1?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,groupLabel,R_GROUP,g_showContinueWatching?ABM_THEME_COLOR_63E1CD:(g_libraryTab==1?ABM_THEME_COLOR_FFBECD:ABM_THEME_COLOR_BBD2DC),g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     int rowHeight=PlaylistRowHeight();
     int visible=PlaylistVisibleRows(rowHeight);
@@ -1850,7 +1850,7 @@ static void DrawUI(HDC dc,RECT client) {
         else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
-        Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_F2A0A6:(g_hasResume[i]?ABM_THEME_COLOR_7DE0D0:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_FFBECD:(g_hasResume[i]?ABM_THEME_COLOR_63E1CD:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
         wchar_t durationText[32];FormatMediaDuration(DurationLookup(g_playlist[i]),durationText,_countof(durationText));
         RECT durationRect={row.right-164,subline.top,row.right-112,subline.bottom};
