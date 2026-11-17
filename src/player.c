@@ -3211,7 +3211,11 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         if(GET_Y_LPARAM(lp)>=68&&row>=0&&row<g_recentCount) {
             HWND owner=(HWND)GetWindowLongPtrW(hwnd,GWLP_USERDATA);
             RecentPlayIndex(owner,row);
-        } else DestroyWindow(hwnd);
+        }
+        /* The popup is opened from the owner's mouse-down handler. Windows can
+           route that same physical click's mouse-up to this newly shown popup;
+           an outside-row release is not an outside dismissal. WM_ACTIVATE
+           handles genuine clicks/focus changes outside the popup. */
         return 0;
     }
     case WM_KEYDOWN:
