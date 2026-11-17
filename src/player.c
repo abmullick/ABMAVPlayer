@@ -8045,20 +8045,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL audioOnlyLocal=!g_fullscreen && g_hasMedia && g_player &&
             !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
-            if(g_artworkLoaded) {
-                if(g_visualizerActive) ABM_AudioVisualizer_Stop();
-                g_visualizerActive=FALSE;
+            /* Keep capture active even when album art exists: the visualizer is
+               composited into the artwork's lower information area. */
+            if(!g_visualizerTried) {
                 g_visualizerTried=TRUE;
-                if(g_video && !g_fullscreen) ShowWindow(g_video,SW_HIDE);
-            } else {
-                if(!g_visualizerTried) {
-                    g_visualizerTried=TRUE;
-                    g_visualizerActive=ABM_AudioVisualizer_Start();
-                }
-                if(g_visualizerActive) {
-                    if(g_video && !g_fullscreen) ShowWindow(g_video,SW_HIDE);
-                } else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
+                g_visualizerActive=ABM_AudioVisualizer_Start();
             }
+            if(g_visualizerActive) {
+                if(g_video && !g_fullscreen) ShowWindow(g_video,SW_HIDE);
+            } else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
         } else {
             if(g_visualizerActive) ABM_AudioVisualizer_Stop();
             g_visualizerActive=FALSE; g_visualizerTried=FALSE;
