@@ -178,6 +178,44 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
         }
     }
 }
+static void ParseEpisodes(const wchar_t *json,Result *r,int tvId,int seasonNumber) {
+    const wchar_t *p=wcsstr(json,L"\"episodes\"");if(!p)return;
+    p=wcschr(p,L'[');if(!p)return;p++;
+    while(*p&&r->episodeCount<64) {
+        while(*p&&(iswspace(*p)||*p==L','))p++;if(*p==L']'||!*p)break;
+        if(*p!=L'{'){p++;continue;}
+        const wchar_t *start=p;BOOL quoted=FALSE,escaped=FALSE;int depth=0;
+        for(;*p;p++){if(quoted){if(escaped)escaped=FALSE;else if(*p==L'\\')escaped=TRUE;else if(*p==L'"')quoted=FALSE;continue;}if(*p==L'"'){quoted=TRUE;continue;}if(*p==L'{')depth++;else if(*p==L'}'&&--depth==0){p++;break;}}
+        MovieItem item;item.id=tvId;item.type=2;item.seasonNumber=seasonNumber;item.episodeNumber=JsonInt(start,p,L"episode_number");
+        CopyJsonString(start,p,L"name",item.title,_countof(item.title));CopyJsonString(start,p,L"air_date",item.date,_countof(item.date));CopyJsonString(start,p,L"overview",item.overview,_countof(item.overview));CopyJsonString(start,p,L"still_path",item.backdrop,_countof(item.backdrop));
+        if(item.title[0])r->episodes[r->episodeCount++]=item;
+    }
+}
+static int FindEpisodeMatch(int season,int episode) {
+    wchar_t pattern[32]={},alternate[32]={};
+    StringCchPrintfW(pattern,_countof(pattern),L"s%02de%02d",season,episode);
+    StringCchPrintfW(alternate,_countof(alternate),L"%dx%02d",season,episode);
+    for(size_t i=0;i<g_mediaPaths.size();i++) {
+        const wchar_t *path=g_mediaPaths[i].c_str();const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
+        std::wstring name=Normalized(leaf);
+        if(name.find(Normalized(pattern).c_str())!=std::wstring::npos||name.find(Normalized(alternate).c_str())!=std::wstring::npos)return (int)i;
+    }
+    return -1;
+}
+static void StartLibraryScan() {
+    if(g_busy)return;
+    Work *w=new(std::nothrow) Work();if(!w){SetStatus(L"Could not allocate library scan.");return;}
+    w->target=g_window;w->kind=3;w->paths=g_mediaPaths;
+    HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);SetStatus(L"Identifying local titles with TMDB…");}
+    else {delete w;SetStatus(L"Could not start library identification.");}
+}
+static void StartSeasonLoad(int seasonNumber) {
+    if(g_busy||g_tvId<=0)return;
+    Work *w=new(std::nothrow) Work();if(!w)return;w->target=g_window;w->kind=4;w->seasonNumber=seasonNumber;w->tvId=g_tvId;
+    HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_results,FALSE);SetStatus(L"Loading season episodes…");}else delete w;
+}
 static DWORD WINAPI Worker(LPVOID parameter) {
     Work *w=(Work*)parameter;Result *r=new(std::nothrow) Result();
     if(!r){delete w;return 0;}r->kind=w->kind;r->index=w->index;
@@ -196,6 +234,29 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
         if(r->ok)ParseDetails(json.data(),r,item.poster,item.id,item.backdrop,item.type);
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your connection and TMDB token.");
+    } else if(w->kind==3) {
+        if(!ABM_TMDB_IsConfigured())StringCchCopyW(r->error,_countof(r->error),L"Configure your TMDB Read Access Token in Settings first.");
+        else {
+            size_t limit=w->paths.size()<100?w->paths.size():100;
+            for(size_t i=0;i<limit&&r->count<24;i++) {
+                const wchar_t *path=w->paths[i].c_str();const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
+                wchar_t query[256]={};StringCchCopyW(query,_countof(query),leaf);
+                wchar_t *dot=wcsrchr(query,L'.');if(dot)*dot=0;
+                wchar_t *year=wcsstr(query,L" (");if(year&&wcslen(year)>=6)year[0]=0;
+                std::vector<wchar_t> json(512*1024);
+                if(ABM_TMDB_Search(query,(ABM_TMDB_MEDIA_TYPE)0,json.data(),json.size())) {
+                    MovieItem found[24];int count=0;ParseSearchJson(json.data(),0,found,&count);
+                    if(count>0){found[0].localIndex=(int)i;r->items[r->count++]=found[0];}
+                }
+                Sleep(180);
+            }
+            r->ok=r->count>0;if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No library titles were identified. Try a more descriptive filename.");
+        }
+    } else if(w->kind==4&&w->tvId>0&&w->seasonNumber>=0) {
+        std::vector<wchar_t> json(512*1024);
+        r->ok=ABM_TMDB_GetSeasonDetails(w->tvId,w->seasonNumber,json.data(),json.size());
+        if(r->ok){ParseEpisodes(json.data(),r,w->tvId,w->seasonNumber);r->ok=r->episodeCount>0;}
+        if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No episode information was returned for this season.");
     }
     if(!IsWindow(w->target)||!PostMessageW(w->target,w->kind==1?HT_SEARCH_DONE:HT_DETAILS_DONE,0,(LPARAM)r))delete r;
     delete w;return 0;
