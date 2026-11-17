@@ -175,8 +175,8 @@ static void StartWork(int kind,int index,const wchar_t *query) {
     if(query)StringCchCopyW(w->query,_countof(w->query),query);
     if(kind==2&&index>=0&&index<g_itemCount)w->item=g_items[index];
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
-    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_edit,kind==1);EnableWindow(GetDlgItem(g_window,HT_SEARCH),kind==1);SetWindowTextW(g_status,kind==1?L"Searching TMDB…":L"Loading movie information…");}
-    else delete w;
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_edit,kind==1);EnableWindow(GetDlgItem(g_window,HT_SEARCH),kind==1);EnableWindow(g_results,kind==1);SetWindowTextW(g_status,kind==1?L"Searching TMDB…":L"Loading movie information…");}
+    else {delete w;SetStatus(L"Could not start the metadata worker. Try again.");EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);}
 }
 static void SetStatus(const wchar_t *s){if(g_status)SetWindowTextW(g_status,s?s:L"");}
 static void Layout(HWND w) {
@@ -289,7 +289,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case HT_SEARCH_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;
         if(r->ok){g_itemCount=r->count;for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a result to load its cinematic details.");}
-        EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
+        EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);
         else SetStatus(r->error[0]?r->error:L"No results found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
