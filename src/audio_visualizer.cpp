@@ -23,6 +23,7 @@ HANDLE startupEvent = nullptr;
 std::atomic<bool> captureActive{false};
 std::mutex bandsMutex;
 float bands[BAND_COUNT]{};
+float latestPcm[FFT_SIZE]{};
 
 static void PublishSpectrum(const float *samples, int count) {
     Complex a[FFT_SIZE];
@@ -67,6 +68,8 @@ static void PublishSpectrum(const float *samples, int count) {
         next[b]=level;
     }
     std::lock_guard<std::mutex> lock(bandsMutex);
+    std::memcpy(latestPcm,samples,(size_t)(count<FFT_SIZE?count:FFT_SIZE)*sizeof(float));
+    if(count<FFT_SIZE)std::memset(latestPcm+count,0,(size_t)(FFT_SIZE-count)*sizeof(float));
     for (int i=0;i<BAND_COUNT;i++) bands[i]=bands[i]*0.58f+next[i]*0.42f;
 }
 
@@ -201,4 +204,12 @@ extern "C" void ABM_AudioVisualizer_GetBands(float *outBands,int count) {
     int n=(std::min)(count,BAND_COUNT);
     std::memcpy(outBands,bands,(size_t)n*sizeof(float));
     for(int i=n;i<count;i++) outBands[i]=0.0f;
+}
+
+extern "C" void ABM_AudioVisualizer_GetSamples(float *outSamples,int count) {
+    if(!outSamples||count<=0)return;
+    std::lock_guard<std::mutex> lock(bandsMutex);
+    int n=(std::min)(count,FFT_SIZE);
+    std::memcpy(outSamples,latestPcm,(size_t)n*sizeof(float));
+    for(int i=n;i<count;i++)outSamples[i]=0.0f;
 }
