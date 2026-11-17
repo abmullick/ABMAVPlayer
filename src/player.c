@@ -1270,220 +1270,138 @@ static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
     ABM_AudioVisualizer_GetBands(levels,24);
     int width=area.right-area.left,height=area.bottom-area.top;
-    if(width<100||height<70)return;
+    if(width<160||height<120)return;
 
-    /* Native, owner-window renderer: no child window, no video-surface changes,
-       no playback-thread work. All geometry is drawn into the existing D2D target. */
-    GradientRect(dc,area,RGB(3,7,18),RGB(7,15,31));
-    RECT inner=area;InflateRect(&inner,-18,-18);
-    int w=inner.right-inner.left,h=inner.bottom-inner.top;
-    int cx=inner.left+w/2,cy=inner.top+h/2;
+    /* Direct2D's default HWND render target is hardware accelerated. Draw
+       directly into the existing player surface at its native client size:
+       no bitmap upscaling, child window, video-surface replacement or worker
+       thread UI access. Geometry is normalized to this entire stage. */
+    const COLORREF bg=RGB(3,5,18);
+    GradientRect(dc,area,RGB(4,7,24),RGB(12,8,30));
+    int cx=area.left+width/2,cy=area.top+height/2;
     float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f;
     float mid=0.0f,treble=0.0f;
     for(int i=4;i<16;i++)mid+=levels[i]/12.0f;
     for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
     float energy=bass*0.48f+mid*0.32f+treble*0.20f;
-    float t=(float)g_visualPulse;
-    const COLORREF palette[9]={
-        RGB(45,112,255),RGB(37,203,255),RGB(68,244,226),
-        RGB(88,238,190),RGB(177,244,128),RGB(255,197,116),
-        RGB(255,117,177),RGB(222,93,255),RGB(135,117,255)
+    float t=(float)g_visualizerFrame;
+    const COLORREF palette[12]={
+        RGB(40,104,255),RGB(0,190,255),RGB(0,238,220),RGB(30,220,155),
+        RGB(144,244,90),RGB(255,220,70),RGB(255,148,55),RGB(255,72,126),
+        RGB(238,65,220),RGB(177,84,255),RGB(105,105,255),RGB(68,170,255)
     };
-    const wchar_t *name=g_visualizerMode==0?L"QUANTUM ECHOES":
-        (g_visualizerMode==1?L"NEURAL SYMPHONY":L"CYBERNETIC PULSE");
-    RECT label={area.left+22,area.top+10,area.right-22,area.top+31};
-    Txt(dc,name,label,RGB(164,202,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
-    /* Layered atmospheric fields. These are deliberately low-contrast so
-       the reactive geometry remains legible on both compact and fullscreen views. */
-    for(int i=0;i<22;i++) {
-        float p=(float)i/21.0f;
-        int x=inner.left+(int)(p*w+sinf(t*0.008f+i*0.61f)*w*0.025f);
-        int y=inner.top+(int)(h*(0.18f+0.64f*p)+sinf(t*0.006f+i)*h*0.06f);
-        int rw=w/10+(int)(treble*w*0.025f);
-        int rh=h/5+(int)(mid*h*0.025f);
-        COLORREF c=palette[(i*3/7)%9];
-        ABM_D2D_GradientRound(&g_ui,(float)(x-rw),(float)(y-rh),
-            (float)(x+rw),(float)(y+rh),(float)(rh/2),
-            Blend(RGB(3,7,18),c,10),Blend(RGB(3,7,18),c,1));
+    /* Full-canvas atmospheric colour volumes. These deliberately extend
+       beyond the centre line so the visual field reads edge-to-edge. */
+    for(int i=0;i<9;i++) {
+        float p=(float)i/8.0f;
+        float x=area.left+p*width+sinf(t*0.006f+i*0.8f)*width*0.018f;
+        float y=cy+sinf(t*0.004f+i*1.17f)*height*0.12f;
+        float rw=width*(0.13f+0.025f*treble);
+        float rh=height*(0.19f+0.04f*bass);
+        COLORREF c=palette[(i*3+2)%12];
+        ABM_D2D_GradientRound(&g_ui,x-rw,y-rh,x+rw,y+rh,rh*0.42f,
+            Blend(bg,c,15+(int)(energy*9.0f)),Blend(bg,c,2));
     }
-    /* Star field with deterministic drift; no allocations or random calls per frame. */
-    for(int i=0;i<115;i++) {
+
+    /* A deep, full-screen star/particle field. Positions are deterministic;
+       only the inexpensive phase and audio displacement change per frame. */
+    for(int i=0;i<210;i++) {
         float fx=(float)((i*197+31)%997)/997.0f;
         float fy=(float)((i*431+73)%991)/991.0f;
-        float drift=sinf(t*0.006f+i*1.71f);
-        int x=inner.left+(int)(fx*w+drift*5.0f);
-        int y=inner.top+(int)(fy*h);
-        int d=(i%17==0)?2:1;
-        COLORREF c=palette[(i*5)%9];
-        ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,(float)y+d+1,
-            (float)d,Blend(RGB(3,7,18),c,(i%17==0)?65:27));
+        float phase=t*(0.004f+(i%7)*0.0007f)+i*1.71f;
+        float drift=sinf(phase);
+        int x=area.left+(int)(fx*width+drift*(5.0f+treble*15.0f));
+        int y=area.top+(int)(fy*height+sinf(phase*0.73f)*height*(0.006f+bass*0.018f));
+        int d=(i%19==0)?3:((i%5==0)?2:1);
+        COLORREF c=palette[(i*5)%12];
+        ABM_D2D_Round(&g_ui,(float)x-d-2,(float)y-d-2,(float)x+d+2,(float)y+d+2,
+            (float)d+2,Blend(bg,c,(i%19==0)?32:13));
+        if(i%3==0)ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,(float)y+d+1,
+            (float)d,c);
     }
 
-    if(g_visualizerMode==0) {
-        /* QUANTUM ECHOES: a deforming luminous torus/ring with spectral
-           displacement, layered glow traces, orbiting particles and a hot core. */
-        int radius=(h<w?h:w)*31/100;
-        if(radius<35)radius=35;
-        for(int layer=5;layer>=0;layer--) {
-            float scale=1.0f+(float)layer*0.045f;
-            int px=0,py=0;
-            for(int n=0;n<=240;n++) {
-                float a=(float)n*6.28318530718f/240.0f;
-                int band=(n*24)/241;
-                float v=levels[band];
-                float harmonic=levels[(band+7)%24];
-                float wobble=sinf(a*3.0f+t*0.022f)*h*0.012f+
-                    sinf(a*7.0f-t*0.017f)*h*0.006f;
-                float r=(float)radius*scale+wobble+(v*0.16f+harmonic*0.06f)*radius;
-                float tilt=0.88f+0.08f*sinf(t*0.009f);
-                int x=cx+(int)(cosf(a)*r);
-                int y=cy+(int)(sinf(a)*r*tilt);
-                if(n>0) {
-                    int slot=(n*8/240+layer*2)%8;
-                    COLORREF c=Blend(palette[slot],palette[slot+1],
-                        (int)((0.5f+0.5f*sinf(a*2.0f+t*0.018f))*100.0f));
-                    if(layer<3)
-                        ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,
-                            Blend(RGB(3,7,18),c,layer==0?45:24),layer==0?7.0f:4.0f);
-                    ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,c,
-                        layer==0?2.5f:(layer==1?1.7f:0.8f));
-                }
-                px=x;py=y;
-            }
-        }
-        /* Three audio-driven orbit paths give the ring depth and motion. */
-        for(int orbit=0;orbit<3;orbit++) {
-            int px=0,py=0;
-            for(int n=0;n<=180;n++) {
-                float a=(float)n*6.2831853f/180.0f;
-                float r=(float)radius*(1.30f+orbit*0.16f)+
-                    sinf(a*(2.0f+orbit)+t*0.014f)*radius*(0.035f+bass*0.07f);
-                float tilt=0.34f+orbit*0.19f;
-                int x=cx+(int)(cosf(a+t*0.002f*(orbit+1))*r);
-                int y=cy+(int)(sinf(a)*r*tilt);
-                if(n>0)ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,
-                    Blend(RGB(3,7,18),palette[(orbit*3+4)%9],22+orbit*7),0.8f);
-                px=x;py=y;
-            }
-        }
-        for(int i=0;i<42;i++) {
-            float a=t*0.009f+i*0.14959965f;
-            float r=radius*(1.12f+0.30f*sinf(i*2.31f+t*0.013f));
-            float x=cx+cosf(a)*r;
-            float y=cy+sinf(a)*r*0.72f;
-            int d=1+(i%5==0?2:0)+(int)(treble*2.0f);
-            COLORREF c=palette[(i*3)%9];
-            ABM_D2D_Round(&g_ui,x-d-2,y-d-2,x+d+2,y+d+2,(float)d+2,
-                Blend(RGB(3,7,18),c,35));
-            ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
-        }
-        int core=radius/5+(int)(bass*radius*0.12f);
-        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core),(float)(cy-core),
-            (float)(cx+core),(float)(cy+core),(float)core,
-            Blend(palette[1],palette[7],(int)(energy*65.0f)),1.3f);
-    } else if(g_visualizerMode==1) {
-        /* NEURAL SYMPHONY: many flowing, frequency-coupled filaments and
-           travelling nodes. Each frequency band modulates its own region. */
-        for(int layer=11;layer>=0;layer--) {
-            int px=inner.left,py=cy;
-            for(int n=1;n<260;n++) {
-                float p=(float)n/259.0f;
-                int band=(int)(p*23.0f);
-                float v=levels[band];
-                float envelope=0.22f+0.78f*sinf(p*3.14159265f);
-                float phase=p*17.0f+t*(0.012f+layer*0.0011f)+layer*0.47f;
-                float amp=h*(0.035f+layer*0.008f)*envelope*(0.35f+v*1.9f+mid*0.5f);
-                int x=inner.left+n*w/259;
-                int y=cy+(int)(sinf(phase)*amp+sinf(phase*0.43f+layer)*amp*0.42f);
-                COLORREF c=palette[(layer*2+(int)(p*8))%9];
-                if(layer<5)ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,
-                    Blend(RGB(3,7,18),c,30),4.0f-layer*0.45f);
-                ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,c,
-                    layer<3?1.8f:0.75f);
-                if(n%22==0) {
-                    int d=1+(int)(v*2.0f);
-                    ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,
-                        (float)y+d+1,(float)d,c);
-                }
-                px=x;py=y;
-            }
-        }
-        /* Frequency pulses travel along the field rather than remaining static. */
-        for(int i=0;i<64;i++) {
-            float p=fmodf((float)i/64.0f+t*0.0008f,1.0f);
-            int band=(i*7)%24;
-            int x=inner.left+(int)(p*w);
-            int y=cy+(int)(sinf(p*17.0f+t*0.018f)*h*(0.08f+levels[band]*0.28f));
-            int d=1+(int)(levels[band]*3.0f);
-            ABM_D2D_Round(&g_ui,(float)x-d-2,(float)y-d-2,(float)x+d+2,
-                (float)y+d+2,(float)d+2,Blend(RGB(3,7,18),palette[(i*3)%9],40));
-            ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,
-                (float)y+d+1,(float)d,palette[(i*3)%9]);
-        }
-    } else {
-        /* CYBERNETIC PULSE: a radial reactor, 96 spectral spokes, orbital
-           debris and concentric rings that react independently to bass/treble. */
-        int radius=(h<w?h:w)*30/100;
-        if(radius<32)radius=32;
-        for(int ring=7;ring>=0;ring--) {
-            float breathe=sinf(t*(0.012f+ring*0.001f)+ring*0.9f);
-            int rr=radius+ring*8+(int)(breathe*(3.0f+bass*radius*0.07f));
-            COLORREF c=palette[(ring*2+1)%9];
-            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),
-                (float)(cx+rr),(float)(cy+rr),(float)rr,
-                Blend(RGB(3,7,18),c,ring<2?52:24),ring==0?1.7f:0.75f);
-        }
-        for(int i=0;i<96;i++) {
-            float a=(float)i*6.2831853f/96.0f+t*0.0018f;
-            int band=(i*24)/96;
+    /* Nine broad, independently moving spectral ribbons. Each ribbon uses
+       the 24-band FFT snapshot along its length, with a soft under-glow and a
+       crisp coloured core. Segment count scales down on compact surfaces. */
+    int samples=width>2200?240:(width>1200?190:140);
+    for(int layer=8;layer>=0;layer--) {
+        int px=area.left,py=cy;
+        for(int n=0;n<=samples;n++) {
+            float p=(float)n/(float)samples;
+            int band=(int)(p*23.0f);if(band>23)band=23;
             float v=levels[band];
-            float r0=radius*(0.32f+0.08f*sinf(t*0.012f+i));
-            float r1=radius*(0.62f+v*0.58f);
-            COLORREF c=palette[(i*7/96+band/3)%9];
-            ABM_D2D_Line(&g_ui,cx+cosf(a)*r0,cy+sinf(a)*r0,
-                cx+cosf(a)*r1,cy+sinf(a)*r1,c,(i%8==0)?2.0f:0.9f);
+            float envelope=0.18f+0.82f*sinf(p*3.14159265f);
+            float phase=p*(10.0f+layer*0.63f)+t*(0.009f+layer*0.0008f)+layer*0.74f;
+            float amp=height*(0.055f+layer*0.009f)*envelope*
+                (0.28f+v*2.25f+mid*0.55f);
+            float y=(float)cy+sinf(phase)*amp+
+                sinf(phase*0.47f-t*0.004f+layer)*amp*0.43f+
+                cosf(p*21.0f-t*0.012f+layer*0.31f)*height*(0.012f+bass*0.025f);
+            int x=area.left+(int)(p*width);
+            int iy=(int)y;
+            COLORREF c=palette[(layer*2+(int)(p*11.0f))%12];
+            if(n>0) {
+                if(layer<5)ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)iy,
+                    Blend(bg,c,layer<2?43:24),layer<2?7.0f:3.8f);
+                ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)iy,c,
+                    layer<3?1.9f:1.05f);
+            }
+            if(n>0&&n%samples*0==0) { /* intentionally empty: keep sampling branch-free */ }
+            px=x;py=iy;
         }
-        for(int i=0;i<190;i++) {
-            float a=i*2.39996323f+t*(0.0014f+(i%9)*0.00016f);
-            int band=(i*13)%24;
-            float v=levels[band];
-            float orbit=0.34f+(float)(i%31)/48.0f;
-            float r=radius*(orbit+v*0.55f+energy*0.12f);
-            float x=cx+cosf(a)*r;
-            float y=cy+sinf(a)*r*(0.72f+0.06f*sinf(t*0.008f));
-            int d=1+(int)(v*2.5f)+(i%23==0?2:0);
-            COLORREF c=palette[(i*5+band)%9];
-            ABM_D2D_Line(&g_ui,x-cosf(a)*(3.0f+v*10.0f),
-                y-sinf(a)*(3.0f+v*10.0f),x,y,
-                Blend(RGB(3,7,18),c,38),2.5f);
-            ABM_D2D_Round(&g_ui,x-d-2,y-d-2,x+d+2,y+d+2,(float)d+2,
-                Blend(RGB(3,7,18),c,25));
-            ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
-        }
-        int core=radius/4+(int)(bass*radius*0.15f);
-        ABM_D2D_GradientRound(&g_ui,(float)(cx-core),(float)(cy-core),
-            (float)(cx+core),(float)(cy+core),(float)core,
-            Blend(palette[0],palette[2],35),Blend(palette[6],palette[8],45));
-        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core/2),(float)(cy-core/2),
-            (float)(cx+core/2),(float)(cy+core/2),(float)(core/2),
-            RGB(207,237,255),1.0f);
     }
 
-    /* Restrained glass-like framing and bottom activity trace. */
-    for(int i=0;i<48;i++) {
-        int band=(i*24)/48;
-        int x=inner.left+i*w/48;
-        int bh=2+(int)(levels[band]*13.0f);
-        COLORREF c=palette[(i*8/48)%9];
-        ABM_D2D_Line(&g_ui,(float)x,(float)(inner.bottom-3),
-            (float)x,(float)(inner.bottom-3-bh),Blend(RGB(3,7,18),c,65),1.0f);
+    /* Frequency-linked travelling sparks ride above and below the ribbons. */
+    for(int i=0;i<112;i++) {
+        float p=fmodf((float)i/112.0f+t*0.00055f,1.0f);
+        int band=(i*7)%24;
+        float v=levels[band];
+        float x=area.left+p*width;
+        float y=cy+sinf(p*18.0f+t*0.012f+i*0.17f)*height*(0.13f+v*0.30f);
+        int d=1+(int)(v*4.0f)+(i%17==0?2:0);
+        COLORREF c=palette[(i*5+band)%12];
+        ABM_D2D_Round(&g_ui,x-d-3,y-d-3,x+d+3,y+d+3,(float)d+3,Blend(bg,c,32));
+        ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
     }
-    ABM_D2D_Line(&g_ui,(float)inner.left,(float)(inner.bottom-1),
-        (float)inner.right,(float)(inner.bottom-1),RGB(32,69,99),0.7f);
+
+    /* A large, slow spectral halo adds depth without becoming a narrow ring. */
+    int radius=(height<width?height:width)*34/100;
+    for(int ring=4;ring>=0;ring--) {
+        float rr=(float)radius*(1.0f+ring*0.115f)+bass*height*(0.025f+ring*0.006f);
+        COLORREF c=palette[(ring*2+1)%12];
+        ABM_D2D_StrokeRound(&g_ui,cx-(float)rr,cy-(float)rr*0.70f,
+            cx+(float)rr,cy+(float)rr*0.70f,rr*0.62f,
+            Blend(bg,c,ring==0?34:15),ring==0?1.8f:0.9f);
+    }
+
+    /* Full-width low-profile spectrum floor: 120 bars, each mapped to FFT
+       bands with interpolation-like repetition for a continuous colour run. */
+    int bars=120;
+    float gap=(float)width/(float)bars;
+    for(int i=0;i<bars;i++) {
+        int band=(i*24)/bars;
+        float v=levels[band];
+        float modulation=0.5f+0.5f*sinf(t*0.018f+i*0.19f);
+        float bh=height*(0.012f+v*0.105f+energy*0.018f)*(0.78f+modulation*0.22f);
+        float x=area.left+i*gap+gap*0.18f;
+        float bw=gap*0.64f;
+        COLORREF c=palette[(i*12/bars)%12];
+        ABM_D2D_GradientRound(&g_ui,x,area.bottom-bh-8,x+bw,area.bottom-5,
+            bw*0.45f,Blend(bg,c,62),Blend(bg,c,18));
+    }
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
+        /* When audio visualization is active it owns the entire client area.
+           Artwork/metadata layouts must not constrain it to a short footer strip. */
+        if(g_visualizerActive) {
+            DrawVisualizer(dc,client);
+            RECT hud={24,20,client.right-24,54};
+            Txt(dc,L"ABM  /  LIVE AUDIO VISUALIZER",hud,RGB(205,224,255),g_smallFont,
+                DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            return;
+        }
         /* Immersive now-playing view: artwork, track metadata and transport
            controls are composed as one screen rather than a centered cover. */
         GradientRect(dc,client,ABM_THEME_COLOR_070F15,ABM_THEME_COLOR_0C1419);
@@ -8107,7 +8025,18 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         return 0;
     }
-    case WM_TIMER:if(wp==TIMER_ID){
+    case WM_TIMER:
+        if(wp==VISUALIZER_TIMER_ID) {
+            if(g_visualizerActive) {
+                ++g_visualizerFrame;
+                InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+            } else {
+                KillTimer(hwnd,VISUALIZER_TIMER_ID);
+                g_visualizerTimerRunning=FALSE;
+            }
+            return 0;
+        }
+        if(wp==TIMER_ID){
         VlcCodecVerificationPoll();
         TorrentCheckPlaybackStall();
         CheckAudioOutputAvailability();
@@ -8249,6 +8178,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_visualizerActive=ABM_AudioVisualizer_Start();
             }
             if(g_visualizerActive) {
+                if(!g_visualizerTimerRunning) {
+                    SetTimer(hwnd,VISUALIZER_TIMER_ID,16,NULL);
+                    g_visualizerTimerRunning=TRUE;
+                }
                 /* Hide the native VLC child in both windowed and fullscreen
                    modes; it would otherwise cover the owner-painted visuals. */
                 if(g_video) ShowWindow(g_video,SW_HIDE);
@@ -8256,6 +8189,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             } else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
         } else {
             if(g_visualizerActive) ABM_AudioVisualizer_Stop();
+            if(g_visualizerTimerRunning) {
+                KillTimer(hwnd,VISUALIZER_TIMER_ID);
+                g_visualizerTimerRunning=FALSE;
+            }
             g_visualizerActive=FALSE; g_visualizerTried=FALSE;
             if(g_video && !g_fullscreen) {
                 if (g_hasMedia) ShowWindow(g_video,SW_SHOWNA);
@@ -8768,7 +8705,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
             g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
-        ResumeCaptureCurrent();ResumeSaveAsync(TRUE);DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+        ResumeCaptureCurrent();ResumeSaveAsync(TRUE);DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);if(g_visualizerTimerRunning)KillTimer(hwnd,VISUALIZER_TIMER_ID);g_visualizerTimerRunning=FALSE;ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
