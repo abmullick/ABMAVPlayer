@@ -23,22 +23,23 @@
 #pragma comment(lib, "shell32.lib")
 
 namespace {
-enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104 };
-enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2 };
+enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109 };
+enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4 };
 static const COLORREF BG=RGB(7,15,25), PANEL=RGB(15,29,44), PANEL2=RGB(10,21,34);
 static const COLORREF TEXT=RGB(239,246,252), MUTED=RGB(145,169,190), ACCENT=RGB(73,199,181);
-static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr;
+static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr;
 static ABM_D2D g_canvas={};
 static BOOL g_canvasReady=FALSE;
 static HBRUSH g_darkBrush=nullptr;
 static std::vector<std::wstring> g_mediaPaths;
 static ABM_HomeTheatrePlayFn g_playCallback=nullptr;
 static struct MovieItem {
-    int id=0, type=1;
-    wchar_t title[256]={}, date[32]={}, overview[1400]={}, poster[256]={};
+    int id=0, type=1, localIndex=-1, seasonNumber=-1, episodeNumber=-1;
+    wchar_t title[256]={}, date[32]={}, overview[1400]={}, poster[256]={}, backdrop[256]={};
 } g_items[24];
 static int g_itemCount=0, g_selected=-1, g_localMatch=-1;
-static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={};
+static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={}, g_backdropFile[MAX_PATH]={};
+static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE;
 static BOOL g_detailsReady=FALSE, g_busy=FALSE;
 static wchar_t g_statusText[256]=L"Search TMDB for a movie or television series in your local collection.";
 
@@ -91,6 +92,8 @@ static void ParseSearchJson(const wchar_t *json,int type,MovieItem *items,int *c
         CopyJsonString(start,finish,type==1?L"release_date":L"first_air_date",item.date,_countof(item.date));
         CopyJsonString(start,finish,L"overview",item.overview,_countof(item.overview));
         CopyJsonString(start,finish,L"poster_path",item.poster,_countof(item.poster));
+        CopyJsonString(start,finish,L"backdrop_path",item.backdrop,_countof(item.backdrop));
+        if(type==0){wchar_t mediaType[16]={};CopyJsonString(start,finish,L"media_type",mediaType,_countof(mediaType));item.type=!_wcsicmp(mediaType,L"tv")?2:1;}
         if(item.title[0])items[(*count)++]=item;
     }
 }
@@ -119,14 +122,18 @@ struct Work {
     HWND target=nullptr;int kind=0,index=-1;
     MovieItem item;
     wchar_t query[256]={};
+    std::vector<std::wstring> paths;
+    int seasonNumber=-1;
+    int tvId=0;
 };
 struct Result {
     int kind=0,count=0,index=-1;
     BOOL ok=FALSE;
-    MovieItem items[24];
-    wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},error[256]={};
+    MovieItem items[24], recommendations[24], seasons[24], episodes[64];
+    int recommendationCount=0, seasonCount=0, episodeCount=0;
+    wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},backdropFile[MAX_PATH]={},error[256]={};
 };
-static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster,int tmdbId) {
+static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster,int tmdbId,const wchar_t *fallbackBackdrop,int mediaType) {
     const wchar_t *end=json+wcslen(json);
     CopyJsonString(json,end,L"overview",r->overview,_countof(r->overview));
     CopyJsonString(json,end,L"release_date",r->year,_countof(r->year));
@@ -149,6 +156,27 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
         StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\tmdb-%d.jpg",folder,tmdbId);
         if(GetFileAttributesW(r->posterFile)==INVALID_FILE_ATTRIBUTES && !ABM_TMDB_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
     }
+    wchar_t backdrop[256]={};CopyJsonString(json,end,L"backdrop_path",backdrop,_countof(backdrop));
+    if(!backdrop[0]&&fallbackBackdrop)StringCchCopyW(backdrop,_countof(backdrop),fallbackBackdrop);
+    if(ImageFolder(folder,_countof(folder))&&backdrop[0]) {
+        StringCchPrintfW(r->backdropFile,_countof(r->backdropFile),L"%s\\tmdb-%d-backdrop.jpg",folder,tmdbId);
+        if(GetFileAttributesW(r->backdropFile)==INVALID_FILE_ATTRIBUTES&&!ABM_TMDB_DownloadImage(backdrop,r->backdropFile,12000))r->backdropFile[0]=0;
+    }
+    const wchar_t *rec=wcsstr(json,L"\\"recommendations\\"");
+    if(rec)ParseSearchJson(rec,mediaType==2?2:1,r->recommendations,&r->recommendationCount);
+    const wchar_t *season=wcsstr(json,L"\\"seasons\\"");
+    if(season) {
+        const wchar_t *p=wcschr(season,L'[');if(p)p++;
+        while(p&&*p&&r->seasonCount<24) {
+            while(*p&&(iswspace(*p)||*p==L','))p++;if(*p==L']'||!*p)break;
+            if(*p!=L'{'){p++;continue;}
+            const wchar_t *start=p;BOOL quoted=FALSE,escaped=FALSE;int depth=0;
+            for(;*p;p++){if(quoted){if(escaped)escaped=FALSE;else if(*p==L'\\\\')escaped=TRUE;else if(*p==L'"')quoted=FALSE;continue;}if(*p==L'"'){quoted=TRUE;continue;}if(*p==L'{')depth++;else if(*p==L'}'&&--depth==0){p++;break;}}
+            MovieItem item;item.id=tmdbId;item.type=2;item.seasonNumber=JsonInt(start,p,L"season_number");
+            CopyJsonString(start,p,L"name",item.title,_countof(item.title));CopyJsonString(start,p,L"air_date",item.date,_countof(item.date));
+            if(item.title[0])r->seasons[r->seasonCount++]=item;
+        }
+    }
 }
 static DWORD WINAPI Worker(LPVOID parameter) {
     Work *w=(Work*)parameter;Result *r=new(std::nothrow) Result();
@@ -166,7 +194,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
     } else if(w->kind==2&&w->item.id>0) {
         MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
         r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
-        if(r->ok)ParseDetails(json.data(),r,item.poster,item.id);
+        if(r->ok)ParseDetails(json.data(),r,item.poster,item.id,item.backdrop,item.type);
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your connection and TMDB token.");
     }
     if(!IsWindow(w->target)||!PostMessageW(w->target,w->kind==1?HT_SEARCH_DONE:HT_DETAILS_DONE,0,(LPARAM)r))delete r;
