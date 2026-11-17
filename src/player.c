@@ -6894,9 +6894,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
-   if(AdvancedSettingsPoint(x,y,322,610,532,648)){ShowSubtitleTrackMenu(w);return 0;}
-   if(AdvancedSettingsPoint(x,y,542,610,744,648)){if(g_player)libvlc_video_set_spu(g_player,-1);InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,754,610,1018,648)){LoadExternalSubtitle(w);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,322,624,532,662)){ShowSubtitleTrackMenu(w);return 0;}
+   if(AdvancedSettingsPoint(x,y,542,624,744,662)){if(g_player)libvlc_video_set_spu(g_player,-1);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,754,624,1018,662)){LoadExternalSubtitle(w);InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,770,264,850,308)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,860,264,940,308)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,950,264,1032,308)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
@@ -6907,23 +6907,23 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleFontSize);WritePrivateProfileStringW(L"Subtitles",L"RelativeFontSize",v,p);}
      InvalidateRect(w,NULL,FALSE);return 0;
     }
-    if(AdvancedSettingsPoint(x,y,left,450,left+164,494)){
+    if(AdvancedSettingsPoint(x,y,left,440,left+164,484)){
      g_advancedSubtitleColor=g_subtitleColors[i];
      if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleColor);WritePrivateProfileStringW(L"Subtitles",L"TextColor",v,p);}
      InvalidateRect(w,NULL,FALSE);return 0;
     }
-    if(AdvancedSettingsPoint(x,y,left,584,left+164,628)){
+    if(AdvancedSettingsPoint(x,y,left,578,left+164,622)){
      g_advancedSubtitleMargin=g_subtitleMarginValues[i];
      if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleMargin);WritePrivateProfileStringW(L"Subtitles",L"Margin",v,p);}
      InvalidateRect(w,NULL,FALSE);return 0;
     }
-    if(AdvancedSettingsPoint(x,y,520+i*126,518,640+i*126,560)){
+    if(AdvancedSettingsPoint(x,y,520+i*126,510,640+i*126,552)){
      g_advancedSubtitleOutline=g_subtitleOutlineValues[i];
      if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_advancedSubtitleOutline);WritePrivateProfileStringW(L"Subtitles",L"OutlineThickness",v,p);}
      InvalidateRect(w,NULL,FALSE);return 0;
     }
    }
-   if(AdvancedSettingsPoint(x,y,320,518,500,560)){
+   if(AdvancedSettingsPoint(x,y,320,510,500,552)){
     g_advancedSubtitleBold=!g_advancedSubtitleBold;
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"Bold",g_advancedSubtitleBold?L"1":L"0",p);}
     InvalidateRect(w,NULL,FALSE);return 0;
@@ -7105,16 +7105,16 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(950,268,1032,312,L"Reset",FALSE);
     AdvancedSettingsText(L"Font size",322,334,1018,358,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleFontSize==g_subtitleFontSizes[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,366,(float)left+164,410,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,366.5f,(float)left+163.5f,409.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleFontSizeLabels[i],left+5,367,left+159,409,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Text color",322,418,1018,442,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleColor==g_subtitleColors[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,450,(float)left+164,494,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,450.5f,(float)left+163.5f,493.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleColorLabels[i],left+5,451,left+159,493,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Text style and readability",322,494,1018,516,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsButtonDraw(320,518,500,560,g_advancedSubtitleBold?L"Bold: On":L"Bold: Off",g_advancedSubtitleBold);
-    for(int i=0;i<4;i++){int left=520+i*126;BOOL selected=(g_advancedSubtitleOutline==g_subtitleOutlineValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,518,(float)left+120,560,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,518.5f,(float)left+119.5f,559.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleOutlineLabels[i],left+4,519,left+116,559,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Subtitle vertical position",322,562,1018,584,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,584,(float)left+164,628,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,584.5f,(float)left+163.5f,627.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,585,left+159,627,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsButtonDraw(322,610,532,648,L"Choose subtitle track",FALSE);
-    AdvancedSettingsButtonDraw(542,610,744,648,L"Disable subtitles",FALSE);
-    AdvancedSettingsButtonDraw(754,610,1018,648,L"Load external subtitle...",TRUE);
+    AdvancedSettingsText(L"Text color",322,414,1018,436,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleColor==g_subtitleColors[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,440,(float)left+164,484,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,440.5f,(float)left+163.5f,483.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleColorLabels[i],left+5,441,left+159,483,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"Text style and readability",322,486,1018,508,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(320,510,500,552,g_advancedSubtitleBold?L"Bold: On":L"Bold: Off",g_advancedSubtitleBold);
+    for(int i=0;i<4;i++){int left=520+i*126;BOOL selected=(g_advancedSubtitleOutline==g_subtitleOutlineValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,510,(float)left+120,552,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,510.5f,(float)left+119.5f,551.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleOutlineLabels[i],left+4,511,left+116,551,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"Subtitle vertical position",322,554,1018,576,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,578,(float)left+164,622,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,578.5f,(float)left+163.5f,621.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,579,left+159,621,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsButtonDraw(322,624,532,662,L"Choose subtitle track",FALSE);
+    AdvancedSettingsButtonDraw(542,624,744,662,L"Disable subtitles",FALSE);
+    AdvancedSettingsButtonDraw(754,624,1018,662,L"Load external subtitle...",TRUE);
    }else{
     MEMORYSTATUSEX mem={0};mem.dwLength=sizeof(mem);GlobalMemoryStatusEx(&mem);
     SYSTEM_INFO si={0};GetNativeSystemInfo(&si);
