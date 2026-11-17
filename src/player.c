@@ -1471,6 +1471,49 @@ static void DrawVisualizer(HDC dc,RECT area) {
         ABM_D2D_StrokeRound(&g_ui,cx-pulse,cy-pulse,cx+pulse,cy+pulse,
             pulse*0.8f,Blend(ink,cyan,34),1.5f*s);
     }
+
+    /* Compact now-playing identity stays visible without competing with the
+       full-bleed visual field. Artwork and metadata are already cached by the
+       player; this overlay performs no file or network work during painting. */
+    if(g_artworkLoaded || g_trackTitle[0] || g_trackArtist[0]) {
+        int pad=(int)(22.0f*s), art=(int)(54.0f*s);
+        int cardH=(int)(82.0f*s), cardW=(int)(width*0.38f);
+        int maxCardW=(int)(590.0f*s);
+        if(cardW>maxCardW)cardW=maxCardW;
+        if(cardW>(width-pad*2))cardW=width-pad*2;
+        if(cardW>art+pad*3 && cardH>0) {
+            int left=area.left+pad, bottom=area.bottom-pad;
+            int top=bottom-cardH;
+            ABM_D2D_GradientRound(&g_ui,(float)left,(float)top,
+                (float)(left+cardW),(float)bottom,12.0f*s,
+                RGB(13,25,42),RGB(3,8,18));
+            ABM_D2D_StrokeRound(&g_ui,(float)left,(float)top,
+                (float)(left+cardW),(float)bottom,12.0f*s,
+                Blend(ink,cyan,24),1.0f*s);
+            int artX=left+pad,artY=top+(cardH-art)/2;
+            if(g_artworkLoaded)
+                ABM_D2D_DrawImageCover(&g_ui,(float)artX,(float)artY,
+                    (float)(artX+art),(float)(artY+art),1.0f);
+            else
+                ABM_D2D_GradientRound(&g_ui,(float)artX,(float)artY,
+                    (float)(artX+art),(float)(artY+art),7.0f*s,
+                    RGB(28,106,126),RGB(39,48,108));
+            int textX=artX+art+pad/2;
+            RECT label={textX,top+pad/2,left+cardW-pad,bottom-pad/2};
+            RECT kicker=label,title=label,artist=label;
+            kicker.bottom=kicker.top+(int)(17.0f*s);
+            title.top=kicker.bottom;title.bottom=title.top+(int)(27.0f*s);
+            artist.top=title.bottom;artist.bottom=bottom-pad/2;
+            Txt(dc,L"NOW PLAYING",kicker,Blend(ink,mint,90),g_smallFont,
+                DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,g_trackTitle[0]?g_trackTitle:L"Untitled track",title,
+                RGB(245,249,255),g_headingFont,
+                DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Txt(dc,g_trackArtist[0]?g_trackArtist:L"Unknown artist",artist,
+                RGB(165,184,204),g_smallFont,
+                DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        }
+    }
 }
 static void DrawUI(HDC dc,RECT client) {
     if(!g_visualizerActive || !ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(NULL,FALSE);
