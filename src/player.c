@@ -6350,41 +6350,49 @@ static void SettingsText(const wchar_t *text,int l,int t,int r,int b,COLORREF co
  ABM_D2D_Text(&g_settingsUi,text,rc,color,role,flags);
 }
 static void SettingsSection(int top,const wchar_t *title,const wchar_t *description,int bottom) {
- /* Consistent card surface, restrained edge and a short teal section marker. */
- ABM_D2D_Round(&g_settingsUi,20.0f,(float)top,800.0f,(float)bottom,
-               (float)ABM_UI_RADIUS_CARD,SETTINGS_PANEL);
+ /* Premium layered card: restrained gradient, fine outline and a quiet
+    header rule keep long settings pages visually grouped. */
+ ABM_D2D_GradientRound(&g_settingsUi,20.0f,(float)top,800.0f,(float)bottom,
+               (float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE_RAISED,SETTINGS_PANEL);
  ABM_D2D_StrokeRound(&g_settingsUi,20.5f,(float)top+0.5f,799.5f,(float)bottom-0.5f,
-                     (float)ABM_UI_RADIUS_CARD,SETTINGS_BORDER,0.8f);
- ABM_D2D_Round(&g_settingsUi,30.0f,(float)top+13.0f,33.0f,(float)top+34.0f,
-               1.5f,ABM_UI_COLOR_ACCENT_BRIGHT);
- SettingsText(title,42,top+12,510,top+36,SETTINGS_ACCENT,1,
+                     (float)ABM_UI_RADIUS_CARD,SETTINGS_BORDER,0.9f);
+ ABM_D2D_Round(&g_settingsUi,30.0f,(float)top+12.0f,33.5f,(float)top+35.0f,
+               1.7f,ABM_UI_COLOR_ACCENT_BRIGHT);
+ SettingsText(title,44,top+11,510,top+36,SETTINGS_ACCENT,1,
               DT_LEFT|DT_VCENTER|DT_SINGLELINE);
  if(description&&description[0])
-  SettingsText(description,510,top+12,780,top+36,SETTINGS_MUTED,1,
+  SettingsText(description,510,top+11,780,top+36,SETTINGS_MUTED,1,
                DT_RIGHT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+ ABM_D2D_Line(&g_settingsUi,38.0f,(float)top+42.0f,782.0f,(float)top+42.0f,
+              SETTINGS_BORDER,0.65f);
 }
 static void SettingsEditFrame(int l,int t,int r,int b) {
- ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
-               (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_INPUT);
+ /* The native EDIT remains fully interactive; Direct2D supplies its premium
+    inset surface and focus ring without replacing Windows text behaviour. */
+ ABM_D2D_GradientRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
+               (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_INPUT,ABM_UI_COLOR_SURFACE);
  ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
                      (float)r-0.5f,(float)b-0.5f,
                      (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_BORDER_STRONG,0.9f);
 }
+
 static int g_settingsHoverX=-1,g_settingsHoverY=-1,g_advancedHoverX=-1,g_advancedHoverY=-1;
 static BOOL g_settingsMousePressed=FALSE,g_advancedMousePressed=FALSE;
 static BOOL ABM_PointInRect(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static void SettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary) {
  BOOL hot=ABM_PointInRect(g_settingsHoverX,g_settingsHoverY,l,t,r,b),down=hot&&g_settingsMousePressed;
- COLORREF fill=down?ABM_UI_COLOR_SURFACE_BLUE:hot?(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE_BLUE):(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
+ COLORREF top=down?ABM_UI_COLOR_SURFACE_BLUE:hot?(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE_BLUE):(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
+ COLORREF bottom=primary&&!down&&!hot?ABM_THEME_COLOR_168B91:ABM_UI_COLOR_SURFACE;
  COLORREF edge=hot?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
- ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
-               (float)ABM_UI_RADIUS_BUTTON,fill);
+ ABM_D2D_GradientRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
+               (float)ABM_UI_RADIUS_BUTTON,top,bottom);
  ABM_D2D_StrokeRound(&g_settingsUi,(float)l+0.5f,(float)t+0.5f,
                      (float)r-0.5f,(float)b-0.5f,
-                     (float)ABM_UI_RADIUS_BUTTON,edge,0.9f);
- SettingsText(label,l+8,t+1,r-8,b-1,ABM_UI_COLOR_TEXT,1,
+                     (float)ABM_UI_RADIUS_BUTTON,edge,hot?1.25f:0.9f);
+ SettingsText(label,l+9,t+1,r-9,b-1,ABM_UI_COLOR_TEXT,1,
               DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
+
 static void SettingsCheckDraw(int l,int t,const wchar_t *label,BOOL checked) {
  BOOL hot=ABM_PointInRect(g_settingsHoverX,g_settingsHoverY,l,t,l+310,t+22);
  ABM_D2D_Round(&g_settingsUi,(float)l,(float)t,(float)(l+18),(float)(t+18),
