@@ -4086,13 +4086,21 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
     (void)subclassId;
     HWND owner = (HWND)refData;
     if (IsWindow(owner) && (msg == WM_MOUSEMOVE || msg == WM_LBUTTONDOWN ||
-        msg == WM_LBUTTONUP || msg == WM_MOUSEWHEEL)) {
+        msg == WM_LBUTTONUP || msg == WM_RBUTTONUP || msg == WM_MOUSEWHEEL)) {
         POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
         if (msg == WM_MOUSEWHEEL) {
             /* Wheel coordinates are screen-relative, unlike client mouse messages. */
             ScreenToClient(owner,&pt);
         } else {
             MapWindowPoints(video,owner,&pt,1);
+        }
+        /* LibVLC owns the video child HWND and receives its mouse messages
+           instead of the main window. Forward right-click in owner-client
+           coordinates so the playback context menu is reachable on the
+           actual rendered video surface, including fullscreen. */
+        if (msg == WM_RBUTTONUP) {
+            SendMessageW(owner,WM_RBUTTONUP,wp,MAKELPARAM(pt.x,pt.y));
+            return 0;
         }
         /* The LibVLC child HWND can physically cover the drawer even though the
            drawer is painted as a foreground overlay by the owner. Forward pointer
