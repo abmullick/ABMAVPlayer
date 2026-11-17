@@ -444,7 +444,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 }
                 g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;
-                g_showBackdrop=FALSE;g_detailsReady=FALSE;EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_artButton,FALSE);ABM_D2D_ClearImage(&g_canvas);
+                g_showBackdrop=FALSE;g_detailsReady=FALSE;g_recommendationCount=g_seasonCount=0;EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);ABM_D2D_ClearImage(&g_canvas);
                 EnableWindow(g_play,g_localMatch>=0);
                 if(g_localMatch>=0)SetLocalMatchStatus(L"Local file match · details loading");else SetStatus(L"No filename match found. Details are loading…");
                 StartWork(2,selected,nullptr);InvalidateRect(w,nullptr,FALSE);
