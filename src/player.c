@@ -3496,7 +3496,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     int cmd=ABM_ShowMenu(hwnd,x,y,items,count);
 #undef ABM_ADD
 #undef ABM_HEAD
-    if(cmd==23009){const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
+    if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
     else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
     else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
@@ -8181,7 +8181,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_HOME_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
             if(Inside(R_HOME_STREAM,x,y)){ABM_Streaming_Show(hwnd);ReleaseCapture();return 0;}
             if(Inside(R_HOME_TORRENT,x,y)){ShowTorrentWindow(hwnd);ReleaseCapture();return 0;}
-            if(Inside(R_HOME_RECENT,x,y)){const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);ReleaseCapture();return 0;}
+            if(Inside(R_HOME_RECENT,x,y)){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);ReleaseCapture();return 0;}
         }
         if(g_menuOpen&&g_menuProgress>=80) {
             for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
