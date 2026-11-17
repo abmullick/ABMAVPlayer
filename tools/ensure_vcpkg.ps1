@@ -40,7 +40,7 @@ $toolCommit = $baseline
 # manifest dependencies normally. Never overwrite an existing local install.
 if (-not (Test-Path $installedRoot)) {
     New-Item -ItemType Directory -Force -Path $cacheDirectory | Out-Null
-    $baseUrl = "https://github.com/abmullick/ABMAVPlayer/releases/latest/download"
+    $baseUrl = "https://github.com/abmullick/ABMAVPlayer-Releases/releases/latest/download"
     try {
         Write-Log "Looking for the shared x64-windows dependency cache..."
         Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$cacheName" -OutFile $cacheZip
