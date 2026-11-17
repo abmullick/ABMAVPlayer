@@ -80,6 +80,7 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define WM_TORRENT_STREAM_READY (WM_APP + 14)
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
 #define WM_TORRENT_TV_READY (WM_APP + 16)
+#define WM_VIDEO_CONTEXT_REQUEST (WM_APP + 17)
 #define TIMER_ID 1
 #define VISUALIZER_TIMER_ID 2 /* dedicated main-window 60 Hz visualizer timer */
 #define MAX_RENDERERS 32
@@ -4187,18 +4188,23 @@ static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARA
 }
 static LRESULT CALLBACK VideoMouseHookProc(int code, WPARAM message, LPARAM data) {
     if(code==HC_ACTION && message==WM_RBUTTONDOWN && data && IsWindow(g_main)) {
-        const MOUSEHOOKSTRUCT *mouse=(const MOUSEHOOKSTRUCT*)data;
-        HWND target=mouse->hwnd;
-        if(target && target!=g_main && IsWindow(target) && IsChild(g_main,target)) {
-            POINT pt=mouse->pt;
-            ScreenToClient(g_main,&pt);
-            if(PtInRect(&R_VIDEO,pt)) {
-                /* Route the initial right-button press before LibVLC's native
-                   video surface can consume it. Handle on DOWN consistently:
-                   some video-output child windows do not deliver the matching
-                   UP to the subclass/owner window. */
-                SendMessageW(g_main,WM_RBUTTONDOWN,0,MAKELPARAM(pt.x,pt.y));
-                return 1;
+        /* WH_MOUSE is thread-scoped and can miss clicks delivered to a
+           LibVLC-created video-output window on another thread. WH_MOUSE_LL
+           observes the physical click before it is dispatched to any HWND. */
+        const MSLLHOOKSTRUCT *mouse=(const MSLLHOOKSTRUCT*)data;
+        POINT pt=mouse->pt;
+        HWND target=WindowFromPoint(pt);
+        if(target && IsWindow(target)) {
+            HWND root=GetAncestor(target,GA_ROOTOWNER);
+            if(root==g_main || target==g_main || IsChild(g_main,target)) {
+                ScreenToClient(g_main,&pt);
+                if(PtInRect(&R_VIDEO,pt)) {
+                    /* Never open a tracking popup inside the low-level hook:
+                       post the request and return immediately to keep the
+                       system input hook responsive. */
+                    PostMessageW(g_main,WM_VIDEO_CONTEXT_REQUEST,0,MAKELPARAM(pt.x,pt.y));
+                    return 1;
+                }
             }
         }
     }
@@ -8007,7 +8013,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         ShowWindow(g_renderers,SW_HIDE);
-        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);g_videoMouseHook=SetWindowsHookExW(WH_MOUSE,VideoMouseHookProc,NULL,GetCurrentThreadId());libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);VlcAttachPlaybackEvents();SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);g_videoMouseHook=SetWindowsHookExW(WH_MOUSE_LL,VideoMouseHookProc,GetModuleHandleW(NULL),0);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);VlcAttachPlaybackEvents();SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_CLOSE:
         if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
@@ -8766,6 +8772,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
         }
         break;
+    }
+    case WM_VIDEO_CONTEXT_REQUEST: {
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        if(Inside(R_VIDEO,x,y))ShowPlaybackContextMenu(hwnd,x,y);
+        return 0;
     }
     case WM_RBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
