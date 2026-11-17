@@ -374,6 +374,33 @@ extern "C" void ABM_D2D_Line(ABM_D2D *ui, float x1, float y1, float x2, float y2
     Target(ui)->DrawLine(D2D1::Point2F(x1, y1), D2D1::Point2F(x2, y2), Brush(ui), width);
 }
 
+extern "C" void ABM_D2D_Polyline(ABM_D2D *ui,const float *xy,int pointCount,
+                                      COLORREF color,float width) {
+    if(!ui||!xy||pointCount<2||!EnsureTarget(ui))return;
+    if(pointCount>512)pointCount=512;
+    D2D1_POINT_2F points[512];
+    for(int i=0;i<pointCount;i++) {
+        points[i].x=xy[i*2];
+        points[i].y=xy[i*2+1];
+    }
+    ID2D1PathGeometry *geometry=nullptr;
+    ID2D1GeometrySink *sink=nullptr;
+    HRESULT hr=Factory(ui)->CreatePathGeometry(&geometry);
+    if(SUCCEEDED(hr))hr=geometry->Open(&sink);
+    if(SUCCEEDED(hr)) {
+        sink->BeginFigure(points[0],D2D1_FIGURE_BEGIN_HOLLOW);
+        sink->AddLines(points+1,(UINT32)(pointCount-1));
+        sink->EndFigure(D2D1_FIGURE_END_OPEN);
+        hr=sink->Close();
+    }
+    if(SUCCEEDED(hr)) {
+        SetColor(ui,color);
+        Target(ui)->DrawGeometry(geometry,Brush(ui),width);
+    }
+    SafeRelease(&sink);
+    SafeRelease(&geometry);
+}
+
 extern "C" void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect,
                               COLORREF color, int style, UINT flags) {
     if (!ui || !EnsureTarget(ui) || !text || !text[0]) return;
