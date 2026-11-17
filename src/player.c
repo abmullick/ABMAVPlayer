@@ -1267,83 +1267,164 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     }
 }
 static void DrawVisualizer(HDC dc,RECT area) {
-    float levels[24]={0}; ABM_AudioVisualizer_GetBands(levels,24);
+    float levels[24]={0};
+    ABM_AudioVisualizer_GetBands(levels,24);
     int width=area.right-area.left,height=area.bottom-area.top;
-    if(width<80||height<60)return;
-    Fill(dc,area,ABM_THEME_COLOR_080F14);
-    RECT in=area; InflateRect(&in,-22,-24);
-    int w=in.right-in.left,h=in.bottom-in.top,cx=in.left+w/2,cy=in.top+h/2;
-    const wchar_t *name=g_visualizerMode==0?L"LIVE SPECTRUM":(g_visualizerMode==1?L"FLUID WAVES":L"PARTICLE VISUALIZER");
-    RECT label={area.left+20,area.top+10,area.right-20,area.top+34};
-    Txt(dc,name,label,ABM_THEME_COLOR_97B8B4,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f,mid=0,treble=0;
+    if(width<100||height<70)return;
+
+    /* Deep, atmospheric canvas with a subtle lower vignette. */
+    GradientRect(dc,area,ABM_THEME_COLOR_071018,ABM_THEME_COLOR_0A1B20);
+    RECT inner=area;InflateRect(&inner,-18,-20);
+    int w=inner.right-inner.left,h=inner.bottom-inner.top;
+    int cx=inner.left+w/2,cy=inner.top+h/2;
+    const wchar_t *name=g_visualizerMode==0?L"SPECTRUM  /  LIVE AUDIO":
+        (g_visualizerMode==1?L"WAVEFORM  /  LIVE AUDIO":L"PARTICLE FIELD  /  LIVE AUDIO");
+    RECT label={area.left+22,area.top+8,area.right-22,area.top+28};
+    Txt(dc,name,label,ABM_THEME_COLOR_8BBDB6,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+    float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f;
+    float mid=0,treble=0;
     for(int i=4;i<16;i++)mid+=levels[i]/12.0f;
     for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
     float energy=bass*0.48f+mid*0.32f+treble*0.20f;
+    float pulse=(float)g_visualPulse;
+
     if(g_visualizerMode==0) {
-        int gap=w>700?7:4,bars=48,bw=(w-gap*(bars-1))/bars;
-        if(bw<2){bars=24;gap=4;bw=(w-gap*(bars-1))/bars;}
-        int base=in.bottom-7,maxh=h-30;
+        /* Symmetric, high-density spectrum with a soft halo and a crisp
+           transient cap. The logarithmic band mapping gives bass more room. */
+        int bars=w>1200?88:(w>650?64:42);
+        int gap=w>900?5:3;
+        int bw=(w-gap*(bars-1))/bars;
+        if(bw<2){gap=2;bw=(w-gap*(bars-1))/bars;}
+        int midY=inner.top+h/2;
+        int maxH=(h-48)/2;
         for(int i=0;i<bars;i++) {
-            int band=(i*24)/bars;float v=levels[band],neighbour=levels[band?band-1:band];
-            v=v*0.78f+neighbour*0.22f;if(v<0.025f)v=0.025f;if(v>1.0f)v=1.0f;
-            int bh=5+(int)(v*maxh),x=in.left+i*(bw+gap);
-            COLORREF col=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,i*100/(bars-1));
-            RECT glow={x-2,base-bh-5,x+bw+2,base+2};
-            ABM_D2D_Round(&g_ui,(float)glow.left,(float)glow.top,(float)glow.right,(float)glow.bottom,(float)(bw/2+2),Blend(ABM_THEME_COLOR_0D373D,col,22));
-            ABM_D2D_Round(&g_ui,(float)x,(float)(base-bh),(float)(x+bw),(float)base,(float)(bw/2),col);
-            RECT cap={x,base-bh-5,x+bw,base-bh-2};Fill(dc,cap,ABM_THEME_COLOR_BEE5FF);
+            float pos=(float)i/(float)(bars-1);
+            float curve=pos<0.5f?pos*2.0f:(1.0f-pos)*2.0f;
+            int band=(int)(powf(pos,0.72f)*23.0f);
+            float v=levels[band]*0.72f+levels[band?band-1:band]*0.18f+
+                levels[band<23?band+1:band]*0.10f;
+            float motion=0.90f+0.10f*sinf(pulse*0.035f+i*0.19f);
+            v*=motion;
+            int bh=5+(int)(v*(0.72f+curve*0.28f)*maxH);
+            if(bh>maxH)bh=maxH;
+            int x=inner.left+i*(bw+gap);
+            COLORREF col=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,(int)(pos*100));
+            float radius=(float)(bw<8?bw/2:4);
+            /* Diffused glow, then the main bar and mirrored reflection. */
+            ABM_D2D_Round(&g_ui,(float)x-2,(float)(midY-bh-3),(float)(x+bw)+2,(float)(midY+bh+3),radius+2,
+                Blend(ABM_THEME_COLOR_071018,col,24));
+            ABM_D2D_GradientRound(&g_ui,(float)x,(float)(midY-bh),(float)(x+bw),(float)(midY+bh),
+                radius,Blend(ABM_THEME_COLOR_23747A,col,25),col);
+            int capY=midY-bh-7;
+            ABM_D2D_Round(&g_ui,(float)x,(float)capY,(float)(x+bw),(float)(capY+2),1.0f,ABM_THEME_COLOR_BEE5FF);
+            RECT reflection={x,midY+bh+5,x+bw,midY+bh+5+(bh/3)};
+            if(reflection.bottom>inner.bottom-5)reflection.bottom=inner.bottom-5;
+            if(reflection.bottom>reflection.top)
+                ABM_D2D_GradientRound(&g_ui,(float)reflection.left,(float)reflection.top,
+                    (float)reflection.right,(float)reflection.bottom,radius,
+                    Blend(ABM_THEME_COLOR_071018,col,18),Blend(ABM_THEME_COLOR_071018,col,5));
         }
-        for(int i=0;i<bars;i++) {
-            int band=(i*24)/bars;int bh=(int)(levels[band]*(maxh*0.42f));
-            int x=in.left+i*(bw+gap);RECT mirror={x,cy+4,x+bw,cy+4+bh/2};
-            if(mirror.bottom>in.bottom)mirror.bottom=in.bottom;
-            if(mirror.bottom>mirror.top)Fill(dc,mirror,Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,35));
-        }
+        ABM_D2D_Line(&g_ui,(float)inner.left,(float)midY,(float)inner.right,(float)midY,
+            Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,20),0.8f);
     } else if(g_visualizerMode==1) {
-        for(int layer=3;layer>=0;layer--) {
-            int px0=in.left,py0=cy;
-            COLORREF col=layer==0?ABM_THEME_COLOR_8EE2D3:(layer==1?ABM_THEME_COLOR_64CAA6:(layer==2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_397C89));
-            for(int n=1;n<160;n++) {
-                int band=(n*24)/160;float local=levels[band]*0.72f+energy*0.28f;
-                float amp=local*(float)(h*(0.20f+0.12f*layer));
-                float phase=(float)g_visualPulse*(0.055f+layer*0.009f)+n*0.071f+layer*1.55f;
-                int px=in.left+n*w/159;
-                int py=cy+(int)(sinf(phase)*amp+sinf(phase*0.47f+layer)*amp*0.32f);
-                DrawLine(dc,px0,py0,px,py,col,layer==0?3:(layer==1?2:1));px0=px;py0=py;
+        /* Flowing ribbon field: multiple frequency-driven curves, soft
+           underglow and fine harmonic threads. */
+        for(int layer=5;layer>=0;layer--) {
+            int px0=inner.left,py0=cy;
+            COLORREF col=layer<2?ABM_THEME_COLOR_8EE2D3:
+                (layer<4?ABM_THEME_COLOR_64CAA6:ABM_THEME_COLOR_23747A);
+            for(int n=1;n<240;n++) {
+                float pos=(float)n/239.0f;
+                int band=(int)(pos*23.0f);
+                float local=levels[band]*0.68f+energy*0.32f;
+                float phase=pulse*(0.026f+layer*0.004f)+pos*18.0f+layer*1.13f;
+                float envelope=0.25f+0.75f*sinf(pos*3.1415926f);
+                float amp=(float)h*(0.12f+0.055f*layer)*envelope*(0.18f+local*1.7f);
+                int px=inner.left+n*w/239;
+                int py=cy+(int)(sinf(phase)*amp+sinf(phase*0.47f+layer)*amp*0.36f);
+                if(layer<2) {
+                    ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,
+                        Blend(ABM_THEME_COLOR_071018,col,25),5.0f-layer*1.4f);
+                }
+                ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,col,
+                    layer==0?2.2f:(layer==1?1.7f:0.9f));
+                px0=px;py0=py;
             }
         }
-        for(int n=0;n<72;n++) {
-            int x=in.left+n*w/71,band=(n*24)/72,amp=(int)(levels[band]*h*0.12f);
-            int y=cy+(n%2?1:-1)*(amp+2);RECT dot={x-1,y-1,x+2,y+2};Fill(dc,dot,ABM_THEME_COLOR_8EE2D3);
+        /* Fine frequency particles sit along the moving ribbons. */
+        for(int n=0;n<96;n++) {
+            int band=(n*7)%24;
+            float pos=(float)n/95.0f;
+            float phase=pulse*0.04f+n*0.71f;
+            int x=inner.left+(int)(pos*w);
+            int y=cy+(int)(sinf(phase)*h*(0.12f+levels[band]*0.25f));
+            int d=1+(int)(levels[band]*2.5f);
+            ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),
+                (float)d,ABM_THEME_COLOR_BEE5FF);
         }
     } else {
-        int radius=(h<w?h:w)/3,core=radius/3+(int)(energy*radius*0.24f);
-        for(int ring=3;ring>=0;ring--) {
-            int rr=radius+(int)(sinf(g_visualPulse*0.035f+ring*1.35f)*energy*radius*0.20f)+ring*14;
-            COLORREF ringCol=ring==0?ABM_THEME_COLOR_64CAA6:(ring==1?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_1B433E);
-            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),(float)rr,ringCol,ring==0?1.6f:0.8f);
+        /* Audio-reactive orbital particle nebula. Rings breathe with bass,
+           particle orbits respond to mids, and fine sparks respond to treble. */
+        int radius=(h<w?h:w)/3;
+        int core=radius/4+(int)(bass*radius*0.20f);
+        for(int ring=4;ring>=0;ring--) {
+            float wobble=sinf(pulse*(0.018f+ring*0.004f)+ring*1.41f);
+            int rr=radius+ring*13+(int)(wobble*energy*radius*0.22f);
+            COLORREF rc=ring<2?ABM_THEME_COLOR_64CAA6:ABM_THEME_COLOR_23747A;
+            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),
+                (float)rr,Blend(ABM_THEME_COLOR_071018,rc,ring==0?70:32),ring==0?1.8f:0.8f);
         }
-        for(int i=0;i<32;i++) {
-            float a=i*6.2831853f/32.0f+g_visualPulse*0.004f;int band=(i*3)%24;
-            float r0=(float)core,r1=r0+radius*(0.18f+levels[band]*0.65f);
-            DrawLine(dc,cx+(int)(cosf(a)*r0),cy+(int)(sinf(a)*r0),cx+(int)(cosf(a)*r1),cy+(int)(sinf(a)*r1),i%2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_64CAA6,2);
+        /* Radial equalizer spokes. */
+        for(int i=0;i<72;i++) {
+            float a=(float)i*6.2831853f/72.0f+pulse*0.0025f;
+            int band=(i*24)/72;
+            float v=levels[band];
+            float r0=(float)core+8.0f;
+            float r1=r0+radius*(0.12f+v*0.72f);
+            COLORREF col=(i%3==0)?ABM_THEME_COLOR_8EE2D3:ABM_THEME_COLOR_23747A;
+            ABM_D2D_Line(&g_ui,cx+cosf(a)*r0,cy+sinf(a)*r0,
+                cx+cosf(a)*r1,cy+sinf(a)*r1,col,(i%6==0)?2.0f:0.9f);
         }
-        for(int i=0;i<176;i++) {
-            float angle=i*2.39996323f+g_visualPulse*(0.0028f+(i%9)*0.00022f);
-            int band=(i*13)%24;float v=levels[band],orbit=0.18f+(i%23)/29.0f;
-            float pulse=0.5f+0.5f*sinf(g_visualPulse*0.045f+i*1.17f);
-            float r=radius*(orbit+v*0.68f+pulse*energy*0.20f);
-            float turbulence=sinf(angle*2.7f+g_visualPulse*0.021f)*treble*18.0f;
-            int x=cx+(int)(cosf(angle)*r+turbulence),y=cy+(int)(sinf(angle)*r+turbulence*0.68f);
-            int d=1+(int)(v*4.0f)+(i%17==0?2:0);
-            COLORREF col=i%3==0?ABM_THEME_COLOR_64CAA6:(i%3==1?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_8EE2D3);
-            ABM_D2D_Round(&g_ui,(float)(x-d-2),(float)(y-d-2),(float)(x+d+3),(float)(y+d+3),(float)(d+2),Blend(ABM_THEME_COLOR_0D373D,col,30));
-            ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),(float)d,col);
+        /* Particle trails and luminous points. Deterministic motion avoids
+           random-number work and keeps the frame cost predictable. */
+        for(int i=0;i<224;i++) {
+            float angle=i*2.39996323f+pulse*(0.0018f+(i%11)*0.00017f);
+            int band=(i*13)%24;
+            float v=levels[band];
+            float orbit=0.20f+(float)(i%29)/38.0f;
+            float flicker=0.45f+0.55f*sinf(pulse*0.035f+i*1.37f);
+            float r=radius*(orbit+v*0.58f+flicker*energy*0.18f);
+            float drift=sinf(angle*2.2f+pulse*0.016f)*treble*15.0f;
+            float x=cx+cosf(angle)*r+drift;
+            float y=cy+sinf(angle)*r+drift*0.62f;
+            float tailX=x-cosf(angle)*((2.0f+v*13.0f));
+            float tailY=y-sinf(angle)*((2.0f+v*13.0f));
+            int d=1+(int)(v*3.0f)+(i%19==0?2:0);
+            COLORREF col=i%4==0?ABM_THEME_COLOR_BEE5FF:
+                (i%3==0?ABM_THEME_COLOR_8EE2D3:ABM_THEME_COLOR_64CAA6);
+            ABM_D2D_Line(&g_ui,tailX,tailY,x,y,Blend(ABM_THEME_COLOR_071018,col,28),2.8f);
+            ABM_D2D_Round(&g_ui,x-d-2.0f,y-d-2.0f,x+d+2.0f,y+d+2.0f,
+                (float)d+2.0f,Blend(ABM_THEME_COLOR_071018,col,22));
+            ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1.0f,y+d+1.0f,(float)d,col);
         }
-        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core),(float)(cy-core),(float)(cx+core),(float)(cy+core),(float)core,ABM_THEME_COLOR_8EE2D3,1.5f);
+        /* Bright central reactor with concentric pulse rings. */
+        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core-8),(float)(cy-core-8),
+            (float)(cx+core+8),(float)(cy+core+8),(float)(core+8),
+            Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,(int)(energy*70.0f)),1.4f);
+        ABM_D2D_GradientRound(&g_ui,(float)(cx-core),(float)(cy-core),
+            (float)(cx+core),(float)(cy+core),(float)core,
+            ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3);
+        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core/2),(float)(cy-core/2),
+            (float)(cx+core/2),(float)(cy+core/2),(float)(core/2),
+            ABM_THEME_COLOR_BEE5FF,1.0f);
     }
-    RECT base={in.left,in.bottom-2,in.right,in.bottom-1};Fill(dc,base,ABM_THEME_COLOR_2B4344);
+
+    /* Minimal baseline and corner markers frame the visual without a boxy panel. */
+    ABM_D2D_Line(&g_ui,(float)inner.left,(float)(inner.bottom-2),
+        (float)inner.right,(float)(inner.bottom-2),ABM_THEME_COLOR_1B433E,1.0f);
+    ABM_D2D_Line(&g_ui,(float)inner.left,(float)(inner.top+24),
+        (float)(inner.left+34),(float)(inner.top+24),ABM_THEME_COLOR_64CAA6,1.2f);
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
