@@ -279,19 +279,37 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_results=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
+        g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
+        g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Similar titles",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,28,130,100,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
+        g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,136,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
+        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
+        g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
+        g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g_edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_results,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_results,LB_SETITEMHEIGHT,0,42);
         SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);SetWindowTheme(g_results,L"DarkMode_Explorer",nullptr);
         SendMessageW(g_play,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_scanButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_recommendButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_seasonButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_localPicker,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_matchButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_artButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SetWindowTheme(g_localPicker,L"DarkMode_Explorer",nullptr);
+        EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);
         SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         EnableWindow(g_play,FALSE);Layout(w);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *m=(MINMAXINFO*)lp;if(m){m->ptMinTrackSize.x=900;m->ptMinTrackSize.y=720;}return 0; }
     case WM_SIZE:Layout(w);if(g_canvasReady)ABM_D2D_Resize(&g_canvas,LOWORD(lp),HIWORD(lp));InvalidateRect(w,nullptr,FALSE);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_COMMAND:
-        if(LOWORD(wp)==HT_SEARCH&&HIWORD(wp)==BN_CLICKED){SearchNow();return 0;}
+        if(LOWORD(wp)==HT_SEARCH&&HIWORD(wp)==BN_CLICKED){g_scanMode=g_recommendMode=g_seasonMode=FALSE;SearchNow();return 0;}
+        if(LOWORD(wp)==HT_RECOMMEND&&HIWORD(wp)==BN_CLICKED&&g_recommendationCount){g_scanMode=FALSE;g_recommendMode=TRUE;g_seasonMode=FALSE;g_itemCount=g_recommendationCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_recommendations[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a recommendation to explore its details.");return 0;}
+        if(LOWORD(wp)==HT_SEASONS&&HIWORD(wp)==BN_CLICKED&&g_seasonCount){g_scanMode=FALSE;g_recommendMode=FALSE;g_seasonMode=TRUE;g_itemCount=g_seasonCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_seasons[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].date);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a season to browse its episodes.");return 0;}
+        if(LOWORD(wp)==HT_ARTWORK&&HIWORD(wp)==BN_CLICKED){g_showBackdrop=!g_showBackdrop;const wchar_t *art=(g_showBackdrop&&g_backdropFile[0])?g_backdropFile:g_posterFile;if(art[0])ABM_D2D_LoadImage(&g_canvas,art);SetWindowTextW(g_artButton,g_showBackdrop?L"Show poster":L"Show backdrop");InvalidateRect(w,nullptr,FALSE);return 0;}
+        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match selected");}return 0;}
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_UPDATE)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_MAXTEXT)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_SETFOCUS)return 0;
@@ -355,7 +373,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_DESTROY:
         if(g_canvasReady){ABM_D2D_Destroy(&g_canvas);g_canvasReady=FALSE;}
         if(g_darkBrush){DeleteObject(g_darkBrush);g_darkBrush=nullptr;}
-        g_window=g_edit=g_results=g_play=g_status=nullptr;g_itemCount=0;g_selected=-1;g_localMatch=-1;
+        g_window=g_edit=g_results=g_play=g_status=g_localPicker=g_scanButton=g_matchButton=g_artButton=g_recommendButton=g_seasonButton=nullptr;g_itemCount=0;g_selected=-1;g_localMatch=-1;
         HWND owner=GetWindow(w,GW_OWNER);if(owner&&IsWindow(owner)){EnableWindow(owner,TRUE);SetActiveWindow(owner);}
         return 0;
     }
