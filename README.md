@@ -7,9 +7,9 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 ## Download ABM AV Player for Windows
 
-[**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer/releases/latest/download/ABM-AV-Player-Setup.exe)
+[**Download the latest Windows installer (ABM-AV-Player-Setup.exe)**](https://github.com/abmullick/ABMAVPlayer-Releases/releases/latest/download/ABM-AV-Player-Setup.exe)
 
-**Current source version:** see the canonical [`VERSION`](VERSION) file · [All releases](https://github.com/abmullick/ABMAVPlayer/releases)
+**Current source version:** see the canonical [`VERSION`](VERSION) file · [All releases](https://github.com/abmullick/ABMAVPlayer-Releases/releases)
 
 The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
@@ -149,7 +149,7 @@ ABM AV Player includes an in-app update checker connected to the public GitHub R
 - If you accept, the player downloads the official Windows installer and verifies its SHA-256 digest against the digest returned by GitHub Releases before launching it. A missing or mismatched digest blocks installation.
 - The installer is started with the normal Windows elevation prompt. No code-signing certificate is required for SHA-256 verification; Windows SmartScreen may still warn about an unsigned installer.
 - **No GitHub account, GitHub login, access token, or command-line tools are required.** Update checks and downloads are anonymous because this repository is public.
-- You can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer/releases).
+- You can also download the installer manually from [GitHub Releases](https://github.com/abmullick/ABMAVPlayer-Releases/releases).
 
 ### For maintainers
 
