@@ -270,7 +270,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 StartWork(2,selected,nullptr);InvalidateRect(w,nullptr,FALSE);
             }return 0;
         }
-        if(LOWORD(wp)==HT_PLAY&&HIWORD(wp)==BN_CLICKED&&g_localMatch>=0&&g_playCallback){g_playCallback(g_localMatch);return 0;}
+        if(LOWORD(wp)==HT_PLAY&&HIWORD(wp)==BN_CLICKED&&g_localMatch>=0&&g_playCallback){int index=g_localMatch;ABM_HomeTheatrePlayFn callback=g_playCallback;DestroyWindow(w);callback(index);return 0;}
         break;
     case WM_CTLCOLORSTATIC:
         SetBkMode((HDC)wp,TRANSPARENT);SetTextColor((HDC)wp,MUTED);return (LRESULT)g_darkBrush;
