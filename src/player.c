@@ -1508,7 +1508,7 @@ static void DrawUI(HDC dc,RECT client) {
             }
             int footGap=12, footHeight=20;
             RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
-            Txt(dc,L"LOCAL LIBRARY   •   STREAMING   •   TORRENT",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"LOCAL MEDIA   •   TMDB METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
     }
     RECT fs=R_FULLSCREEN;
