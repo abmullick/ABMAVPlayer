@@ -1423,8 +1423,8 @@ static void DrawVisualizer(HDC dc,RECT area) {
         for(int i=0;i<42;i++) {
             float seed=(float)((i*73+19)%997)/997.0f;
             float z=fmodf(seed+time*0.00072f,1.0f);
-            float nx=(float)((i*193+41)%991)/495.5f-1.0f;
-            float ny=(float)((i*317+83)%983)/491.5f-1.0f;
+            float nx=(float)((i*193+41)%991)/991.0f-0.5f;
+            float ny=(float)((i*317+83)%983)/983.0f-0.5f;
             int band=(i*7)%24;float v=levels[band];
             float persp=0.13f+z*1.95f;
             float x=vanishX+nx*width*0.34f*persp;
@@ -1439,8 +1439,8 @@ static void DrawVisualizer(HDC dc,RECT area) {
         for(int i=0;i<260;i++) {
             float seed=(float)((i*197+31)%997)/997.0f;
             float z=fmodf(seed+time*(0.00048f+(i%5)*0.000055f),1.0f);
-            float nx=(float)((i*193+41)%991)/495.5f-1.0f;
-            float ny=(float)((i*317+83)%983)/491.5f-1.0f;
+            float nx=(float)((i*193+41)%991)/991.0f-0.5f;
+            float ny=(float)((i*317+83)%983)/983.0f-0.5f;
             int band=(i*11)%24;float v=levels[band];
             float turbulence=sinf(time*0.006f+i*1.37f)*0.018f*(bass+v);
             float persp=0.13f+z*1.95f;
