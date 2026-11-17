@@ -6610,7 +6610,7 @@ static void VlcCodecVerificationPoll(void) {
  if(!g_player||!g_hasMedia)return;
  LONG events=InterlockedExchange(&g_vlcPlaybackEventFlags,0);
  if(events&ABM_VLC_EVT_ERROR)g_vlcMediaErrorObserved=TRUE;
- if(events&ABM_VLC_EVT_PLAYING)g_vlcMediaPlayingObserved=TRUE;
+ if(events&ABM_VLC_EVT_PLAYING){g_vlcMediaPlayingObserved=TRUE;if(!g_selectedRenderer)libvlc_audio_set_delay(g_player,g_audioDelayUs);}
  if(events&(ABM_VLC_EVT_ES_ADDED|ABM_VLC_EVT_ES_DELETED|ABM_VLC_EVT_ES_SELECTED))g_vlcTrackSnapshotReady=FALSE;
  if(events&ABM_VLC_EVT_MEDIA_CHANGED){g_vlcTrackSnapshotReady=FALSE;g_vlcTrackEvidenceCount=0;}
  libvlc_state_t state=libvlc_media_player_get_state(g_player);
