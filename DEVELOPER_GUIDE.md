@@ -44,6 +44,14 @@ Keep path existence checks out of the paint/scroll hot path. Refresh availabilit
 
 Because much of the interface is custom-painted, adding a setting normally requires both a rendering change and a matching input/hit-test change. Keep hit-test coordinates aligned with the drawn control. Check the fixed footer and native child-window z-order; do not allow a footer or Close button to overlap content.
 
+## Home Theatre
+
+The optional Home Theatre window is implemented in `src/tmdb_home_theatre.cpp` with its C-compatible entry point in `src/tmdb_home_theatre.h`. The main player passes a snapshot of its current playlist paths and a playback callback. The window owns its own Direct2D surface and Win32 controls; it does not replace the main LibVLC player or the Streaming Centre/Torrent Stream lifecycles.
+
+TMDB search and detail requests run on worker threads. Workers receive copied query/title data and return heap-owned result messages to the Home Theatre window; the window thread owns all UI and Direct2D updates. Poster downloads use the existing TMDB metadata client and are cached below `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre`. A result enables **Play local match** only when a conservative normalized filename comparison finds a matching entry in the playlist snapshot. This is a convenience match, not authoritative media identification.
+
+The current implementation is a first metadata-discovery slice: search movies and TV titles, show poster/synopsis/year/runtime/genres and available cast/director credits, and launch a matching local playlist item. Whole-library automatic matching, editable match confirmation, backdrops, season/episode browsing, recommendation shelves and TMDB-driven collection management remain future work. Network failure or missing credentials must never block ordinary playback.
+
 ## Advanced Settings implementation map
 
 | Page | Current implemented behaviour |
