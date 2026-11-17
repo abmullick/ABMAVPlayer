@@ -24,6 +24,8 @@ Important responsibilities in `src/player.c` include:
 - Main Win32 window procedure and application lifecycle.
 - LibVLC initialisation, media creation and playback option application.
 - Playlist and recent-media state.
+- Continue Watching checkpoints in `%APPDATA%\\ABMAVPlayer\\resume.tsv`, written asynchronously from an immutable UI-thread snapshot; completed items are removed from the resume list.
+- Missing media is retained in the playlist and favourites instead of being pruned. Relink updates the active library, favourites, recent history, resume records and saved M3U collections.
 - Main Settings and Advanced Settings windows, custom painting and hit testing.
 - Independent local and Streaming Centre renderer registries.
 - Advanced settings persistence and helpers that attach options to new media.

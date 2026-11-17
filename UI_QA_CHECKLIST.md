@@ -258,9 +258,29 @@ Do not mark this work runtime-validated until the Windows build and interaction 
 - [ ] Save a named personal library; confirm the M3U is created under `%APPDATA%\\ABMAVPlayer\\collections\\` and the active queue is unchanged.
 - [ ] Save two differently named collections; verify neither overwrites the other.
 - [ ] Load each saved collection and confirm the active queue is replaced with its paths, playback selection is reset safely, and all other saved collections and favourites remain unchanged.
-- [ ] Test missing/unavailable paths in a saved collection; confirm unavailable items are pruned without deleting the collection file.
+- [ ] Test missing/unavailable paths in a saved collection; confirm the entries remain visible and are flagged Missing rather than pruned.
+- [ ] Relink a missing file; confirm Queue, Library, Favourites, Recent and every saved personal collection reference is updated without duplicate entries.
+- [ ] Verify a missing favourite remains in Favourites after restarting the application and can be relinked from its row context menu.
+- [ ] Remove or rename a source file while the app is open; reopen the drawer and confirm Missing status is refreshed without filesystem work during painting or scrolling.
+- [ ] Verify Relink is disabled for healthy media, opens a native file picker for missing media, and handles Cancel and invalid targets safely.
 - [ ] Verify Unicode filenames and collection names, paths containing spaces, overwrite confirmation, cancel, and read/write failure handling.
 - [ ] Build with MSVC and test at 100%, 125%, 150% and 200% scaling, plus compact drawer height. Confirm heart glyph fallback and no text overlap.
 - [ ] Re-run queue drag/drop, click-to-play, double-click playback, context-menu remove/reorder, wheel scrolling, and Clear regression checks.
 
 Do not mark this feature runtime-validated until all Windows build and interaction checks above pass.
+
+
+## Continue Watching and Resume Playback
+
+- [ ] Play a local audio file and a video for more than 10 seconds; verify progress is checkpointed to `%APPDATA%\\ABMAVPlayer\\resume.tsv` without blocking the 33 ms UI timer.
+- [ ] Pause playback and close the application; relaunch and verify the same item is marked CONTINUE WATCHING in Library.
+- [ ] Play a resumable item and verify LibVLC seeks to the saved position after entering Playing state.
+- [ ] Switch between media items and outputs; verify the previous local item position is saved and existing receiver selection / cast failure isolation remains unchanged.
+- [ ] Verify the Library filter cycles All tracks → Favourites → Continue Watching → All tracks, with correct counts, search, media filters and empty state.
+- [ ] Verify Continue Watching rows display an accurate saved-progress percentage and remaining duration, including long-form media formatting.
+- [ ] Verify completed items (at or above 95% duration) are removed from Continue Watching and replay from the beginning.
+- [ ] Verify short items, unknown-duration media, live/torrent playback and failed playback do not create invalid resume records.
+- [ ] Force-close during playback and verify the last periodic checkpoint is restored; confirm normal exit flushes the final position.
+- [ ] Confirm resume writes are atomic (temporary file + replace), bounded to the library capacity and do not run file I/O on the UI timer.
+
+Do not mark Continue Watching or missing-media recovery runtime-validated until all Windows build and interaction checks above pass.

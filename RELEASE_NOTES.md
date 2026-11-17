@@ -1,4 +1,16 @@
-# ABM AV Player v1.0.9 — playback UI polish and media library improvements
+# Unreleased source changes — Continue Watching and media recovery
+
+These changes are on the feature branch and are not part of the published v1.0.9 installer. Windows build and runtime validation are still required.
+
+- Added persistent per-file playback checkpoints with asynchronous, atomic writes and automatic resume after LibVLC enters Playing state.
+- Added a Library view cycle for All tracks, Favourites and Continue Watching, plus row-level Continue status.
+- Retained missing paths in the library, favourites, recent history and personal collections instead of silently pruning them.
+- Added Missing status and a native Relink missing media action that updates active playlist references, favourites, recent history, resume state and saved M3U collections.
+- Added QA coverage for restart recovery, completed-item handling, missing-path retention, relinking and UI-thread I/O boundaries.
+
+## Published release notes
+
+ABM AV Player v1.0.9 — playback UI polish and media library improvements
 
 ## What's new
 
