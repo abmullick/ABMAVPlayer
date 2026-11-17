@@ -4187,16 +4187,18 @@ static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARA
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 static LRESULT CALLBACK VideoMouseHookProc(int code, WPARAM message, LPARAM data) {
-    if(code==HC_ACTION && message==WM_RBUTTONUP && data && IsWindow(g_main)) {
+    if(code==HC_ACTION && message==WM_RBUTTONDOWN && data && IsWindow(g_main)) {
         const MOUSEHOOKSTRUCT *mouse=(const MOUSEHOOKSTRUCT*)data;
         HWND target=mouse->hwnd;
         if(target && target!=g_main && IsWindow(target) && IsChild(g_main,target)) {
             POINT pt=mouse->pt;
             ScreenToClient(g_main,&pt);
             if(PtInRect(&R_VIDEO,pt)) {
-                /* Catch the right-click before LibVLC's video child procedure
-                   consumes it. The hook is scoped to this UI thread only. */
-                SendMessageW(g_main,WM_RBUTTONUP,0,MAKELPARAM(pt.x,pt.y));
+                /* Route the initial right-button press before LibVLC's native
+                   video surface can consume it. Handle on DOWN consistently:
+                   some video-output child windows do not deliver the matching
+                   UP to the subclass/owner window. */
+                SendMessageW(g_main,WM_RBUTTONDOWN,0,MAKELPARAM(pt.x,pt.y));
                 return 1;
             }
         }
@@ -4209,7 +4211,7 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
     (void)subclassId;
     HWND owner = (HWND)refData;
     if (IsWindow(owner) && (msg == WM_MOUSEMOVE || msg == WM_LBUTTONDOWN ||
-        msg == WM_LBUTTONUP || msg == WM_RBUTTONUP || msg == WM_MOUSEWHEEL)) {
+        msg == WM_LBUTTONUP || msg == WM_RBUTTONDOWN || msg == WM_MOUSEWHEEL)) {
         POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};
         if (msg == WM_MOUSEWHEEL) {
             /* Wheel coordinates are screen-relative, unlike client mouse messages. */
@@ -4221,8 +4223,8 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
            instead of the main window. Forward right-click in owner-client
            coordinates so the playback context menu is reachable on the
            actual rendered video surface, including fullscreen. */
-        if (msg == WM_RBUTTONUP) {
-            SendMessageW(owner,WM_RBUTTONUP,wp,MAKELPARAM(pt.x,pt.y));
+        if (msg == WM_RBUTTONDOWN) {
+            SendMessageW(owner,WM_RBUTTONDOWN,wp,MAKELPARAM(pt.x,pt.y));
             return 0;
         }
         /* The LibVLC child HWND can physically cover the drawer even though the
@@ -8766,12 +8768,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         break;
     }
-    case WM_RBUTTONUP: {
+    case WM_RBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
         for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){index=g_visibleRows[ri];break;}
-        /* The Queue and Library share the same media rows. Anchor the row
-           action menu to the list surface so neither tab depends on the wider
-           drawer/sidebar hit rectangle. */
+        /* Open on button-down so the menu does not depend on the video
+           renderer delivering WM_RBUTTONUP to the parent. The LibVLC child
+           input bridge forwards this message from the actual rendered frame. */
         if(g_drawerOpen&&!g_fullscreen&&Inside(R_LIST,x,y)){
             ShowPlaylistContextMenu(hwnd,x,y,index);return 0;
         }
