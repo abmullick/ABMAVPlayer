@@ -14,6 +14,7 @@
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
 #include "ui_theme.h"
+#include "projectm_visualizer.h"
 #include "tmdb_metadata.h"
 #include "tmdb_home_theatre.h"
 #include "streaming/streaming_host.h"
@@ -268,6 +269,7 @@ static BOOL g_missingMedia[MAX_PLAYLIST];
 static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
+static BOOL g_projectmTried=FALSE;
 static int g_visualizerMode=2; /* 0 Spectrum, 1 Fluid Waves, 2 Particle Visualizer */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
@@ -1460,14 +1462,13 @@ static void DrawVisualizer(HDC dc,RECT area) {
     }
 }
 static void DrawUI(HDC dc,RECT client) {
+    if(!g_visualizerActive || !ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(NULL,FALSE);
     if(g_fullscreen) {
         /* When audio visualization is active it owns the entire client area.
            Artwork/metadata layouts must not constrain it to a short footer strip. */
         if(g_visualizerActive) {
-            DrawVisualizer(dc,client);
-            RECT hud={24,20,client.right-24,54};
-            Txt(dc,L"ABM  /  LIVE AUDIO VISUALIZER",hud,RGB(205,224,255),g_smallFont,
-                DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            if(ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&client,TRUE);
+            else DrawVisualizer(dc,client);
             return;
         }
         /* Immersive now-playing view: artwork, track metadata and transport
@@ -1600,7 +1601,8 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_visualizerActive) {
-        DrawVisualizer(dc,R_VIDEO);
+        if(ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&R_VIDEO,TRUE);
+        else DrawVisualizer(dc,R_VIDEO);
     } else if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
@@ -8099,7 +8101,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VISUALIZER_TIMER_ID) {
             if(g_visualizerActive) {
                 ++g_visualizerFrame;
-                InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+                if(ABM_ProjectM_IsReady()) {
+                    float pcm[512];
+                    ABM_AudioVisualizer_GetSamples(pcm,512);
+                    ABM_ProjectM_SetAudioSamples(pcm,512);
+                    ABM_ProjectM_Invalidate();
+                } else InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
             } else {
                 KillTimer(hwnd,VISUALIZER_TIMER_ID);
                 g_visualizerTimerRunning=FALSE;
@@ -8263,7 +8270,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 KillTimer(hwnd,VISUALIZER_TIMER_ID);
                 g_visualizerTimerRunning=FALSE;
             }
-            g_visualizerActive=FALSE; g_visualizerTried=FALSE;
+            g_visualizerActive=FALSE; g_visualizerTried=FALSE; g_projectmTried=FALSE;
+            ABM_ProjectM_SetBounds(NULL,FALSE);
             if(g_video && !g_fullscreen) {
                 if (g_hasMedia) ShowWindow(g_video,SW_SHOWNA);
                 else ShowWindow(g_video,SW_HIDE);
