@@ -52,6 +52,12 @@ if not exist "assets\owner_portrait.bmp" (
 )
 mkdir "%DEST%\assets" 2>nul
 copy /y "assets\owner_portrait.bmp" "%DEST%\assets\owner_portrait.bmp" >nul || exit /b 1
+if not exist "assets\visualizer\presets" (
+  echo ERROR: projectM preset assets are missing. Run build.bat first.
+  exit /b 1
+)
+xcopy "assets\visualizer" "%DEST%\assets\visualizer\\" /E /I /H /Y >nul
+if errorlevel 2 exit /b 1
 
 rem Streaming Centre service logos are loaded from the installed assets folder.
 mkdir "%DEST%\assets" 2>nul
