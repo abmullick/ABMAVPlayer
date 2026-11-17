@@ -45,6 +45,14 @@ if not exist "build\torrent-runtime\abm_torrent_engine.dll" (
 xcopy "build\torrent-runtime" "%DEST%\torrent-runtime\" /E /I /H /Y >nul
 if errorlevel 2 exit /b 1
 
+rem Stage the embedded Milkdrop bridge and all projectM runtime DLL dependencies.
+if not exist "build\projectm-runtime\abm_projectm_bridge.dll" (
+  echo ERROR: Embedded projectM bridge is missing. Run build.bat first.
+  exit /b 1
+)
+xcopy "build\projectm-runtime" "%DEST%\" /E /I /H /Y >nul
+if errorlevel 2 exit /b 1
+
 rem Creator portrait used by the Streaming Centre About window.
 if not exist "assets\owner_portrait.bmp" (
   echo ERROR: Required creator portrait assets\owner_portrait.bmp is missing.
@@ -113,6 +121,10 @@ for %%D in (lua hrtfs locale) do (
 
 copy /y "LICENSE" "%DEST%\LICENSE" >nul
 copy /y "COPYRIGHT.md" "%DEST%\COPYRIGHT.md" >nul
+if not exist "%DEST%\licenses" mkdir "%DEST%\licenses"
+if exist "vcpkg_installed\x64-windows\share\projectm\copyright" copy /y "vcpkg_installed\x64-windows\share\projectm\copyright" "%DEST%\licenses\projectM-LICENSE.txt" >nul
+if exist "vcpkg_installed\x64-windows\share\glew\copyright" copy /y "vcpkg_installed\x64-windows\share\glew\copyright" "%DEST%\licenses\GLEW-LICENSE.txt" >nul
+if exist "vcpkg_installed\x64-windows\share\projectm-eval\copyright" copy /y "vcpkg_installed\x64-windows\share\projectm-eval\copyright" "%DEST%\licenses\projectM-Eval-LICENSE.txt" >nul
 if exist "%VLC_DIR%\COPYING.txt" copy /y "%VLC_DIR%\COPYING.txt" "%DEST%\VLC-COPYING.txt" >nul
 if exist "%VLC_DIR%\AUTHORS.txt" copy /y "%VLC_DIR%\AUTHORS.txt" "%DEST%\VLC-AUTHORS.txt" >nul
 if exist "%VLC_DIR%\README.txt" copy /y "%VLC_DIR%\README.txt" "%DEST%\VLC-README.txt" >nul
