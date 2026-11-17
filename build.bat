@@ -68,7 +68,16 @@ if errorlevel 1 goto build_failed
 if not exist build\projectm-runtime mkdir build\projectm-runtime
 copy /y build\projectm-bridge\bin\Release\abm_projectm_bridge.dll build\projectm-runtime\ >nul
 if errorlevel 1 goto build_failed
-for %%D in ("%CD%\vcpkg_installed\x64-windows\bin\*.dll") do copy /y "%%~fD" build\projectm-runtime\ >nul
+if not exist "%CD%\vcpkg_installed\x64-windows\bin\projectM-4.dll" (
+  echo ERROR: projectM runtime DLL is missing from the vcpkg installation.
+  goto build_failed
+)
+if not exist "%CD%\vcpkg_installed\x64-windows\bin\glew32.dll" (
+  echo ERROR: GLEW runtime DLL is missing from the vcpkg installation.
+  goto build_failed
+)
+copy /y "%CD%\vcpkg_installed\x64-windows\bin\projectM-4.dll" build\projectm-runtime\ >nul
+copy /y "%CD%\vcpkg_installed\x64-windows\bin\glew32.dll" build\projectm-runtime\ >nul
 for %%D in (build\projectm-runtime\*.dll) do copy /y "%%~fD" build\ >nul
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_visualizer_presets.ps1
 if errorlevel 1 goto build_failed
