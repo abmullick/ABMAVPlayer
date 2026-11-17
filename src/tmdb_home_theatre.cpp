@@ -236,7 +236,7 @@ static void StartLibraryScan() {
     Work *w=new(std::nothrow) Work();if(!w){SetStatus(L"Could not allocate library scan.");return;}
     w->target=g_window;w->kind=3;w->paths=g_mediaPaths;
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
-    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);SetStatus(L"Identifying the first 100 local playlist/favourite items with TMDB…");}
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);SetStatus(L"Identifying local playlist and favourite items with TMDB. Large libraries may take a while…");}
     else {delete w;SetStatus(L"Could not start library identification.");}
 }
 static void StartSeasonLoad(int seasonNumber) {
@@ -266,7 +266,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
     } else if(w->kind==3) {
         if(!ABM_TMDB_IsConfigured())StringCchCopyW(r->error,_countof(r->error),L"Configure your TMDB Read Access Token in Settings first.");
         else {
-            size_t limit=w->paths.size()<100?w->paths.size():100;
+            size_t limit=w->paths.size();
             for(size_t i=0;i<limit&&r->count<100;i++) {
                 const wchar_t *path=w->paths[i].c_str();const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
                 wchar_t query[256]={};StringCchCopyW(query,_countof(query),leaf);
@@ -277,7 +277,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
                     MovieItem found[100];int count=0;ParseSearchJson(json.data(),0,found,&count);
                     if(count>0){found[0].localIndex=(int)i;r->items[r->count++]=found[0];}
                 }
-                Sleep(180);
+                Sleep(250);
             }
             r->ok=r->count>0;if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No library titles were identified. Try a more descriptive filename.");
         }
@@ -459,7 +459,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case HT_SCAN_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_scanButton,TRUE);EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
-        if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_selected=-1;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Library identification complete. Select a match to inspect metadata.");}
+        if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_selected=-1;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Library identification complete. Up to 100 matches are listed; select one to inspect metadata.");}
         else SetStatus(r->error[0]?r->error:L"No library matches found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
