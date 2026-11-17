@@ -2414,6 +2414,7 @@ static void SelectRenderer(void) {
                 int playResult=PlaybackStartEngine();
                 libvlc_media_release(m);
                 if(playResult==0){
+                    if(!g_selectedRenderer)libvlc_audio_set_delay(g_player,g_audioDelayUs);
                     g_pendingResume=TRUE;g_pendingResumeMs=resumeAt;
                     g_pendingResumePause=!wasPlaying;g_pendingResumeTicks=0;
                     if(g_selectedRenderer)SetStatus(L"Connecting to selected receiver...");
@@ -3260,6 +3261,7 @@ static void PlayIndex(int index) {
             ABM_MessageBoxW(g_main,L"Playback could not start. The file may be unsupported or damaged, or a decoder/output component may have failed. Review Video & Decoding settings and check the VLC plugins.",APP_NAME,MB_ICONERROR);
         return;
     }
+    if(!g_selectedRenderer)libvlc_audio_set_delay(g_player,g_audioDelayUs);
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
     g_pendingResume=FALSE;g_pendingResumeTicks=0;
@@ -7760,6 +7762,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     int result=PlaybackStartEngine();
                     libvlc_media_release(media);
                     if(result==0) {
+                        libvlc_audio_set_delay(g_player,g_audioDelayUs);
                         g_torrentPlaybackActive=TRUE;g_hasMedia=TRUE;g_current=-1;
                         g_torrentEverPlayed=FALSE;g_torrentLastMediaTime=-1;
                         g_torrentLastProgressTick=GetTickCount64();g_torrentBufferingSinceTick=0;
