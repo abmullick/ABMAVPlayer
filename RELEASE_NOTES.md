@@ -1,15 +1,31 @@
-# Unreleased source changes — Continue Watching and media recovery
+# ABM AV Player v1.1.2 — media continuity, recovery and Queue/Library improvements
 
-These changes have been merged into `main` and are not part of the currently published v1.0.9 installer. They are source-tree functionality pending Windows x64 build and runtime validation.
+## What's new
 
 - Added persistent per-file playback checkpoints with asynchronous, atomic writes and automatic resume after LibVLC enters Playing state.
-- Added a Library view cycle for All tracks, Favourites and Continue Watching, plus row-level Continue status.
-- Retained missing paths in the library, favourites, recent history and personal collections instead of silently pruning them.
-- Added Missing status and a native Relink missing media action that updates active playlist references, favourites, recent history, resume state and saved M3U collections.
-- Added QA coverage for restart recovery, completed-item handling, missing-path retention, relinking and UI-thread I/O boundaries.
+- Added explicit **Continue from checkpoint** and **Start from beginning** actions so users can choose how playback starts.
+- Added a Library view cycle for All tracks, Favourites and Continue Watching, including row-level Continue status.
+- Retained missing media paths in the library, favourites, recent history and personal collections instead of silently pruning them.
+- Added Missing status and a Relink missing media action that updates active playlist references, favourites, recent history, resume state and saved M3U collections.
+- Added **Open file location** to the Queue and Library row context menus, opening Explorer with the selected media file highlighted when it exists.
+- Updated the F1 Help Centre guidance for the Queue/Library file-location action.
+- Added QA checklist coverage for Queue and Library context-menu access, Explorer selection, missing-file handling and keyboard invocation.
+- Retained Queue and Library duration labels with asynchronous metadata resolution and a bounded cache, keeping media parsing off the UI thread.
+- Refined windowed/fullscreen playback controls and video/control clearance.
 
-- Documented the new Library workflows in the F1 Help Centre, User Guide and Developer Guide.
+## Reliability and compatibility
 
+- Playback checkpoint writes remain asynchronous and atomic; media metadata resolution remains outside the UI paint/scroll path.
+- Missing-file actions are guarded so users can relink unavailable media before opening its location.
+- Existing installer identity, installation directory and per-user AppData separation must remain unchanged for in-place upgrades.
+
+## Release validation
+
+- This is a **source-prepared v1.1.2 release candidate** based on the latest `main` branch.
+- Windows x64 compilation, runtime playback/resume/relink testing, Queue/Library scrolling performance measurement, casting regression, clean installation and in-place upgrade have not been performed by this source update.
+- Complete the Windows QA checklist, build and inspect the installer, and test clean installation and in-place upgrade before publishing. Do not treat this source candidate as a certified release until those gates pass.
+
+---
 ## Published release notes
 
 ABM AV Player v1.0.9 — playback UI polish and media library improvements
