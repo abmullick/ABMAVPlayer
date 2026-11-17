@@ -1331,17 +1331,25 @@ static void DrawVisualizer(HDC dc,RECT area) {
             ABM_D2D_Polyline(&g_ui,xy,pointsCount+1,Blend(ink,c,ring==0?45:25),(ring==0?5.0f:3.0f)*s);
             ABM_D2D_Polyline(&g_ui,xy,pointsCount+1,c,(ring==0?1.9f:1.05f)*s);
         }
-        /* Twenty-four calibrated frequency pillars rise from the inner ring. */
-        for(int band=0;band<24;band++) {
-            float a=(float)band*2.0f*pi/24.0f-time*0.0014f;
-            float v=levels[band];
+        /* 120 finely spaced spectral pillars. The capture engine supplies
+           24 logarithmic FFT bands; interpolate between them for a smooth,
+           dense radial spectrum without adding work to the audio thread. */
+        for(int bar=0;bar<120;bar++) {
+            float bandPos=(float)bar*23.0f/119.0f;
+            int band=(int)bandPos;if(band>23)band=23;
+            int next=band<23?band+1:23;
+            float frac=bandPos-(float)band;
+            float v=levels[band]*(1.0f-frac)+levels[next]*frac;
+            float a=(float)bar*2.0f*pi/120.0f-time*0.0014f;
+            float harmonic=0.5f+0.5f*sinf(a*18.0f+time*0.002f);
             float r0=(float)(height<width?height:width)*0.105f;
-            float r1=r0+(float)(height<width?height:width)*(0.075f+v*0.31f);
+            float r1=r0+(float)(height<width?height:width)*
+                (0.055f+v*0.31f+harmonic*treble*0.018f);
             float x0=(float)cx+cosf(a)*r0,y0=(float)cy+sinf(a)*r0*0.62f;
             float x1=(float)cx+cosf(a)*r1,y1=(float)cy+sinf(a)*r1*0.62f;
             COLORREF c=band<5?gold:(band<13?mint:(band<19?cyan:violet));
-            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,Blend(ink,c,30),4.0f*s);
-            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,c,1.15f*s);
+            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,Blend(ink,c,24),2.6f*s);
+            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,c,(bar%5==0?1.35f:0.85f)*s);
         }
         /* Central optical core and fine elliptical depth guides. */
         for(int r=3;r>=0;r--) {
@@ -1359,7 +1367,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         ABM_D2D_GradientRound(&g_ui,(float)area.left+width*0.12f,(float)area.top+height*0.16f,
             (float)area.right-width*0.12f,(float)area.bottom-height*0.08f,height*0.30f,
             RGB(8,65,88),ink);
-        const int samples=220;
+        const int samples=320;
         for(int layer=8;layer>=0;layer--) {
             float xy[512*2];
             float pLayer=(float)layer/8.0f;
