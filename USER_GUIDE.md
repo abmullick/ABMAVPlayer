@@ -1,10 +1,24 @@
 ## Home Theatre
 
-Open **Home Theatre** from the idle home dashboard, or from the playback context menu while media is playing. Search for a movie or television title using the TMDB Read Access Token configured in Settings. Select a result to load its poster, synopsis, release date, runtime, genres and available cast/director credits. Poster images are cached under `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre` so they do not need to be downloaded again for every viewing session.
+Open **Home Theatre** from the idle home dashboard or the playback context menu. It uses the TMDB Read Access Token already configured in Settings. TMDB lookup is optional; normal local playback does not depend on it.
 
-**Play local match** is enabled only when the selected TMDB title matches a filename in the current playlist. This is a conservative filename-based match, not a guarantee that the file is the correct edition or episode; verify the selected local item before playback. Home Theatre metadata lookup is optional and asynchronous. A missing token, network failure or unavailable TMDB result does not affect ordinary local playback. TMDB attribution is shown in the existing About experience.
+### Discover and identify your library
 
-The initial Home Theatre experience is a metadata discovery and local-match surface. Automatic whole-library identification, season/episode hierarchy, editable metadata matches, curated collections and recommendation shelves are not yet part of this implementation.
+- Search for a movie or television title to inspect its TMDB result.
+- Choose **Identify library** to scan the active playlist and saved favourites for video files. ABM searches filenames after removing common release-quality tags. The scan uses TMDB multi-search and can take time on a large library; it stops after collecting 100 matches.
+- Select an identified title to inspect its metadata. Automatic identification is a suggestion based on filename search, not a guarantee that the correct edition or episode was found.
+
+### Correct a local match
+
+The local-file picker lists video files in the current Home Theatre library snapshot. Select the intended file and choose **Use selected file** to override the automatic match. The override is saved locally by TMDB ID and media type under `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre\\matches.tsv`, and is reused when that title is opened again. **Play local match** starts the selected playlist item through the normal ABM playback engine.
+
+### Artwork, recommendations and television
+
+- Select **Show backdrop** / **Show poster** to switch between cached TMDB artwork when both are available. Artwork is cached below `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre`.
+- **Similar titles** displays TMDB's recommendations for the selected movie or series. Select a recommendation to inspect it and check for a local match.
+- For a TV series, choose **Seasons**, select a season, then select an episode. Episode synopsis and air date are shown; ABM checks local filenames for common `S01E02` and `1x02` patterns before enabling playback.
+
+TMDB data and artwork are supplied by TMDB. ABM is not endorsed or certified by TMDB; the attribution notice is shown in the existing About experience. Network failures, missing credentials or unavailable metadata do not block local playback.
 
 # ABM AV Player — User Guide
 
