@@ -186,7 +186,7 @@ static void Layout(HWND w) {
     if(g_edit)MoveWindow(g_edit,28,83,width-190,36,TRUE);
     if(GetDlgItem(w,HT_SEARCH))MoveWindow(GetDlgItem(w,HT_SEARCH),width-150,83,122,36,TRUE);
     if(g_results)MoveWindow(g_results,28,144,300,height-230,TRUE);
-    if(g_status)MoveWindow(g_status,28,height-70,width-56,24,TRUE);
+    if(g_status)MoveWindow(g_status,28,height-70,width-240,24,TRUE);
     if(g_play)MoveWindow(g_play,width-176,height-78,148,42,TRUE);
 }
 static RECT MakeRect(LONG l,LONG t,LONG r,LONG b) { RECT value={l,t,r,b};return value; }
