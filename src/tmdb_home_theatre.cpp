@@ -10,6 +10,7 @@
 #include <new>
 #include <cwchar>
 #include <cstdlib>
+#include <cstdio>
 #include <dwmapi.h>
 #include <uxtheme.h>
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -111,11 +112,12 @@ static int FindLocalMatch(const wchar_t *title) {
     }
     return -1;
 }
+static BOOL ImageFolder(wchar_t *folder,size_t cap);
 static int LoadManualMatch(int tmdbId,int type) {
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return -1;
     wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
     FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"rt, ccs=UTF-8")!=0||!fp)return -1;
-    wchar_t line[PATH_CAP+64];int found=-1;
+    wchar_t line[MAX_PATH+64];int found=-1;
     while(fgetws(line,_countof(line),fp)) {
         line[wcscspn(line,L"\\r\\n")]=0;
         wchar_t *a=wcschr(line,L'\\t');if(!a)continue;*a++=0;
