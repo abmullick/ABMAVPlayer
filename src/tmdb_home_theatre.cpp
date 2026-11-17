@@ -126,7 +126,7 @@ struct Result {
     MovieItem items[24];
     wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},error[256]={};
 };
-static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster) {
+static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster,int tmdbId) {
     const wchar_t *end=json+wcslen(json);
     CopyJsonString(json,end,L"overview",r->overview,_countof(r->overview));
     CopyJsonString(json,end,L"release_date",r->year,_countof(r->year));
@@ -146,8 +146,8 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
     wchar_t poster[256]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
     if(!poster[0]&&fallbackPoster)StringCchCopyW(poster,_countof(poster),fallbackPoster);
     wchar_t folder[MAX_PATH]={};if(ImageFolder(folder,_countof(folder))&&poster[0]){
-        StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\%d.jpg",folder,r->index);
-        if(!ABM_TMDB_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
+        StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\tmdb-%d.jpg",folder,tmdbId);
+        if(GetFileAttributesW(r->posterFile)==INVALID_FILE_ATTRIBUTES && !ABM_TMDB_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
     }
 }
 static DWORD WINAPI Worker(LPVOID parameter) {
@@ -166,7 +166,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
     } else if(w->kind==2&&w->item.id>0) {
         MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
         r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
-        if(r->ok)ParseDetails(json.data(),r,item.poster);
+        if(r->ok)ParseDetails(json.data(),r,item.poster,item.id);
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your connection and TMDB token.");
     }
     if(!IsWindow(w->target)||!PostMessageW(w->target,w->kind==1?HT_SEARCH_DONE:HT_DETAILS_DONE,0,(LPARAM)r))delete r;
