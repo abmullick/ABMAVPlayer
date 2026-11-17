@@ -75,6 +75,8 @@ void ABM_D2D_Round(ABM_D2D *ui, float l, float t, float r, float b, float radius
 void ABM_D2D_GradientRound(ABM_D2D *ui, float l, float t, float r, float b, float radius, COLORREF start, COLORREF end);
 void ABM_D2D_StrokeRound(ABM_D2D *ui, float l, float t, float r, float b, float radius, COLORREF color, float width);
 void ABM_D2D_Line(ABM_D2D *ui, float x1, float y1, float x2, float y2, COLORREF color, float width);
+/* Draw a connected polyline from interleaved x/y client-pixel coordinates. */
+void ABM_D2D_Polyline(ABM_D2D *ui, const float *xy, int pointCount, COLORREF color, float width);
 void ABM_D2D_Text(ABM_D2D *ui, const wchar_t *text, RECT rect, COLORREF color, int style, UINT flags);
 void ABM_D2D_Destroy(ABM_D2D *ui);
 BOOL ABM_D2D_LoadImage(ABM_D2D *ui, const wchar_t *path);
