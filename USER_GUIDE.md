@@ -111,7 +111,7 @@ Choose **Automatic**, **Software decoding**, or **Direct3D 11 Video Acceleration
 
 ### Audio Engine and Advanced Audio Centre
 
-The **Advanced Audio Centre** is available from the playback surface's right-click menu. It brings together the output-engine preference, ReplayGain normalisation, dynamic-range compression, audio synchronization and the 10-band equalizer.
+The **Advanced Audio Centre** is available from the playback surface's right-click menu. It brings together embedded audio-track selection, the output-engine preference, ReplayGain normalisation, dynamic-range compression, audio synchronization and the 10-band equalizer.
 
 Choose **Automatic**, **Windows Audio Session API (WASAPI)** or **DirectSound**, then **Apply output engine** and restart ABM AV Player to activate the engine change. Automatic lets LibVLC choose; WASAPI requests the Windows audio-session module; DirectSound is an alternative compatibility path. This selects the output engine; it is not an exclusive-mode/bit-perfect switch. The active physical device remains selected from the main player's speaker/output selector.
 
