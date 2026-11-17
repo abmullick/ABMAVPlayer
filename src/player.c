@@ -960,6 +960,15 @@ static void FullscreenDiag(const char *stage, ULONGLONG elapsedMs) {
 static void PositionVideoWindow(void) {
     if (!g_video || !IsWindow(g_video)) return;
 
+    /* Audio-only playback is rendered by the main window's visualizer.
+       The LibVLC child HWND is always above the owner's Direct2D surface;
+       showing it, even with no video output, covers the fullscreen visuals. */
+    if(g_visualizerActive) {
+        ShowWindow(g_video,SW_HIDE);
+        g_videoBoundsValid=FALSE;
+        return;
+    }
+
     int areaW = R_VIDEO.right - R_VIDEO.left;
     int areaH = R_VIDEO.bottom - R_VIDEO.top;
     /* The media drawer is an always-visible foreground workspace. LibVLC
@@ -8103,7 +8112,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_visualizerActive=ABM_AudioVisualizer_Start();
             }
             if(g_visualizerActive) {
-                if(g_video && !g_fullscreen) ShowWindow(g_video,SW_HIDE);
+                /* Hide the native VLC child in both windowed and fullscreen
+                   modes; it would otherwise cover the owner-painted visuals. */
+                if(g_video) ShowWindow(g_video,SW_HIDE);
+                g_videoBoundsValid=FALSE;
             } else if(g_video && !g_fullscreen) ShowWindow(g_video,SW_SHOWNA);
         } else {
             if(g_visualizerActive) ABM_AudioVisualizer_Stop();
