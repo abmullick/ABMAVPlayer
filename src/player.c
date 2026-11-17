@@ -1315,7 +1315,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         float drift=sinf(phase);
         int x=area.left+(int)(fx*width+drift*(5.0f+treble*15.0f));
         int y=area.top+(int)(fy*height+sinf(phase*0.73f)*height*(0.006f+bass*0.018f));
-        int d=(i%19==0)?3:((i%5==0)?2:1);
+        int d=(int)(((i%19==0)?3:((i%5==0)?2:1))*pixelScale);if(d<1)d=1;
         COLORREF c=palette[(i*5)%12];
         ABM_D2D_Round(&g_ui,(float)x-d-2,(float)y-d-2,(float)x+d+2,(float)y+d+2,
             (float)d+2,Blend(bg,c,(i%19==0)?32:13));
@@ -1326,9 +1326,12 @@ static void DrawVisualizer(HDC dc,RECT area) {
     /* Nine broad, independently moving spectral ribbons. Each ribbon uses
        the 24-band FFT snapshot along its length, with a soft under-glow and a
        crisp coloured core. Segment count scales down on compact surfaces. */
-    int samples=width>2200?240:(width>1200?190:140);
+    float pixelScale=(float)height/1080.0f;
+    if(pixelScale<0.75f)pixelScale=0.75f;
+    if(pixelScale>2.5f)pixelScale=2.5f;
+    int samples=width>2200?220:(width>1200?180:140);
     for(int layer=8;layer>=0;layer--) {
-        int px=area.left,py=cy;
+        float points[512*2];
         for(int n=0;n<=samples;n++) {
             float p=(float)n/(float)samples;
             int band=(int)(p*23.0f);if(band>23)band=23;
@@ -1340,18 +1343,14 @@ static void DrawVisualizer(HDC dc,RECT area) {
             float y=(float)cy+sinf(phase)*amp+
                 sinf(phase*0.47f-t*0.004f+layer)*amp*0.43f+
                 cosf(p*21.0f-t*0.012f+layer*0.31f)*height*(0.012f+bass*0.025f);
-            int x=area.left+(int)(p*width);
-            int iy=(int)y;
-            COLORREF c=palette[(layer*2+(int)(p*11.0f))%12];
-            if(n>0) {
-                if(layer<5)ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)iy,
-                    Blend(bg,c,layer<2?43:24),layer<2?7.0f:3.8f);
-                ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)iy,c,
-                    layer<3?1.9f:1.05f);
-            }
-            if(n>0&&n%samples*0==0) { /* intentionally empty: keep sampling branch-free */ }
-            px=x;py=iy;
+            points[n*2]=(float)(area.left+(int)(p*width));
+            points[n*2+1]=y;
         }
+        COLORREF c=palette[(layer*2+4)%12];
+        if(layer<4)ABM_D2D_Polyline(&g_ui,points,samples+1,
+            Blend(bg,c,layer<2?38:23),(layer<2?5.0f:3.0f)*pixelScale);
+        ABM_D2D_Polyline(&g_ui,points,samples+1,c,
+            (layer<3?1.8f:1.0f)*pixelScale);
     }
 
     /* Frequency-linked travelling sparks ride above and below the ribbons. */
@@ -1361,7 +1360,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         float v=levels[band];
         float x=area.left+p*width;
         float y=cy+sinf(p*18.0f+t*0.012f+i*0.17f)*height*(0.13f+v*0.30f);
-        int d=1+(int)(v*4.0f)+(i%17==0?2:0);
+        int d=(int)((1.0f+v*4.0f+(i%17==0?2.0f:0.0f))*pixelScale);if(d<1)d=1;
         COLORREF c=palette[(i*5+band)%12];
         ABM_D2D_Round(&g_ui,x-d-3,y-d-3,x+d+3,y+d+3,(float)d+3,Blend(bg,c,32));
         ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
