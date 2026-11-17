@@ -3401,6 +3401,29 @@ static void LoadExternalSubtitle(HWND owner){
         }
     }
 }
+static void ShowAudioTrackMenu(HWND owner){
+    if(!g_player||!g_hasMedia)return;
+    ABMMenuItem items[26];wchar_t labels[24][256];int count=0,n=0;
+    items[count++]=(ABMMenuItem){27000,L"Disable audio track",TRUE,FALSE};
+    libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
+    for(libvlc_track_description_t *t=tracks;t&&n<24;t=t->p_next){
+        labels[n][0]=0;if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,labels[n],256);
+        if(!labels[n][0])StringCchPrintfW(labels[n],256,L"Audio track %d",n+1);
+        items[count++]=(ABMMenuItem){27100+n,labels[n],TRUE,FALSE};n++;
+    }
+    if(tracks)libvlc_track_description_list_release(tracks);
+    if(!n)items[count++]=(ABMMenuItem){0,L"No embedded audio tracks",FALSE,FALSE};
+    int cmd=ABM_ShowMenu(owner,items,count);
+    if(cmd==27000)libvlc_audio_set_track(g_player,-1);
+    else if(cmd>=27100&&cmd<27124){
+        int wanted=cmd-27100;
+        libvlc_track_description_t *again=libvlc_audio_get_track_description(g_player);
+        libvlc_track_description_t *selected=again;
+        for(int i=0;selected&&i<wanted;i++)selected=selected->p_next;
+        if(selected)libvlc_audio_set_track(g_player,selected->i_id);
+        if(again)libvlc_track_description_list_release(again);
+    }
+}
 static void ShowSubtitleTrackMenu(HWND owner){
     if(!g_player||!g_hasMedia)return;
     ABMMenuItem items[66];wchar_t labels[64][256];int count=0,n=0;
@@ -6841,7 +6864,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    if(AdvancedSettingsPoint(x,y,720,540,820,580)){if(g_audioDelayUs>-10000000)g_audioDelayUs-=50000;if(g_player)libvlc_audio_set_delay(g_player,g_audioDelayUs);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,830,540,930,580)){if(g_audioDelayUs<10000000)g_audioDelayUs+=50000;if(g_player)libvlc_audio_set_delay(g_player,g_audioDelayUs);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,940,540,1018,580)){g_audioDelayUs=0;if(g_player)libvlc_audio_set_delay(g_player,0);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,322,594,520,638)){ShowEqualizer();return 0;}
+   if(AdvancedSettingsPoint(x,y,322,594,430,638)){ShowAudioTrackMenu(w);return 0;}
+   if(AdvancedSettingsPoint(x,y,440,594,630,638)){ShowEqualizer();return 0;}
    if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
     if(EnsureDataDirectory()){
      wchar_t path[PATH_CAP],value[16];StringCchPrintfW(path,_countof(path),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(value,_countof(value),L"%d",g_advancedAudioOutDraft);
@@ -7004,8 +7028,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(676,486,1018,530,g_compressor?L"Dynamic-range compressor: On":L"Dynamic-range compressor: Off",g_compressor);
     AdvancedSettingsText(L"Audio synchronization",322,540,510,580,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(720,540,820,580,L"− 50 ms",FALSE);AdvancedSettingsButtonDraw(830,540,930,580,L"+ 50 ms",FALSE);AdvancedSettingsButtonDraw(940,540,1018,580,L"Reset",FALSE);
-    AdvancedSettingsButtonDraw(322,594,520,638,L"10-band equalizer",FALSE);AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
-    wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(g_advancedAudioOutMessage,530,594,850,638,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+    AdvancedSettingsButtonDraw(322,594,430,638,L"Audio track",FALSE);AdvancedSettingsButtonDraw(440,594,630,638,L"10-band equalizer",FALSE);AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
+    wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(g_advancedAudioOutMessage,640,594,850,638,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
    }else if(g_advancedSettingsPage==5){
     AdvancedSettingsText(L"Stream buffering",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int cacheValues[3]={g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching};
