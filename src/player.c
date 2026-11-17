@@ -7030,8 +7030,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(676,486,1018,530,g_compressor?L"Dynamic-range compressor: On":L"Dynamic-range compressor: Off",g_compressor);
     AdvancedSettingsText(L"Audio synchronization",322,540,510,580,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(720,540,820,580,L"− 50 ms",FALSE);AdvancedSettingsButtonDraw(830,540,930,580,L"+ 50 ms",FALSE);AdvancedSettingsButtonDraw(940,540,1018,580,L"Reset",FALSE);
-    AdvancedSettingsButtonDraw(322,594,430,638,L"Audio track",FALSE);AdvancedSettingsButtonDraw(440,594,630,638,L"10-band equalizer",FALSE);AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
-    wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(g_advancedAudioOutMessage,640,594,850,638,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+    AdvancedSettingsButtonDraw(322,594,440,638,L"Audio track",FALSE);
+    AdvancedSettingsButtonDraw(452,594,660,638,L"10-band equalizer",FALSE);
+    AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
+    wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(g_advancedAudioOutMessage,322,642,1032,660,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    }else if(g_advancedSettingsPage==5){
     AdvancedSettingsText(L"Stream buffering",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int cacheValues[3]={g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching};
@@ -7232,7 +7235,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   AdvancedSettingsText(L"Changes are saved automatically. Engine and buffering changes apply to newly opened media.",
+   AdvancedSettingsText(L"Changes save automatically. Engine changes require a restart.",
        292,686,866,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    AdvancedSettingsButtonDraw(914,690,1040,736,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
