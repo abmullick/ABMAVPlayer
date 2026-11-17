@@ -22,15 +22,15 @@ if errorlevel 1 goto missing_gh
 gh auth status
 if errorlevel 1 goto not_authenticated
 
-gh release view "%TAG%" --repo abmullick/ABMAVPlayer >nul 2>nul
+gh release view "%TAG%" --repo abmullick/ABMAVPlayer-Releases >nul 2>nul
 if not errorlevel 1 goto release_exists
 
 echo Publishing %TAG% with the verified Windows installer...
-gh release create "%TAG%" "dist\ABM-AV-Player-Setup.exe" --repo abmullick/ABMAVPlayer --title "ABM AV Player %TAG%" --notes-file RELEASE_NOTES.md --target main
+gh release create "%TAG%" "dist\ABM-AV-Player-Setup.exe" --repo abmullick/ABMAVPlayer-Releases --title "ABM AV Player %TAG%" --notes-file RELEASE_NOTES.md --target main
 if errorlevel 1 goto publish_failed
 
 echo.
-echo Release published: https://github.com/abmullick/ABMAVPlayer/releases/tag/%TAG%
+echo Release published: https://github.com/abmullick/ABMAVPlayer-Releases/releases/tag/%TAG%
 endlocal
 exit /b 0
 
