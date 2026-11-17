@@ -236,7 +236,7 @@ static void StartLibraryScan() {
     Work *w=new(std::nothrow) Work();if(!w){SetStatus(L"Could not allocate library scan.");return;}
     w->target=g_window;w->kind=3;w->paths=g_mediaPaths;
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
-    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);SetStatus(L"Identifying local playlist and favourite items with TMDB. Large libraries may take a while…");}
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetStatus(L"Identifying local playlist and favourite items with TMDB. Large libraries may take a while…");}
     else {delete w;SetStatus(L"Could not start library identification.");}
 }
 static void StartSeasonLoad(int seasonNumber) {
@@ -397,7 +397,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SetWindowTheme(g_localPicker,L"DarkMode_Explorer",nullptr);
         EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);
         SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        EnableWindow(g_play,FALSE);Layout(w);return 0;
+        EnableWindow(g_play,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_matchButton,FALSE);Layout(w);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *m=(MINMAXINFO*)lp;if(m){m->ptMinTrackSize.x=900;m->ptMinTrackSize.y=720;}return 0; }
     case WM_SIZE:Layout(w);if(g_canvasReady)ABM_D2D_Resize(&g_canvas,LOWORD(lp),HIWORD(lp));InvalidateRect(w,nullptr,FALSE);return 0;
     case WM_ERASEBKGND:return 1;
@@ -458,7 +458,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
     case HT_SCAN_DONE: {
-        Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_scanButton,TRUE);EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
+        Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_scanButton,TRUE);EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);
         if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_selected=-1;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Library identification complete. Up to 100 matches are listed; select one to inspect metadata.");}
         else SetStatus(r->error[0]?r->error:L"No library matches found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
