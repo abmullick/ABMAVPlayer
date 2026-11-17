@@ -6699,6 +6699,16 @@ static void AdvancedSettingsButtonDraw(int l,int t,int r,int b,const wchar_t *la
 static BOOL AdvancedSettingsPoint(int x,int y,int l,int t,int r,int b){
  return x>=l&&x<=r&&y>=t&&y<=b;
 }
+/* Advanced Settings is drawn in a fixed 1080x780 design coordinate space.
+   Convert real client pixels back into that space for mouse input. Without
+   this inverse transform, a window scaled to fit a smaller work area paints
+   controls in one place but tests clicks against the unscaled coordinates. */
+static void AdvancedSettingsClientToDesign(HWND w,int *x,int *y){
+ RECT rc;GetClientRect(w,&rc);
+ if(!x||!y||rc.right<=0||rc.bottom<=0)return;
+ *x=(int)(((int64_t)*x*1080)/rc.right);
+ *y=(int)(((int64_t)*y*780)/rc.bottom);
+}
 static BOOL GenerateAdvancedDiagnosticReport(wchar_t *reportPath,size_t reportPathCount){
  if(!EnsureDataDirectory())return FALSE;
  ScanVlcRuntime();
@@ -6770,11 +6780,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
   }}
   return 0;
- case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);if(x!=g_advancedHoverX||y!=g_advancedHoverY){g_advancedHoverX=x;g_advancedHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
+ case WM_MOUSEMOVE:{int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);AdvancedSettingsClientToDesign(w,&x,&y);if(x!=g_advancedHoverX||y!=g_advancedHoverY){g_advancedHoverX=x;g_advancedHoverY=y;TRACKMOUSEEVENT tme={sizeof(tme),TME_LEAVE,w,0};TrackMouseEvent(&tme);InvalidateRect(w,NULL,FALSE);}return 0;}
  case WM_MOUSELEAVE:g_advancedHoverX=g_advancedHoverY=-1;g_advancedMousePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
  case WM_CANCELMODE:case WM_CAPTURECHANGED:g_advancedMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);return 0;
  case WM_LBUTTONDOWN:{g_advancedMousePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);
-  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);AdvancedSettingsClientToDesign(w,&x,&y);
   for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
    /* Match the exact row origin used by the navigation renderer. */
    int top=151+i*50;
@@ -6956,7 +6966,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  }
  case WM_LBUTTONUP:{
   g_advancedMousePressed=FALSE;if(GetCapture()==w)ReleaseCapture();InvalidateRect(w,NULL,FALSE);
-  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+  int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);AdvancedSettingsClientToDesign(w,&x,&y);
   if(g_advancedSettingsPage==9&&AdvancedSettingsPoint(x,y,326,466,520,502)){ScanVlcRuntime();UpdateVlcReportText();InvalidateRect(w,NULL,FALSE);return 0;}
   break;
  }
