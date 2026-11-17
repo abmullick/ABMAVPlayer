@@ -3364,6 +3364,7 @@ static void PlaybackHandleEngineError(void) {
     g_hasMedia=FALSE;g_endHandled=TRUE;g_pendingResume=FALSE;
     g_videoBoundsValid=FALSE;ResetArtwork();
     if(g_visualizerActive)ABM_AudioVisualizer_Stop();
+        ABM_ProjectM_Destroy();
     g_visualizerActive=FALSE;g_visualizerTried=FALSE;
     if(g_video&&!g_fullscreen)ShowWindow(g_video,SW_HIDE);
     PlaybackReportFailure(failedIndex,FALSE);
@@ -8256,6 +8257,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_visualizerActive=ABM_AudioVisualizer_Start();
             }
             if(g_visualizerActive) {
+                if(!g_projectmTried) {
+                    wchar_t exePath[PATH_CAP],presetPath[PATH_CAP],texturePath[PATH_CAP];
+                    DWORD exeLen=GetModuleFileNameW(NULL,exePath,_countof(exePath));
+                    g_projectmTried=TRUE;
+                    if(exeLen>0 && exeLen<_countof(exePath)) {
+                        wchar_t *slash=wcsrchr(exePath,L'\\');
+                        if(slash) *slash=0;
+                        StringCchCopyW(presetPath,_countof(presetPath),exePath);
+                        StringCchCatW(presetPath,_countof(presetPath),L"\\assets\\visualizer\\presets");
+                        StringCchCopyW(texturePath,_countof(texturePath),exePath);
+                        StringCchCatW(texturePath,_countof(texturePath),L"\\assets\\visualizer\\textures");
+                        ABM_ProjectM_Create(hwnd,presetPath,texturePath);
+                    }
+                }
                 if(!g_visualizerTimerRunning) {
                     g_visualizerTimerRunning=(SetTimer(hwnd,VISUALIZER_TIMER_ID,16,NULL)!=0);
                 }
