@@ -7489,7 +7489,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }else if(g_advancedSettingsPage==7){
      sectionTitle=L"Current controls and playback behaviour";
      StringCchPrintfW(row1,_countof(row1),L"Default volume: %d%%     Playback speed: %.2fx",g_volume,(double)g_playbackRate);
-     StringCchPrintfW(row2,_countof(row2),L"Shuffle: %s     Repeat mode: %s",g_shuffle?L"Enabled":L"Disabled",g_repeat==1?L"All":(g_repeat==2?L"Current":L"Off"));
+     StringCchPrintfW(row2,_countof(row2),L"Shuffle: %s     Repeat mode: %s",g_shuffle?L"Enabled":L"Disabled",g_repeat==2?L"All":(g_repeat==1?L"Current":L"Off"));
      StringCchPrintfW(row3,_countof(row3),L"Playlist entries: %d     Recent media entries: %d",g_playlistCount,g_recentCount);
      StringCchCopyW(row4,_countof(row4),L"Playback, seek, volume and playlist shortcuts are handled by the main player.");
      StringCchCopyW(row5,_countof(row5),L"Change default volume, speed, shuffle and repeat in Settings → General.");
