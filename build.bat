@@ -54,6 +54,23 @@ echo [0/13] Building native libtorrent engine...
 call tools\build_torrent_engine.bat
 if errorlevel 1 goto build_failed
 
+echo [0.25/14] Building embedded projectM Milkdrop visualizer...
+set "ABM_VCPKG_ROOT="
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_vcpkg.ps1`) do set "ABM_VCPKG_ROOT=%%V"
+if not defined ABM_VCPKG_ROOT (
+  echo ERROR: Could not locate the pinned vcpkg toolchain for projectM.
+  goto build_failed
+)
+cmake -S src\projectm_bridge -B build\projectm-bridge -A x64 -DCMAKE_TOOLCHAIN_FILE="%ABM_VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DVCPKG_INSTALLED_DIR="%CD%\vcpkg_installed" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
+if errorlevel 1 goto build_failed
+cmake --build build\projectm-bridge --config Release
+if errorlevel 1 goto build_failed
+if not exist build\projectm-runtime mkdir build\projectm-runtime
+copy /y build\projectm-bridge\Release\abm_projectm_bridge.dll build\projectm-runtime\ >nul
+if errorlevel 1 goto build_failed
+for %%D in ("%CD%\vcpkg_installed\x64-windows\bin\*.dll") do copy /y "%%~fD" build\projectm-runtime\ >nul
+
+
 echo [0.5/13] Compiling independent Torrent DLNA casting backend...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\torrent\torrent_dlna_cast.cpp /Fo:build\torrent_dlna_cast.obj
 if errorlevel 1 goto build_failed
@@ -133,7 +150,7 @@ rc /nologo /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
 echo [14/14] Linking ABM AV Player...
-cl /nologo build\player.obj build\ui_theme.obj build\licensing.obj build\torrent_dlna_cast.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\youtube_dial.obj build\cast_v2.obj build\updater.obj build\tmdb_metadata.obj build\tmdb_home_theatre.obj build\player.res build\version.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
+cl /nologo build\player.obj build\ui_theme.obj build\licensing.obj build\torrent_dlna_cast.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\youtube_dial.obj build\cast_v2.obj build\updater.obj build\tmdb_metadata.obj build\tmdb_home_theatre.obj build\player.res build\version.res build\projectm-bridge\Release\abm_projectm_bridge.lib /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
   wininet.lib oleaut32.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib dwmapi.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib secur32.lib dnsapi.lib windowscodecs.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
