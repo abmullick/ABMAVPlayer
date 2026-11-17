@@ -3,6 +3,7 @@ project(abm_projectm_bridge LANGUAGES CXX)
 find_package(projectM4 CONFIG REQUIRED)
 add_library(abm_projectm_bridge SHARED ../projectm_visualizer.cpp)
 target_compile_features(abm_projectm_bridge PRIVATE cxx_std_17)
+target_compile_definitions(abm_projectm_bridge PRIVATE ABM_PROJECTM_BUILD)
 target_include_directories(abm_projectm_bridge PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(abm_projectm_bridge PUBLIC libprojectM::projectM opengl32)
 set_target_properties(abm_projectm_bridge PROPERTIES
