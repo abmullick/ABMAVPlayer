@@ -7,6 +7,8 @@
 #include <vector>
 #include <algorithm>
 #include <cwctype>
+#include <new>
+#include <dwmapi.h>
 #include "tmdb_home_theatre.h"
 #include "tmdb_metadata.h"
 #include "ui_d2d.h"
@@ -65,10 +67,10 @@ static int JsonInt(const wchar_t *object,const wchar_t *end,const wchar_t *key) 
     if(p>=end||*p++!=L':')return 0;while(p<end&&iswspace(*p))p++;
     return p<end?_wtoi(p):0;
 }
-static void ParseSearchJson(const wchar_t *json,int type) {
+static void ParseSearchJson(const wchar_t *json,int type,MovieItem *items,int *count) {
     const wchar_t *p=wcsstr(json,L"\"results\"");if(!p)return;
     p=wcschr(p,L'[');if(!p)return;p++;
-    while(*p&&g_itemCount<24) {
+    while(*p&&*count<24) {
         while(*p&&(iswspace(*p)||*p==L','))p++;if(*p==L']'||!*p)break;
         if(*p!=L'{'){p++;continue;}
         const wchar_t *start=p;BOOL quoted=FALSE,escaped=FALSE;int depth=0;
@@ -83,7 +85,7 @@ static void ParseSearchJson(const wchar_t *json,int type) {
         CopyJsonString(start,finish,type==1?L"release_date":L"first_air_date",item.date,_countof(item.date));
         CopyJsonString(start,finish,L"overview",item.overview,_countof(item.overview));
         CopyJsonString(start,finish,L"poster_path",item.poster,_countof(item.poster));
-        if(item.title[0])g_items[g_itemCount++]=item;
+        if(item.title[0])items[(*count)++]=item;
     }
 }
 static std::wstring Normalized(const wchar_t *s) {
@@ -109,6 +111,7 @@ static BOOL ImageFolder(wchar_t *folder,size_t cap) {
 }
 struct Work {
     HWND target=nullptr;int kind=0,index=-1;
+    MovieItem item;
     wchar_t query[256]={};
 };
 struct Result {
@@ -131,8 +134,8 @@ static void ParseDetails(const wchar_t *json,Result *r) {
     const wchar_t *g=wcsstr(json,L"\"genres\"");if(g){const wchar_t *a=wcschr(g,L'['),*b=a?wcschr(a,L']'):nullptr;if(a&&b){const wchar_t *p=a;while((p=wcsstr(p,L"\"name\""))&&p<b){wchar_t name[64]={};CopyJsonString(p,b,L"name",name,_countof(name));if(name[0]){if(r->genres[0])StringCchCatW(r->genres,_countof(r->genres),L"  ·  ");StringCchCatW(r->genres,_countof(r->genres),name);}p+=6;}}}
     const wchar_t *credits=wcsstr(json,L"\"credits\"");
     if(credits) {
-        const wchar_t *cast=wcsstr(credits,L"\"cast\"");if(cast){const wchar_t *p=cast;for(int n=0;n<4&&(p=wcsstr(p,L"\"name\""));n++){wchar_t name[96]={};CopyJsonString(p,p+512,L"name",name,_countof(name));if(name[0]){if(r->cast[0])StringCchCatW(r->cast,_countof(r->cast),L", ");StringCchCatW(r->cast,_countof(r->cast),name);}p+=6;}}
-        const wchar_t *crew=wcsstr(credits,L"\"crew\"");if(crew){const wchar_t *p=crew;while((p=wcsstr(p,L"\"job\""))){wchar_t job[64]={};CopyJsonString(p,p+256,L"job",job,_countof(job));if(!_wcsicmp(job,L"Director")){CopyJsonString(p,p+512,L"name",r->director,_countof(r->director));break;}p+=5;}}
+        const wchar_t *cast=wcsstr(credits,L"\"cast\"");if(cast){const wchar_t *p=cast;for(int n=0;n<4&&(p=wcsstr(p,L"\"name\""));n++){wchar_t name[96]={};CopyJsonString(p,end,L"name",name,_countof(name));if(name[0]){if(r->cast[0])StringCchCatW(r->cast,_countof(r->cast),L", ");StringCchCatW(r->cast,_countof(r->cast),name);}p+=6;}}
+        const wchar_t *crew=wcsstr(credits,L"\"crew\"");if(crew){const wchar_t *p=crew;while((p=wcsstr(p,L"\"job\""))){wchar_t job[64]={};CopyJsonString(p,end,L"job",job,_countof(job));if(!_wcsicmp(job,L"Director")){CopyJsonString(p,end,L"name",r->director,_countof(r->director));break;}p+=5;}}
     }
     wchar_t poster[256]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
     wchar_t folder[MAX_PATH]={};if(ImageFolder(folder,_countof(folder))&&poster[0]){
@@ -147,15 +150,14 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         if(!ABM_TMDB_IsConfigured())StringCchCopyW(r->error,_countof(r->error),L"Configure your TMDB Read Access Token in Settings first.");
         else {
             std::vector<wchar_t> json(512*1024);
-            if(ABM_TMDB_Search(w->query,ABM_TMDB_MOVIE,json.data(),json.size()))ParseSearchJson(json.data(),1);
+            if(ABM_TMDB_Search(w->query,ABM_TMDB_MOVIE,json.data(),json.size()))ParseSearchJson(json.data(),1,r->items,&r->count);
             json.assign(512*1024,0);
-            if(ABM_TMDB_Search(w->query,ABM_TMDB_TV,json.data(),json.size()))ParseSearchJson(json.data(),2);
-            r->count=g_itemCount;for(int i=0;i<g_itemCount;i++)r->items[i]=g_items[i];
+            if(ABM_TMDB_Search(w->query,ABM_TMDB_TV,json.data(),json.size()))ParseSearchJson(json.data(),2,r->items,&r->count);
             r->ok=r->count>0;
             if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No TMDB matches found. Check the title or try another search.");
         }
     } else if(w->kind==2&&w->index>=0&&w->index<g_itemCount) {
-        MovieItem item=g_items[w->index];std::vector<wchar_t> json(512*1024);
+        MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
         r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
         if(r->ok)ParseDetails(json.data(),r);
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your connection and TMDB token.");
@@ -166,6 +168,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
 static void StartWork(int kind,int index,const wchar_t *query) {
     Work *w=new(std::nothrow) Work();if(!w)return;w->target=g_window;w->kind=kind;w->index=index;
     if(query)StringCchCopyW(w->query,_countof(w->query),query);
+    if(kind==2&&index>=0&&index<g_itemCount)w->item=g_items[index];
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
     if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_edit,kind==1);EnableWindow(GetDlgItem(g_window,HT_SEARCH),kind==1);SetWindowTextW(g_status,kind==1?L"Searching TMDB…":L"Loading movie information…");}
     else delete w;
