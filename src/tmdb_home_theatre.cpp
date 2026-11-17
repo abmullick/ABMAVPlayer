@@ -23,7 +23,7 @@
 #pragma comment(lib, "shell32.lib")
 
 namespace {
-enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109 };
+enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109, HT_PICKER=5110 };
 enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4 };
 static const COLORREF BG=RGB(7,15,25), PANEL=RGB(15,29,44), PANEL2=RGB(10,21,34);
 static const COLORREF TEXT=RGB(239,246,252), MUTED=RGB(145,169,190), ACCENT=RGB(73,199,181);
@@ -39,7 +39,7 @@ static struct MovieItem {
 } g_items[24];
 static int g_itemCount=0, g_selected=-1, g_localMatch=-1;
 static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={}, g_backdropFile[MAX_PATH]={};
-static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE;
+static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE, g_episodeMode=FALSE;
 static BOOL g_detailsReady=FALSE, g_busy=FALSE;
 static wchar_t g_statusText[256]=L"Search TMDB for a movie or television series in your local collection.";
 
@@ -282,7 +282,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
         g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Similar titles",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,28,130,100,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,136,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
-        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
+        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
         g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
         g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
