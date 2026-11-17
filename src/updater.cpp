@@ -18,7 +18,7 @@
 #pragma comment(lib,"ole32.lib")
 
 namespace {
-const wchar_t *kReleaseApi=L"https://api.github.com/repos/abmullick/ABMAVPlayer/releases/latest";
+const wchar_t *kReleaseApi=L"https://api.github.com/repos/abmullick/ABMAVPlayer-Releases/releases/latest";
 const wchar_t *kInstallerName=L"ABM-AV-Player-Setup.exe";
 
 bool ReadUrl(const wchar_t *url,char **out,DWORD *length) {
