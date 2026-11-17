@@ -1366,6 +1366,43 @@ static void DrawVisualizer(HDC dc,RECT area) {
         ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
     }
 
+    /* Keep the three menu-selected looks distinct while sharing the same
+       full-canvas renderer and audio-analysis feed. */
+    if(g_visualizerMode==0) {
+        /* Spectrum: a broad 144-spoke frequency crown, colour-mapped by band. */
+        for(int i=0;i<144;i++) {
+            float a=(float)i*6.2831853f/144.0f+t*0.0018f;
+            int band=(i*24)/144;
+            float v=levels[band];
+            float r0=(float)(height<width?height:width)*0.12f;
+            float r1=r0+(float)(height<width?height:width)*(0.13f+v*0.42f);
+            COLORREF c=palette[(band+i/12)%12];
+            float x0=cx+cosf(a)*r0,y0=cy+sinf(a)*r0;
+            float x1=cx+cosf(a)*r1,y1=cy+sinf(a)*r1;
+            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,Blend(bg,c,26),3.2f*pixelScale);
+            ABM_D2D_Line(&g_ui,x0,y0,x1,y1,c,0.9f*pixelScale);
+        }
+    } else if(g_visualizerMode==2) {
+        /* Particle mode: three orbiting, audio-deformed particle streams. */
+        for(int orbit=0;orbit<3;orbit++) {
+            float points[512*2];
+            int count=180;
+            for(int n=0;n<=count;n++) {
+                float a=(float)n*6.2831853f/(float)count;
+                int band=(n*24)/count;if(band>23)band=23;
+                float v=levels[band];
+                float r=(float)(height<width?height:width)*
+                    (0.20f+orbit*0.105f+v*0.075f)+
+                    sinf(a*(3.0f+orbit)+t*0.012f)*height*(0.012f+bass*0.025f);
+                points[n*2]=(float)cx+cosf(a+t*(0.0008f+orbit*0.0003f))*r;
+                points[n*2+1]=(float)cy+sinf(a)*r*(0.66f+orbit*0.10f);
+            }
+            COLORREF c=palette[(orbit*4+8)%12];
+            ABM_D2D_Polyline(&g_ui,points,count+1,Blend(bg,c,24),3.0f*pixelScale);
+            ABM_D2D_Polyline(&g_ui,points,count+1,c,0.85f*pixelScale);
+        }
+    }
+
     /* A large, slow spectral halo adds depth without becoming a narrow ring. */
     int radius=(height<width?height:width)*34/100;
     for(int ring=4;ring>=0;ring--) {
