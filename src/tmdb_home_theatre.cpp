@@ -312,7 +312,13 @@ static void Layout(HWND w) {
     RECT c;GetClientRect(w,&c);int width=c.right,height=c.bottom;
     if(g_edit)MoveWindow(g_edit,28,83,width-190,36,TRUE);
     if(GetDlgItem(w,HT_SEARCH))MoveWindow(GetDlgItem(w,HT_SEARCH),width-150,83,122,36,TRUE);
-    if(g_results)MoveWindow(g_results,28,144,300,height-230,TRUE);
+    if(g_scanButton)MoveWindow(g_scanButton,width-282,130,126,28,TRUE);
+    if(g_recommendButton)MoveWindow(g_recommendButton,28,130,100,28,TRUE);
+    if(g_seasonButton)MoveWindow(g_seasonButton,136,130,100,28,TRUE);
+    if(g_results)MoveWindow(g_results,28,166,300,height-252,TRUE);
+    if(g_localPicker)MoveWindow(g_localPicker,380,height-118,360,260,TRUE);
+    if(g_matchButton)MoveWindow(g_matchButton,748,height-118,150,30,TRUE);
+    if(g_artButton)MoveWindow(g_artButton,380,height-78,150,30,TRUE);
     if(g_status)MoveWindow(g_status,28,height-70,320,24,TRUE);
     if(g_play)MoveWindow(g_play,width-176,height-78,148,42,TRUE);
 }
