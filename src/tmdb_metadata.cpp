@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cwctype>
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "crypt32.lib")
