@@ -3693,7 +3693,9 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
     else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
-    else if(cmd>=25200&&cmd<=25202){g_visualizerMode=cmd-25200;InvalidateRect(hwnd,&R_VIDEO,FALSE);}
+    else if(cmd==25200)ABM_ProjectM_NextPreset();
+    else if(cmd==25201)ABM_ProjectM_PreviousPreset();
+    else if(cmd==25202){g_autoPresetTransitions=!g_autoPresetTransitions;ABM_ProjectM_SetAutoSwitch(g_autoPresetTransitions);InvalidateRect(hwnd,&R_VIDEO,FALSE);}
     else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
     else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
     else if(cmd==23001)LoadExternalSubtitle(hwnd); else if(cmd>=22000&&cmd<=22020){
