@@ -127,7 +127,7 @@ static void MakeMediaSearchTitle(const wchar_t *path,wchar_t *out,size_t cap) {
 static int FindLocalMatch(const wchar_t *title) {
     std::wstring wanted=Normalized(title);if(wanted.empty())return -1;
     for(size_t i=0;i<g_mediaPaths.size();i++) {
-        if(!IsVideoMediaPath(g_mediaPaths[i].c_str()))continue;
+        if(!IsVideoMediaPath(g_mediaPaths[i].c_str())||GetFileAttributesW(g_mediaPaths[i].c_str())==INVALID_FILE_ATTRIBUTES)continue;
         const wchar_t *leaf=wcsrchr(g_mediaPaths[i].c_str(),L'\\');leaf=leaf?leaf+1:g_mediaPaths[i].c_str();
         std::wstring file=leaf;size_t dot=file.find_last_of(L'.');if(dot!=std::wstring::npos)file.resize(dot);
         std::wstring normalized=Normalized(file.c_str());
@@ -245,7 +245,7 @@ static int FindEpisodeMatch(int season,int episode) {
     StringCchPrintfW(pattern,_countof(pattern),L"s%02de%02d",season,episode);
     StringCchPrintfW(alternate,_countof(alternate),L"%dx%02d",season,episode);
     for(size_t i=0;i<g_mediaPaths.size();i++) {
-        const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path))continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
+        const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
         std::wstring name=Normalized(leaf);
         if(name.find(Normalized(pattern).c_str())!=std::wstring::npos||name.find(Normalized(alternate).c_str())!=std::wstring::npos)return (int)i;
     }
@@ -503,7 +503,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             g_recommendationCount=r->recommendationCount;for(int i=0;i<g_recommendationCount;i++)g_recommendations[i]=r->recommendations[i];
             g_seasonCount=r->seasonCount;for(int i=0;i<g_seasonCount;i++)g_seasons[i]=r->seasons[i];
             g_tvId=g_items[g_selected].id;g_tvType=g_items[g_selected].type;
-            if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path))continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
+            if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
             EnableWindow(g_artButton,g_backdropFile[0]!=0);EnableWindow(g_recommendButton,g_recommendationCount>0);EnableWindow(g_seasonButton,g_tvType==2&&g_seasonCount>0);EnableWindow(g_localPicker,TRUE);EnableWindow(g_matchButton,TRUE);
             if(g_localMatch>=0)SetLocalMatchStatus(L"Ready to play local file");else SetStatus(L"Metadata ready. No matching local file was found in the current library.");
         } else SetStatus(r->error[0]?r->error:L"Details unavailable.");
