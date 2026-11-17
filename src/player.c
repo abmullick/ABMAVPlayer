@@ -14,6 +14,7 @@
 #include <vlc/libvlc_events.h>
 #include "ui_d2d.h"
 #include "ui_theme.h"
+#include "tmdb_metadata.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
 #include "licensing.h"
@@ -6383,9 +6384,9 @@ static void RefreshThemeWindows(void) {
 }
 
 static void SettingsApply(HWND w) {
- wchar_t path[PATH_CAP]={0},downloads[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0};
+ wchar_t path[PATH_CAP]={0},downloads[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0},tmdbToken[4096]={0};
  GetWindowTextW(GetDlgItem(w,6201),path,_countof(path));GetWindowTextW(GetDlgItem(w,6202),downloads,_countof(downloads));GetWindowTextW(GetDlgItem(w,6204),q,_countof(q));
- GetWindowTextW(GetDlgItem(w,6205),d,_countof(d));GetWindowTextW(GetDlgItem(w,6206),u,_countof(u));GetWindowTextW(GetDlgItem(w,6207),v,_countof(v));
+ GetWindowTextW(GetDlgItem(w,6205),d,_countof(d));GetWindowTextW(GetDlgItem(w,6206),u,_countof(u));GetWindowTextW(GetDlgItem(w,6207),v,_countof(v));GetWindowTextW(GetDlgItem(w,6208),tmdbToken,_countof(tmdbToken));
  wchar_t *qe,*de,*ue,*ve;unsigned long long quota=_wcstoui64(q,&qe,10),down=_wcstoui64(d,&de,10),up=_wcstoui64(u,&ue,10),volume=_wcstoui64(v,&ve,10);
  if(!path[0]||!downloads[0]||!q[0]||*qe||quota<1||quota>4096||!d[0]||*de||down>(unsigned long long)INT_MAX/1024||!u[0]||*ue||up>(unsigned long long)INT_MAX/1024||!v[0]||*ve||volume>100) {
   StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Invalid values. Quota 1–4096 GiB; bandwidth 0–2,097,151 KiB/s; volume 0–100.");InvalidateRect(w,NULL,FALSE);return;
@@ -6401,7 +6402,7 @@ static void SettingsApply(HWND w) {
  if((changed||downloadsChanged)&&(g_torrentInitialized||g_torrentInitPending)&&ABM_MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
  wcsncpy_s(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path,_TRUNCATE);
  wcsncpy_s(g_torrentDownloadDir,_countof(g_torrentDownloadDir),downloads,_TRUNCATE);
- g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
+ if(!ABM_TMDB_SetReadToken(tmdbToken)){StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Could not securely save the TMDB token.");InvalidateRect(w,NULL,FALSE);SecureZeroMemory(tmdbToken,sizeof(tmdbToken));return;} SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
  g_shuffle=g_settingsShuffle;g_repeat=g_settingsRepeat;g_replayGain=g_settingsReplayGain;g_compressor=g_settingsCompressor;
  if(g_settingsRateIndex<0||g_settingsRateIndex>6)g_settingsRateIndex=2;
  g_playbackRate=g_settingsRates[g_settingsRateIndex];
@@ -7170,7 +7171,7 @@ static void ShowAdvancedSettingsDialog(HWND owner){
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static int g_settingsScrollX=0,g_settingsScrollY=0;
 #define SETTINGS_CONTENT_WIDTH 804
-#define SETTINGS_CONTENT_HEIGHT 980
+#define SETTINGS_CONTENT_HEIGHT 1080
 static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
 static void SettingsMoveChildControls(HWND w){
  static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29}};
@@ -7297,7 +7298,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
-  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
+  wchar_t tmdbToken[4096]={0};ABM_TMDB_GetReadToken(tmdbToken,_countof(tmdbToken)); HWND tmdbEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",tmdbToken,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_PASSWORD,39,700,600,30,w,(HMENU)6208,NULL,NULL); if(tmdbEdit)SendMessageW(tmdbEdit,EM_SETLIMITTEXT,4096,0); SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); for(int id=6201;id<=6208;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
   return 0;
  }
  case WM_THEMECHANGED:
@@ -7319,7 +7320,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   int x=GET_X_LPARAM(lp)+g_settingsScrollX,y=GET_Y_LPARAM(lp)+g_settingsScrollY;
   for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
    int col=preset%4,row=preset/4;
-   int left=40+col*185,top=780+row*46;
+   int left=40+col*185,top=880+row*46;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
     g_settingsThemePreset=preset;
     ABMThemeApplyPreset((ABMThemePreset)preset);
@@ -7341,9 +7342,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,655,496,780,528)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
   /* Keep hit targets aligned with the current Direct2D-rendered button rectangles. */
   if(SettingsPoint(x,y,650,27,780,62)){ShowAdvancedSettingsDialog(w);return 0;}
-  if(SettingsPoint(x,y,39,681,194,714)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
-  if(SettingsPoint(x,y,610,914,735,952)){SettingsApply(w);return 0;}
-  if(SettingsPoint(x,y,744,914,800,952)){DestroyWindow(w);return 0;}
+  if(SettingsPoint(x,y,39,775,194,808)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
+  if(SettingsPoint(x,y,610,1000,735,1038)){SettingsApply(w);return 0;}
+  if(SettingsPoint(x,y,744,1000,800,1038)){DestroyWindow(w);return 0;}
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
@@ -7398,13 +7399,13 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsEditFrame(199,599,341,634);if(GetFocus()==GetDlgItem(w,6205))ABM_D2D_StrokeRound(&g_settingsUi,198,598,342,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Upload limit (KiB/s)",400,583,552,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(551,599,693,634);if(GetFocus()==GetDlgItem(w,6206))ABM_D2D_StrokeRound(&g_settingsUi,550,598,694,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
-   SettingsSection(666,L"UPDATES",L"Maintenance",738);
-   SettingsButtonDraw(39,681,194,714,L"Check for updates",TRUE);
-   SettingsText(L"Checks the latest published GitHub release.",210,682,770,713,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsSection(748,L"COLOR THEME",L"Changes apply immediately",872);
+   SettingsSection(666,L"TMDB METADATA",L"Movie and television information",756); SettingsText(L"TMDB API Read Access Token",40,681,420,699,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsEditFrame(34,700,644,733); if(GetFocus()==GetDlgItem(w,6208))ABM_D2D_StrokeRound(&g_settingsUi,33,699,645,734,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f); SettingsText(ABM_TMDB_IsConfigured()?L"Token encrypted for this Windows user.":L"Enter your TMDB Read Access Token to enable metadata lookup.",40,736,780,754,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); SettingsSection(766,L"UPDATES",L"Maintenance",838);
+   SettingsButtonDraw(39,775,194,808,L"Check for updates",TRUE);
+   SettingsText(L"Checks the latest published GitHub release.",210,776,770,807,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsSection(848,L"COLOR THEME",L"Changes apply immediately",1072);
    for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
     int col=preset%4,row=preset/4;
-    float left=(float)(40+col*185),top=(float)(780+row*46);
+    float left=(float)(40+col*185),top=(float)(880+row*46);
     BOOL selected=(preset==g_settingsThemePreset);
     COLORREF accent=ABMThemePresetAccent((ABMThemePreset)preset);
     ABM_D2D_Round(&g_settingsUi,left,top,left+177.0f,top+44.0f,8.0f,selected?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
@@ -7413,9 +7414,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(g_settingsMessage,40,878,780,902,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   SettingsButtonDraw(610,914,735,952,L"Save settings",TRUE);
-   SettingsButtonDraw(744,914,800,952,L"Close",FALSE);
+   SettingsText(g_settingsMessage,40,978,780,996,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   SettingsButtonDraw(610,1000,735,1038,L"Save settings",TRUE);
+   SettingsButtonDraw(744,1000,800,1038,L"Close",FALSE);
    if(g_settingsRateOpen){
     ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_0C1B2B);
     ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
