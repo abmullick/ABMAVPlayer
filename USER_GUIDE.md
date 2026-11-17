@@ -37,6 +37,7 @@ The Library keeps track of media paths; it does not take ownership of, move or c
 
 - Play a local media item for at least a few seconds. ABM AV Player periodically checkpoints its playback position and also captures a checkpoint when you pause, change media, stop or close the application.
 - When you play an item that has a saved checkpoint, the player seeks to that position after LibVLC reports that playback has started. You do not need to select a separate Resume command.
+- Right-click a media row in Queue or Library to choose **Continue from checkpoint** or **Start from beginning**. The first option is enabled when a checkpoint exists. Starting from the beginning clears that item's old checkpoint only after playback successfully starts; subsequent playback progress creates a fresh checkpoint.
 - The checkpoint is stored per media path in the current Windows user's application data, in `%APPDATA%\\ABMAVPlayer\\resume.tsv`. It is local application state, not embedded in or written back to the media file.
 - Very early positions are not retained. Items at or beyond approximately 95% completion are treated as finished and removed from Continue Watching.
 - Resume state is best-effort. If the file has moved, been renamed or is unavailable, restore access to the file first using the missing-media workflow below. A different path is a different media reference until it is relinked.
@@ -50,6 +51,7 @@ A playlist or saved collection stores file paths. If a file is moved, renamed, d
 3. Open that row's context menu and choose **Relink missing media...**.
 4. Select the replacement file in the Windows file picker. Cancel leaves the existing reference unchanged.
 5. The player updates matching references in the active playlist, Favourites, Recent media, resume state and saved personal M3U collections.
+6. Choose **Open source folder** from any media row's context menu to open its containing folder in File Explorer (and select the file when it is present). If the file is missing, the player opens the stored parent folder when that folder is still available.
 
 Relinking changes the stored path reference; it does not copy, move, rename or repair the file itself. Choose the correct replacement file. If the replacement is a different edit, episode or version, its saved resume position may not be meaningful. Network shares and removable drives can appear missing while disconnected; reconnect the drive/share and reopen the drawer to refresh the status.
 
