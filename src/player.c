@@ -6984,8 +6984,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_PAINT:{
   PAINTSTRUCT ps;BeginPaint(w,&ps);
   if(g_advancedSettingsUiReady){
-   /* Use the same clipped paint path as the Main Player and Settings. */
-   ABM_D2D_BeginClip(&g_advancedSettingsUi,SETTINGS_BG,&ps.rcPaint);
+   /* This window redraws a compact, fixed-coordinate settings surface.
+      Clear and repaint the complete Direct2D target on every WM_PAINT.
+      Partial dirty-rectangle clipping left stale horizontal strips visible
+      across controls after invalidation/resizing on some DPI scales. */
+   ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
    ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
        ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
