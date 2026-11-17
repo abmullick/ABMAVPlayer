@@ -28,6 +28,7 @@ size_t g_presetIndex=0;
 DWORD64 g_lastPresetTick=0;
 bool g_ready=false;
 bool g_destroying=false;
+bool g_autoSwitch=true;
 float g_pcm[512]{};
 
 std::string Utf8(const wchar_t *value) {
@@ -102,7 +103,7 @@ void Render() {
     RECT rc{};GetClientRect(g_window,&rc);
     int w=rc.right-rc.left,h=rc.bottom-rc.top;
     if(w<=0||h<=0)return;
-    if(!g_presets.empty() && GetTickCount64()-g_lastPresetTick>45000)
+    if(g_autoSwitch && !g_presets.empty() && GetTickCount64()-g_lastPresetTick>45000)
         LoadNextPreset(true);
     /* The PCM producer is the existing WASAPI loopback capture worker. */
     projectm_pcm_add_float(g_projectm,g_pcm,512,PROJECTM_MONO);
@@ -185,6 +186,19 @@ extern "C" void ABM_ProjectM_Invalidate(void) {
 extern "C" void ABM_ProjectM_NextPreset(void) {
     if(!g_ready||!g_projectm||!g_dc||!g_gl)return;
     if(wglMakeCurrent(g_dc,g_gl)){LoadNextPreset(true);wglMakeCurrent(nullptr,nullptr);ABM_ProjectM_Invalidate();}
+}
+extern "C" void ABM_ProjectM_PreviousPreset(void) {
+    if(!g_ready||!g_projectm||!g_dc||!g_gl||g_presets.empty())return;
+    if(wglMakeCurrent(g_dc,g_gl)) {
+        g_presetIndex=(g_presetIndex+g_presets.size()-1)%g_presets.size();
+        projectm_load_preset_file(g_projectm,g_presets[g_presetIndex].c_str(),true);
+        g_lastPresetTick=GetTickCount64();
+        wglMakeCurrent(nullptr,nullptr);ABM_ProjectM_Invalidate();
+    }
+}
+extern "C" void ABM_ProjectM_SetAutoSwitch(BOOL enabled) {
+    g_autoSwitch=enabled?true:false;
+    if(g_projectm)projectm_set_preset_locked(g_projectm,enabled?false:true);
 }
 extern "C" BOOL ABM_ProjectM_IsReady(void) { return g_ready?TRUE:FALSE; }
 extern "C" void ABM_ProjectM_Destroy(void) {
