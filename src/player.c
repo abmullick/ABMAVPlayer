@@ -251,6 +251,7 @@ static BOOL g_pendingResumePause=FALSE;
 static int64_t g_pendingResumeMs=0;
 static int64_t g_forcedResumeMs=0;
 static BOOL g_useForcedResume=FALSE;
+static BOOL g_startFromBeginningNextPlay=FALSE;
 static unsigned int g_pendingResumeTicks=0;
 #define MAX_RESUME_ENTRIES MAX_PLAYLIST
 typedef struct { wchar_t path[PATH_CAP]; int64_t positionMs; int64_t durationMs; } ABMResumeEntry;
@@ -3203,7 +3204,9 @@ static void QueueMoveItem(int source,int insertBoundary) {
 }
 
 static void PlayIndex(int index) {
-    if(index<0||index>=g_playlistCount)return;
+    if(index<0||index>=g_playlistCount){g_startFromBeginningNextPlay=FALSE;return;}
+    BOOL startFromBeginning=g_startFromBeginningNextPlay;
+    g_startFromBeginningNextPlay=FALSE;
     if(g_torrentPlaybackActive||g_torrentStreamThread)TorrentStopPlayback();
     DWORD attributes=GetFileAttributesW(g_playlist[index]);
     if(attributes==INVALID_FILE_ATTRIBUTES || (attributes&FILE_ATTRIBUTE_DIRECTORY)){
@@ -3253,8 +3256,15 @@ static void PlayIndex(int index) {
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
     g_pendingResume=FALSE;g_pendingResumeTicks=0;
-    int64_t savedResume=ResumePositionForPath(g_playlist[index]);
-    if(savedResume>0){g_pendingResume=TRUE;g_pendingResumeMs=savedResume;g_pendingResumePause=FALSE;g_pendingResumeTicks=0;SetStatus(L"Restoring your previous playback position...");}
+    int resumeIndex=ResumeFind(g_playlist[index]);
+    if(startFromBeginning&&resumeIndex>=0){
+        for(int ri=resumeIndex+1;ri<g_resumeCount;ri++)g_resumeEntries[ri-1]=g_resumeEntries[ri];
+        g_resumeCount--;RefreshResumeFlags();ResumeSaveAsync(FALSE);
+        SetStatus(L"Starting from the beginning.");
+    }else{
+        int64_t savedResume=ResumePositionForPath(g_playlist[index]);
+        if(savedResume>0){g_pendingResume=TRUE;g_pendingResumeMs=savedResume;g_pendingResumePause=FALSE;g_pendingResumeTicks=0;SetStatus(L"Restoring your previous playback position...");}
+    }
     PositionVideoWindow();
     AddRecent(g_playlist[index]);
     libvlc_media_player_set_rate(g_player,g_playbackRate);
@@ -3524,6 +3534,28 @@ static void LoadPersonalCollection(void) {
     char line[PATH_CAP*4];while(g_playlistCount<MAX_PLAYLIST&&fgets(line,sizeof(line),fp)){size_t n=strcspn(line,"\r\n");line[n]=0;if(!line[0]||line[0]=='#')continue;UINT cp=CP_UTF8;int chars=MultiByteToWideChar(cp,MB_ERR_INVALID_CHARS,line,-1,NULL,0);if(chars<=0){cp=CP_ACP;chars=MultiByteToWideChar(cp,0,line,-1,NULL,0);}if(chars>0&&chars<=PATH_CAP)MultiByteToWideChar(cp,0,line,-1,g_playlist[g_playlistCount++],PATH_CAP);}
     fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;g_libraryTab=1;g_showFavorites=FALSE;g_showContinueWatching=FALSE;SavePersistentState();SetStatus(L"Saved personal library loaded into the playback queue.");InvalidateRect(g_main,NULL,FALSE);
 }
+static void OpenMediaSourceFolder(int index) {
+    if(index<0||index>=g_playlistCount)return;
+    const wchar_t *path=g_playlist[index];
+    wchar_t target[PATH_CAP],args[PATH_CAP+32];
+    DWORD attrs=GetFileAttributesW(path);
+    if(attrs!=INVALID_FILE_ATTRIBUTES&&!(attrs&FILE_ATTRIBUTE_DIRECTORY)){
+        if(FAILED(StringCchPrintfW(args,_countof(args),L"/select,\"%s\"",path)))return;
+    }else{
+        wcsncpy_s(target,_countof(target),path,_TRUNCATE);
+        wchar_t *slash=wcsrchr(target,L'\\');
+        if(!slash)slash=wcsrchr(target,L'/');
+        if(!slash)return;
+        if(slash==target)slash[1]=0;else *slash=0;
+        if(GetFileAttributesW(target)==INVALID_FILE_ATTRIBUTES){
+            SetStatus(L"The source folder is not currently available.");
+            return;
+        }
+        if(FAILED(StringCchPrintfW(args,_countof(args),L"\"%s\"",target)))return;
+    }
+    HINSTANCE result=ShellExecuteW(NULL,L"open",L"explorer.exe",args,NULL,SW_SHOWNORMAL);
+    if((INT_PTR)result<=32)SetStatus(L"Could not open the media source folder.");
+}
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     if(index>=0&&index<g_playlistCount)g_selected=index;else g_selected=-1;
     ABMMenuItem items[]={
@@ -3539,7 +3571,9 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {8,L"Load saved library...",TRUE,FALSE},
         {9,IsFavoritePath(index>=0&&index<g_playlistCount?g_playlist[index]:L"")?L"Remove from favourites":L"Add to favourites",index>=0&&index<g_playlistCount,FALSE},
         {10,L"Relink missing media...",index>=0&&index<g_playlistCount&&(g_missingMedia[index]||GetFileAttributesW(g_playlist[index])==INVALID_FILE_ATTRIBUTES),FALSE},
-        {11,L"Continue watching",index>=0&&index<g_playlistCount&&ResumePositionForPath(g_playlist[index])>0,FALSE}
+        {11,L"Continue from checkpoint",index>=0&&index<g_playlistCount&&ResumePositionForPath(g_playlist[index])>0,FALSE},
+        {12,L"Start from beginning",index>=0&&index<g_playlistCount&&!g_missingMedia[index],FALSE},
+        {13,L"Open source folder",index>=0&&index<g_playlistCount,FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
     switch(cmd){
@@ -3554,6 +3588,8 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         case 9:if(g_selected>=0&&g_selected<g_playlistCount)ToggleFavoritePath(g_playlist[g_selected]);break;
         case 10:if(g_selected>=0&&g_selected<g_playlistCount)RelinkMissingMedia(g_selected);break;
         case 11:if(g_selected>=0&&g_selected<g_playlistCount)PlayIndex(g_selected);break;
+        case 12:if(g_selected>=0&&g_selected<g_playlistCount){g_startFromBeginningNextPlay=TRUE;PlayIndex(g_selected);}break;
+        case 13:if(g_selected>=0&&g_selected<g_playlistCount)OpenMediaSourceFolder(g_selected);break;
     }
 }
 
