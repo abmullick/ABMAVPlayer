@@ -16,6 +16,7 @@ The source version can be ahead of the latest published installer while a releas
 ### Current release highlights — v1.0.9 candidate
 
 - Added media duration labels to Queue and Library cards, including Favourites, using background metadata resolution and a bounded cache to keep parsing off the UI thread.
+- Merged Continue Watching with automatic resume checkpoints, plus missing-media retention, status flagging and relinking across library references and saved M3U collections. These additions are in the current source tree and require Windows build/runtime validation before appearing in a published installer.
 - Polished windowed and fullscreen playback controls, seek timeline/playhead and volume rail styling, with improved clearance between the video surface and playback controls.
 - Added the Motion System 1.0 architecture audit and staged implementation plan.
 - Carries forward the v1.0.8 shared design system, VLC Runtime & Codecs diagnostics, Help Centre refinements and playback/Streaming Centre/Torrent lifecycle hardening.
