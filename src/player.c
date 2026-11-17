@@ -7235,8 +7235,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   AdvancedSettingsText(L"Changes are saved automatically. Restart is required only after changing the output engine.",
-       322,686,890,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   AdvancedSettingsText(L"Auto-saved. Output-engine changes require a restart.",
+       292,686,890,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    AdvancedSettingsButtonDraw(914,690,1040,736,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
   }
