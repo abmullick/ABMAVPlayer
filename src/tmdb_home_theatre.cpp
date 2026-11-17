@@ -9,6 +9,10 @@
 #include <cwctype>
 #include <new>
 #include <dwmapi.h>
+#include <uxtheme.h>
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
 #include "tmdb_home_theatre.h"
 #include "tmdb_metadata.h"
 #include "ui_d2d.h"
@@ -138,6 +142,7 @@ static void ParseDetails(const wchar_t *json,Result *r) {
         const wchar_t *crew=wcsstr(credits,L"\"crew\"");if(crew){const wchar_t *p=crew;while((p=wcsstr(p,L"\"job\""))){wchar_t job[64]={};CopyJsonString(p,end,L"job",job,_countof(job));if(!_wcsicmp(job,L"Director")){CopyJsonString(p,end,L"name",r->director,_countof(r->director));break;}p+=5;}}
     }
     wchar_t poster[256]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
+    if(!poster[0]&&r->index>=0&&r->index<g_itemCount)StringCchCopyW(poster,_countof(poster),g_items[r->index].poster);
     wchar_t folder[MAX_PATH]={};if(ImageFolder(folder,_countof(folder))&&poster[0]){
         StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\%d.jpg",folder,r->index);
         if(!ABM_TMDB_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
@@ -232,12 +237,14 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CREATE:
         g_window=w;g_darkBrush=CreateSolidBrush(PANEL2);
         g_edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,83,700,36,w,(HMENU)HT_EDIT,GetModuleHandleW(nullptr),nullptr);
-        g_results=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
+        g_results=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g_edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_results,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_results,LB_SETITEMHEIGHT,0,42);
+        SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);SetWindowTheme(g_results,L"DarkMode_Explorer",nullptr);
         SendMessageW(g_play,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         EnableWindow(g_play,FALSE);Layout(w);return 0;
@@ -267,6 +274,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX:
         SetBkColor((HDC)wp,PANEL2);SetTextColor((HDC)wp,TEXT);return (LRESULT)g_darkBrush;
+    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;if(m&&m->CtlID==HT_RESULTS){m->itemHeight=42;return TRUE;}break; }
     case WM_DRAWITEM: {
         DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
         if(d&&d->CtlID==HT_RESULTS&&d->itemID!=(UINT)-1) {
