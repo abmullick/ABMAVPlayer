@@ -1286,6 +1286,9 @@ static void DrawVisualizer(HDC dc,RECT area) {
     for(int i=4;i<16;i++)mid+=levels[i]/12.0f;
     for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
     float energy=bass*0.48f+mid*0.32f+treble*0.20f;
+    float pixelScale=(float)height/1080.0f;
+    if(pixelScale<0.75f)pixelScale=0.75f;
+    if(pixelScale>2.5f)pixelScale=2.5f;
     float t=(float)g_visualizerFrame;
     const COLORREF palette[12]={
         RGB(40,104,255),RGB(0,190,255),RGB(0,238,220),RGB(30,220,155),
@@ -1326,9 +1329,6 @@ static void DrawVisualizer(HDC dc,RECT area) {
     /* Nine broad, independently moving spectral ribbons. Each ribbon uses
        the 24-band FFT snapshot along its length, with a soft under-glow and a
        crisp coloured core. Segment count scales down on compact surfaces. */
-    float pixelScale=(float)height/1080.0f;
-    if(pixelScale<0.75f)pixelScale=0.75f;
-    if(pixelScale>2.5f)pixelScale=2.5f;
     int samples=width>2200?220:(width>1200?180:140);
     for(int layer=8;layer>=0;layer--) {
         float points[512*2];
