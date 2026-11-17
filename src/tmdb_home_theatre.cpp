@@ -36,7 +36,7 @@ static ABM_HomeTheatrePlayFn g_playCallback=nullptr;
 static struct MovieItem {
     int id=0, type=1, localIndex=-1, seasonNumber=-1, episodeNumber=-1;
     wchar_t title[256]={}, date[32]={}, overview[1400]={}, poster[256]={}, backdrop[256]={};
-} g_items[24];
+} g_items[100];
 static int g_itemCount=0, g_selected=-1, g_localMatch=-1;
 static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={}, g_backdropFile[MAX_PATH]={};
 static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE, g_episodeMode=FALSE;
@@ -77,7 +77,7 @@ static int JsonInt(const wchar_t *object,const wchar_t *end,const wchar_t *key) 
 static void ParseSearchJson(const wchar_t *json,int type,MovieItem *items,int *count) {
     const wchar_t *p=wcsstr(json,L"\"results\"");if(!p)return;
     p=wcschr(p,L'[');if(!p)return;p++;
-    while(*p&&*count<24) {
+    while(*p&&*count<100) {
         while(*p&&(iswspace(*p)||*p==L','))p++;if(*p==L']'||!*p)break;
         if(*p!=L'{'){p++;continue;}
         const wchar_t *start=p;BOOL quoted=FALSE,escaped=FALSE;int depth=0;
@@ -88,8 +88,9 @@ static void ParseSearchJson(const wchar_t *json,int type,MovieItem *items,int *c
         const wchar_t *finish=p;if(finish<=start)break;
         int id=JsonInt(start,finish,L"id");if(id<=0)continue;
         MovieItem item;item.id=id;item.type=type;
-        CopyJsonString(start,finish,type==1?L"title":L"name",item.title,_countof(item.title));
-        CopyJsonString(start,finish,type==1?L"release_date":L"first_air_date",item.date,_countof(item.date));
+        if(type==0){CopyJsonString(start,finish,L"title",item.title,_countof(item.title));if(!item.title[0])CopyJsonString(start,finish,L"name",item.title,_countof(item.title));}
+        else CopyJsonString(start,finish,type==1?L"title":L"name",item.title,_countof(item.title));
+        CopyJsonString(start,finish,type==1?L"release_date":L"first_air_date",item.date,_countof(item.date));if(type==0&&!item.date[0]){CopyJsonString(start,finish,L"release_date",item.date,_countof(item.date));if(!item.date[0])CopyJsonString(start,finish,L"first_air_date",item.date,_countof(item.date));}
         CopyJsonString(start,finish,L"overview",item.overview,_countof(item.overview));
         CopyJsonString(start,finish,L"poster_path",item.poster,_countof(item.poster));
         CopyJsonString(start,finish,L"backdrop_path",item.backdrop,_countof(item.backdrop));
@@ -129,7 +130,7 @@ struct Work {
 struct Result {
     int kind=0,count=0,index=-1;
     BOOL ok=FALSE;
-    MovieItem items[24], recommendations[24], seasons[24], episodes[64];
+    MovieItem items[100], recommendations[24], seasons[24], episodes[64];
     int recommendationCount=0, seasonCount=0, episodeCount=0;
     wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},backdropFile[MAX_PATH]={},error[256]={};
 };
@@ -238,7 +239,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         if(!ABM_TMDB_IsConfigured())StringCchCopyW(r->error,_countof(r->error),L"Configure your TMDB Read Access Token in Settings first.");
         else {
             size_t limit=w->paths.size()<100?w->paths.size():100;
-            for(size_t i=0;i<limit&&r->count<24;i++) {
+            for(size_t i=0;i<limit&&r->count<100;i++) {
                 const wchar_t *path=w->paths[i].c_str();const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
                 wchar_t query[256]={};StringCchCopyW(query,_countof(query),leaf);
                 wchar_t *dot=wcsrchr(query,L'.');if(dot)*dot=0;
@@ -258,7 +259,8 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         if(r->ok){ParseEpisodes(json.data(),r,w->tvId,w->seasonNumber);r->ok=r->episodeCount>0;}
         if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No episode information was returned for this season.");
     }
-    if(!IsWindow(w->target)||!PostMessageW(w->target,w->kind==1?HT_SEARCH_DONE:HT_DETAILS_DONE,0,(LPARAM)r))delete r;
+    UINT done=w->kind==1?HT_SEARCH_DONE:w->kind==3?HT_SCAN_DONE:w->kind==4?HT_SEASON_DONE:HT_DETAILS_DONE;
+    if(!IsWindow(w->target)||!PostMessageW(w->target,done,0,(LPARAM)r))delete r;
     delete w;return 0;
 }
 static void StartWork(int kind,int index,const wchar_t *query) {
