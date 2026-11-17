@@ -79,6 +79,7 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #define WM_TORRENT_PLAYER_EVENT (WM_APP + 15)
 #define WM_TORRENT_TV_READY (WM_APP + 16)
 #define TIMER_ID 1
+#define VISUALIZER_TIMER_ID 2 /* dedicated main-window 60 Hz visualizer timer */
 #define MAX_RENDERERS 32
 #define MAX_DISCOVERERS 16
 #define MAX_PLAYLIST 256
@@ -1425,7 +1426,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         float x=area.left+i*gap+gap*0.18f;
         float bw=gap*0.64f;
         COLORREF c=palette[(i*12/bars)%12];
-        ABM_D2D_GradientRound(&g_ui,x,area.bottom-bh-8,x+bw,area.bottom-5,
+        ABM_D2D_GradientRound(&g_ui,x,(float)area.bottom-bh-8.0f,x+bw,(float)area.bottom-5.0f,
             bw*0.45f,Blend(bg,c,62),Blend(bg,c,18));
     }
 }
