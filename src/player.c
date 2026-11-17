@@ -1272,192 +1272,215 @@ static void DrawVisualizer(HDC dc,RECT area) {
     int width=area.right-area.left,height=area.bottom-area.top;
     if(width<100||height<70)return;
 
-    /* Deep, atmospheric canvas with a subtle lower vignette. */
-    GradientRect(dc,area,RGB(7,16,24),RGB(10,27,32));
-    RECT inner=area;InflateRect(&inner,-18,-20);
+    /* Native, owner-window renderer: no child window, no video-surface changes,
+       no playback-thread work. All geometry is drawn into the existing D2D target. */
+    GradientRect(dc,area,RGB(3,7,18),RGB(7,15,31));
+    RECT inner=area;InflateRect(&inner,-18,-18);
     int w=inner.right-inner.left,h=inner.bottom-inner.top;
     int cx=inner.left+w/2,cy=inner.top+h/2;
-    const wchar_t *name=g_visualizerMode==0?L"SPECTRUM  /  LIVE AUDIO":
-        (g_visualizerMode==1?L"WAVEFORM  /  LIVE AUDIO":L"PARTICLE FIELD  /  LIVE AUDIO");
-    RECT label={area.left+22,area.top+8,area.right-22,area.top+28};
-    Txt(dc,name,label,RGB(139,189,182),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-
     float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f;
-    float mid=0,treble=0;
+    float mid=0.0f,treble=0.0f;
     for(int i=4;i<16;i++)mid+=levels[i]/12.0f;
     for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
     float energy=bass*0.48f+mid*0.32f+treble*0.20f;
-    float pulse=(float)g_visualPulse;
-    /* Extended spectral palette: deep indigo, electric blue, cyan, jade,
-       emerald, amber, coral, magenta and violet. Kept local to the renderer. */
+    float t=(float)g_visualPulse;
     const COLORREF palette[9]={
-        RGB(42,72,190),RGB(35,145,235),RGB(42,218,224),
-        RGB(42,218,151),RGB(153,235,75),RGB(255,205,66),
-        RGB(255,112,78),RGB(235,76,166),RGB(143,100,255)
+        RGB(45,112,255),RGB(37,203,255),RGB(68,244,226),
+        RGB(88,238,190),RGB(177,244,128),RGB(255,197,116),
+        RGB(255,117,177),RGB(222,93,255),RGB(135,117,255)
     };
-    /* A slow chromatic aurora wash behind the active geometry. */
-    for(int band=0;band<18;band++) {
-        float p=(float)band/17.0f;
-        int x=inner.left+(int)(p*w);
-        int drift=(int)(sinf(pulse*0.009f+band*0.63f)*w*0.018f);
-        RECT wash={x+drift,inner.top+12,x+drift+w/13,inner.bottom-8};
-        COLORREF tint=palette[(band/2)%9];
-        ABM_D2D_GradientRound(&g_ui,(float)wash.left,(float)wash.top,
-            (float)wash.right,(float)wash.bottom,18.0f,
-            Blend(RGB(7,16,24),tint,9),Blend(RGB(7,16,24),tint,2));
+    const wchar_t *name=g_visualizerMode==0?L"QUANTUM ECHOES":
+        (g_visualizerMode==1?L"NEURAL SYMPHONY":L"CYBERNETIC PULSE");
+    RECT label={area.left+22,area.top+10,area.right-22,area.top+31};
+    Txt(dc,name,label,RGB(164,202,239),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+
+    /* Layered atmospheric fields. These are deliberately low-contrast so
+       the reactive geometry remains legible on both compact and fullscreen views. */
+    for(int i=0;i<22;i++) {
+        float p=(float)i/21.0f;
+        int x=inner.left+(int)(p*w+sinf(t*0.008f+i*0.61f)*w*0.025f);
+        int y=inner.top+(int)(h*(0.18f+0.64f*p)+sinf(t*0.006f+i)*h*0.06f);
+        int rw=w/10+(int)(treble*w*0.025f);
+        int rh=h/5+(int)(mid*h*0.025f);
+        COLORREF c=palette[(i*3/7)%9];
+        ABM_D2D_GradientRound(&g_ui,(float)(x-rw),(float)(y-rh),
+            (float)(x+rw),(float)(y+rh),(float)(rh/2),
+            Blend(RGB(3,7,18),c,10),Blend(RGB(3,7,18),c,1));
+    }
+    /* Star field with deterministic drift; no allocations or random calls per frame. */
+    for(int i=0;i<115;i++) {
+        float fx=(float)((i*197+31)%997)/997.0f;
+        float fy=(float)((i*431+73)%991)/991.0f;
+        float drift=sinf(t*0.006f+i*1.71f);
+        int x=inner.left+(int)(fx*w+drift*5.0f);
+        int y=inner.top+(int)(fy*h);
+        int d=(i%17==0)?2:1;
+        COLORREF c=palette[(i*5)%9];
+        ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,(float)y+d+1,
+            (float)d,Blend(RGB(3,7,18),c,(i%17==0)?65:27));
     }
 
     if(g_visualizerMode==0) {
-        /* Symmetric, high-density spectrum with a soft halo and a crisp
-           transient cap. The logarithmic band mapping gives bass more room. */
-        int bars=w>1200?88:(w>650?64:42);
-        int gap=w>900?5:3;
-        int bw=(w-gap*(bars-1))/bars;
-        if(bw<2){gap=2;bw=(w-gap*(bars-1))/bars;}
-        int midY=inner.top+h/2;
-        int maxH=(h-48)/2;
-        for(int i=0;i<bars;i++) {
-            float pos=(float)i/(float)(bars-1);
-            float curve=pos<0.5f?pos*2.0f:(1.0f-pos)*2.0f;
-            int band=(int)(powf(pos,0.72f)*23.0f);
-            float v=levels[band]*0.72f+levels[band?band-1:band]*0.18f+
-                levels[band<23?band+1:band]*0.10f;
-            float motion=0.90f+0.10f*sinf(pulse*0.035f+i*0.19f);
-            v*=motion;
-            int bh=5+(int)(v*(0.72f+curve*0.28f)*maxH);
-            if(bh>maxH)bh=maxH;
-            int x=inner.left+i*(bw+gap);
-            float huePosition=pos*8.0f;
-            int paletteSlot=(int)huePosition;
-            if(paletteSlot>7)paletteSlot=7;
-            float hueFraction=huePosition-(float)paletteSlot;
-            if(hueFraction>1.0f)hueFraction=1.0f;
-            COLORREF col=Blend(palette[paletteSlot],palette[paletteSlot+1],
-                (int)(hueFraction*100.0f));
-            float radius=(float)(bw<8?bw/2:4);
-            /* Multi-hue bloom, glass-like body and hot centre highlight. */
-            ABM_D2D_Round(&g_ui,(float)x-3,(float)(midY-bh-5),(float)(x+bw)+3,(float)(midY+bh+5),radius+3,
-                Blend(RGB(7,16,24),col,22));
-            ABM_D2D_GradientRound(&g_ui,(float)x,(float)(midY-bh),(float)(x+bw),(float)(midY+bh),
-                radius,Blend(col,palette[(paletteSlot+2)%9],42),col);
-            if(bh>18) {
-                ABM_D2D_Round(&g_ui,(float)x+1.0f,(float)(midY-bh+4),
-                    (float)(x+bw)-1.0f,(float)(midY-bh+7),1.5f,
-                    Blend(col,RGB(255,255,255),48));
-            }
-            int capY=midY-bh-7;
-            ABM_D2D_Round(&g_ui,(float)x,(float)capY,(float)(x+bw),(float)(capY+2),1.0f,ABM_THEME_COLOR_BEE5FF);
-            RECT reflection={x,midY+bh+5,x+bw,midY+bh+5+(bh/3)};
-            if(reflection.bottom>inner.bottom-5)reflection.bottom=inner.bottom-5;
-            if(reflection.bottom>reflection.top)
-                ABM_D2D_GradientRound(&g_ui,(float)reflection.left,(float)reflection.top,
-                    (float)reflection.right,(float)reflection.bottom,radius,
-                    Blend(RGB(7,16,24),col,18),Blend(RGB(7,16,24),col,5));
-        }
-        ABM_D2D_Line(&g_ui,(float)inner.left,(float)midY,(float)inner.right,(float)midY,
-            Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3,20),0.8f);
-    } else if(g_visualizerMode==1) {
-        /* Flowing ribbon field: multiple frequency-driven curves, soft
-           underglow and fine harmonic threads. */
+        /* QUANTUM ECHOES: a deforming luminous torus/ring with spectral
+           displacement, layered glow traces, orbiting particles and a hot core. */
+        int radius=(h<w?h:w)*31/100;
+        if(radius<35)radius=35;
         for(int layer=5;layer>=0;layer--) {
-            int px0=inner.left,py0=cy;
-            COLORREF col=palette[(layer*2+1)%9];
-            for(int n=1;n<240;n++) {
-                float pos=(float)n/239.0f;
-                int band=(int)(pos*23.0f);
-                float local=levels[band]*0.68f+energy*0.32f;
-                float phase=pulse*(0.026f+layer*0.004f)+pos*18.0f+layer*1.13f;
-                float envelope=0.25f+0.75f*sinf(pos*3.1415926f);
-                float amp=(float)h*(0.12f+0.055f*layer)*envelope*(0.18f+local*1.7f);
-                int px=inner.left+n*w/239;
-                int py=cy+(int)(sinf(phase)*amp+sinf(phase*0.47f+layer)*amp*0.36f);
-                int hue=(int)(pos*8.0f+layer*1.35f);
-                int hueIndex=hue%8;
-                COLORREF segment=Blend(palette[hueIndex],palette[hueIndex+1],
-                    (int)((pos*8.0f+layer*1.35f-hue)*100.0f));
-                if(layer<3) {
-                    ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,
-                        Blend(RGB(7,16,24),segment,25),5.0f-layer*1.1f);
+            float scale=1.0f+(float)layer*0.045f;
+            int px=0,py=0;
+            for(int n=0;n<=240;n++) {
+                float a=(float)n*6.28318530718f/240.0f;
+                int band=(n*24)/241;
+                float v=levels[band];
+                float harmonic=levels[(band+7)%24];
+                float wobble=sinf(a*3.0f+t*0.022f)*h*0.012f+
+                    sinf(a*7.0f-t*0.017f)*h*0.006f;
+                float r=(float)radius*scale+wobble+(v*0.16f+harmonic*0.06f)*radius;
+                float tilt=0.88f+0.08f*sinf(t*0.009f);
+                int x=cx+(int)(cosf(a)*r);
+                int y=cy+(int)(sinf(a)*r*tilt);
+                if(n>0) {
+                    int slot=(n*8/240+layer*2)%8;
+                    COLORREF c=Blend(palette[slot],palette[slot+1],
+                        (int)((0.5f+0.5f*sinf(a*2.0f+t*0.018f))*100.0f));
+                    if(layer<3)
+                        ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,
+                            Blend(RGB(3,7,18),c,layer==0?45:24),layer==0?7.0f:4.0f);
+                    ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,c,
+                        layer==0?2.5f:(layer==1?1.7f:0.8f));
                 }
-                ABM_D2D_Line(&g_ui,(float)px0,(float)py0,(float)px,(float)py,segment,
-                    layer==0?2.4f:(layer==1?1.8f:0.9f));
-                px0=px;py0=py;
+                px=x;py=y;
             }
         }
-        /* Fine frequency particles sit along the moving ribbons. */
-        for(int n=0;n<96;n++) {
-            int band=(n*7)%24;
-            float pos=(float)n/95.0f;
-            float phase=pulse*0.04f+n*0.71f;
-            int x=inner.left+(int)(pos*w);
-            int y=cy+(int)(sinf(phase)*h*(0.12f+levels[band]*0.25f));
-            int d=1+(int)(levels[band]*2.5f);
-            ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),
-                (float)d,ABM_THEME_COLOR_BEE5FF);
+        /* Three audio-driven orbit paths give the ring depth and motion. */
+        for(int orbit=0;orbit<3;orbit++) {
+            int px=0,py=0;
+            for(int n=0;n<=180;n++) {
+                float a=(float)n*6.2831853f/180.0f;
+                float r=(float)radius*(1.30f+orbit*0.16f)+
+                    sinf(a*(2.0f+orbit)+t*0.014f)*radius*(0.035f+bass*0.07f);
+                float tilt=0.34f+orbit*0.19f;
+                int x=cx+(int)(cosf(a+t*0.002f*(orbit+1))*r);
+                int y=cy+(int)(sinf(a)*r*tilt);
+                if(n>0)ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,
+                    Blend(RGB(3,7,18),palette[(orbit*3+4)%9],22+orbit*7),0.8f);
+                px=x;py=y;
+            }
+        }
+        for(int i=0;i<42;i++) {
+            float a=t*0.009f+i*0.14959965f;
+            float r=radius*(1.12f+0.30f*sinf(i*2.31f+t*0.013f));
+            float x=cx+cosf(a)*r;
+            float y=cy+sinf(a)*r*0.72f;
+            int d=1+(i%5==0?2:0)+(int)(treble*2.0f);
+            COLORREF c=palette[(i*3)%9];
+            ABM_D2D_Round(&g_ui,x-d-2,y-d-2,x+d+2,y+d+2,(float)d+2,
+                Blend(RGB(3,7,18),c,35));
+            ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
+        }
+        int core=radius/5+(int)(bass*radius*0.12f);
+        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core),(float)(cy-core),
+            (float)(cx+core),(float)(cy+core),(float)core,
+            Blend(palette[1],palette[7],(int)(energy*65.0f)),1.3f);
+    } else if(g_visualizerMode==1) {
+        /* NEURAL SYMPHONY: many flowing, frequency-coupled filaments and
+           travelling nodes. Each frequency band modulates its own region. */
+        for(int layer=11;layer>=0;layer--) {
+            int px=inner.left,py=cy;
+            for(int n=1;n<260;n++) {
+                float p=(float)n/259.0f;
+                int band=(int)(p*23.0f);
+                float v=levels[band];
+                float envelope=0.22f+0.78f*sinf(p*3.14159265f);
+                float phase=p*17.0f+t*(0.012f+layer*0.0011f)+layer*0.47f;
+                float amp=h*(0.035f+layer*0.008f)*envelope*(0.35f+v*1.9f+mid*0.5f);
+                int x=inner.left+n*w/259;
+                int y=cy+(int)(sinf(phase)*amp+sinf(phase*0.43f+layer)*amp*0.42f);
+                COLORREF c=palette[(layer*2+(int)(p*8))%9];
+                if(layer<5)ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,
+                    Blend(RGB(3,7,18),c,30),4.0f-layer*0.45f);
+                ABM_D2D_Line(&g_ui,(float)px,(float)py,(float)x,(float)y,c,
+                    layer<3?1.8f:0.75f);
+                if(n%22==0) {
+                    int d=1+(int)(v*2.0f);
+                    ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,
+                        (float)y+d+1,(float)d,c);
+                }
+                px=x;py=y;
+            }
+        }
+        /* Frequency pulses travel along the field rather than remaining static. */
+        for(int i=0;i<64;i++) {
+            float p=fmodf((float)i/64.0f+t*0.0008f,1.0f);
+            int band=(i*7)%24;
+            int x=inner.left+(int)(p*w);
+            int y=cy+(int)(sinf(p*17.0f+t*0.018f)*h*(0.08f+levels[band]*0.28f));
+            int d=1+(int)(levels[band]*3.0f);
+            ABM_D2D_Round(&g_ui,(float)x-d-2,(float)y-d-2,(float)x+d+2,
+                (float)y+d+2,(float)d+2,Blend(RGB(3,7,18),palette[(i*3)%9],40));
+            ABM_D2D_Round(&g_ui,(float)x-d,(float)y-d,(float)x+d+1,
+                (float)y+d+1,(float)d,palette[(i*3)%9]);
         }
     } else {
-        /* Audio-reactive orbital particle nebula. Rings breathe with bass,
-           particle orbits respond to mids, and fine sparks respond to treble. */
-        int radius=(h<w?h:w)/3;
-        int core=radius/4+(int)(bass*radius*0.20f);
-        for(int ring=4;ring>=0;ring--) {
-            float wobble=sinf(pulse*(0.018f+ring*0.004f)+ring*1.41f);
-            int rr=radius+ring*13+(int)(wobble*energy*radius*0.22f);
-            COLORREF rc=ring<2?ABM_THEME_COLOR_64CAA6:ABM_THEME_COLOR_23747A;
-            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),
-                (float)rr,Blend(RGB(7,16,24),rc,ring==0?70:32),ring==0?1.8f:0.8f);
+        /* CYBERNETIC PULSE: a radial reactor, 96 spectral spokes, orbital
+           debris and concentric rings that react independently to bass/treble. */
+        int radius=(h<w?h:w)*30/100;
+        if(radius<32)radius=32;
+        for(int ring=7;ring>=0;ring--) {
+            float breathe=sinf(t*(0.012f+ring*0.001f)+ring*0.9f);
+            int rr=radius+ring*8+(int)(breathe*(3.0f+bass*radius*0.07f));
+            COLORREF c=palette[(ring*2+1)%9];
+            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),
+                (float)(cx+rr),(float)(cy+rr),(float)rr,
+                Blend(RGB(3,7,18),c,ring<2?52:24),ring==0?1.7f:0.75f);
         }
-        /* Radial equalizer spokes. */
-        for(int i=0;i<72;i++) {
-            float a=(float)i*6.2831853f/72.0f+pulse*0.0025f;
-            int band=(i*24)/72;
+        for(int i=0;i<96;i++) {
+            float a=(float)i*6.2831853f/96.0f+t*0.0018f;
+            int band=(i*24)/96;
             float v=levels[band];
-            float r0=(float)core+8.0f;
-            float r1=r0+radius*(0.12f+v*0.72f);
-            COLORREF col=(i%3==0)?ABM_THEME_COLOR_8EE2D3:ABM_THEME_COLOR_23747A;
+            float r0=radius*(0.32f+0.08f*sinf(t*0.012f+i));
+            float r1=radius*(0.62f+v*0.58f);
+            COLORREF c=palette[(i*7/96+band/3)%9];
             ABM_D2D_Line(&g_ui,cx+cosf(a)*r0,cy+sinf(a)*r0,
-                cx+cosf(a)*r1,cy+sinf(a)*r1,col,(i%6==0)?2.0f:0.9f);
+                cx+cosf(a)*r1,cy+sinf(a)*r1,c,(i%8==0)?2.0f:0.9f);
         }
-        /* Particle trails and luminous points. Deterministic motion avoids
-           random-number work and keeps the frame cost predictable. */
-        for(int i=0;i<224;i++) {
-            float angle=i*2.39996323f+pulse*(0.0018f+(i%11)*0.00017f);
+        for(int i=0;i<190;i++) {
+            float a=i*2.39996323f+t*(0.0014f+(i%9)*0.00016f);
             int band=(i*13)%24;
             float v=levels[band];
-            float orbit=0.20f+(float)(i%29)/38.0f;
-            float flicker=0.45f+0.55f*sinf(pulse*0.035f+i*1.37f);
-            float r=radius*(orbit+v*0.58f+flicker*energy*0.18f);
-            float drift=sinf(angle*2.2f+pulse*0.016f)*treble*15.0f;
-            float x=cx+cosf(angle)*r+drift;
-            float y=cy+sinf(angle)*r+drift*0.62f;
-            float tailX=x-cosf(angle)*((2.0f+v*13.0f));
-            float tailY=y-sinf(angle)*((2.0f+v*13.0f));
-            int d=1+(int)(v*3.0f)+(i%19==0?2:0);
-            int hueIndex=(i*5+band*2)%8;
-            COLORREF col=Blend(palette[hueIndex],palette[hueIndex+1],
-                (int)((flicker)*100.0f));
-            ABM_D2D_Line(&g_ui,tailX,tailY,x,y,Blend(RGB(7,16,24),col,28),2.8f);
-            ABM_D2D_Round(&g_ui,x-d-2.0f,y-d-2.0f,x+d+2.0f,y+d+2.0f,
-                (float)d+2.0f,Blend(RGB(7,16,24),col,22));
-            ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1.0f,y+d+1.0f,(float)d,col);
+            float orbit=0.34f+(float)(i%31)/48.0f;
+            float r=radius*(orbit+v*0.55f+energy*0.12f);
+            float x=cx+cosf(a)*r;
+            float y=cy+sinf(a)*r*(0.72f+0.06f*sinf(t*0.008f));
+            int d=1+(int)(v*2.5f)+(i%23==0?2:0);
+            COLORREF c=palette[(i*5+band)%9];
+            ABM_D2D_Line(&g_ui,x-cosf(a)*(3.0f+v*10.0f),
+                y-sinf(a)*(3.0f+v*10.0f),x,y,
+                Blend(RGB(3,7,18),c,38),2.5f);
+            ABM_D2D_Round(&g_ui,x-d-2,y-d-2,x+d+2,y+d+2,(float)d+2,
+                Blend(RGB(3,7,18),c,25));
+            ABM_D2D_Round(&g_ui,x-d,y-d,x+d+1,y+d+1,(float)d,c);
         }
-        /* Bright central reactor with concentric pulse rings. */
-        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core-8),(float)(cy-core-8),
-            (float)(cx+core+8),(float)(cy+core+8),(float)(core+8),
-            Blend(palette[2],palette[7],(int)(energy*70.0f)),1.4f);
+        int core=radius/4+(int)(bass*radius*0.15f);
         ABM_D2D_GradientRound(&g_ui,(float)(cx-core),(float)(cy-core),
             (float)(cx+core),(float)(cy+core),(float)core,
-            ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_8EE2D3);
+            Blend(palette[0],palette[2],35),Blend(palette[6],palette[8],45));
         ABM_D2D_StrokeRound(&g_ui,(float)(cx-core/2),(float)(cy-core/2),
             (float)(cx+core/2),(float)(cy+core/2),(float)(core/2),
-            ABM_THEME_COLOR_BEE5FF,1.0f);
+            RGB(207,237,255),1.0f);
     }
 
-    /* Minimal baseline and corner markers frame the visual without a boxy panel. */
-    ABM_D2D_Line(&g_ui,(float)inner.left,(float)(inner.bottom-2),
-        (float)inner.right,(float)(inner.bottom-2),ABM_THEME_COLOR_1B433E,1.0f);
-    ABM_D2D_Line(&g_ui,(float)inner.left,(float)(inner.top+24),
-        (float)(inner.left+34),(float)(inner.top+24),ABM_THEME_COLOR_64CAA6,1.2f);
+    /* Restrained glass-like framing and bottom activity trace. */
+    for(int i=0;i<48;i++) {
+        int band=(i*24)/48;
+        int x=inner.left+i*w/48;
+        int bh=2+(int)(levels[band]*13.0f);
+        COLORREF c=palette[(i*8/48)%9];
+        ABM_D2D_Line(&g_ui,(float)x,(float)(inner.bottom-3),
+            (float)x,(float)(inner.bottom-3-bh),Blend(RGB(3,7,18),c,65),1.0f);
+    }
+    ABM_D2D_Line(&g_ui,(float)inner.left,(float)(inner.bottom-1),
+        (float)inner.right,(float)(inner.bottom-1),RGB(32,69,99),0.7f);
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
