@@ -6894,9 +6894,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
-   if(AdvancedSettingsPoint(x,y,322,636,532,674)){ShowSubtitleTrackMenu(w);return 0;}
-   if(AdvancedSettingsPoint(x,y,542,636,744,674)){if(g_player)libvlc_video_set_spu(g_player,-1);InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,754,636,1018,674)){LoadExternalSubtitle(w);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,322,610,532,648)){ShowSubtitleTrackMenu(w);return 0;}
+   if(AdvancedSettingsPoint(x,y,542,610,744,648)){if(g_player)libvlc_video_set_spu(g_player,-1);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,754,610,1018,648)){LoadExternalSubtitle(w);InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,770,264,850,308)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,860,264,940,308)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,950,264,1032,308)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
@@ -6961,7 +6961,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
-  if(AdvancedSettingsPoint(x,y,914,694,1040,738)){DestroyWindow(w);return 0;}
+  if(AdvancedSettingsPoint(x,y,914,664,1040,708)){DestroyWindow(w);return 0;}
   return 0;
  }
  case WM_LBUTTONUP:{
@@ -7112,9 +7112,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     for(int i=0;i<4;i++){int left=520+i*126;BOOL selected=(g_advancedSubtitleOutline==g_subtitleOutlineValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,518,(float)left+120,560,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,518.5f,(float)left+119.5f,559.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleOutlineLabels[i],left+4,519,left+116,559,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     AdvancedSettingsText(L"Subtitle vertical position",322,562,1018,584,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,584,(float)left+164,628,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,584.5f,(float)left+163.5f,627.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,585,left+159,627,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsButtonDraw(322,636,532,674,L"Choose subtitle track",FALSE);
-    AdvancedSettingsButtonDraw(542,636,744,674,L"Disable subtitles",FALSE);
-    AdvancedSettingsButtonDraw(754,636,1018,674,L"Load external subtitle...",TRUE);
+    AdvancedSettingsButtonDraw(322,610,532,648,L"Choose subtitle track",FALSE);
+    AdvancedSettingsButtonDraw(542,610,744,648,L"Disable subtitles",FALSE);
+    AdvancedSettingsButtonDraw(754,610,1018,648,L"Load external subtitle...",TRUE);
    }else{
     MEMORYSTATUSEX mem={0};mem.dwLength=sizeof(mem);GlobalMemoryStatusEx(&mem);
     SYSTEM_INFO si={0};GetNativeSystemInfo(&si);
@@ -7247,10 +7247,12 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      AdvancedSettingsText(row5,326,480,1008,522,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     }
    }
-   ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
+   /* Keep the footer inside the content panel. The old divider at Y=664
+      crossed the subtitle action row, and the old Close button extended below
+      the panel's bottom edge. */
    AdvancedSettingsText(L"Auto-saved. Output-engine changes require a restart.",
-       292,686,890,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   AdvancedSettingsButtonDraw(914,690,1040,736,L"Close",FALSE);
+       292,670,890,710,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   AdvancedSettingsButtonDraw(914,664,1040,708,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
   }
   EndPaint(w,&ps);return 0;
