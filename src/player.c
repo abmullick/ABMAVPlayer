@@ -3364,7 +3364,6 @@ static void PlaybackHandleEngineError(void) {
     g_hasMedia=FALSE;g_endHandled=TRUE;g_pendingResume=FALSE;
     g_videoBoundsValid=FALSE;ResetArtwork();
     if(g_visualizerActive)ABM_AudioVisualizer_Stop();
-        ABM_ProjectM_Destroy();
     g_visualizerActive=FALSE;g_visualizerTried=FALSE;
     if(g_video&&!g_fullscreen)ShowWindow(g_video,SW_HIDE);
     PlaybackReportFailure(failedIndex,FALSE);
@@ -8798,7 +8797,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_torrentSetReadWindow=NULL;g_torrentWaitForRange=NULL;
             g_torrentStartHttpStream=NULL;g_torrentStartLanHttpStream=NULL;g_torrentStopHttpStream=NULL;
         }
-        ResumeCaptureCurrent();ResumeSaveAsync(TRUE);DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);if(g_visualizerTimerRunning)KillTimer(hwnd,VISUALIZER_TIMER_ID);g_visualizerTimerRunning=FALSE;ABM_AudioVisualizer_Stop();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
+        ResumeCaptureCurrent();ResumeSaveAsync(TRUE);DurationMetadataStop();ABM_Streaming_Close();ABM_Cast_StreamDiscoveryStop();SavePersistentState();SaveAudioPreferences();if(g_eqWindow)DestroyWindow(g_eqWindow);DragAcceptFiles(hwnd,FALSE);KillTimer(hwnd,TIMER_ID);if(g_visualizerTimerRunning)KillTimer(hwnd,VISUALIZER_TIMER_ID);g_visualizerTimerRunning=FALSE;ABM_AudioVisualizer_Stop();ABM_ProjectM_Destroy();ResetArtwork();ABM_D2D_Destroy(&g_ui);g_main=NULL;StopDiscovery();if(g_streamCastPlayer){libvlc_media_player_stop(g_streamCastPlayer);libvlc_media_player_release(g_streamCastPlayer);g_streamCastPlayer=NULL;}if(g_streamSelectedRenderer){libvlc_renderer_item_release(g_streamSelectedRenderer);g_streamSelectedRenderer=NULL;}PlaybackStopEngine();libvlc_media_player_release(g_player);libvlc_release(g_vlc);PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
