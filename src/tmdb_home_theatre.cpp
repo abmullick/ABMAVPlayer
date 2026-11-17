@@ -335,7 +335,7 @@ static void Draw(HWND w) {
         ABM_D2D_Text(&g_canvas,m.title,MakeRect(380,150,c.right-390,196),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t meta[160];StringCchPrintfW(meta,_countof(meta),L"%s  ·  %s%s%s",m.type==1?L"MOVIE":L"TELEVISION",g_year[0]?g_year:(m.date[0]?m.date:L"Year unavailable"),g_runtime[0]?L"  ·  ":L"",g_runtime);
         ABM_D2D_Text(&g_canvas,meta,MakeRect(380,198,c.right-390,224),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        if(g_posterFile[0]) {
+        if((g_showBackdrop&&g_backdropFile[0])||g_posterFile[0]) {
             ABM_D2D_Round(&g_canvas,380,244,590,550,12,RGB(7,12,20));
             if(g_showBackdrop)ABM_D2D_DrawImageCover(&g_canvas,386,250,584,544,0.92f);else ABM_D2D_DrawImage(&g_canvas,386,250,584,544);
         } else {
