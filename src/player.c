@@ -243,6 +243,8 @@ static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
 
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
+static unsigned int g_visualizerFrame=0;
+static BOOL g_visualizerTimerRunning=FALSE;
 static BOOL g_receiverLost=FALSE;
 static DWORD g_discoveryStartedTick=0;
 static BOOL g_discoveryTimedOut=FALSE;
@@ -1531,7 +1533,9 @@ static void DrawUI(HDC dc,RECT client) {
     COLORREF frameEdge=Blend(ABM_THEME_COLOR_1E3035,ABM_THEME_COLOR_377F75,glow);
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
-    if(g_artworkLoaded) {
+    if(g_visualizerActive) {
+        DrawVisualizer(dc,R_VIDEO);
+    } else if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
             (float)R_VIDEO.right,(float)R_VIDEO.bottom,0.16f*(float)g_artworkFade/100.0f);
@@ -1565,7 +1569,7 @@ static void DrawUI(HDC dc,RECT client) {
         if(g_visualizerActive)DrawVisualizer(dc,visualStrip);
         else { int bars=36,gap=5,bw=(waveW-gap*(bars-1))/bars;if(bw<2)bw=2;
             for(int i=0;i<bars;i++){double pulse=0.22+0.78*(0.5+0.5*sin((double)g_visualPulse*0.095+i*0.47));int bh=5+(int)(pulse*25.0);RECT bar={waveX+i*(bw+gap),waveY-bh/2,waveX+i*(bw+gap)+bw,waveY+bh/2};COLORREF col=Blend(ABM_THEME_COLOR_2B9791,ABM_THEME_COLOR_6CB897,i*100/(bars-1));RoundBox(dc,bar,col,3);} }
-    } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
+    }
     if(!g_hasMedia) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         int cy=(R_VIDEO.top+R_VIDEO.bottom)/2;
@@ -8171,8 +8175,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL audioOnlyLocal=g_hasMedia && g_player &&
             !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
-            /* Keep capture active even when album art exists: the visualizer is
-               composited into the artwork's lower information area. */
+            /* Keep capture independent from artwork; the visualizer owns the
+               complete media stage whenever the local track is audio-only. */
             if(!g_visualizerTried) {
                 g_visualizerTried=TRUE;
                 g_visualizerActive=ABM_AudioVisualizer_Start();
