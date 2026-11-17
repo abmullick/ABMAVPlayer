@@ -195,7 +195,7 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
             while(*p&&(iswspace(*p)||*p==L','))p++;if(*p==L']'||!*p)break;
             if(*p!=L'{'){p++;continue;}
             const wchar_t *start=p;BOOL quoted=FALSE,escaped=FALSE;int depth=0;
-            for(;*p;p++){if(quoted){if(escaped)escaped=FALSE;else if(*p==L'\\\\')escaped=TRUE;else if(*p==L'"')quoted=FALSE;continue;}if(*p==L'"'){quoted=TRUE;continue;}if(*p==L'{')depth++;else if(*p==L'}'&&--depth==0){p++;break;}}
+            for(;*p;p++){if(quoted){if(escaped)escaped=FALSE;else if(*p==L'\\')escaped=TRUE;else if(*p==L'"')quoted=FALSE;continue;}if(*p==L'"'){quoted=TRUE;continue;}if(*p==L'{')depth++;else if(*p==L'}'&&--depth==0){p++;break;}}
             MovieItem item;item.id=tmdbId;item.type=2;item.seasonNumber=JsonInt(start,p,L"season_number");
             CopyJsonString(start,p,L"name",item.title,_countof(item.title));CopyJsonString(start,p,L"air_date",item.date,_countof(item.date));
             if(item.title[0])r->seasons[r->seasonCount++]=item;
