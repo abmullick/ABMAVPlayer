@@ -1259,33 +1259,80 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
 }
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0}; ABM_AudioVisualizer_GetBands(levels,24);
-    int width=area.right-area.left,height=area.bottom-area.top; if(width<80||height<60)return;
-    Fill(dc,area,ABM_THEME_COLOR_080F14); RECT in=area; InflateRect(&in,-22,-24);
+    int width=area.right-area.left,height=area.bottom-area.top;
+    if(width<80||height<60)return;
+    Fill(dc,area,ABM_THEME_COLOR_080F14);
+    RECT in=area; InflateRect(&in,-22,-24);
     int w=in.right-in.left,h=in.bottom-in.top,cx=in.left+w/2,cy=in.top+h/2;
     const wchar_t *name=g_visualizerMode==0?L"LIVE SPECTRUM":(g_visualizerMode==1?L"FLUID WAVES":L"PARTICLE VISUALIZER");
-    RECT label={area.left+20,area.top+10,area.right-20,area.top+34}; Txt(dc,name,label,ABM_THEME_COLOR_97B8B4,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT label={area.left+20,area.top+10,area.right-20,area.top+34};
+    Txt(dc,name,label,ABM_THEME_COLOR_97B8B4,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f,mid=0,treble=0;
+    for(int i=4;i<16;i++)mid+=levels[i]/12.0f;
+    for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
+    float energy=bass*0.48f+mid*0.32f+treble*0.20f;
     if(g_visualizerMode==0) {
-        int gap=5,bw=(w-gap*23)/24;if(bw<2)bw=2;int base=in.bottom-8,maxh=h-24;
-        for(int i=0;i<24;i++){float v=levels[i];if(v<0.018f)v=0.018f;if(v>1)v=1;int bh=(int)(v*maxh),x=in.left+i*(bw+gap);
-            COLORREF col=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,i*100/23);
+        int gap=w>700?7:4,bars=48,bw=(w-gap*(bars-1))/bars;
+        if(bw<2){bars=24;gap=4;bw=(w-gap*(bars-1))/bars;}
+        int base=in.bottom-7,maxh=h-30;
+        for(int i=0;i<bars;i++) {
+            int band=(i*24)/bars;float v=levels[band],neighbour=levels[band?band-1:band];
+            v=v*0.78f+neighbour*0.22f;if(v<0.025f)v=0.025f;if(v>1.0f)v=1.0f;
+            int bh=5+(int)(v*maxh),x=in.left+i*(bw+gap);
+            COLORREF col=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,i*100/(bars-1));
+            RECT glow={x-2,base-bh-5,x+bw+2,base+2};
+            ABM_D2D_Round(&g_ui,(float)glow.left,(float)glow.top,(float)glow.right,(float)glow.bottom,(float)(bw/2+2),Blend(ABM_THEME_COLOR_0D373D,col,22));
             ABM_D2D_Round(&g_ui,(float)x,(float)(base-bh),(float)(x+bw),(float)base,(float)(bw/2),col);
-            RECT cap={x,base-bh-5,x+bw,base-bh-3};Fill(dc,cap,ABM_THEME_COLOR_BEE5FF);}
+            RECT cap={x,base-bh-5,x+bw,base-bh-2};Fill(dc,cap,ABM_THEME_COLOR_BEE5FF);
+        }
+        for(int i=0;i<bars;i++) {
+            int band=(i*24)/bars;int bh=(int)(levels[band]*(maxh*0.42f));
+            int x=in.left+i*(bw+gap);RECT mirror={x,cy+4,x+bw,cy+4+bh/2};
+            if(mirror.bottom>in.bottom)mirror.bottom=in.bottom;
+            if(mirror.bottom>mirror.top)Fill(dc,mirror,Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,35));
+        }
     } else if(g_visualizerMode==1) {
-        for(int layer=0;layer<3;layer++){int px0=in.left,py0=cy;COLORREF col=layer==0?ABM_THEME_COLOR_64CAA6:(layer==1?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_397C89);
-            for(int n=1;n<96;n++){int band=(n*24)/96;float amp=levels[band]*(float)(h*(0.18f+0.10f*layer));float phase=(float)g_visualPulse*0.075f+n*0.105f+layer*1.7f;
-                int px=in.left+n*w/95,py=cy+(int)(sinf(phase)*amp);DrawLine(dc,px0,py0,px,py,col,layer==0?2:1);px0=px;py0=py;}}
+        for(int layer=3;layer>=0;layer--) {
+            int px0=in.left,py0=cy;
+            COLORREF col=layer==0?ABM_THEME_COLOR_8EE2D3:(layer==1?ABM_THEME_COLOR_64CAA6:(layer==2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_397C89));
+            for(int n=1;n<160;n++) {
+                int band=(n*24)/160;float local=levels[band]*0.72f+energy*0.28f;
+                float amp=local*(float)(h*(0.20f+0.12f*layer));
+                float phase=(float)g_visualPulse*(0.055f+layer*0.009f)+n*0.071f+layer*1.55f;
+                int px=in.left+n*w/159;
+                int py=cy+(int)(sinf(phase)*amp+sinf(phase*0.47f+layer)*amp*0.32f);
+                DrawLine(dc,px0,py0,px,py,col,layer==0?3:(layer==1?2:1));px0=px;py0=py;
+            }
+        }
+        for(int n=0;n<72;n++) {
+            int x=in.left+n*w/71,band=(n*24)/72,amp=(int)(levels[band]*h*0.12f);
+            int y=cy+(n%2?1:-1)*(amp+2);RECT dot={x-1,y-1,x+2,y+2};Fill(dc,dot,ABM_THEME_COLOR_8EE2D3);
+        }
     } else {
-        float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f,treble=0;for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
-        float energy=bass*0.72f+treble*0.28f;int radius=(h<w?h:w)/3;
-        for(int ring=0;ring<3;ring++){int rr=radius+(int)(sinf(g_visualPulse*0.045f+ring*1.9f)*energy*radius*0.24f)+ring*18;
-            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),(float)rr,ring?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_23747A,0.8f);}
-        for(int i=0;i<112;i++){float angle=i*2.39996323f+g_visualPulse*(0.0035f+(i%7)*0.00035f);int band=(i*13)%24;float v=levels[band];
-            float orbit=0.22f+(i%17)/22.0f,pulse=0.5f+0.5f*sinf(g_visualPulse*0.06f+i*1.31f);float r=radius*(orbit+v*0.58f+pulse*energy*0.13f);
-            float turbulence=sinf(angle*3.0f+g_visualPulse*0.025f)*treble*13.0f;int x=cx+(int)(cosf(angle)*r+turbulence),y=cy+(int)(sinf(angle)*r+turbulence*0.65f);
-            int d=2+(int)(v*5.0f)+(i%13==0?2:0);COLORREF col=i%3==0?ABM_THEME_COLOR_64CAA6:(i%3==1?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_8EE2D3);
-            ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),(float)d,col);}
-        for(int i=0;i<24;i++){float a=i*6.2831853f/24.0f+g_visualPulse*0.009f;float r0=radius*0.18f,r1=r0+radius*(0.20f+levels[i]*0.52f);
-            DrawLine(dc,cx+(int)(cosf(a)*r0),cy+(int)(sinf(a)*r0),cx+(int)(cosf(a)*r1),cy+(int)(sinf(a)*r1),i%2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_64CAA6,1);}
+        int radius=(h<w?h:w)/3,core=radius/3+(int)(energy*radius*0.24f);
+        for(int ring=3;ring>=0;ring--) {
+            int rr=radius+(int)(sinf(g_visualPulse*0.035f+ring*1.35f)*energy*radius*0.20f)+ring*14;
+            COLORREF ringCol=ring==0?ABM_THEME_COLOR_64CAA6:(ring==1?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_1B433E);
+            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),(float)rr,ringCol,ring==0?1.6f:0.8f);
+        }
+        for(int i=0;i<32;i++) {
+            float a=i*6.2831853f/32.0f+g_visualPulse*0.004f;int band=(i*3)%24;
+            float r0=(float)core,r1=r0+radius*(0.18f+levels[band]*0.65f);
+            DrawLine(dc,cx+(int)(cosf(a)*r0),cy+(int)(sinf(a)*r0),cx+(int)(cosf(a)*r1),cy+(int)(sinf(a)*r1),i%2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_64CAA6,2);
+        }
+        for(int i=0;i<176;i++) {
+            float angle=i*2.39996323f+g_visualPulse*(0.0028f+(i%9)*0.00022f);
+            int band=(i*13)%24;float v=levels[band],orbit=0.18f+(i%23)/29.0f;
+            float pulse=0.5f+0.5f*sinf(g_visualPulse*0.045f+i*1.17f);
+            float r=radius*(orbit+v*0.68f+pulse*energy*0.20f);
+            float turbulence=sinf(angle*2.7f+g_visualPulse*0.021f)*treble*18.0f;
+            int x=cx+(int)(cosf(angle)*r+turbulence),y=cy+(int)(sinf(angle)*r+turbulence*0.68f);
+            int d=1+(int)(v*4.0f)+(i%17==0?2:0);
+            COLORREF col=i%3==0?ABM_THEME_COLOR_64CAA6:(i%3==1?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_8EE2D3);
+            ABM_D2D_Round(&g_ui,(float)(x-d-2),(float)(y-d-2),(float)(x+d+3),(float)(y+d+3),(float)(d+2),Blend(ABM_THEME_COLOR_0D373D,col,30));
+            ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),(float)d,col);
+        }
+        ABM_D2D_StrokeRound(&g_ui,(float)(cx-core),(float)(cy-core),(float)(cx+core),(float)(cy+core),(float)core,ABM_THEME_COLOR_8EE2D3,1.5f);
     }
     RECT base={in.left,in.bottom-2,in.right,in.bottom-1};Fill(dc,base,ABM_THEME_COLOR_2B4344);
 }
@@ -1341,6 +1388,10 @@ static void DrawUI(HDC dc,RECT client) {
             Txt(dc,g_trackAlbum[0]?g_trackAlbum:L"Not provided",albumValue,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             Txt(dc,L"Genre",genreLabel,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             Txt(dc,g_trackGenre[0]?g_trackGenre:L"Not provided",genreValue,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            if(g_visualizerActive) {
+                RECT visual={client.right/2+34,client.bottom-178,client.right-42,client.bottom-72};
+                DrawVisualizer(dc,visual);
+            }
         } else if(g_visualizerActive) {
             DrawVisualizer(dc,client);
         } else {
@@ -8042,7 +8093,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            thread while fullscreen input and playback controls are active. */
         if (!g_fullscreen && (++g_videoGeometryPoll % 5u) == 0u)
             RefreshVideoGeometry();
-        BOOL audioOnlyLocal=!g_fullscreen && g_hasMedia && g_player &&
+        BOOL audioOnlyLocal=g_hasMedia && g_player &&
             !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
             /* Keep capture active even when album art exists: the visualizer is
