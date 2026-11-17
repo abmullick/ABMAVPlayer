@@ -6866,8 +6866,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    if(AdvancedSettingsPoint(x,y,720,540,820,580)){if(g_audioDelayUs>-10000000)g_audioDelayUs-=50000;if(g_player)libvlc_audio_set_delay(g_player,g_audioDelayUs);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,830,540,930,580)){if(g_audioDelayUs<10000000)g_audioDelayUs+=50000;if(g_player)libvlc_audio_set_delay(g_player,g_audioDelayUs);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,940,540,1018,580)){g_audioDelayUs=0;if(g_player)libvlc_audio_set_delay(g_player,0);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
-   if(AdvancedSettingsPoint(x,y,322,594,430,638)){ShowAudioTrackMenu(w);return 0;}
-   if(AdvancedSettingsPoint(x,y,440,594,630,638)){ShowEqualizer();return 0;}
+   if(AdvancedSettingsPoint(x,y,322,594,440,638)){ShowAudioTrackMenu(w);return 0;}
+   if(AdvancedSettingsPoint(x,y,452,594,660,638)){ShowEqualizer();return 0;}
    if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
     if(EnsureDataDirectory()){
      wchar_t path[PATH_CAP],value[16];StringCchPrintfW(path,_countof(path),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(value,_countof(value),L"%d",g_advancedAudioOutDraft);
