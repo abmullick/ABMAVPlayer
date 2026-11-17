@@ -124,7 +124,7 @@ static int LoadManualMatch(int tmdbId,int type) {
     while(fgetws(line,_countof(line),fp)) {
         line[wcscspn(line,L"\r\n")]=0;
         wchar_t *a=wcschr(line,L'\t');if(!a)continue;*a++=0;
-        wchar_t *b=wcschr(a,L'\\t');if(!b)continue;*b++=0;
+        wchar_t *b=wcschr(a,L'\t');if(!b)continue;*b++=0;
         if(_wtoi(line)!=tmdbId||_wtoi(a)!=type)continue;
         for(size_t i=0;i<g_mediaPaths.size();i++)if(!_wcsicmp(g_mediaPaths[i].c_str(),b)){found=(int)i;break;}
     }
