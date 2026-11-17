@@ -98,7 +98,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Playback speed presets from 0.5x to 2.0x.
 - Fullscreen playback and keyboard controls.
 - Read-only Media Information view from the playback context menu: available metadata tags, file path/size, duration/position, decoded video dimensions and LibVLC-reported stream codecs/active tracks.
-- Home Theatre window: search TMDB movies and television titles, inspect poster artwork, synopsis, genres, runtime and available cast/director credits, and play a filename-matched item from the current local playlist.
+- Home Theatre: TMDB movie/TV discovery, full active-playlist and favourites identification, editable/persisted local-file matches, cached posters and backdrops, similar-title recommendations, TV season/episode browsing and local episode filename matching.
 
 ### Audio, video and subtitles
 - Common formats include MP3, WAV, FLAC, AAC, M4A, OGG, MP4, MKV, AVI, MOV, WMV and WebM; actual support depends on VLC codecs/plugins.
