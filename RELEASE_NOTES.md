@@ -1,12 +1,14 @@
 # Unreleased source changes — Continue Watching and media recovery
 
-These changes are on the feature branch and are not part of the published v1.0.9 installer. Windows build and runtime validation are still required.
+These changes have been merged into `main` and are not part of the currently published v1.0.9 installer. They are source-tree functionality pending Windows x64 build and runtime validation.
 
 - Added persistent per-file playback checkpoints with asynchronous, atomic writes and automatic resume after LibVLC enters Playing state.
 - Added a Library view cycle for All tracks, Favourites and Continue Watching, plus row-level Continue status.
 - Retained missing paths in the library, favourites, recent history and personal collections instead of silently pruning them.
 - Added Missing status and a native Relink missing media action that updates active playlist references, favourites, recent history, resume state and saved M3U collections.
 - Added QA coverage for restart recovery, completed-item handling, missing-path retention, relinking and UI-thread I/O boundaries.
+
+- Documented the new Library workflows in the F1 Help Centre, User Guide and Developer Guide.
 
 ## Published release notes
 
