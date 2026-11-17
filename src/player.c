@@ -7304,7 +7304,7 @@ static int g_settingsScrollX=0,g_settingsScrollY=0;
 #define SETTINGS_CONTENT_HEIGHT 1120
 static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
 static void SettingsMoveChildControls(HWND w){
- static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29},{6208,39,714,600,30}};
+ static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29},{6208,39,730,600,30}};
  for(int i=0;i<(int)_countof(items);i++){HWND child=GetDlgItem(w,items[i].id);if(child)SetWindowPos(child,NULL,items[i].x-g_settingsScrollX,items[i].y-g_settingsScrollY,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE);}
 }
 #define SETTINGS_SCROLLBAR_SIZE 12
@@ -7428,7 +7428,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
-  wchar_t tmdbToken[4096]={0};ABM_TMDB_GetReadToken(tmdbToken,_countof(tmdbToken)); HWND tmdbEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",tmdbToken,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_PASSWORD,39,714,600,30,w,(HMENU)6208,NULL,NULL); if(tmdbEdit)SendMessageW(tmdbEdit,EM_SETLIMITTEXT,4096,0); SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); for(int id=6201;id<=6208;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
+  wchar_t tmdbToken[4096]={0};ABM_TMDB_GetReadToken(tmdbToken,_countof(tmdbToken)); HWND tmdbEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",tmdbToken,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_PASSWORD,39,730,600,30,w,(HMENU)6208,NULL,NULL); if(tmdbEdit)SendMessageW(tmdbEdit,EM_SETLIMITTEXT,4096,0); SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); for(int id=6201;id<=6208;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
   return 0;
  }
  case WM_THEMECHANGED:
@@ -7529,7 +7529,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsEditFrame(199,599,341,634);if(GetFocus()==GetDlgItem(w,6205))ABM_D2D_StrokeRound(&g_settingsUi,198,598,342,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Upload limit (KiB/s)",400,583,552,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(551,599,693,634);if(GetFocus()==GetDlgItem(w,6206))ABM_D2D_StrokeRound(&g_settingsUi,550,598,694,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
-   SettingsSection(666,L"TMDB METADATA",L"Movie and television information",794); SettingsText(L"TMDB API Read Access Token",40,701,420,723,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsEditFrame(34,713,644,747); if(GetFocus()==GetDlgItem(w,6208))ABM_D2D_StrokeRound(&g_settingsUi,33,712,645,748,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f); SettingsText(ABM_TMDB_IsConfigured()?L"Token encrypted for this Windows user.":L"Enter your TMDB Read Access Token to enable metadata lookup.",40,752,780,777,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); SettingsSection(806,L"UPDATES",L"Maintenance",878);
+   SettingsSection(666,L"TMDB METADATA",L"Movie and television information",794); SettingsText(L"TMDB API Read Access Token",40,701,420,723,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsEditFrame(34,729,644,763); if(GetFocus()==GetDlgItem(w,6208))ABM_D2D_StrokeRound(&g_settingsUi,33,728,645,764,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f); SettingsText(ABM_TMDB_IsConfigured()?L"Token encrypted for this Windows user.":L"Enter your TMDB Read Access Token to enable metadata lookup.",40,768,780,793,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); SettingsSection(806,L"UPDATES",L"Maintenance",878);
    SettingsButtonDraw(39,816,194,849,L"Check for updates",TRUE);
    SettingsText(L"Checks the latest published GitHub release.",210,817,770,848,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(886,L"COLOR THEME",L"Changes apply immediately",1100);
