@@ -3413,7 +3413,8 @@ static void ShowAudioTrackMenu(HWND owner){
     }
     if(tracks)libvlc_track_description_list_release(tracks);
     if(!n)items[count++]=(ABMMenuItem){0,L"No embedded audio tracks",FALSE,FALSE};
-    int cmd=ABM_ShowMenu(owner,items,count);
+    POINT menuPoint;GetCursorPos(&menuPoint);ScreenToClient(owner,&menuPoint);
+    int cmd=ABM_ShowMenu(owner,menuPoint.x,menuPoint.y,items,count);
     if(cmd==27000)libvlc_audio_set_track(g_player,-1);
     else if(cmd>=27100&&cmd<27124){
         int wanted=cmd-27100;
@@ -3436,7 +3437,8 @@ static void ShowSubtitleTrackMenu(HWND owner){
     }
     if(tracks)libvlc_track_description_list_release(tracks);
     if(!n)items[count++]=(ABMMenuItem){0,L"No embedded subtitle tracks",FALSE,FALSE};
-    int cmd=ABM_ShowMenu(owner,items,count);
+    POINT menuPoint;GetCursorPos(&menuPoint);ScreenToClient(owner,&menuPoint);
+    int cmd=ABM_ShowMenu(owner,menuPoint.x,menuPoint.y,items,count);
     if(cmd==21000)libvlc_video_set_spu(g_player,-1);
     else if(cmd>=26000&&cmd<26064){
         int wanted=cmd-26000;
