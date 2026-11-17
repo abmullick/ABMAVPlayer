@@ -263,6 +263,7 @@ Do not mark this work runtime-validated until the Windows build and interaction 
 - [ ] Verify a missing favourite remains in Favourites after restarting the application and can be relinked from its row context menu.
 - [ ] Remove or rename a source file while the app is open; reopen the drawer and confirm Missing status is refreshed without filesystem work during painting or scrolling.
 - [ ] Verify Relink is disabled for healthy media, opens a native file picker for missing media, and handles Cancel and invalid targets safely.
+- [ ] Right-click a healthy media row in both Queue and Library; verify Open file location opens Explorer with the exact file selected. Verify it is disabled for missing media and keyboard context-menu invocation targets the selected row.
 - [ ] Verify Unicode filenames and collection names, paths containing spaces, overwrite confirmation, cancel, and read/write failure handling.
 - [ ] Build with MSVC and test at 100%, 125%, 150% and 200% scaling, plus compact drawer height. Confirm heart glyph fallback and no text overlap.
 - [ ] Re-run queue drag/drop, click-to-play, double-click playback, context-menu remove/reorder, wheel scrolling, and Clear regression checks.
