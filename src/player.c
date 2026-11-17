@@ -3716,7 +3716,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==24012)libvlc_video_set_crop_geometry(g_player,"4:3");
     else if(cmd==24013)libvlc_video_set_crop_geometry(g_player,"1:1");
     else if(cmd==24020)libvlc_video_set_scale(g_player,0.0f);
-    else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?1:0,"yadif");}
+    else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?"yadif":NULL);}
     else if(cmd==25200)ABM_ProjectM_NextPreset();
     else if(cmd==25201)ABM_ProjectM_PreviousPreset();
     else if(cmd==25202){g_autoPresetTransitions=!g_autoPresetTransitions;ABM_ProjectM_SetAutoSwitch(g_autoPresetTransitions);InvalidateRect(hwnd,&R_VIDEO,FALSE);}
