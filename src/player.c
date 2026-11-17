@@ -247,6 +247,7 @@ static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static unsigned int g_visualizerFrame=0;
+static HHOOK g_videoMouseHook=NULL;
 static BOOL g_visualizerTimerRunning=FALSE;
 static BOOL g_receiverLost=FALSE;
 static DWORD g_discoveryStartedTick=0;
@@ -4081,6 +4082,24 @@ static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARA
     if(msg==WM_SETCURSOR){SetCursor(LoadCursorW(NULL,IDC_ARROW));return TRUE;}
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
+static LRESULT CALLBACK VideoMouseHookProc(int code, WPARAM message, LPARAM data) {
+    if(code==HC_ACTION && message==WM_RBUTTONUP && data && IsWindow(g_main)) {
+        const MOUSEHOOKSTRUCT *mouse=(const MOUSEHOOKSTRUCT*)data;
+        HWND target=mouse->hwnd;
+        if(target && target!=g_main && IsWindow(target) && IsChild(g_main,target)) {
+            POINT pt=mouse->pt;
+            ScreenToClient(g_main,&pt);
+            if(PtInRect(&R_VIDEO,pt)) {
+                /* Catch the right-click before LibVLC's video child procedure
+                   consumes it. The hook is scoped to this UI thread only. */
+                SendMessageW(g_main,WM_RBUTTONUP,0,MAKELPARAM(pt.x,pt.y));
+                return 1;
+            }
+        }
+    }
+    return CallNextHookEx(g_videoMouseHook,code,message,data);
+}
+
 static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
         WPARAM wp, LPARAM lp, UINT_PTR subclassId, DWORD_PTR refData) {
     (void)subclassId;
@@ -7882,7 +7901,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         g_renderers=CreateWindowExW(0,L"COMBOBOX",L"",WS_CHILD|CBS_DROPDOWNLIST|CBS_HASSTRINGS,0,0,1,1,hwnd,(HMENU)ID_RENDERERS,GetModuleHandleW(NULL),NULL);
         SendMessageW(g_renderers,CB_ADDSTRING,0,(LPARAM)L"Local playback");SendMessageW(g_renderers,CB_SETCURSEL,0,0);
         ShowWindow(g_renderers,SW_HIDE);
-        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);VlcAttachPlaybackEvents();SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
+        libvlc_media_player_set_hwnd(g_player,g_video);SetWindowSubclass(g_video,VideoKeyboardSubclass,1,(DWORD_PTR)hwnd);g_videoMouseHook=SetWindowsHookExW(WH_MOUSE,VideoMouseHookProc,NULL,GetCurrentThreadId());libvlc_audio_set_volume(g_player,g_volume);ShowWindow(g_video,SW_HIDE);UpdateLayout(hwnd);VlcAttachPlaybackEvents();SetTimer(hwnd,TIMER_ID,33,NULL);return 0;
     }
     case WM_CLOSE:
         if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
@@ -8818,6 +8837,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_ERASEBKGND:return 1;
     case WM_CTLCOLORSTATIC:SetBkColor((HDC)wp,C_BG);SetTextColor((HDC)wp,C_TEXT);return (LRESULT)g_videoBrush;
     case WM_DESTROY:
+        if(g_videoMouseHook){UnhookWindowsHookEx(g_videoMouseHook);g_videoMouseHook=NULL;}
         VlcDetachPlaybackEvents();
         TorrentDetachPlayerEvents();
         if(g_torrentStreamThread||g_torrentStreamRequest)TorrentCancelStreamPreparation();
