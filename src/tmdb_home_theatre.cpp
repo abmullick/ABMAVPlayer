@@ -179,6 +179,8 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
         }
     }
 }
+static DWORD WINAPI Worker(LPVOID parameter);
+static void SetStatus(const wchar_t *s);
 static void ParseEpisodes(const wchar_t *json,Result *r,int tvId,int seasonNumber) {
     const wchar_t *p=wcsstr(json,L"\"episodes\"");if(!p)return;
     p=wcschr(p,L'[');if(!p)return;p++;
@@ -445,10 +447,16 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             StringCchCopyW(g_cast,_countof(g_cast),r->cast);
             StringCchCopyW(g_director,_countof(g_director),r->director);
             StringCchCopyW(g_posterFile,_countof(g_posterFile),r->posterFile);
+            StringCchCopyW(g_backdropFile,_countof(g_backdropFile),r->backdropFile);g_showBackdrop=FALSE;
             if(g_posterFile[0])ABM_D2D_LoadImage(&g_canvas,g_posterFile);
+            g_recommendationCount=r->recommendationCount;for(int i=0;i<g_recommendationCount;i++)g_recommendations[i]=r->recommendations[i];
+            g_seasonCount=r->seasonCount;for(int i=0;i<g_seasonCount;i++)g_seasons[i]=r->seasons[i];
+            g_tvId=g_items[g_selected].id;g_tvType=g_items[g_selected].type;
+            if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
+            EnableWindow(g_artButton,g_backdropFile[0]!=0);EnableWindow(g_recommendButton,g_recommendationCount>0);EnableWindow(g_seasonButton,g_tvType==2&&g_seasonCount>0);
             if(g_localMatch>=0)SetLocalMatchStatus(L"Ready to play local file");else SetStatus(L"Metadata ready. No matching local file was found in the current library.");
         } else SetStatus(r->error[0]?r->error:L"Details unavailable.");
-        EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
+        EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
     case WM_PAINT:Draw(w);return 0;
