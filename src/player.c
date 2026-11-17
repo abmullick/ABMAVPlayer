@@ -6538,7 +6538,7 @@ static const wchar_t *g_subtitleOutlineLabels[4]={L"Off",L"Thin",L"Normal",L"Thi
 static const int g_subtitleMarginValues[4]={0,10,25,50};
 static const wchar_t *g_subtitleMarginLabels[4]={L"Default",L"10 px",L"25 px",L"50 px"};
 
-static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, then apply and restart ABM AV Player.";
+static wchar_t g_advancedAudioOutMessage[256]=L"";
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
  L"Overview",L"Video & Decoding",L"Audio Engine",L"Video Output",
@@ -7034,7 +7034,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(452,594,660,638,L"10-band equalizer",FALSE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
     wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    AdvancedSettingsText(g_advancedAudioOutMessage,322,642,1032,660,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(g_advancedAudioOutMessage[0])AdvancedSettingsText(g_advancedAudioOutMessage,322,642,1032,660,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    }else if(g_advancedSettingsPage==5){
     AdvancedSettingsText(L"Stream buffering",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int cacheValues[3]={g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching};
@@ -7235,8 +7235,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
    }
    ABM_D2D_Line(&g_advancedSettingsUi,274,664,1062,664,SETTINGS_BORDER,1.0f);
-   AdvancedSettingsText(L"Changes save automatically. Engine changes require a restart.",
-       292,686,866,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   AdvancedSettingsText(L"Changes are saved automatically. Restart is required only after changing the output engine.",
+       322,686,890,728,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    AdvancedSettingsButtonDraw(914,690,1040,736,L"Close",FALSE);
    ABM_D2D_End(&g_advancedSettingsUi);
   }
