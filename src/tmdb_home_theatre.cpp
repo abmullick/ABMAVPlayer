@@ -181,6 +181,14 @@ static void StartWork(int kind,int index,const wchar_t *query) {
     else {delete w;SetStatus(L"Could not start the metadata worker. Try again.");EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);}
 }
 static void SetStatus(const wchar_t *s){if(g_status)SetWindowTextW(g_status,s?s:L"");}
+static void SetLocalMatchStatus(const wchar_t *prefix) {
+    if(g_localMatch<0||g_localMatch>=(int)g_mediaPaths.size()){SetStatus(prefix);return;}
+    const wchar_t *path=g_mediaPaths[(size_t)g_localMatch].c_str();
+    const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
+    wchar_t message[256]={};
+    StringCchPrintfW(message,_countof(message),L"%s: %s",prefix?prefix:L"Local match",leaf);
+    SetStatus(message);
+}
 static void Layout(HWND w) {
     RECT c;GetClientRect(w,&c);int width=c.right,height=c.bottom;
     if(g_edit)MoveWindow(g_edit,28,83,width-190,36,TRUE);
@@ -268,7 +276,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=0;
                 g_detailsReady=FALSE;ABM_D2D_ClearImage(&g_canvas);
                 EnableWindow(g_play,g_localMatch>=0);
-                SetStatus(g_localMatch>=0?L"Local file match found. Details are loading…":L"No filename match found. Details are loading…");
+                if(g_localMatch>=0)SetLocalMatchStatus(L"Local file match · details loading");else SetStatus(L"No filename match found. Details are loading…");
                 StartWork(2,selected,nullptr);InvalidateRect(w,nullptr,FALSE);
             }return 0;
         }
@@ -309,7 +317,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             StringCchCopyW(g_director,_countof(g_director),r->director);
             StringCchCopyW(g_posterFile,_countof(g_posterFile),r->posterFile);
             if(g_posterFile[0])ABM_D2D_LoadImage(&g_canvas,g_posterFile);
-            SetStatus(g_localMatch>=0?L"Metadata ready. A matching local file is available to play.":L"Metadata ready. No matching local file was found in the current library.");
+            if(g_localMatch>=0)SetLocalMatchStatus(L"Ready to play local file");else SetStatus(L"Metadata ready. No matching local file was found in the current library.");
         } else SetStatus(r->error[0]?r->error:L"Details unavailable.");
         EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
