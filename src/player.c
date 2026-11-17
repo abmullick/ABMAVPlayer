@@ -6382,7 +6382,7 @@ static BOOL ABM_PointInRect(int x,int y,int l,int t,int r,int b){return x>=l&&x<
 static void SettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary) {
  BOOL hot=ABM_PointInRect(g_settingsHoverX,g_settingsHoverY,l,t,r,b),down=hot&&g_settingsMousePressed;
  COLORREF top=down?ABM_UI_COLOR_SURFACE_BLUE:hot?(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE_BLUE):(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
- COLORREF bottom=primary&&!down&&!hot?ABM_THEME_COLOR_168B91:ABM_UI_COLOR_SURFACE;
+ COLORREF bottom=primary&&!down&&!hot?ABM_THEME_COLOR_1C9D9D:ABM_UI_COLOR_SURFACE;
  COLORREF edge=hot?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
  ABM_D2D_GradientRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
                (float)ABM_UI_RADIUS_BUTTON,top,bottom);
