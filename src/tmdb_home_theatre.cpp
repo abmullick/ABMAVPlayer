@@ -163,7 +163,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
             r->ok=r->count>0;
             if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No TMDB matches found. Check the title or try another search.");
         }
-    } else if(w->kind==2&&w->index>=0&&w->index<g_itemCount) {
+    } else if(w->kind==2&&w->item.id>0) {
         MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
         r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
         if(r->ok)ParseDetails(json.data(),r,item.poster);
