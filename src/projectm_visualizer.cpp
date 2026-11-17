@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cstring>
 #include <stdint.h>
 #include "projectm_visualizer.h"
 
@@ -29,6 +30,7 @@ size_t g_presetIndex=0;
 DWORD64 g_lastPresetTick=0;
 bool g_ready=false;
 bool g_destroying=false;
+float g_pcm[512]{};
 
 std::string Utf8(const wchar_t *value) {
     if(!value||!*value)return {};
@@ -106,10 +108,7 @@ void Render() {
     if(!g_presets.empty() && GetTickCount64()-g_lastPresetTick>45000)
         LoadNextPreset(true);
     /* The PCM producer is the existing WASAPI loopback capture worker. */
-    float pcm[512]{};
-    extern void ABM_AudioVisualizer_GetSamples(float*,int);
-    ABM_AudioVisualizer_GetSamples(pcm,512);
-    projectm_pcm_add_float(g_projectm,pcm,512,PROJECTM_MONO);
+    projectm_pcm_add_float(g_projectm,g_pcm,512,PROJECTM_MONO);
     projectm_opengl_render_frame(g_projectm);
     SwapBuffers(g_dc);
 }
@@ -177,6 +176,12 @@ extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
         bounds->right-bounds->left,bounds->bottom-bounds->top,
         SWP_NOACTIVATE|SWP_SHOWWINDOW);
 }
+extern "C" void ABM_ProjectM_SetAudioSamples(const float *samples,int count) {
+    if(!samples||count<=0)return;
+    if(count>512)count=512;
+    memcpy(g_pcm,samples,(size_t)count*sizeof(float));
+    if(count<512)memset(g_pcm+count,0,(size_t)(512-count)*sizeof(float));
+}
 extern "C" void ABM_ProjectM_Invalidate(void) {
     if(g_window&&IsWindowVisible(g_window))InvalidateRect(g_window,nullptr,FALSE);
 }
@@ -187,11 +192,12 @@ extern "C" void ABM_ProjectM_NextPreset(void) {
 extern "C" BOOL ABM_ProjectM_IsReady(void) { return g_ready?TRUE:FALSE; }
 extern "C" void ABM_ProjectM_Destroy(void) {
     if(g_destroying)return;g_destroying=true;
+    HWND oldWindow=g_window;
     if(g_dc&&g_gl)wglMakeCurrent(g_dc,g_gl);
     if(g_playlist){projectm_playlist_destroy(g_playlist);g_playlist=nullptr;}
     if(g_projectm){projectm_destroy(g_projectm);g_projectm=nullptr;}
     if(g_gl){wglMakeCurrent(nullptr,nullptr);wglDeleteContext(g_gl);g_gl=nullptr;}
     if(g_window){DestroyWindow(g_window);g_window=nullptr;}
-    if(g_dc&&g_parent)ReleaseDC(g_window?g_window:g_parent,g_dc);
+    if(g_dc&&oldWindow)ReleaseDC(oldWindow,g_dc);
     g_dc=nullptr;g_parent=nullptr;g_presets.clear();g_ready=false;g_destroying=false;
 }
