@@ -134,7 +134,7 @@ if errorlevel 1 goto build_failed
 
 echo [14/14] Linking ABM AV Player...
 cl /nologo build\player.obj build\ui_theme.obj build\licensing.obj build\torrent_dlna_cast.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\youtube_dial.obj build\cast_v2.obj build\updater.obj build\tmdb_metadata.obj build\tmdb_home_theatre.obj build\player.res build\version.res /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
-  wininet.lib oleaut32.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib secur32.lib dnsapi.lib windowscodecs.lib version.lib ^
+  wininet.lib oleaut32.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib dwmapi.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib secur32.lib dnsapi.lib windowscodecs.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
 
