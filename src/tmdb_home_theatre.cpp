@@ -111,6 +111,27 @@ static int FindLocalMatch(const wchar_t *title) {
     }
     return -1;
 }
+static int LoadManualMatch(int tmdbId,int type) {
+    wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return -1;
+    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
+    FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"rt, ccs=UTF-8")!=0||!fp)return -1;
+    wchar_t line[PATH_CAP+64];int found=-1;
+    while(fgetws(line,_countof(line),fp)) {
+        line[wcscspn(line,L"\\r\\n")]=0;
+        wchar_t *a=wcschr(line,L'\\t');if(!a)continue;*a++=0;
+        wchar_t *b=wcschr(a,L'\\t');if(!b)continue;*b++=0;
+        if(_wtoi(line)!=tmdbId||_wtoi(a)!=type)continue;
+        for(size_t i=0;i<g_mediaPaths.size();i++)if(!_wcsicmp(g_mediaPaths[i].c_str(),b)){found=(int)i;break;}
+    }
+    fclose(fp);return found;
+}
+static void SaveManualMatch(int tmdbId,int type,int pathIndex) {
+    if(tmdbId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
+    wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
+    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
+    FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
+    fwprintf(fp,L"%d\\t%d\\t%s\\n",tmdbId,type,g_mediaPaths[(size_t)pathIndex].c_str());fclose(fp);
+}
 static BOOL ImageFolder(wchar_t *folder,size_t cap) {
     wchar_t app[MAX_PATH]={};if(FAILED(SHGetFolderPathW(nullptr,CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE,nullptr,SHGFP_TYPE_CURRENT,app)))return FALSE;
     if(FAILED(StringCchPrintfW(folder,cap,L"%s\\ABMAVPlayer\\HomeTheatre",app)))return FALSE;
@@ -130,7 +151,7 @@ struct Work {
 struct Result {
     int kind=0,count=0,index=-1;
     BOOL ok=FALSE;
-    MovieItem items[100], recommendations[24], seasons[24], episodes[64];
+    MovieItem items[100], recommendations[100], seasons[24], episodes[64];
     int recommendationCount=0, seasonCount=0, episodeCount=0;
     wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},backdropFile[MAX_PATH]={},error[256]={};
 };
@@ -248,7 +269,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
                 wchar_t *year=wcsstr(query,L" (");if(year&&wcslen(year)>=6)year[0]=0;
                 std::vector<wchar_t> json(512*1024);
                 if(ABM_TMDB_Search(query,(ABM_TMDB_MEDIA_TYPE)0,json.data(),json.size())) {
-                    MovieItem found[24];int count=0;ParseSearchJson(json.data(),0,found,&count);
+                    MovieItem found[100];int count=0;ParseSearchJson(json.data(),0,found,&count);
                     if(count>0){found[0].localIndex=(int)i;r->items[r->count++]=found[0];}
                 }
                 Sleep(180);
@@ -375,7 +396,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(LOWORD(wp)==HT_RECOMMEND&&HIWORD(wp)==BN_CLICKED&&g_recommendationCount){g_scanMode=FALSE;g_recommendMode=TRUE;g_seasonMode=FALSE;g_itemCount=g_recommendationCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_recommendations[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a recommendation to explore its details.");return 0;}
         if(LOWORD(wp)==HT_SEASONS&&HIWORD(wp)==BN_CLICKED&&g_seasonCount){g_scanMode=FALSE;g_recommendMode=FALSE;g_seasonMode=TRUE;g_episodeMode=FALSE;g_itemCount=g_seasonCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_seasons[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].date);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Seasons");SetStatus(L"Select a season to browse its episodes.");return 0;}
         if(LOWORD(wp)==HT_ARTWORK&&HIWORD(wp)==BN_CLICKED){g_showBackdrop=!g_showBackdrop;const wchar_t *art=(g_showBackdrop&&g_backdropFile[0])?g_backdropFile:g_posterFile;if(art[0])ABM_D2D_LoadImage(&g_canvas,art);SetWindowTextW(g_artButton,g_showBackdrop?L"Show poster":L"Show backdrop");InvalidateRect(w,nullptr,FALSE);return 0;}
-        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match selected");}return 0;}
+        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);if(g_selected>=0&&g_selected<g_itemCount)SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match saved");}return 0;}
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_UPDATE)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_MAXTEXT)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_SETFOCUS)return 0;
@@ -391,7 +412,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                     StringCchCopyW(g_overview,_countof(g_overview),episode.overview);StringCchCopyW(g_year,_countof(g_year),episode.date);g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;
                     EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode filename match found.":L"No matching local episode filename found.");InvalidateRect(w,nullptr,FALSE);return 0;
                 }
-                g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
+                g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;
                 g_showBackdrop=FALSE;g_detailsReady=FALSE;ABM_D2D_ClearImage(&g_canvas);
                 EnableWindow(g_play,g_localMatch>=0);
