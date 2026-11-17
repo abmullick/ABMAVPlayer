@@ -46,8 +46,7 @@ void CollectPresets(const std::wstring &directory) {
     if(find!=INVALID_HANDLE_VALUE) {
         do {
             if(!(fd.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY)) {
-                std::wstring full=directory+L"\\ "+fd.cFileName;
-                full=directory+L"\\"+fd.cFileName;
+                std::wstring full=directory+L"\\"+fd.cFileName;
                 std::string path=Utf8(full.c_str());
                 if(!path.empty())g_presets.push_back(path);
             }
