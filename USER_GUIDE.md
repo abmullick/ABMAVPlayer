@@ -1,3 +1,11 @@
+## Home Theatre
+
+Open **Home Theatre** from the idle home dashboard, or from the playback context menu while media is playing. Search for a movie or television title using the TMDB Read Access Token configured in Settings. Select a result to load its poster, synopsis, release date, runtime, genres and available cast/director credits. Poster images are cached under `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre` so they do not need to be downloaded again for every viewing session.
+
+**Play local match** is enabled only when the selected TMDB title matches a filename in the current playlist. This is a conservative filename-based match, not a guarantee that the file is the correct edition or episode; verify the selected local item before playback. Home Theatre metadata lookup is optional and asynchronous. A missing token, network failure or unavailable TMDB result does not affect ordinary local playback. TMDB attribution is shown in the existing About experience.
+
+The initial Home Theatre experience is a metadata discovery and local-match surface. Automatic whole-library identification, season/episode hierarchy, editable metadata matches, curated collections and recommendation shelves are not yet part of this implementation.
+
 # ABM AV Player — User Guide
 
 This guide covers the Windows desktop player and its separate Streaming Centre. Some playback, discovery and casting features depend on the installed 64-bit VLC runtime/plugins, receiver capabilities, WebView2 and provider policies.
