@@ -3226,7 +3226,9 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         }
         if(wp==VK_RETURN&&g_recentPopupHover>=0){HWND owner=(HWND)GetWindowLongPtrW(hwnd,GWLP_USERDATA);RecentPlayIndex(owner,g_recentPopupHover);return 0;}
         break;
-    case WM_ACTIVATE:if(LOWORD(wp)==WA_INACTIVE){DestroyWindow(hwnd);return 0;}break;
+    /* Do not dismiss on WM_ACTIVATE: the owner/popup activation hand-off
+       can generate a transient inactive notification during initial display.
+       The owner closes this surface on the next click outside it. */
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
         if(g_recentPopupCanvasReady&&ABM_D2D_CanvasBegin(&g_recentPopupCanvas,dc,&rc)){
@@ -3279,7 +3281,7 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
         WS_POPUP,pt.x,pt.y,width,height,hwnd,NULL,inst,NULL);
     if(!popup)return;
     SetWindowLongPtrW(popup,GWLP_USERDATA,(LONG_PTR)hwnd);g_recentPopupWindow=popup;
-    g_recentPopupHover=-1;ShowWindow(popup,SW_SHOWNOACTIVATE);SetForegroundWindow(popup);SetFocus(popup);InvalidateRect(popup,NULL,TRUE);
+    g_recentPopupHover=-1;ShowWindow(popup,SW_SHOW);SetForegroundWindow(popup);SetFocus(popup);InvalidateRect(popup,NULL,TRUE);
 }
 static void AddRecent(const wchar_t *path) {
     for(int i=0;i<g_recentCount;i++)if(!_wcsicmp(g_recent[i],path)){for(int j=i;j>0;j--)wcsncpy_s(g_recent[j],PATH_CAP,g_recent[j-1],_TRUNCATE);wcsncpy_s(g_recent[0],PATH_CAP,path,_TRUNCATE);SavePersistentState();return;}
@@ -8458,6 +8460,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }return 0;
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        /* A click delivered to the main window is outside the separate Recent
+           popup. Dismiss it here, while allowing the clicked main-window
+           control to continue processing normally. */
+        if(g_recentPopupWindow&&IsWindow(g_recentPopupWindow))DestroyWindow(g_recentPopupWindow);
         if(g_fullscreen) {
             if(Inside(R_PLAY,x,y)) {
                 if(g_hasMedia) {
