@@ -268,7 +268,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=0;
                 g_detailsReady=FALSE;ABM_D2D_ClearImage(&g_canvas);
                 EnableWindow(g_play,g_localMatch>=0);
-                SetStatus(g_localMatch>=0?L"Local file match found. Details are loading…":L"No exact local filename match. Details are loading…");
+                SetStatus(g_localMatch>=0?L"Local file match found. Details are loading…":L"No filename match found. Details are loading…");
                 StartWork(2,selected,nullptr);InvalidateRect(w,nullptr,FALSE);
             }return 0;
         }
