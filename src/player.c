@@ -331,6 +331,7 @@ static int g_drawerProgress = 0;
 static int g_hoverPlaylistIndex = -1;
 static BOOL g_drawerSettingsOpen = FALSE;
 static int64_t g_advancedSubtitleDelayUs=0;
+static int64_t g_audioDelayUs=0;
 static int g_advancedSubtitleFontSize=13; /* LibVLC relative subtitle size: 10, 13, 16, 19 */
 static int g_advancedSubtitleColor=16777215; /* RGB white */
 static BOOL g_advancedSubtitleBold=FALSE;
@@ -571,6 +572,7 @@ static void RefreshAudioDevices(void);
 static void ApplyAudioOutputDevice(void);
 static void ApplyEqProfile(void);
 static void ShowEqualizer(void);
+static void ShowAdvancedSettingsAtPage(HWND owner,int page);
 static void ApplyCustomEqualizer(void);
 static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp);
 static void ArtworkParsedEvent(const libvlc_event_t *ev, void *opaque);
@@ -2407,6 +2409,7 @@ static void SelectRenderer(void) {
                 ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);AddAdvancedPerformanceOptions(m);
                 PlaybackSetMedia(m);ApplyAdvancedAspectRatio();
                 libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);
+                libvlc_audio_set_delay(g_player,g_audioDelayUs);
                 ApplyEqProfile();
                 int playResult=PlaybackStartEngine();
                 libvlc_media_release(m);
@@ -3049,6 +3052,8 @@ static void SaveAudioPreferences(void) {
     for(int i=0;i<10;i++){wchar_t key[24];swprintf_s(key,_countof(key),L"EqBand%d",i);swprintf_s(value,24,L"%d",(int)(g_eqBandGain[i]*10.0f));WritePrivateProfileStringW(L"Audio",key,value,path);}
     wchar_t device[256]={0};MultiByteToWideChar(CP_UTF8,0,g_audioDeviceId,-1,device,(int)_countof(device));
     WritePrivateProfileStringW(L"Audio",L"OutputDevice",device,path);
+    swprintf_s(value,24,L"%lld",(long long)g_audioDelayUs);
+    WritePrivateProfileStringW(L"Audio",L"AudioDelayUs",value,path);
 }
 static void LoadAudioPreferences(void) {
     if(!EnsureDataDirectory())return;
@@ -3058,6 +3063,7 @@ static void LoadAudioPreferences(void) {
     g_compressor=GetPrivateProfileIntW(L"Audio",L"Compressor",0,path)!=0;
     wchar_t savedDevice[256]={0};GetPrivateProfileStringW(L"Audio",L"OutputDevice",L"",savedDevice,(DWORD)_countof(savedDevice),path);
     if(savedDevice[0])WideCharToMultiByte(CP_UTF8,0,savedDevice,-1,g_audioDeviceId,(int)sizeof(g_audioDeviceId),NULL,NULL);
+    {int delay=GetPrivateProfileIntW(L"Audio",L"AudioDelayUs",0,path);if(delay<-10000000)delay=-10000000;if(delay>10000000)delay=10000000;g_audioDelayUs=delay;}
     g_eqProfile=GetPrivateProfileIntW(L"Audio",L"EqProfile",0,path);
     if(!((g_eqProfile>=0&&g_eqProfile<=4)||(g_eqProfile>=10&&g_eqProfile<=19)))g_eqProfile=0;
     g_eqPreamp=(float)GetPrivateProfileIntW(L"Audio",L"EqPreamp",0,path)/10.0f;
@@ -3243,7 +3249,7 @@ static void PlayIndex(int index) {
     }
     ApplySubtitleAppearanceOption(m);AddAdvancedCachingOptions(m);AddAdvancedPerformanceOptions(m);
     BeginArtworkParse(m);
-    PlaybackSetMedia(m);libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);libvlc_media_release(m);
+    PlaybackSetMedia(m);libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);libvlc_audio_set_delay(g_player,g_audioDelayUs);libvlc_media_release(m);
     ApplyEqProfile();
     if(PlaybackStartEngine()!=0){
         g_hasMedia=FALSE;g_pendingResume=FALSE;ResetArtwork();
@@ -3379,11 +3385,43 @@ static void LoadPlaylist(void) {
     fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;
     InvalidateRect(g_main,NULL,FALSE);
 }
+static void LoadExternalSubtitle(HWND owner){
+    if(!g_player||!g_hasMedia)return;
+    OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"";
+    ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=owner;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;
+    ofn.lpstrFilter=L"Subtitle files (*.srt;*.ass;*.ssa;*.sub;*.vtt)\0*.srt;*.ass;*.ssa;*.sub;*.vtt\0All files (*.*)\0*.*\0";
+    ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR;
+    if(GetOpenFileNameW(&ofn)){
+        char utf8[PATH_CAP*4];
+        if(WideCharToMultiByte(CP_UTF8,0,path,-1,utf8,(int)sizeof(utf8),NULL,NULL)>0){
+            if(libvlc_video_set_subtitle_file(g_player,utf8)==0)SetStatus(L"External subtitle loaded.");
+            else SetStatus(L"LibVLC could not load this subtitle file.");
+        }
+    }
+}
+static void ShowSubtitleTrackMenu(HWND owner){
+    if(!g_player||!g_hasMedia)return;
+    ABMMenuItem items[66];wchar_t labels[64][256];int count=0,n=0;
+    items[count++]=(ABMMenuItem){21000,L"Disable subtitles",TRUE,FALSE};
+    libvlc_track_description_t *tracks=libvlc_video_get_spu_description(g_player);
+    for(libvlc_track_description_t *t=tracks;t&&n<64;t=t->p_next){
+        labels[n][0]=0;if(t->psz_name)MultiByteToWideChar(CP_UTF8,0,t->psz_name,-1,labels[n],256);
+        if(!labels[n][0])StringCchPrintfW(labels[n],256,L"Subtitle %d",n+1);
+        items[count++]=(ABMMenuItem){21000+t->i_id,labels[n],TRUE,FALSE};n++;
+    }
+    if(tracks)libvlc_track_description_list_release(tracks);
+    if(!n)items[count++]=(ABMMenuItem){0,L"No embedded subtitle tracks",FALSE,FALSE};
+    int cmd=ABM_ShowMenu(owner,items,count);
+    if(cmd==21000)libvlc_video_set_spu(g_player,-1);
+    else if(cmd>=21001&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
+}
 static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(!g_hasMedia)return;
-    ABMMenuItem items[100];wchar_t trackLabels[24][256];int count=0,trackCount=0;
+    ABMMenuItem items[160];wchar_t trackLabels[64][256];int count=0,trackCount=0;
 #define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
+    ABM_ADD(23007,L"Subtitle Manager...",TRUE);
+    ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
@@ -3422,15 +3460,11 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     int cmd=ABM_ShowMenu(hwnd,x,y,items,count);
 #undef ABM_ADD
 #undef ABM_HEAD
-    if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
+    if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
+    else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
+    else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
     else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
-    else if(cmd==23001){
-        OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"";
-        ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=hwnd;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;
-        ofn.lpstrFilter=L"Subtitle files (*.srt;*.ass;*.ssa;*.sub;*.vtt)\0*.srt;*.ass;*.ssa;*.sub;*.vtt\0All files\0*.*\0";
-        ofn.Flags=OFN_FILEMUSTEXIST|OFN_PATHMUSTEXIST;
-        if(GetOpenFileNameW(&ofn)){char utf8[PATH_CAP*4];if(WideCharToMultiByte(CP_UTF8,0,path,-1,utf8,sizeof(utf8),NULL,NULL)>0)libvlc_video_set_subtitle_file(g_player,utf8);}
-    } else if(cmd>=22000&&cmd<=22020){
+    else if(cmd==23001)LoadExternalSubtitle(hwnd); else if(cmd>=22000&&cmd<=22020){
         float rate=cmd==22005?0.5f:cmd==22007?0.75f:cmd==22010?1.0f:cmd==22012?1.25f:cmd==22015?1.5f:2.0f;
         g_playbackRate=rate;libvlc_media_player_set_rate(g_player,rate);
     } else if(cmd==23002){
@@ -6425,6 +6459,7 @@ static HWND g_advancedDiagnosticEdit=NULL;
 static HFONT g_advancedDiagnosticFont=NULL;
 static HBRUSH g_advancedDiagnosticBrush=NULL;
 static int g_advancedSettingsPage=0;
+static int g_advancedSettingsStartPage=0;
 static int g_advancedAspectMode=0;
 static int g_advancedDecoderThreads=0;
 static BOOL g_advancedDropLateFrames=TRUE,g_advancedSkipFrames=FALSE;
@@ -6473,20 +6508,21 @@ static wchar_t g_advancedAudioOutMessage[256]=L"Choose an audio output engine, t
 static wchar_t g_advancedHwMessage[256]=L"Choose a decoder mode, then apply and restart ABM AV Player.";
 static const wchar_t *g_advancedSettingsPages[]={
  L"Overview",L"Video & Decoding",L"Audio Engine",L"Video Output",
- L"Subtitles",L"Streaming & Network",L"Performance",L"Controls & Behaviour",
- L"Diagnostics",L"VLC Runtime & Codecs"
+ L"Subtitle Manager",L"Streaming & Network",L"Performance",L"Controls & Behaviour",
+ L"Diagnostics",L"VLC Runtime & Codecs",L"Advanced Audio Centre"
 };
 static const wchar_t *g_advancedSettingsDescriptions[]={
  L"Advanced configuration for ABM AV Player.",
  L"Decoder selection, hardware acceleration and frame handling.",
  L"Output devices, channel layout, processing and synchronization.",
  L"Scaling, aspect ratio, colour handling and display options.",
- L"Subtitle languages, appearance, timing and file loading.",
+ L"Select embedded or external subtitles, tune synchronization and personalize appearance.",
  L"Network caching, stream timeouts and connection behaviour.",
  L"Playback resource usage, buffering and performance controls.",
  L"Keyboard, mouse, playlist and playback behaviour.",
  L"System and player health, local reports and troubleshooting.",
- L"LibVLC runtime health, complete plugin inventory and evidence-based playback checks."
+ L"LibVLC runtime health, complete plugin inventory and evidence-based playback checks.",
+ L"Output engine, audio processing, equalizer and synchronization controls."
 };
 #define ABM_VLC_PLUGIN_MAX 512
 typedef struct ABM_VlcPluginEntry { wchar_t category[48]; wchar_t name[128]; BOOL fileFound; BOOL loadedInProcess; } ABM_VlcPluginEntry;
@@ -6671,7 +6707,10 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_CREATE:
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
-  g_advancedSettingsPage=0;
+  g_advancedSettingsPage=g_advancedSettingsStartPage;
+  if(g_advancedSettingsPage<0||g_advancedSettingsPage>=11)g_advancedSettingsPage=0;
+  g_advancedSettingsStartPage=0;
+  SetWindowTextW(w,g_advancedSettingsPage==4?L"ABM AV Player — Subtitle Manager":g_advancedSettingsPage==10?L"ABM AV Player — Advanced Audio Centre":L"ABM AV Player — Advanced Settings");
   ScanVlcRuntime();
   g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
   g_advancedDiagnosticFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,L"Consolas");
@@ -6784,7 +6823,35 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
+  if(g_advancedSettingsPage==10){
+   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,334,1018,400)){g_advancedAudioOutDraft=1;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,408,1018,474)){g_advancedAudioOutDraft=2;InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,320,486,660,530)){g_replayGain=!g_replayGain;SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,676,486,1018,530)){g_compressor=!g_compressor;SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,720,540,820,580)){if(g_audioDelayUs>-10000000)g_audioDelayUs-=50000;if(g_player)libvlc_audio_set_delay(g_player,g_audioDelayUs);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,830,540,930,580)){if(g_audioDelayUs<10000000)g_audioDelayUs+=50000;if(g_player)libvlc_audio_set_delay(g_player,g_audioDelayUs);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,940,540,1018,580)){g_audioDelayUs=0;if(g_player)libvlc_audio_set_delay(g_player,0);SaveAudioPreferences();InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,322,594,520,638)){ShowEqualizer();return 0;}
+   if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
+    if(EnsureDataDirectory()){
+     wchar_t path[PATH_CAP],value[16];StringCchPrintfW(path,_countof(path),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(value,_countof(value),L"%d",g_advancedAudioOutDraft);
+     if(WritePrivateProfileStringW(L"Audio",L"OutputEngine",value,path)){
+      g_advancedAudioOutMode=g_advancedAudioOutDraft;StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Audio output preference saved.");InvalidateRect(w,NULL,FALSE);
+      if(ABM_MessageBoxW(w,L"The audio output engine preference has been saved. Restart ABM AV Player now to activate it?",L"Restart ABM AV Player",MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2)==IDYES){
+       wchar_t exePath[PATH_CAP]={0};DWORD exeLen=GetModuleFileNameW(NULL,exePath,(DWORD)_countof(exePath));
+       if(exeLen>0&&exeLen<_countof(exePath)){HINSTANCE launched=ShellExecuteW(NULL,L"open",exePath,NULL,NULL,SW_SHOWNORMAL);if((INT_PTR)launched>32){HWND mainWindow=g_main;DestroyWindow(w);if(mainWindow&&IsWindow(mainWindow))PostMessageW(mainWindow,WM_CLOSE,0,0);return 0;}}
+       StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Saved, but restart could not be started. Please close and reopen ABM AV Player.");
+      }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Saved. Restart ABM AV Player later to activate this output engine.");
+     }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Could not save the audio output preference.");
+    }else StringCchCopyW(g_advancedAudioOutMessage,_countof(g_advancedAudioOutMessage),L"Could not access the ABM AV Player settings folder.");
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
+  }
   if(g_advancedSettingsPage==4){
+   if(AdvancedSettingsPoint(x,y,322,636,532,674)){ShowSubtitleTrackMenu(w);return 0;}
+   if(AdvancedSettingsPoint(x,y,542,636,744,674)){if(g_player)libvlc_video_set_spu(g_player,-1);InvalidateRect(w,NULL,FALSE);return 0;}
+   if(AdvancedSettingsPoint(x,y,754,636,1018,674)){LoadExternalSubtitle(w);InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,770,264,850,308)){if(g_advancedSubtitleDelayUs>-10000000)g_advancedSubtitleDelayUs-=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,860,264,940,308)){if(g_advancedSubtitleDelayUs<10000000)g_advancedSubtitleDelayUs+=50000;if(g_player)libvlc_video_set_spu_delay(g_player,g_advancedSubtitleDelayUs);if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[32];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",(int)(g_advancedSubtitleDelayUs/1000));WritePrivateProfileStringW(L"Subtitles",L"DelayMs",v,p);}InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,950,264,1032,308)){g_advancedSubtitleDelayUs=0;if(g_player)libvlc_video_set_spu_delay(g_player,0);if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Subtitles",L"DelayMs",L"0",p);}InvalidateRect(w,NULL,FALSE);return 0;}
@@ -6881,8 +6948,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    ABM_D2D_Round(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_1C9D9D);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_73D2CF,1.0f);
    AdvancedSettingsText(L"⚙",39,31,73,70,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsText(L"ADVANCED SETTINGS",94,24,560,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsText(L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,620,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(g_advancedSettingsPage==4?L"SUBTITLE MANAGER":g_advancedSettingsPage==10?L"ADVANCED AUDIO CENTRE":L"ADVANCED SETTINGS",94,24,660,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(g_advancedSettingsPage==4?L"TRACKS  ·  SYNCHRONIZATION  ·  APPEARANCE":g_advancedSettingsPage==10?L"OUTPUT  ·  EQUALIZER  ·  AUDIO PROCESSING":L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,760,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Round(&g_advancedSettingsUi,18,106,258,680,14,SETTINGS_PANEL);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,106.5f,257.5f,679.5f,14,SETTINGS_BORDER,0.8f);
    AdvancedSettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -6919,6 +6986,18 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsText(L"Your selected playback device remains managed by the existing Output selector.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedAudioOutMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+   }else if(g_advancedSettingsPage==10){
+    AdvancedSettingsText(L"Audio output engine",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    const wchar_t *outNames[3]={L"Automatic (recommended)",L"Windows Audio Session API (WASAPI)",L"DirectSound"};
+    const wchar_t *outDesc[3]={L"Let LibVLC select the best available Windows audio output.",L"Use the Windows modern audio endpoint engine for device routing and low-latency playback.",L"Use the DirectSound output module for compatibility troubleshooting."};
+    for(int i=0;i<3;i++){int top=260+i*74;BOOL selected=(g_advancedAudioOutDraft==i);ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+66,9,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+65.5f,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);ABM_D2D_Round(&g_advancedSettingsUi,338,(float)top+22,356,(float)top+40,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE);if(selected)ABM_D2D_Round(&g_advancedSettingsUi,343,(float)top+27,351,(float)top+35,4,ABM_THEME_COLOR_0D1E2F);AdvancedSettingsText(outNames[i],372,top+8,990,top+32,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(outDesc[i],372,top+34,990,top+59,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
+    AdvancedSettingsText(L"The active output device is still selected from the speaker control on the main player.",322,492,1018,532,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(320,486,660,530,g_replayGain?L"ReplayGain: On":L"ReplayGain: Off",g_replayGain);
+    AdvancedSettingsButtonDraw(676,486,1018,530,g_compressor?L"Dynamic-range compressor: On":L"Dynamic-range compressor: Off",g_compressor);
+    AdvancedSettingsText(L"Audio synchronization",322,540,680,580,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(720,540,820,580,L"− 50 ms",FALSE);AdvancedSettingsButtonDraw(830,540,930,580,L"+ 50 ms",FALSE);AdvancedSettingsButtonDraw(940,540,1018,580,L"Reset",FALSE);
+    AdvancedSettingsButtonDraw(322,594,520,638,L"10-band equalizer",FALSE);AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply output engine",TRUE);
+    wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Audio offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,322,580,680,612,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(g_advancedAudioOutMessage,530,594,850,638,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
    }else if(g_advancedSettingsPage==5){
     AdvancedSettingsText(L"Stream buffering",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int cacheValues[3]={g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching};
@@ -6983,7 +7062,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     for(int i=0;i<4;i++){int left=520+i*126;BOOL selected=(g_advancedSubtitleOutline==g_subtitleOutlineValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,518,(float)left+120,560,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,518.5f,(float)left+119.5f,559.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleOutlineLabels[i],left+4,519,left+116,559,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     AdvancedSettingsText(L"Subtitle vertical position",322,562,1018,584,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,584,(float)left+164,628,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,584.5f,(float)left+163.5f,627.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,585,left+159,627,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Appearance settings apply to the next opened media. Embedded subtitle styling may override them.",322,632,1018,656,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsButtonDraw(322,636,532,674,L"Choose subtitle track",FALSE);
+    AdvancedSettingsButtonDraw(542,636,744,674,L"Disable subtitles",FALSE);
+    AdvancedSettingsButtonDraw(754,636,1018,674,L"Load external subtitle...",TRUE);
    }else{
     MEMORYSTATUSEX mem={0};mem.dwLength=sizeof(mem);GlobalMemoryStatusEx(&mem);
     SYSTEM_INFO si={0};GetNativeSystemInfo(&si);
@@ -7139,7 +7220,13 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
 }
 static void ShowAdvancedSettingsDialog(HWND owner){
  if(g_advancedSettingsWindow&&IsWindow(g_advancedSettingsWindow)){
-  ShowWindow(g_advancedSettingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_advancedSettingsWindow);return;
+  g_advancedSettingsPage=g_advancedSettingsStartPage;
+  if(g_advancedSettingsPage<0||g_advancedSettingsPage>=11)g_advancedSettingsPage=0;
+  g_advancedSettingsStartPage=0;
+  if(g_advancedDiagnosticEdit)ShowWindow(g_advancedDiagnosticEdit,g_advancedSettingsPage==8?SW_SHOW:SW_HIDE);
+  if(g_advancedVlcReportEdit)ShowWindow(g_advancedVlcReportEdit,g_advancedSettingsPage==9?SW_SHOW:SW_HIDE);
+  SetWindowTextW(g_advancedSettingsWindow,g_advancedSettingsPage==4?L"ABM AV Player — Subtitle Manager":g_advancedSettingsPage==10?L"ABM AV Player — Advanced Audio Centre":L"ABM AV Player — Advanced Settings");
+  InvalidateRect(g_advancedSettingsWindow,NULL,FALSE);ShowWindow(g_advancedSettingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_advancedSettingsWindow);return;
  }
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){
@@ -7167,6 +7254,11 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   if(!IsDialogMessageW(g_advancedSettingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}
  }
  EnableWindow(owner,TRUE);SetActiveWindow(owner);
+}
+static void ShowAdvancedSettingsAtPage(HWND owner,int page){
+ if(page<0||page>=11)page=0;
+ g_advancedSettingsStartPage=page;
+ ShowAdvancedSettingsDialog(owner);
 }
 
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
