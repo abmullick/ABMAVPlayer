@@ -2,7 +2,7 @@
 
 ABM AV Player checks the latest **published GitHub Release** for this repository:
 
-https://github.com/abmullick/ABMAVPlayer/releases/latest
+https://github.com/abmullick/ABMAVPlayer-Releases/releases/latest
 
 The in-app updater expects each release to include the Windows installer asset named exactly `ABM-AV-Player-Setup.exe`. It compares the release tag with the version compiled into the application. If a newer release is found, it displays the release notes, downloads the installer over HTTPS, verifies the downloaded file against the SHA-256 digest returned by GitHub for that asset, requests Windows elevation, launches the installer, and closes the running player so the installer can replace its files.
 
@@ -31,7 +31,7 @@ This is a **source-prepared release candidate**, not a certified installer. A su
    publish_release.bat
    ```
 
-The script reads `VERSION`, checks the installer version resource, refuses an existing release tag, publishes a normal GitHub Release against `main`, and uploads `dist\\ABM-AV-Player-Setup.exe`.
+The script reads `VERSION`, checks the installer version resource, refuses an existing release tag, publishes a normal GitHub Release in `abmullick/ABMAVPlayer-Releases`, and uploads `dist\\ABM-AV-Player-Setup.exe`.
 
 ## Release requirements
 
@@ -40,7 +40,7 @@ The script reads `VERSION`, checks the installer version resource, refuses an ex
 - Do not publish an installer until the Windows build, installation/upgrade test and feature acceptance tests have passed.
 - All release artifacts derive their version from `VERSION`; do not reintroduce separately maintained version literals.
 - The updater does not update from arbitrary branches or pre-releases.
-- Users can download releases manually from the [Releases page](https://github.com/abmullick/ABMAVPlayer/releases).
+- Users can download releases manually from the [Releases page](https://github.com/abmullick/ABMAVPlayer-Releases/releases).
 
 ## Update integrity and signing
 
