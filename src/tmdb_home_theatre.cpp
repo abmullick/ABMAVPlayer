@@ -333,7 +333,6 @@ static void Draw(HWND w) {
     ABM_D2D_Text(&g_canvas,L"DISCOVER MOVIES & SHOWS  ·  MATCH TO LOCAL MEDIA",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
-    ABM_D2D_Text(&g_canvas,L"DISCOVER",MakeRect(34,142,320,170),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
     if(g_selected>=0&&g_selected<g_itemCount) {
@@ -365,7 +364,7 @@ static void Draw(HWND w) {
 static void SearchNow() {
     wchar_t query[256]={};GetWindowTextW(g_edit,query,_countof(query));
     if(!query[0]){SetStatus(L"Enter a movie or television title to search.");return;}
-    g_itemCount=0;g_selected=-1;g_localMatch=-1;g_detailsReady=FALSE;g_posterFile[0]=g_backdropFile[0]=0;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);ABM_D2D_ClearImage(&g_canvas);
+    g_itemCount=0;g_selected=-1;g_localMatch=-1;g_detailsReady=FALSE;g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);ABM_D2D_ClearImage(&g_canvas);
     SendMessageW(g_results,LB_RESETCONTENT,0,0);SetStatus(L"Searching TMDB…");StartWork(1,-1,query);InvalidateRect(g_window,nullptr,FALSE);
 }
 static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
