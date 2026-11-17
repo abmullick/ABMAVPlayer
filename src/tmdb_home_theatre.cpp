@@ -288,7 +288,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         else {
             size_t limit=w->paths.size();
             for(size_t i=0;i<limit&&r->count<100;i++) {
-                const wchar_t *path=w->paths[i].c_str();if(!IsVideoMediaPath(path))continue;
+                const wchar_t *path=w->paths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;
                 wchar_t query[256]={};MakeMediaSearchTitle(path,query,_countof(query));
                 wchar_t *year=wcsstr(query,L" (");if(year&&wcslen(year)>=6)year[0]=0;
                 if(!query[0])continue;
