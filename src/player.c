@@ -7298,10 +7298,10 @@ static void ShowAdvancedSettingsAtPage(HWND owner,int page){
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static int g_settingsScrollX=0,g_settingsScrollY=0;
 #define SETTINGS_CONTENT_WIDTH 804
-#define SETTINGS_CONTENT_HEIGHT 1080
+#define SETTINGS_CONTENT_HEIGHT 1120
 static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
 static void SettingsMoveChildControls(HWND w){
- static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29}};
+ static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29},{6208,39,714,600,30}};
  for(int i=0;i<(int)_countof(items);i++){HWND child=GetDlgItem(w,items[i].id);if(child)SetWindowPos(child,NULL,items[i].x-g_settingsScrollX,items[i].y-g_settingsScrollY,items[i].cx,items[i].cy,SWP_NOZORDER|SWP_NOACTIVATE);}
 }
 #define SETTINGS_SCROLLBAR_SIZE 12
@@ -7469,9 +7469,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   if(SettingsPoint(x,y,655,496,780,528)){wchar_t p[PATH_CAP]={0};GetWindowTextW(GetDlgItem(w,6201),p,_countof(p));if(p[0])ShellExecuteW(w,L"open",p,NULL,NULL,SW_SHOWNORMAL);return 0;}
   /* Keep hit targets aligned with the current Direct2D-rendered button rectangles. */
   if(SettingsPoint(x,y,650,27,780,62)){ShowAdvancedSettingsDialog(w);return 0;}
-  if(SettingsPoint(x,y,39,775,194,808)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
-  if(SettingsPoint(x,y,610,1000,735,1038)){SettingsApply(w);return 0;}
-  if(SettingsPoint(x,y,744,1000,800,1038)){DestroyWindow(w);return 0;}
+  if(SettingsPoint(x,y,39,816,194,849)){ABM_CheckForUpdates(g_main,APP_VERSION);return 0;}
+  if(SettingsPoint(x,y,610,1040,735,1078)){SettingsApply(w);return 0;}
+  if(SettingsPoint(x,y,744,1040,800,1078)){DestroyWindow(w);return 0;}
   if(g_settingsRateOpen){g_settingsRateOpen=FALSE;InvalidateRect(w,NULL,FALSE);}
   break;
  }
@@ -7526,13 +7526,13 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsEditFrame(199,599,341,634);if(GetFocus()==GetDlgItem(w,6205))ABM_D2D_StrokeRound(&g_settingsUi,198,598,342,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Upload limit (KiB/s)",400,583,552,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(551,599,693,634);if(GetFocus()==GetDlgItem(w,6206))ABM_D2D_StrokeRound(&g_settingsUi,550,598,694,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
-   SettingsSection(666,L"TMDB METADATA",L"Movie and television information",756); SettingsText(L"TMDB API Read Access Token",40,681,420,699,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsEditFrame(34,700,644,733); if(GetFocus()==GetDlgItem(w,6208))ABM_D2D_StrokeRound(&g_settingsUi,33,699,645,734,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f); SettingsText(ABM_TMDB_IsConfigured()?L"Token encrypted for this Windows user.":L"Enter your TMDB Read Access Token to enable metadata lookup.",40,736,780,754,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); SettingsSection(766,L"UPDATES",L"Maintenance",838);
-   SettingsButtonDraw(39,775,194,808,L"Check for updates",TRUE);
-   SettingsText(L"Checks the latest published GitHub release.",210,776,770,807,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsSection(848,L"COLOR THEME",L"Changes apply immediately",1072);
+   SettingsSection(666,L"TMDB METADATA",L"Movie and television information",794); SettingsText(L"TMDB API Read Access Token",40,701,420,723,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsEditFrame(34,713,644,747); if(GetFocus()==GetDlgItem(w,6208))ABM_D2D_StrokeRound(&g_settingsUi,33,712,645,748,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f); SettingsText(ABM_TMDB_IsConfigured()?L"Token encrypted for this Windows user.":L"Enter your TMDB Read Access Token to enable metadata lookup.",40,752,780,777,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); SettingsSection(806,L"UPDATES",L"Maintenance",878);
+   SettingsButtonDraw(39,816,194,849,L"Check for updates",TRUE);
+   SettingsText(L"Checks the latest published GitHub release.",210,817,770,848,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsSection(886,L"COLOR THEME",L"Changes apply immediately",1100);
    for(int preset=0;preset<ABM_THEME_PRESET_COUNT;preset++){
     int col=preset%4,row=preset/4;
-    float left=(float)(40+col*185),top=(float)(880+row*46);
+    float left=(float)(40+col*185),top=(float)(918+row*46);
     BOOL selected=(preset==g_settingsThemePreset);
     COLORREF accent=ABMThemePresetAccent((ABMThemePreset)preset);
     ABM_D2D_Round(&g_settingsUi,left,top,left+177.0f,top+44.0f,8.0f,selected?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
@@ -7541,9 +7541,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(g_settingsMessage,40,978,780,996,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-   SettingsButtonDraw(610,1000,735,1038,L"Save settings",TRUE);
-   SettingsButtonDraw(744,1000,800,1038,L"Close",FALSE);
+   SettingsText(g_settingsMessage,40,1016,780,1034,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   SettingsButtonDraw(610,1040,735,1078,L"Save settings",TRUE);
+   SettingsButtonDraw(744,1040,800,1078,L"Close",FALSE);
    if(g_settingsRateOpen){
     ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_0C1B2B);
     ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
