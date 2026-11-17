@@ -26,6 +26,16 @@ Important responsibilities in `src/player.c` include:
 - Playlist and recent-media state.
 - Continue Watching checkpoints in `%APPDATA%\\ABMAVPlayer\\resume.tsv`, written asynchronously from an immutable UI-thread snapshot; completed items are removed from the resume list.
 - Missing media is retained in the playlist and favourites instead of being pruned. Relink updates the active library, favourites, recent history, resume records and saved M3U collections.
+
+### Continue Watching and media recovery
+
+Resume state is maintained separately from the playlist M3U files in `%APPDATA%\\ABMAVPlayer\\resume.tsv`. Each entry is keyed by the stored media path and contains the last captured position and duration. The UI thread samples the active local LibVLC player and creates an immutable snapshot; a worker thread writes that snapshot to a temporary file and replaces the checkpoint file. The 33 ms playback/UI timer does not perform resume-file I/O. Shutdown waits for the final snapshot write so the last captured state can be flushed.
+
+Checkpoints are captured periodically and around pause, stop, media changes and shutdown. Very early positions are ignored; entries at approximately 95% completion are removed as finished. Continue Watching membership is cached per playlist row so painting and scrolling do not repeatedly search the resume-entry collection. The Library selector cycles All tracks, Favourites and Continue Watching; the row metadata uses the cached progress state.
+
+Missing-media detection checks stored paths and updates per-row flags. Missing entries are deliberately preserved in the playlist, favourites and recent history; do not reintroduce destructive pruning as part of a cleanup pass. The row context action opens a native file picker. A successful relink replaces matching path references in the active playlist, favourites, recent history, resume records and saved `.m3u` collections under the user's collections directory. It does not move or copy media files and does not attempt recursive folder matching or metadata-based identification.
+
+Keep path existence checks out of the paint/scroll hot path. Refresh availability at explicit library/drawer or mutation points. Preserve the ownership boundaries: resume and relink operations must not stop, replace or mutate the Streaming Centre browser player, local receiver discovery state, or Torrent Stream task/transport lifecycle.
 - Main Settings and Advanced Settings windows, custom painting and hit testing.
 - Independent local and Streaming Centre renderer registries.
 - Advanced settings persistence and helpers that attach options to new media.
