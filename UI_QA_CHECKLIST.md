@@ -270,6 +270,13 @@ Do not mark this work runtime-validated until the Windows build and interaction 
 Do not mark this feature runtime-validated until all Windows build and interaction checks above pass.
 
 
+## Help Centre documentation regression
+
+- [ ] Open F1 Help and confirm the topic index includes **LIBRARY, CONTINUE WATCHING AND RESUME** and **MISSING MEDIA AND RELINKING**.
+- [ ] Select each new topic and verify the article heading/content match the topic label and scroll correctly.
+- [ ] Search for `resume.tsv`, `MISSING MEDIA` and `Relink missing media`; verify matching topics open, the match is highlighted and F3/Enter continue searching with wraparound.
+- [ ] Confirm the article explains the completion threshold, local checkpoint location, missing-path retention and the fact that relinking updates references rather than moving files.
+
 ## Continue Watching and Resume Playback
 
 - [ ] Play a local audio file and a video for more than 10 seconds; verify progress is checkpointed to `%APPDATA%\\ABMAVPlayer\\resume.tsv` without blocking the 33 ms UI timer.
