@@ -3388,7 +3388,7 @@ static void LoadPlaylist(void) {
     InvalidateRect(g_main,NULL,FALSE);
 }
 static void LoadExternalSubtitle(HWND owner){
-    if(!g_player||!g_hasMedia)return;
+    if(!g_player||(!g_hasMedia&&!g_torrentPlaybackActive)){ABM_MessageBoxW(owner,L"Start playing a media file before loading an external subtitle.",APP_NAME,MB_ICONINFORMATION);return;}
     OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"";
     ofn.lStructSize=sizeof(ofn);ofn.hwndOwner=owner;ofn.lpstrFile=path;ofn.nMaxFile=PATH_CAP;
     ofn.lpstrFilter=L"Subtitle files (*.srt;*.ass;*.ssa;*.sub;*.vtt)\0*.srt;*.ass;*.ssa;*.sub;*.vtt\0All files (*.*)\0*.*\0";
@@ -3402,7 +3402,7 @@ static void LoadExternalSubtitle(HWND owner){
     }
 }
 static void ShowAudioTrackMenu(HWND owner){
-    if(!g_player||!g_hasMedia)return;
+    if(!g_player||(!g_hasMedia&&!g_torrentPlaybackActive)){ABM_MessageBoxW(owner,L"Start playing a media file before selecting an audio track.",APP_NAME,MB_ICONINFORMATION);return;}
     ABMMenuItem items[26];wchar_t labels[24][256];int count=0,n=0;
     items[count++]=(ABMMenuItem){27000,L"Disable audio track",TRUE,FALSE};
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
@@ -3426,7 +3426,7 @@ static void ShowAudioTrackMenu(HWND owner){
     }
 }
 static void ShowSubtitleTrackMenu(HWND owner){
-    if(!g_player||!g_hasMedia)return;
+    if(!g_player||(!g_hasMedia&&!g_torrentPlaybackActive)){ABM_MessageBoxW(owner,L"Start playing a media file before selecting an embedded subtitle track.",APP_NAME,MB_ICONINFORMATION);return;}
     ABMMenuItem items[66];wchar_t labels[64][256];int count=0,n=0;
     items[count++]=(ABMMenuItem){21000,L"Disable subtitles",TRUE,FALSE};
     libvlc_track_description_t *tracks=libvlc_video_get_spu_description(g_player);
