@@ -3649,6 +3649,18 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(23009,L"Home Theatre...",TRUE);
     ABM_ADD(23007,L"Subtitle Manager...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
+    ABM_HEAD(L"VIDEO PICTURE");
+    ABM_ADD(24000,L"Aspect ratio: Automatic",TRUE);
+    ABM_ADD(24001,L"Aspect ratio: 16:9",TRUE);
+    ABM_ADD(24002,L"Aspect ratio: 4:3",TRUE);
+    ABM_ADD(24003,L"Aspect ratio: 16:10",TRUE);
+    ABM_ADD(24004,L"Aspect ratio: 1:1",TRUE);
+    ABM_ADD(24010,L"Crop: Automatic",TRUE);
+    ABM_ADD(24011,L"Crop: 16:9",TRUE);
+    ABM_ADD(24012,L"Crop: 4:3",TRUE);
+    ABM_ADD(24013,L"Crop: 1:1",TRUE);
+    ABM_ADD(24020,L"Reset video scaling",TRUE);
+    ABM_ADD(24021,L"Deinterlace: Toggle Yadif",TRUE);
     ABM_HEAD(L"MILKDROP VISUALIZER");
     ABM_ADD(25200,L"Next visual preset",TRUE);
     ABM_ADD(25201,L"Previous visual preset",TRUE);
@@ -3694,6 +3706,17 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
     else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
+    else if(cmd==24000)libvlc_video_set_aspect_ratio(g_player,NULL);
+    else if(cmd==24001)libvlc_video_set_aspect_ratio(g_player,"16:9");
+    else if(cmd==24002)libvlc_video_set_aspect_ratio(g_player,"4:3");
+    else if(cmd==24003)libvlc_video_set_aspect_ratio(g_player,"16:10");
+    else if(cmd==24004)libvlc_video_set_aspect_ratio(g_player,"1:1");
+    else if(cmd==24010)libvlc_video_set_crop_geometry(g_player,NULL);
+    else if(cmd==24011)libvlc_video_set_crop_geometry(g_player,"16:9");
+    else if(cmd==24012)libvlc_video_set_crop_geometry(g_player,"4:3");
+    else if(cmd==24013)libvlc_video_set_crop_geometry(g_player,"1:1");
+    else if(cmd==24020)libvlc_video_set_scale(g_player,0.0f);
+    else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?1:0,"yadif");}
     else if(cmd==25200)ABM_ProjectM_NextPreset();
     else if(cmd==25201)ABM_ProjectM_PreviousPreset();
     else if(cmd==25202){g_autoPresetTransitions=!g_autoPresetTransitions;ABM_ProjectM_SetAutoSwitch(g_autoPresetTransitions);InvalidateRect(hwnd,&R_VIDEO,FALSE);}
