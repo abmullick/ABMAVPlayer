@@ -3537,29 +3537,42 @@ static void LoadPersonalCollection(void) {
 static void OpenMediaSourceFolder(int index) {
     if(index<0||index>=g_playlistCount)return;
     const wchar_t *path=g_playlist[index];
-    wchar_t target[PATH_CAP],args[PATH_CAP+32];
     DWORD attrs=GetFileAttributesW(path);
-    if(attrs!=INVALID_FILE_ATTRIBUTES&&!(attrs&FILE_ATTRIBUTE_DIRECTORY)){
-        if(FAILED(StringCchPrintfW(args,_countof(args),L"/select,\"%s\"",path)))return;
-    }else{
-        wcsncpy_s(target,_countof(target),path,_TRUNCATE);
-        wchar_t *slash=wcsrchr(target,L'\\');
-        if(!slash)slash=wcsrchr(target,L'/');
-        if(!slash)return;
-        if(slash==target)slash[1]=0;else *slash=0;
-        if(GetFileAttributesW(target)==INVALID_FILE_ATTRIBUTES){
-            SetStatus(L"The source folder is not currently available.");
-            return;
-        }
-        if(FAILED(StringCchPrintfW(args,_countof(args),L"\"%s\"",target)))return;
+    if(attrs==INVALID_FILE_ATTRIBUTES||(attrs&FILE_ATTRIBUTE_DIRECTORY)){
+        SetStatus(L"This media file is currently unavailable. Relink it before opening its location.");
+        return;
     }
+
+    /* Ask the Shell to open the containing folder and select the exact file.
+       This is more reliable than passing a quoted /select command line to
+       Explorer, especially for paths containing spaces, commas or Unicode. */
+    PIDLIST_ABSOLUTE itemPidl=NULL;
+    HRESULT hr=SHParseDisplayName(path,NULL,&itemPidl,0,NULL);
+    if(SUCCEEDED(hr)&&itemPidl){
+        PIDLIST_ABSOLUTE folderPidl=ILClone(itemPidl);
+        PCUITEMID_CHILD childPidl=ILFindLastID(itemPidl);
+        if(folderPidl&&ILRemoveLastID(folderPidl)){
+            hr=SHOpenFolderAndSelectItems(folderPidl,1,&childPidl,0);
+            CoTaskMemFree(folderPidl);
+            CoTaskMemFree(itemPidl);
+            if(SUCCEEDED(hr))return;
+        }else{
+            if(folderPidl)CoTaskMemFree(folderPidl);
+            CoTaskMemFree(itemPidl);
+        }
+    }
+
+    /* Fallback for Shell namespace/PIDL failures. */
+    wchar_t args[PATH_CAP+32]={0};
+    if(FAILED(StringCchPrintfW(args,_countof(args),L"/select,\"%s\"",path)))return;
     HINSTANCE result=ShellExecuteW(NULL,L"open",L"explorer.exe",args,NULL,SW_SHOWNORMAL);
-    if((INT_PTR)result<=32)SetStatus(L"Could not open the media source folder.");
+    if((INT_PTR)result<=32)SetStatus(L"Could not open the media file location.");
 }
 static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
     if(index>=0&&index<g_playlistCount)g_selected=index;else g_selected=-1;
     ABMMenuItem items[]={
         {1,L"Play selected media",g_selected>=0,FALSE},
+        {13,L"Open file location",g_selected>=0&&GetFileAttributesW(g_playlist[g_selected])!=INVALID_FILE_ATTRIBUTES&&!(GetFileAttributesW(g_playlist[g_selected])&FILE_ATTRIBUTE_DIRECTORY),FALSE},
         {2,L"Remove from playlist",g_selected>=0,FALSE},
         {3,L"Move up",g_selected>0,FALSE},
         {4,L"Move down",g_selected>=0&&g_selected<g_playlistCount-1,FALSE},
@@ -3573,7 +3586,6 @@ static void ShowPlaylistContextMenu(HWND hwnd,int x,int y,int index) {
         {10,L"Relink missing media...",index>=0&&index<g_playlistCount&&(g_missingMedia[index]||GetFileAttributesW(g_playlist[index])==INVALID_FILE_ATTRIBUTES),FALSE},
         {11,L"Continue from checkpoint",index>=0&&index<g_playlistCount&&ResumePositionForPath(g_playlist[index])>0,FALSE},
         {12,L"Start from beginning",index>=0&&index<g_playlistCount&&!g_missingMedia[index],FALSE},
-        {13,L"Open source folder",index>=0&&index<g_playlistCount,FALSE}
     };
     int cmd=ABM_ShowMenu(hwnd,x,y,items,(int)_countof(items));
     switch(cmd){
@@ -8164,8 +8176,33 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_RBUTTONUP: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),index=-1;
         for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){index=g_visibleRows[ri];break;}
-        if(Inside(R_SIDEBAR,x,y)&&y>=R_SIDEBAR.top+140){ShowPlaylistContextMenu(hwnd,x,y,index);return 0;}
+        /* The Queue and Library share the same media rows. Anchor the row
+           action menu to the list surface so neither tab depends on the wider
+           drawer/sidebar hit rectangle. */
+        if(g_drawerOpen&&!g_fullscreen&&Inside(R_LIST,x,y)){
+            ShowPlaylistContextMenu(hwnd,x,y,index);return 0;
+        }
         if(Inside(R_VIDEO,x,y)){ShowPlaybackContextMenu(hwnd,x,y);return 0;}
+        break;
+    }
+    case WM_CONTEXTMENU: {
+        if(g_drawerOpen&&!g_fullscreen){
+            int sx=GET_X_LPARAM(lp),sy=GET_Y_LPARAM(lp),x,y,index=-1;
+            if(sx==-1&&sy==-1){
+                index=g_selected;
+                x=R_LIST.left+24;y=R_LIST.top+24;
+                for(int ri=0;ri<g_visibleRowCount;ri++)if(g_visibleRows[ri]==index){
+                    x=(R_ROW[ri].left+R_ROW[ri].right)/2;
+                    y=(R_ROW[ri].top+R_ROW[ri].bottom)/2;break;
+                }
+                POINT pt={x,y};ClientToScreen(hwnd,&pt);sx=pt.x;sy=pt.y;
+            }
+            POINT pt={sx,sy};ScreenToClient(hwnd,&pt);x=pt.x;y=pt.y;
+            if(Inside(R_LIST,x,y)){
+                if(index<0)for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){index=g_visibleRows[ri];break;}
+                ShowPlaylistContextMenu(hwnd,x,y,index);return 0;
+            }
+        }
         break;
     }
     case WM_LBUTTONDBLCLK: { g_queueDragPending=FALSE;g_queueDragging=FALSE;int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp); if(g_advancedDoubleClickFullscreen&&Inside(R_VIDEO,x,y)){ToggleFullscreen(hwnd);return 0;} for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],x,y)){g_selected=g_visibleRows[ri];PlayIndex(g_visibleRows[ri]);return 0;} return 0; }
