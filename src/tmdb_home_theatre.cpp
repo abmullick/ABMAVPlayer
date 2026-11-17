@@ -87,7 +87,7 @@ static void ParseSearchJson(const wchar_t *json,int type,MovieItem *items,int *c
             if(*p==L'\"'){quoted=TRUE;continue;}if(*p==L'{')depth++;else if(*p==L'}'&&--depth==0){p++;break;}
         }
         const wchar_t *finish=p;if(finish<=start)break;
-        int id=JsonInt(start,finish,L"id");if(id<=0)continue;
+        int id=JsonInt(start,finish,L"id");if(id<=0){p=finish;continue;}
         MovieItem item;item.id=id;item.type=type;
         if(type==0){CopyJsonString(start,finish,L"title",item.title,_countof(item.title));if(!item.title[0])CopyJsonString(start,finish,L"name",item.title,_countof(item.title));}
         else CopyJsonString(start,finish,type==1?L"title":L"name",item.title,_countof(item.title));
@@ -95,7 +95,7 @@ static void ParseSearchJson(const wchar_t *json,int type,MovieItem *items,int *c
         CopyJsonString(start,finish,L"overview",item.overview,_countof(item.overview));
         CopyJsonString(start,finish,L"poster_path",item.poster,_countof(item.poster));
         CopyJsonString(start,finish,L"backdrop_path",item.backdrop,_countof(item.backdrop));
-        if(type==0){wchar_t mediaType[16]={};CopyJsonString(start,finish,L"media_type",mediaType,_countof(mediaType));item.type=!_wcsicmp(mediaType,L"tv")?2:1;}
+        if(type==0){wchar_t mediaType[16]={};CopyJsonString(start,finish,L"media_type",mediaType,_countof(mediaType));if(!_wcsicmp(mediaType,L"person")){p=finish;continue;}if(_wcsicmp(mediaType,L"movie")&&_wcsicmp(mediaType,L"tv")){p=finish;continue;}item.type=!_wcsicmp(mediaType,L"tv")?2:1;}
         if(item.title[0])items[(*count)++]=item;
     }
 }
@@ -356,7 +356,7 @@ static void Draw(HWND w) {
 static void SearchNow() {
     wchar_t query[256]={};GetWindowTextW(g_edit,query,_countof(query));
     if(!query[0]){SetStatus(L"Enter a movie or television title to search.");return;}
-    g_itemCount=0;g_selected=-1;g_localMatch=-1;g_detailsReady=FALSE;g_posterFile[0]=0;ABM_D2D_ClearImage(&g_canvas);
+    g_itemCount=0;g_selected=-1;g_localMatch=-1;g_detailsReady=FALSE;g_posterFile[0]=g_backdropFile[0]=0;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);ABM_D2D_ClearImage(&g_canvas);
     SendMessageW(g_results,LB_RESETCONTENT,0,0);SetStatus(L"Searching TMDB…");StartWork(1,-1,query);InvalidateRect(g_window,nullptr,FALSE);
 }
 static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
@@ -395,8 +395,8 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_COMMAND:
         if(LOWORD(wp)==HT_SEARCH&&HIWORD(wp)==BN_CLICKED){g_scanMode=g_recommendMode=g_seasonMode=FALSE;SearchNow();return 0;}
         if(LOWORD(wp)==HT_SCAN&&HIWORD(wp)==BN_CLICKED){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;StartLibraryScan();return 0;}
-        if(LOWORD(wp)==HT_RECOMMEND&&HIWORD(wp)==BN_CLICKED&&g_recommendationCount){g_scanMode=FALSE;g_recommendMode=TRUE;g_seasonMode=FALSE;g_itemCount=g_recommendationCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_recommendations[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a recommendation to explore its details.");return 0;}
-        if(LOWORD(wp)==HT_SEASONS&&HIWORD(wp)==BN_CLICKED&&g_seasonCount){g_scanMode=FALSE;g_recommendMode=FALSE;g_seasonMode=TRUE;g_episodeMode=FALSE;g_itemCount=g_seasonCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_seasons[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].date);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Seasons");SetStatus(L"Select a season to browse its episodes.");return 0;}
+        if(LOWORD(wp)==HT_RECOMMEND&&HIWORD(wp)==BN_CLICKED&&g_recommendationCount){g_scanMode=FALSE;g_recommendMode=TRUE;g_seasonMode=FALSE;g_episodeMode=FALSE;g_selected=-1;g_itemCount=g_recommendationCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_recommendations[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a recommendation to explore its details.");return 0;}
+        if(LOWORD(wp)==HT_SEASONS&&HIWORD(wp)==BN_CLICKED&&g_seasonCount){g_scanMode=FALSE;g_recommendMode=FALSE;g_seasonMode=TRUE;g_episodeMode=FALSE;g_selected=-1;g_itemCount=g_seasonCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_seasons[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].date);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Seasons");SetStatus(L"Select a season to browse its episodes.");return 0;}
         if(LOWORD(wp)==HT_ARTWORK&&HIWORD(wp)==BN_CLICKED){g_showBackdrop=!g_showBackdrop;const wchar_t *art=(g_showBackdrop&&g_backdropFile[0])?g_backdropFile:g_posterFile;if(art[0])ABM_D2D_LoadImage(&g_canvas,art);SetWindowTextW(g_artButton,g_showBackdrop?L"Show poster":L"Show backdrop");InvalidateRect(w,nullptr,FALSE);return 0;}
         if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);if(g_selected>=0&&g_selected<g_itemCount)SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match saved");}return 0;}
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_UPDATE)return 0;
@@ -450,13 +450,13 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case HT_SCAN_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_scanButton,TRUE);EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);
-        if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Library identification complete. Select a match to inspect metadata.");}
+        if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_selected=-1;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Library identification complete. Select a match to inspect metadata.");}
         else SetStatus(r->error[0]?r->error:L"No library matches found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
     case HT_SEASON_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_results,TRUE);
-        if(r->ok){g_episodeMode=TRUE;g_itemCount=r->episodeCount;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->episodes[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%02d  ·  %s",g_items[i].episodeNumber,g_items[i].title);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Back to seasons");SetStatus(L"Select an episode to view its synopsis and check local filename matching.");}
+        if(r->ok){g_episodeMode=TRUE;g_selected=-1;g_itemCount=r->episodeCount;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->episodes[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%02d  ·  %s",g_items[i].episodeNumber,g_items[i].title);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Back to seasons");SetStatus(L"Select an episode to view its synopsis and check local filename matching.");}
         else SetStatus(r->error[0]?r->error:L"Episode list unavailable.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
