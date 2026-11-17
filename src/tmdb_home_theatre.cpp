@@ -39,6 +39,8 @@ static struct MovieItem {
     wchar_t title[256]={}, date[32]={}, overview[1400]={}, poster[256]={}, backdrop[256]={};
 } g_items[100];
 static int g_itemCount=0, g_selected=-1, g_localMatch=-1;
+static MovieItem g_recommendations[100],g_seasons[24];
+static int g_recommendationCount=0,g_seasonCount=0,g_tvId=0,g_tvType=1;
 static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={}, g_backdropFile[MAX_PATH]={};
 static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE, g_episodeMode=FALSE;
 static BOOL g_detailsReady=FALSE, g_busy=FALSE;
