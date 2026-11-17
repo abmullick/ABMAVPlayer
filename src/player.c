@@ -265,6 +265,7 @@ static BOOL g_missingMedia[MAX_PLAYLIST];
 static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
+static int g_visualizerMode=2; /* 0 Spectrum, 1 Fluid Waves, 2 Particle Visualizer */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
@@ -1257,30 +1258,36 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     }
 }
 static void DrawVisualizer(HDC dc,RECT area) {
-    float levels[24]={0};
-    ABM_AudioVisualizer_GetBands(levels,24);
-    Fill(dc,area,ABM_THEME_COLOR_080F14);
-    RECT inset=area; InflateRect(&inset,-22,-24);
-    int width=inset.right-inset.left;
-    int gap=5;
-    int barWidth=(width-gap*23)/24;
-    if(barWidth<2)barWidth=2;
-    int base=inset.bottom-8;
-    int maxHeight=inset.bottom-inset.top-34;
-    for(int i=0;i<24;i++) {
-        float level=levels[i];
-        if(level<0.015f)level=0.015f;
-        if(level>1.0f)level=1.0f;
-        int height=(int)(level*(float)maxHeight);
-        int x=inset.left+i*(barWidth+gap);
-        RECT bar={x,base-height,x+barWidth,base};
-        COLORREF color=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,(i*100)/23);
-        ABM_D2D_Round(&g_ui,(float)bar.left,(float)bar.top,(float)bar.right,(float)bar.bottom,(float)(barWidth/2),color);
+    float levels[24]={0}; ABM_AudioVisualizer_GetBands(levels,24);
+    int width=area.right-area.left,height=area.bottom-area.top; if(width<80||height<60)return;
+    Fill(dc,area,ABM_THEME_COLOR_080F14); RECT in=area; InflateRect(&in,-22,-24);
+    int w=in.right-in.left,h=in.bottom-in.top,cx=in.left+w/2,cy=in.top+h/2;
+    const wchar_t *name=g_visualizerMode==0?L"LIVE SPECTRUM":(g_visualizerMode==1?L"FLUID WAVES":L"PARTICLE VISUALIZER");
+    RECT label={area.left+20,area.top+10,area.right-20,area.top+34}; Txt(dc,name,label,ABM_THEME_COLOR_97B8B4,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    if(g_visualizerMode==0) {
+        int gap=5,bw=(w-gap*23)/24;if(bw<2)bw=2;int base=in.bottom-8,maxh=h-24;
+        for(int i=0;i<24;i++){float v=levels[i];if(v<0.018f)v=0.018f;if(v>1)v=1;int bh=(int)(v*maxh),x=in.left+i*(bw+gap);
+            COLORREF col=Blend(ABM_THEME_COLOR_23747A,ABM_THEME_COLOR_64CAA6,i*100/23);
+            ABM_D2D_Round(&g_ui,(float)x,(float)(base-bh),(float)(x+bw),(float)base,(float)(bw/2),col);
+            RECT cap={x,base-bh-5,x+bw,base-bh-3};Fill(dc,cap,ABM_THEME_COLOR_BEE5FF);}
+    } else if(g_visualizerMode==1) {
+        for(int layer=0;layer<3;layer++){int px0=in.left,py0=cy;COLORREF col=layer==0?ABM_THEME_COLOR_64CAA6:(layer==1?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_3C7C9A);
+            for(int n=1;n<96;n++){int band=(n*24)/96;float amp=levels[band]*(float)(h*(0.18f+0.10f*layer));float phase=(float)g_visualPulse*0.075f+n*0.105f+layer*1.7f;
+                int px=in.left+n*w/95,py=cy+(int)(sinf(phase)*amp);DrawLine(dc,px0,py0,px,py,col,layer==0?2.4f:1.5f);px0=px;py0=py;}}
+    } else {
+        float bass=(levels[0]+levels[1]+levels[2]+levels[3])*0.25f,treble=0;for(int i=16;i<24;i++)treble+=levels[i]/8.0f;
+        float energy=bass*0.72f+treble*0.28f;int radius=(h<w?h:w)/3;
+        for(int ring=0;ring<3;ring++){int rr=radius+(int)(sinf(g_visualPulse*0.045f+ring*1.9f)*energy*radius*0.24f)+ring*18;
+            ABM_D2D_StrokeRound(&g_ui,(float)(cx-rr),(float)(cy-rr),(float)(cx+rr),(float)(cy+rr),(float)rr,ring?ABM_THEME_COLOR_1B414B:ABM_THEME_COLOR_23747A,0.8f);}
+        for(int i=0;i<112;i++){float angle=i*2.39996323f+g_visualPulse*(0.0035f+(i%7)*0.00035f);int band=(i*13)%24;float v=levels[band];
+            float orbit=0.22f+(i%17)/22.0f,pulse=0.5f+0.5f*sinf(g_visualPulse*0.06f+i*1.31f);float r=radius*(orbit+v*0.58f+pulse*energy*0.13f);
+            float turbulence=sinf(angle*3.0f+g_visualPulse*0.025f)*treble*13.0f;int x=cx+(int)(cosf(angle)*r+turbulence),y=cy+(int)(sinf(angle)*r+turbulence*0.65f);
+            int d=2+(int)(v*5.0f)+(i%13==0?2:0);COLORREF col=i%3==0?ABM_THEME_COLOR_64CAA6:(i%3==1?ABM_THEME_COLOR_43A9B0:ABM_THEME_COLOR_8BD9C0);
+            ABM_D2D_Round(&g_ui,(float)(x-d),(float)(y-d),(float)(x+d+1),(float)(y+d+1),(float)d,col);}
+        for(int i=0;i<24;i++){float a=i*6.2831853f/24.0f+g_visualPulse*0.009f;float r0=radius*0.18f,r1=r0+radius*(0.20f+levels[i]*0.52f);
+            DrawLine(dc,cx+(int)(cosf(a)*r0),cy+(int)(sinf(a)*r0),cx+(int)(cosf(a)*r1),cy+(int)(sinf(a)*r1),i%2?ABM_THEME_COLOR_23747A:ABM_THEME_COLOR_64CAA6,1.2f);}
     }
-    RECT label={area.left+20,area.top+14,area.right-20,area.top+38};
-    Txt(dc,L"NOW PLAYING  •  LIVE AUDIO SPECTRUM",label,ABM_THEME_COLOR_97B8B4,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    RECT baseline={inset.left,base+8,inset.right,base+9};
-    Fill(dc,baseline,ABM_THEME_COLOR_2B4344);
+    RECT base={in.left,in.bottom-2,in.right,in.bottom-1};Fill(dc,base,ABM_THEME_COLOR_2B4344);
 }
 static void DrawUI(HDC dc,RECT client) {
     if(g_fullscreen) {
@@ -1439,15 +1446,10 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,duration,detail,C_MUTED,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
         int waveX=infoX, waveY=detail.bottom+32, waveW=R_VIDEO.right-infoX-48;
-        int bars=36, gap=5, bw=(waveW-gap*(bars-1))/bars;
-        if(bw<2)bw=2;
-        for(int i=0;i<bars;i++) {
-            double pulse=0.22+0.78*(0.5+0.5*sin((double)g_visualPulse*0.095+i*0.47));
-            int bh=5+(int)(pulse*25.0);
-            RECT bar={waveX+i*(bw+gap),waveY-bh/2,waveX+i*(bw+gap)+bw,waveY+bh/2};
-            COLORREF col=Blend(ABM_THEME_COLOR_2B9791,ABM_THEME_COLOR_6CB897,i*100/(bars-1));
-            RoundBox(dc,bar,col,3);
-        }
+        RECT visualStrip={waveX,waveY-42,waveX+waveW,waveY+46};
+        if(g_visualizerActive)DrawVisualizer(dc,visualStrip);
+        else { int bars=36,gap=5,bw=(waveW-gap*(bars-1))/bars;if(bw<2)bw=2;
+            for(int i=0;i<bars;i++){double pulse=0.22+0.78*(0.5+0.5*sin((double)g_visualPulse*0.095+i*0.47));int bh=5+(int)(pulse*25.0);RECT bar={waveX+i*(bw+gap),waveY-bh/2,waveX+i*(bw+gap)+bw,waveY+bh/2};COLORREF col=Blend(ABM_THEME_COLOR_2B9791,ABM_THEME_COLOR_6CB897,i*100/(bars-1));RoundBox(dc,bar,col,3);} }
     } else if(g_visualizerActive) DrawVisualizer(dc,R_VIDEO);
     if(!g_hasMedia) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
@@ -3458,6 +3460,10 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(23009,L"Home Theatre...",TRUE);
     ABM_ADD(23007,L"Subtitle Manager...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
+    ABM_HEAD(L"LIVE MUSIC VISUALIZER");
+    ABM_ADD(25200,g_visualizerMode==0?L"✓ Spectrum":L"Spectrum",TRUE);
+    ABM_ADD(25201,g_visualizerMode==1?L"✓ Fluid Waves":L"Fluid Waves",TRUE);
+    ABM_ADD(25202,g_visualizerMode==2?L"✓ Particle Visualizer":L"Particle Visualizer",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
@@ -3499,6 +3505,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
     else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
+    else if(cmd>=25200&&cmd<=25202){g_visualizerMode=cmd-25200;InvalidateRect(hwnd,&R_VIDEO,FALSE);}
     else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
     else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
     else if(cmd==23001)LoadExternalSubtitle(hwnd); else if(cmd>=22000&&cmd<=22020){
