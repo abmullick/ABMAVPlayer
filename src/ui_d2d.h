@@ -50,6 +50,9 @@ typedef struct ABM_D2D {
     BOOL clipActive;
     void *wicFactory;
     void *image;
+    void *frameImage;
+    UINT frameImageWidth;
+    UINT frameImageHeight;
 } ABM_D2D;
 
 BOOL ABM_D2D_Init(ABM_D2D *ui, HWND hwnd);
@@ -83,6 +86,8 @@ BOOL ABM_D2D_LoadImage(ABM_D2D *ui, const wchar_t *path);
 void ABM_D2D_ClearImage(ABM_D2D *ui);
 void ABM_D2D_DrawImage(ABM_D2D *ui, float l, float t, float r, float b);
 void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, float b, float opacity);
+/* Upload and draw a BGRA frame on the active HWND render target. */
+BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels, UINT width, UINT height, float l, float t, float r, float b);
 
 /* Captures the Windows render mix for audio-reactive visualisation. */
 BOOL ABM_AudioVisualizer_Start(void);
