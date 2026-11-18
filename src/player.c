@@ -1932,7 +1932,9 @@ static void DrawUI(HDC dc,RECT client) {
     COLORREF frameEdge=Blend(ABM_THEME_COLOR_1E3035,ABM_THEME_COLOR_377F75,glow);
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
-    if(g_visualizerActive) {
+    BOOL currentVideoForRender=g_hasMedia&&g_current>=0&&g_current<g_playlistCount&&IsVideoPath(g_playlist[g_current]);
+    BOOL showAudioVisualizer=g_visualizerActive&&!currentVideoForRender;
+    if(showAudioVisualizer) {
         if(g_visualizerMode>=4) {
             BOOL pmReady=ABM_ProjectM_IsReady();
             if(pmReady) {
@@ -8797,7 +8799,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 }
             }
         }
-        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_torrentPlaybackActive &&
+        BOOL currentPathIsVideo=g_hasMedia&&g_current>=0&&g_current<g_playlistCount&&IsVideoPath(g_playlist[g_current]);
+        BOOL audioOnlyLocal=g_hasMedia && g_player && !currentPathIsVideo && !g_torrentPlaybackActive &&
             !g_selectedRenderer && g_vlcTrackSnapshotReady && !mediaHasVideoTrack &&
             libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
