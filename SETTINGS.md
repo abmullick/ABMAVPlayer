@@ -31,7 +31,7 @@ The Settings window opens at a practical default size, can be resized, and keeps
 | Volume (0–100) | Player output volume level. | Raising 30 to 60 makes playback louder; it does not improve source quality. If Windows/device volume is already high, raising both can cause uncomfortable loudness or clipping downstream. | Immediate for current player where changed; saved as the default preference. |
 | Playback speed (0.5x–2.0x) | Playback rate. | 1.0x is normal. 1.25x shortens a lecture or podcast; 0.75x slows speech. Audio pitch/quality depends on the playback implementation and media. | Applied to playback; saved preference is used as the default. |
 | Shuffle by default | Whether playback order is randomised by default. | On is useful for a music collection; Off preserves the playlist sequence. It changes selection order, not file order on disk. | Saved preference; affects playlist behaviour. |
-| Repeat current item | Whether the current item repeats. | On is useful for a single song, practice clip or presentation loop; Off allows normal progression. | Saved preference; affects playback progression. |
+| Repeat mode | Cycles Off, Repeat all and Repeat current. The active mode is visibly indicated. | Off follows playlist order; Repeat all loops the playlist; Repeat current loops the active item. | Saved preference; affects playback progression. |
 
 ### Audio processing
 
