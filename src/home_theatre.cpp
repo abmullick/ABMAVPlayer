@@ -37,7 +37,7 @@ static std::vector<std::wstring> g_mediaPaths;
 static ABM_HomeTheatrePlayFn g_playCallback=nullptr;
 static struct MovieItem {
     int id=0, type=1, localIndex=-1, seasonNumber=-1, episodeNumber=-1;
-    wchar_t title[256]={}, date[32]={}, overview[1400]={}, poster[256]={}, backdrop[256]={};
+    wchar_t title[256]={}, date[32]={}, overview[1400]={}, poster[1024]={}, backdrop[1024]={};
 } g_items[100];
 static int g_itemCount=0, g_selected=-1, g_localMatch=-1;
 static MovieItem g_recommendations[100],g_seasons[24];
@@ -197,13 +197,13 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
         const wchar_t *cast=wcsstr(credits,L"\"cast\"");if(cast){const wchar_t *p=cast;for(int n=0;n<4&&(p=wcsstr(p,L"\"name\""));n++){wchar_t name[96]={};CopyJsonString(p,end,L"name",name,_countof(name));if(name[0]){if(r->cast[0])StringCchCatW(r->cast,_countof(r->cast),L", ");StringCchCatW(r->cast,_countof(r->cast),name);}p+=6;}}
         const wchar_t *crew=wcsstr(credits,L"\"crew\"");if(crew){const wchar_t *p=crew;while((p=wcsstr(p,L"\"job\""))){wchar_t job[64]={};CopyJsonString(p,end,L"job",job,_countof(job));if(!_wcsicmp(job,L"Director")){CopyJsonString(p,end,L"name",r->director,_countof(r->director));break;}p+=5;}}
     }
-    wchar_t poster[256]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
+    wchar_t poster[1024]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
     if(!poster[0]&&fallbackPoster)StringCchCopyW(poster,_countof(poster),fallbackPoster);
     wchar_t folder[MAX_PATH]={};if(ImageFolder(folder,_countof(folder))&&poster[0]){
         StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\metadata-%d-%d.jpg",folder,mediaType,providerId);
         if(GetFileAttributesW(r->posterFile)==INVALID_FILE_ATTRIBUTES && !ABM_Metadata_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
     }
-    wchar_t backdrop[256]={};CopyJsonString(json,end,L"backdrop_path",backdrop,_countof(backdrop));
+    wchar_t backdrop[1024]={};CopyJsonString(json,end,L"backdrop_path",backdrop,_countof(backdrop));
     if(!backdrop[0]&&fallbackBackdrop)StringCchCopyW(backdrop,_countof(backdrop),fallbackBackdrop);
     if(ImageFolder(folder,_countof(folder))&&backdrop[0]) {
         StringCchPrintfW(r->backdropFile,_countof(r->backdropFile),L"%s\\metadata-%d-%d-backdrop.jpg",folder,mediaType,providerId);
@@ -299,7 +299,7 @@ static DWORD WINAPI Worker(LPVOID parameter) {
                     ParseSearchJson(json.data(),2,found,&count);
             }
             if(count>0){found[0].localIndex=(int)i;r->items[r->count++]=found[0];}
-            Sleep(250);
+            Sleep(1100);
         }
         r->ok=r->count>0;
         if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No library titles were identified. Try a more descriptive filename.");
