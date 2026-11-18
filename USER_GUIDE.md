@@ -89,7 +89,7 @@ The Settings window can be resized. On a short display or narrow window, use the
 - **Volume (0–100):** changes playback loudness, not source quality. Raising 30 to 60 makes the player louder; it does not make a quiet recording cleaner. Consider the Windows/device volume as well to avoid excessive output.
 - **Playback speed (0.5x–2.0x):** 1.0x is normal; 1.25x can shorten a lecture, while 0.75x slows speech. This changes playback rate, not the media file.
 - **Shuffle by default:** On randomises the next-item selection; Off follows playlist order. It does not rearrange files on disk.
-- **Repeat current item:** On loops the current item; Off allows normal progression.
+- **Repeat mode:** Cycles through Off (normal playlist progression), Repeat all (loop the playlist) and Repeat current (loop the active item). The active mode is visibly indicated.
 
 ### Audio processing
 
@@ -264,7 +264,7 @@ In fullscreen, move the pointer to reveal the playback overlay. Drag the timelin
 - **Load playlist / Save playlist:** Opens or saves M3U playlists.
 - **Recent media:** Opens the recent-items list, when entries are available.
 - **Shuffle:** Changes the next-item selection order.
-- **Repeat current:** Repeats the currently playing item.
+- **Repeat mode:** Cycles Off → Repeat all → Repeat current. The active mode is visibly indicated; Ctrl+R cycles the modes.
 - **Capacity:** The playlist currently supports up to 256 entries.
 
 Recent items and playback preferences are stored in the current Windows user's application data folder.
@@ -297,7 +297,7 @@ The selected curve is applied through LibVLC's equalizer API. This is a fixed-ba
 
 `%APPDATA%\\ABMAVPlayer\\audio.ini`
 
-During audio playback, the player can show now-playing metadata and a live spectrum/visualizer when the required playback data is available. The visualizer currently captures the Windows default render mix, so sounds from other applications may also contribute. Process-specific audio capture is not implemented.
+During audio-only playback, now-playing metadata accompanies a live visualizer that fills the existing media stage in windowed mode and the full player area in fullscreen. The menu offers ten styles: **Spectrum Orbit**, **Fluid Waves**, **Particle Universe** and **Neon Spectrum** (Direct2D), plus **MilkDrop (OpenGL)**, **3D Spectrum (OpenGL)**, **Particle Universe (OpenGL)**, **Oscilloscope 3D (OpenGL)**, **Fluid Motion (OpenGL)** and **Geometric Tunnel (OpenGL)**. **Fluid Motion (OpenGL)** is the default. The OpenGL renderer runs in an isolated helper process and its frames are composed into the existing player surface; it does not create a separate visible window or replace LibVLC playback. During startup the selected style is retained and a dark holding surface is shown until its first frame is ready, rather than briefly substituting Neon Spectrum. If the helper fails, the player can fall back to Direct2D while audio continues. A gradual activation ramp and asymmetric spectrum smoothing reduce abrupt visual changes. Audio analysis uses WASAPI loopback on the Windows default render endpoint, so other applications playing through that endpoint can also influence the display; process-specific capture is not implemented.
 
 ## 6. Local playback output — Find network devices / Cast to TV
 
