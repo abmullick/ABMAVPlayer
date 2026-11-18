@@ -44,17 +44,23 @@ Keep path existence checks out of the paint/scroll hot path. Refresh availabilit
 
 Because much of the interface is custom-painted, adding a setting normally requires both a rendering change and a matching input/hit-test change. Keep hit-test coordinates aligned with the drawn control. Check the fixed footer and native child-window z-order; do not allow a footer or Close button to overlap content.
 
-## Home Theatre
+## Home Theatre and metadata providers
 
-The optional Home Theatre window is implemented in `src/tmdb_home_theatre.cpp` with its C-compatible entry point in `src/tmdb_home_theatre.h`. The main player passes an immutable snapshot of the active playlist plus saved favourites (via `EnsureFavoritesInPlaylist`) and the existing `PlayIndex` callback. The window owns its Direct2D surface and Win32 controls; it does not replace or share state with the Streaming Centre browser player or Torrent Stream lifecycle.
+The optional Home Theatre window remains implemented in `src/tmdb_home_theatre.cpp` with its C-compatible entry point in `src/tmdb_home_theatre.h`. The window receives an immutable snapshot of the active playlist plus saved favourites and the existing `PlayIndex` callback. It owns its Direct2D surface and Win32 controls; it does not replace or share state with Streaming Centre, Torrent Stream or the LibVLC playback lifecycle.
 
-TMDB search, detail, multi-search library identification and season-detail requests run on worker threads. Workers receive copied query/path/title data and return heap-owned result messages; all HWND and Direct2D updates remain on the Home Theatre window thread. The metadata client in `src/tmdb_metadata.cpp` uses the encrypted per-user Read Access Token, WinHTTP and read-only TMDB endpoints. TV details use the existing append-to-response support for credits, images and recommendations; `ABM_TMDB_GetSeasonDetails` retrieves a selected season's episode list.
+Provider access is isolated in `src/metadata_engine.cpp` / `src/metadata_engine.h`. The current keyless adapters are:
+- **Wikidata** for movie search and details through the public SPARQL endpoint. Movie IDs are Wikidata Q-numbers.
+- **TVmaze** for TV search, show details, cast, seasons and episode lists. TV IDs are TVmaze IDs.
+- No API token, account, or user-entered credential is required. Requests use WinHTTP and are synchronous only inside Home Theatre worker threads. All HWND and Direct2D updates remain on the Home Theatre window thread.
 
-**Identify library** scans video paths from the active playlist/favourites snapshot. Filename cleanup strips common release-quality tags before a TMDB multi-search request. The scan spaces requests to avoid an aggressive request rate and presents at most 100 identified matches. It is an assisted metadata suggestion, not authoritative file identification. Search and scan failures are isolated from normal playback.
+The Home Theatre parser consumes a provider-neutral, TMDB-shaped internal JSON representation so the UI can remain independent of provider response schemas. Provider IDs are scoped by media type. Manual local-file overrides use `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre\matches-v2.tsv`, preventing old TMDB ID mappings from being mistaken for the new provider IDs. Downloaded images are cached in the same Home Theatre directory.
 
-Manual local-file overrides are stored in `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre\\matches.tsv`, keyed by TMDB ID and media type. Poster and backdrop files are cached in the same directory. A selected TV season is loaded asynchronously; episode rows retain season/episode numbers and synopsis, and the local matcher checks common SxxExx / NxNN filename patterns. Similar-title recommendations are parsed from the TMDB detail response and displayed in the discovery list.
+The image downloader accepts HTTPS artwork URLs only from the current provider image hosts (TVmaze and Wikimedia Commons/upload). The current Wikidata movie adapter uses available Commons image references; the TVmaze adapter uses its original show image when available. Neither source guarantees a cinematic backdrop. Recommendations are not implemented by these providers. Do not imply that every title has artwork, cast, recommendations or complete metadata. Image licensing and attribution must be checked against the individual source before commercial redistribution; public API access does not grant blanket image rights.
 
-The UI uses one image slot and a poster/backdrop toggle, not simultaneous poster and backdrop composition. Recommendations are currently a selectable list rather than a horizontally scrolling artwork shelf. Automatic identification is filename-driven and does not yet perform fuzzy release-group matching, multi-candidate confidence scoring, recursive disk discovery, or automatic metadata writes into media files. Keep those limits explicit. TMDB artwork attribution is covered by the existing About notice.
+**Identify library** scans video paths from the active playlist/favourites snapshot, removes common release-quality tags and queries the movie provider first, then TV search if no movie result is found. It spaces requests to avoid aggressive provider usage and presents at most 100 suggestions. This is assisted filename identification, not authoritative file identification. Search and scan failures are isolated from normal playback.
+
+A provider adapter must normalize its own results into the internal schema, enforce its published rate limits, validate image hosts, preserve source/attribution information and never run network work on the UI or playback thread. Local playback and embedded/local artwork remain available when the network or a provider is unavailable. MusicBrainz/Cover Art Archive is a planned separate music-artwork adapter; it is not yet wired into the main Now Playing artwork path.
+
 
 ## Advanced Settings implementation map
 
