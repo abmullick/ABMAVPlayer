@@ -6531,7 +6531,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Relinking updates matching references in the active playlist, Favourites, Recent media, resume records and saved personal M3U collections. It changes the stored path; it does not copy, move, rename or repair the file. Choose the correct replacement, because a different edit or episode may not match the saved resume position. Reconnect removable drives or network shares and reopen the drawer to refresh their status.\r\n"
             L"Right-click any media row in Queue or Library and choose Open file location to open its containing folder in Windows File Explorer with the media file selected. The action is disabled for missing files; use Relink missing media first.\r\n"
             L"\r\n"
-            L"HOME THEATRE — TMDB DISCOVERY\r\n"
+            L"HOME THEATRE — KEYLESS METADATA\r\n"
             L"Open Home Theatre from the idle dashboard or playback context menu. No API key or account is required. Movie discovery uses Wikidata; television discovery and season/episode information use TVmaze. Posters and summaries are shown when the provider has them; available artwork is cached locally. Choose Identify library to compare filenames in the active playlist and Favourites with provider search results. Filename matching is a suggestion, not a guarantee. Use the local-file picker and Use selected file to correct a match; saved overrides are stored locally by provider ID and media type. Play local match starts the selected file through the normal ABM playback engine. Provider coverage varies; movie recommendations and guaranteed backdrops are not currently available.\r\n"
             L"\r\n"
             L"LICENSE & ACTIVATION\r\n"
