@@ -223,6 +223,47 @@ static void FormatMediaDuration(int64_t milliseconds,wchar_t *out,size_t capacit
     else StringCchPrintfW(out,capacity,L"%02llu:%02llu",seconds/60,seconds%60);
 }
 
+
+typedef struct HTMediaMetadata {
+    wchar_t path[PATH_CAP],title[256],year[32],genres[256],overview[1800],cast[512],director[128],poster[MAX_PATH],backdrop[MAX_PATH];
+} HTMediaMetadata;
+static HTMediaMetadata g_htMetadata[MAX_PLAYLIST];
+static int g_htMetadataCount=0;
+static BOOL g_htMetadataLoaded=FALSE;
+static void HTMetadataReload(void) {
+    g_htMetadataCount=0;g_htMetadataLoaded=TRUE;
+    wchar_t app[MAX_PATH]={0},folder[MAX_PATH]={0},file[MAX_PATH]={0};
+    if(FAILED(SHGetFolderPathW(NULL,CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE,NULL,SHGFP_TYPE_CURRENT,app)))return;
+    if(FAILED(StringCchPrintfW(folder,_countof(folder),L"%s\\ABMAVPlayer\\HomeTheatre",app)))return;
+    if(FAILED(StringCchPrintfW(file,_countof(file),L"%s\\metadata-catalog.tsv",folder)))return;
+    FILE *fp=NULL;if(_wfopen_s(&fp,file,L"rt, ccs=UTF-8")!=0||!fp)return;
+    wchar_t line[8192];
+    while(g_htMetadataCount<MAX_PLAYLIST&&fgetws(line,_countof(line),fp)) {
+        line[wcscspn(line,L"\r\n")]=0;
+        wchar_t *fields[9]={0},*ctx=NULL,*p=wcstok_s(line,L"\t",&ctx);
+        int n=0;while(p&&n<9){fields[n++]=p;p=wcstok_s(NULL,L"\t",&ctx);}
+        if(n<9||!fields[0][0]||!fields[1][0])continue;
+        int at=-1;for(int i=0;i<g_htMetadataCount;i++)if(!_wcsicmp(g_htMetadata[i].path,fields[0])){at=i;break;}
+        if(at<0)at=g_htMetadataCount++;
+        HTMediaMetadata *m=&g_htMetadata[at];ZeroMemory(m,sizeof(*m));
+        wcsncpy_s(m->path,_countof(m->path),fields[0],_TRUNCATE);
+        wcsncpy_s(m->title,_countof(m->title),fields[1],_TRUNCATE);
+        wcsncpy_s(m->year,_countof(m->year),fields[2],_TRUNCATE);
+        wcsncpy_s(m->genres,_countof(m->genres),fields[3],_TRUNCATE);
+        wcsncpy_s(m->overview,_countof(m->overview),fields[4],_TRUNCATE);
+        wcsncpy_s(m->cast,_countof(m->cast),fields[5],_TRUNCATE);
+        wcsncpy_s(m->director,_countof(m->director),fields[6],_TRUNCATE);
+        wcsncpy_s(m->poster,_countof(m->poster),fields[7],_TRUNCATE);
+        wcsncpy_s(m->backdrop,_countof(m->backdrop),fields[8],_TRUNCATE);
+    }
+    fclose(fp);
+}
+static const HTMediaMetadata *HTMetadataForPath(const wchar_t *path) {
+    if(!g_htMetadataLoaded)HTMetadataReload();
+    for(int i=0;i<g_htMetadataCount;i++)if(!_wcsicmp(g_htMetadata[i].path,path))return &g_htMetadata[i];
+    return NULL;
+}
+
 static wchar_t g_playlist[MAX_PLAYLIST][PATH_CAP];
 static int g_playlistCount, g_current = -1, g_selected = -1;
 #define MAX_FAVORITES MAX_PLAYLIST
@@ -681,6 +722,7 @@ static int CountFilteredMedia(void) {
         BOOL video=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&video)||(g_mediaFilter==2&&!video))continue;
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
+        const HTMediaMetadata *htMeta=HTMetadataForPath(g_playlist[i]);
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
            !(i==g_current&&((g_trackArtist[0]&&ContainsTextI(g_trackArtist,g_searchText))||
                             (g_trackAlbum[0]&&ContainsTextI(g_trackAlbum,g_searchText))||
@@ -2332,12 +2374,13 @@ static void DrawUI(HDC dc,RECT client) {
         RECT subline=compactRow
             ?(RECT){textLeft,row.top+(rowHeight/2)-1,row.right-106,row.bottom-2}
             :(RECT){row.left+82,row.top+40,row.right-108,row.bottom-7};
-        Txt(dc,leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        Txt(dc,htMeta&&htMeta->title[0]?htMeta->title:leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_missingMedia[i])swprintf_s(metaLine,320,L"MISSING MEDIA  ·  %s",isVideo?L"VIDEO":L"AUDIO");
         else if(g_hasResume[i])FormatResumeLabel(g_playlist[i],metaLine,_countof(metaLine));
         else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
+        else if(htMeta)swprintf_s(metaLine,320,L"%s%s%s  ·  %s",htMeta->year,htMeta->year[0]?L"  ·  ":L"",htMeta->genres,isVideo?L"VIDEO":"AUDIO");
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
         Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_FFBECD:(g_hasResume[i]?ABM_THEME_COLOR_63E1CD:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
@@ -8285,6 +8328,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_advancedConfirmExit&&ABM_MessageBoxW(hwnd,L"Close ABM AV Player?",APP_NAME,MB_YESNO|MB_ICONQUESTION)!=IDYES)return 0;
         DestroyWindow(hwnd);return 0;
     case WM_DROPFILES: AddDroppedFiles((HDROP)wp);return 0;
+    case WM_APP+0x5A6: g_htMetadataLoaded=FALSE;HTMetadataReload();InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_ARTWORK_READY: if((LONG)wp==InterlockedCompareExchange(&g_artworkGeneration,0,0) && g_artMedia)LoadParsedArtwork(g_artMedia);return 0;
     case WM_ARTWORK_DOWNLOAD_READY: {
         LONG generation=(LONG)wp;
