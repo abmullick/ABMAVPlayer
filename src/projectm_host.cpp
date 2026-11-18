@@ -19,6 +19,7 @@ bool g_surfaceVisible=false;
 bool g_starting=false;
 DWORD g_lastError=ERROR_SUCCESS;
 volatile LONG g_firstFrameCopyLogged=0;
+volatile LONG g_frameCopyCount=0;
 void HostLog(const wchar_t *message) {
     wchar_t path[MAX_PATH]={0};DWORD n=GetTempPathW(_countof(path),path);
     if(!n||n>=_countof(path))return;
@@ -160,6 +161,27 @@ extern "C" BOOL ABM_ProjectM_CopyFrame(void *destination,int destinationBytes,in
             wchar_t line[160];StringCchPrintfW(line,_countof(line),
                 L"player: first shared frame copy succeeded: %ldx%ld, sequence=%ld, buffer=%ld",w,h,seq+2,index);
             HostLog(line);
+        }
+        LONG copyNumber=InterlockedIncrement(&g_frameCopyCount);
+        if((copyNumber%120)==0) {
+            const unsigned char *sample=(const unsigned char*)destination;
+            size_t pixelCount=(size_t)w*(size_t)h;
+            unsigned long long lit=0,luminanceSum=0;
+            unsigned int maxChannel=0;
+            for(size_t p=0;p<pixelCount;p++) {
+                unsigned int b=sample[p*4u],g=sample[p*4u+1u],r=sample[p*4u+2u];
+                unsigned int peak=(r>g?(r>b?r:b):(g>b?g:b));
+                unsigned int luminance=(77u*r+150u*g+29u*b)>>8;
+                if(peak>8)++lit;
+                luminanceSum+=luminance;
+                if(peak>maxChannel)maxChannel=peak;
+            }
+            wchar_t metrics[256];
+            StringCchPrintfW(metrics,_countof(metrics),
+                L"Player frame metrics: copy=%ld nonblack=%llu/%llu meanLuma=%llu maxRGB=%u",
+                (long)copyNumber,lit,(unsigned long long)pixelCount,
+                pixelCount?luminanceSum/pixelCount:0,maxChannel);
+            HostLog(metrics);
         }
         return TRUE;
     }
