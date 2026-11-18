@@ -1,3 +1,7 @@
+# ABM AV Player — User Guide
+
+This guide covers the Windows desktop player and its separate Streaming Centre. Some playback, discovery and casting features depend on the installed 64-bit VLC runtime/plugins, receiver capabilities, WebView2 and provider policies.
+
 ## Home Theatre
 
 Open **Home Theatre** from the idle home dashboard or playback context menu. Online discovery requires an internet connection but **does not require an API key, token or account**.
@@ -37,10 +41,6 @@ For audio playback, ABM resolves artwork in this order:
 4. ABM's built-in artwork placeholder when no match is found.
 
 Network lookup and image retrieval run on a background worker and never block playback or the UI. Retrieved images are validated and cached locally. Wikidata album coverage is limited, and a Commons image is not guaranteed to be an actual commercial album cover. Image rights vary by file; check the individual Commons licence before redistribution. No API key or account is required.
-
-# ABM AV Player — User Guide
-
-This guide covers the Windows desktop player and its separate Streaming Centre. Some playback, discovery and casting features depend on the installed 64-bit VLC runtime/plugins, receiver capabilities, WebView2 and provider policies.
 
 ## Licence activation and free trial
 
