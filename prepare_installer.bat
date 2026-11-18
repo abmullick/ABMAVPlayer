@@ -45,7 +45,7 @@ if not exist "build\torrent-runtime\abm_torrent_engine.dll" (
 xcopy "build\torrent-runtime" "%DEST%\torrent-runtime\" /E /I /H /Y >nul
 if errorlevel 2 exit /b 1
 
-rem Stage the embedded Milkdrop bridge and all projectM runtime DLL dependencies.
+rem Stage the isolated ProjectM host, renderer helper and runtime dependencies.
 if not exist "build\projectm-runtime\abm_projectm_bridge.dll" (
   echo ERROR: Embedded projectM bridge is missing. Run build.bat first.
   exit /b 1
