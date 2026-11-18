@@ -478,17 +478,6 @@ static LRESULT CALLBACK HomePremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,LPAR
         LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);HDC dc=GetDC(hwnd);
         if(dc){
             RECT r={};GetClientRect(hwnd,&r);DrawAbmControlFrame(hwnd,dc);
-            if(!_wcsicmp(cls,L"ComboBox")){
-                const int arrowW=32;RECT arrow={r.right-arrowW,r.top+1,r.right-1,r.bottom-1};
-                if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,dc,&r)){
-                    ABM_D2D_CanvasFillRound(&g_controlCanvas,(float)arrow.left,(float)arrow.top,(float)arrow.right,(float)arrow.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_113041);
-                    float cx=(float)(arrow.left+arrowW/2),cy=(float)((arrow.top+arrow.bottom)/2);
-                    ABM_D2D_CanvasLine(&g_controlCanvas,cx-5,cy-2,cx,cy+3,ABM_UI_COLOR_ACCENT_BRIGHT,2);
-                    ABM_D2D_CanvasLine(&g_controlCanvas,cx,cy+3,cx+5,cy-2,ABM_UI_COLOR_ACCENT_BRIGHT,2);
-                    ABM_D2D_CanvasEnd(&g_controlCanvas);
-                }
-                DrawAbmControlFrame(hwnd,dc);
-            }
             ReleaseDC(hwnd,dc);
         }return z;
     }
