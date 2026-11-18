@@ -318,7 +318,7 @@ static void StartWork(int kind,int index,const wchar_t *query) {
     if(query)StringCchCopyW(w->query,_countof(w->query),query);
     if(kind==2&&index>=0&&index<g_itemCount)w->item=g_items[index];
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
-    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetWindowTextW(g_status,kind==1?L"Searching TMDB…":L"Loading movie information…");}
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetWindowTextW(g_status,kind==1?L"Searching metadata providers…":L"Loading title information…");}
     else {delete w;SetStatus(L"Could not start the metadata worker. Try again.");EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);}
 }
 static void SetStatus(const wchar_t *s){if(g_status)SetWindowTextW(g_status,s?s:L"");}
@@ -352,7 +352,7 @@ static void Draw(HWND w) {
     ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(15,42,57),RGB(10,25,40));
     ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(40,94,111),0.9f);
     ABM_D2D_Text(&g_canvas,L"ABM  /  HOME THEATRE",MakeRect(34,22,c.right-34,52),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_canvas,L"DISCOVER MOVIES & SHOWS  ·  MATCH TO LOCAL MEDIA",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"DISCOVER MOVIES & SHOWS  ·  KEYLESS METADATA",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
@@ -371,7 +371,7 @@ static void Draw(HWND w) {
         }
         int tx=612,tw=c.right-tx-42;
         ABM_D2D_Text(&g_canvas,L"OVERVIEW",MakeRect(tx,244,tx+tw,270),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_Text(&g_canvas,g_overview[0]?g_overview:(m.overview[0]?m.overview:L"No synopsis supplied by TMDB."),MakeRect(tx,274,tx+tw,420),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
+        ABM_D2D_Text(&g_canvas,g_overview[0]?g_overview:(m.overview[0]?m.overview:L"No synopsis supplied by the metadata provider."),MakeRect(tx,274,tx+tw,420),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
         ABM_D2D_Text(&g_canvas,L"GENRES",MakeRect(tx,432,tx+tw,454),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_Text(&g_canvas,g_genres[0]?g_genres:L"Not available",MakeRect(tx,456,tx+tw,480),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         ABM_D2D_Text(&g_canvas,L"CAST",MakeRect(tx,490,tx+tw,512),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
