@@ -20,6 +20,7 @@ Open **Home Theatre** from the idle home dashboard or playback context menu. Onl
 - Choose **Identify library** to scan video files in the current Home Theatre library snapshot: the active playlist plus saved favourites. Add folders/files to the main player first if you want them included. This is not a recursive scan of every folder on a drive and does not import or move media. ABM removes common release-quality tags from filenames before searching. The scan can take time on a large library and stops after collecting 100 matches.
 - In the identification view, use **All**, **Movies** or **TV Shows** to filter the identified results. The filters only change the displayed category; they do not alter your playlist or media files.
 - Select an identified title to inspect its metadata. Automatic identification is a suggestion, not a guarantee that the correct edition or episode was found. The list selection remains associated with its original local media entry when filters change.
+- Use the **Watched** control to mark the selected local title as watched or unwatched. The state is saved per local media path in `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre\watched.tsv` and is restored when Home Theatre is reopened. This is a library status marker; it does not change playback position or the main player's Continue Watching checkpoints.
 
 ### Correct a local match
 
