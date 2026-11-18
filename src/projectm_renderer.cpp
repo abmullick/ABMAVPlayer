@@ -73,7 +73,7 @@ bool CreateContext(HWND hwnd) {
     wglMakeCurrent(nullptr,nullptr);wglDeleteContext(bootstrap);
     if(!modern)return false;
     if(!wglMakeCurrent(g_dc,modern)){wglDeleteContext(modern);return false;}
-    g_gl=modern;wglMakeCurrent(nullptr,nullptr);return true;
+    g_gl=modern;return true;
 }
 void LoadPresetDelta(int delta) {
     if(!g_projectm)return;
@@ -134,7 +134,7 @@ LRESULT CALLBACK RendererWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_TIMER:if(wp==RENDER_TIMER){RenderFrame();return 0;}break;
     case WM_SIZE:return 0; /* dimensions are queried on the render thread */
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
-    case WM_DESTROY:KillTimer(hwnd,RENDER_TIMER);PostQuitMessage(0);return 0;
+    case WM_DESTROY:Cleanup();PostQuitMessage(0);return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -172,6 +172,8 @@ int wmain(int argc,wchar_t **argv) {
     if(!g_presets.empty()){g_presetIndex=g_presets.size()-1;LoadPresetDelta(1);}
     else projectm_load_preset_file(g_projectm,"idle://",false);
     g_lastPresetTick=GetTickCount64();
+    /* ProjectM initialisation and preset loading require the renderer context. */
+    wglMakeCurrent(nullptr,nullptr);
     ShowWindow(g_window,SW_SHOWNA);
     SetTimer(g_window,RENDER_TIMER,16,nullptr);
     InterlockedExchangePointer((PVOID volatile*)&g_shared->childWindow,(PVOID)g_window);
