@@ -65,6 +65,8 @@ float g_pcm[ABM_PROJECTM_PCM_COUNT]{};
 int g_lastWidth=0,g_lastHeight=0;
 volatile LONG g_firstRenderLogged=0;
 volatile LONG g_renderFrames=0;
+volatile LONG g_firstTransferErrorLogged=0;
+volatile LONG g_frameLockMissLogged=0;
 
 std::string Utf8(const wchar_t *value) {
     if(!value||!*value)return {};
@@ -170,17 +172,35 @@ void RenderFrame() {
         GLenum glError=glGetError();
         /* Publish BGRA pixels through shared memory. The main player paints
            them into its own GDI/Direct2D composition; no foreign child HWND. */
-        LONG nextFrame=(InterlockedCompareExchange(&g_shared->frameIndex,0,0)^1)&1;
-        InterlockedIncrement(&g_shared->frameSequence);
-        glReadBuffer(GL_BACK);
-        glReadPixels(0,0,w,h,GL_BGRA,GL_UNSIGNED_BYTE,g_shared->frames[nextFrame]);
-        GLenum transferError=glGetError();
-        if(transferError==GL_NO_ERROR) {
-            InterlockedExchange(&g_shared->frameWidth,w);
-            InterlockedExchange(&g_shared->frameHeight,h);
-            InterlockedExchange(&g_shared->frameIndex,nextFrame);
+        /* Acquire the same cross-process frame lock used by the player reader.
+           This prevents the renderer from replacing an 8 MB buffer mid-copy. */
+        LONG frameLock=0;
+        for(int lockAttempt=0;lockAttempt<200;lockAttempt++) {
+            LONG seq=InterlockedCompareExchange(&g_shared->frameSequence,0,0);
+            if(!(seq&1)&&InterlockedCompareExchange(&g_shared->frameSequence,seq+1,seq)==seq) {
+                frameLock=seq+1;
+                break;
+            }
+            SwitchToThread();
         }
-        InterlockedIncrement(&g_shared->frameSequence);
+        if(frameLock) {
+            LONG nextFrame=(InterlockedCompareExchange(&g_shared->frameIndex,0,0)^1)&1;
+            glReadBuffer(GL_BACK);
+            glReadPixels(0,0,w,h,GL_BGRA,GL_UNSIGNED_BYTE,g_shared->frames[nextFrame]);
+            GLenum transferError=glGetError();
+            if(transferError==GL_NO_ERROR) {
+                InterlockedExchange(&g_shared->frameWidth,w);
+                InterlockedExchange(&g_shared->frameHeight,h);
+                InterlockedExchange(&g_shared->frameIndex,nextFrame);
+            } else if(InterlockedCompareExchange(&g_firstTransferErrorLogged,1,0)==0) {
+                wchar_t line[160];StringCchPrintfW(line,_countof(line),
+                    L"shared frame transfer failed: 0x%04X",(unsigned)transferError);LogText(line);
+            }
+            MemoryBarrier();
+            InterlockedExchange(&g_shared->frameSequence,frameLock+1);
+        } else if(InterlockedCompareExchange(&g_frameLockMissLogged,1,0)==0) {
+            LogText(L"shared frame publish skipped: player held frame lock");
+        }
         if(InterlockedCompareExchange(&g_firstRenderLogged,0,0)==0) {
             /* Read the rendered back buffer once. This distinguishes a blank
                ProjectM frame from a child-HWND/DWM presentation problem. */
