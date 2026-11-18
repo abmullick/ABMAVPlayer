@@ -13,7 +13,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
-### Current release highlights — v1.1.3 candidate
+### Current release highlights — v1.1.4
 
 - Home Theatre now uses keyless providers: Wikidata for movies and related-movie discovery, and TVmaze for television search, details and season/episode browsing. It retains local-library identification, editable local matches and cached artwork; no API key or account is required. Provider coverage varies and cinematic backdrops are not guaranteed.
 - Now Playing artwork resolution prefers embedded artwork, then standard images beside the media file, then a keyless Wikidata/Wikimedia Commons album lookup using artist and album metadata. Lookups and downloads run asynchronously and are cached locally.
@@ -23,7 +23,7 @@ The source version can be ahead of the latest published installer while a releas
 - Added three-state repeat cycling (Off → Repeat all → Repeat current), media information, and further playback/Settings/Help Centre refinements.
 - Carries forward Continue Watching and resume checkpoints, missing-media relinking, Queue/Library Open file location, media duration labels, the shared design system and playback/Streaming Centre/Torrent hardening.
 
-This is a source-prepared v1.1.3 candidate. The Windows x64 build, runtime visualizer/audio/video/Home Theatre checks, casting/torrent regression, and clean-install/in-place-upgrade validation must pass before the installer is published.
+v1.1.4 includes Home Theatre metadata-persistence and status-display fixes, plus the v1.1.3 feature set. The maintainer reports a successful Windows build and installation of the preceding build. Rebuild after pulling the v1.1.4 version bump, then complete the remaining acceptance checks before publishing.
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the release notes and [RELEASES.md](RELEASES.md) for build, validation and publishing requirements.
 
