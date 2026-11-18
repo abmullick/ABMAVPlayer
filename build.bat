@@ -54,7 +54,7 @@ echo [0/13] Building native libtorrent engine...
 call tools\build_torrent_engine.bat
 if errorlevel 1 goto build_failed
 
-echo [0.25/14] Building embedded projectM Milkdrop visualizer...
+echo [0.25/14] Building isolated projectM Milkdrop renderer...
 set "ABM_VCPKG_ROOT="
 for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_vcpkg.ps1`) do set "ABM_VCPKG_ROOT=%%V"
 if not defined ABM_VCPKG_ROOT (
@@ -68,6 +68,8 @@ if errorlevel 1 goto build_failed
 if not exist build\projectm-runtime mkdir build\projectm-runtime
 copy /y build\projectm-bridge\bin\Release\abm_projectm_bridge.dll build\projectm-runtime\ >nul
 if errorlevel 1 goto build_failed
+copy /y build\projectm-bridge\bin\Release\abm-projectm-renderer.exe build\projectm-runtime\ >nul
+if errorlevel 1 goto build_failed
 if not exist "%CD%\vcpkg_installed\x64-windows\bin\projectM-4.dll" (
   echo ERROR: projectM runtime DLL is missing from the vcpkg installation.
   goto build_failed
@@ -79,6 +81,8 @@ if not exist "%CD%\vcpkg_installed\x64-windows\bin\glew32.dll" (
 copy /y "%CD%\vcpkg_installed\x64-windows\bin\projectM-4.dll" build\projectm-runtime\ >nul
 copy /y "%CD%\vcpkg_installed\x64-windows\bin\glew32.dll" build\projectm-runtime\ >nul
 for %%D in (build\projectm-runtime\*.dll) do copy /y "%%~fD" build\ >nul
+copy /y build\projectm-runtime\abm-projectm-renderer.exe build\ >nul
+if errorlevel 1 goto build_failed
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\ensure_visualizer_presets.ps1
 if errorlevel 1 goto build_failed
 if not exist build\assets\visualizer mkdir build\assets\visualizer
