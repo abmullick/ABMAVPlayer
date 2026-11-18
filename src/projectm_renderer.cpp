@@ -98,7 +98,7 @@ void ReadPcm() {
     }
 }
 void RenderFrame() {
-    if(!g_projectm||!g_gl||!g_dc||!g_shared)return;
+    if(!g_projectm||!g_gl||!g_dc||!g_shared||!IsWindowVisible(g_window))return;
     if(!wglMakeCurrent(g_dc,g_gl))return;
     RECT rc{};GetClientRect(g_window,&rc);
     int w=rc.right-rc.left,h=rc.bottom-rc.top;
