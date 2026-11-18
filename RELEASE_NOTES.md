@@ -48,11 +48,9 @@
 - Missing-file actions are guarded so users can relink unavailable media before opening its location.
 - Existing installer identity, installation directory and per-user AppData separation must remain unchanged for in-place upgrades.
 
-## Release validation
+## Historical release validation note
 
-- This was the source-prepared v1.1.2 candidate, subsequently published as the previous stable release.
-- Windows x64 compilation, runtime playback/resume/relink testing, Queue/Library scrolling performance measurement, casting regression, clean installation and in-place upgrade have not been performed by this source update.
-- Complete the Windows QA checklist, build and inspect the installer, and test clean installation and in-place upgrade before publishing. Do not treat this source candidate as a certified release until those gates pass.
+- v1.1.2 was subsequently published as the previous stable release. The original source-preparation note did not record Windows x64 compilation, runtime playback/resume/relink testing, Queue/Library scrolling performance measurement, casting regression, clean installation or in-place upgrade results; this historical note does not assert which checks were completed before publication.
 
 ---
 ## Published release notes
