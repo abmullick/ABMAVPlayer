@@ -255,3 +255,10 @@ The report separates runtime inventory from evidence gathered from the current m
 The VLC report lists elementary streams returned by LibVLC and independently queries the selected audio (`libvlc_audio_get_track`), video (`libvlc_video_get_track`) and subtitle (`libvlc_video_get_spu`) track IDs. The selected flag on each stream is based on an ID match. LibVLC elementary-stream Added, Deleted and Selected events trigger a refreshed snapshot; lifecycle events are correlated with the active player's state and media clock.
 
 **Playback session successful** requires an observed Playing state/event followed by media-time progression, or EndReached after Playing. **Playback error** is shown when LibVLC reports EncounteredError or the player enters Error. These are independent of stream detection and track selection. Decoder-module identification remains unknown unless a reliable direct source becomes available; plugin DLL presence and codec names are not proof of which decoder module executed.
+
+
+## Home Theatre metadata settings
+
+Home Theatre does not require or store an API key, account credential or TMDB token. Movie lookup uses Wikidata; television lookup, seasons and episodes use TVmaze. There is intentionally no metadata credential field in Settings and no metadata token in the application settings files. Provider requests are rate-spaced by the metadata engine. An internet connection is needed only for online discovery; local playback remains available when providers are offline.
+
+Provider attribution and licensing details are shown in About and F1 Help. See the Home Theatre section in USER_GUIDE.md for the Wikidata CC0 / TVmaze CC BY-SA 4.0 data terms and the separate rights that apply to individual artwork files.
