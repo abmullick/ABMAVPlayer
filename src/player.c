@@ -2394,6 +2394,10 @@ static void DrawUI(HDC dc,RECT client) {
         Txt(dc,htMeta&&htMeta->title[0]?htMeta->title:leaf,name,current?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E8EFF9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         wchar_t metaLine[320];
         if(g_missingMedia[i])swprintf_s(metaLine,320,L"MISSING MEDIA  ·  %s",isVideo?L"VIDEO":L"AUDIO");
+        else if(htMeta) {
+            if(g_hasResume[i])swprintf_s(metaLine,320,L"%s  ·  %s  ·  CONTINUE",htMeta->year,htMeta->genres);
+            else swprintf_s(metaLine,320,L"%s%s%s  ·  %s",htMeta->year,htMeta->year[0]?L"  ·  ":L"",htMeta->genres,isVideo?L"VIDEO":L"AUDIO");
+        }
         else if(g_hasResume[i])FormatResumeLabel(g_playlist[i],metaLine,_countof(metaLine));
         else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
