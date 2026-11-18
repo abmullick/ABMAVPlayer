@@ -15,8 +15,10 @@ struct ABMProjectMSharedState {
     volatile LONG sequence;
     volatile LONG presetDelta;
     volatile LONG autoSwitch;
+    volatile LONG visualStyle;
     volatile LONG_PTR childWindow;
     float pcm[ABM_PROJECTM_PCM_COUNT];
+    float bands[24];
     volatile LONG frameIndex;
     volatile LONG frameSequence;
     volatile LONG frameWidth;
@@ -24,4 +26,4 @@ struct ABMProjectMSharedState {
     unsigned char frames[2][ABM_PROJECTM_FRAME_BYTES];
 };
 #define ABM_PROJECTM_IPC_MAGIC 0x41424D50u
-#define ABM_PROJECTM_IPC_VERSION 2u
+#define ABM_PROJECTM_IPC_VERSION 3u
