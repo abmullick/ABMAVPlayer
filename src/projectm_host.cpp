@@ -4,6 +4,7 @@
 #include <strsafe.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <cwchar>
 #include "projectm_visualizer.h"
 #include "projectm_ipc.h"
 
