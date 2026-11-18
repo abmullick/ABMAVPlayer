@@ -2346,6 +2346,7 @@ static void DrawUI(HDC dc,RECT client) {
         BOOL isVideo=IsVideoPath(g_playlist[i]);
         if((g_mediaFilter==1&&isVideo)||(g_mediaFilter==2&&!isVideo))continue;
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
+           !(htMeta&&ContainsTextI(htMeta->title,g_searchText))&&
            !(i==g_current&&((g_trackArtist[0]&&ContainsTextI(g_trackArtist,g_searchText))||
                             (g_trackAlbum[0]&&ContainsTextI(g_trackAlbum,g_searchText))||
                             (g_trackTitle[0]&&ContainsTextI(g_trackTitle,g_searchText)))))continue;
