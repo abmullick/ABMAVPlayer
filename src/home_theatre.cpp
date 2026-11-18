@@ -407,7 +407,7 @@ static void StartLibraryScan() {
     Work *w=new(std::nothrow) Work();if(!w){SetStatus(L"Could not allocate library scan.");return;}
     w->target=g_window;w->kind=3;w->paths=g_mediaPaths;ShowWindow(g_filterAll,SW_SHOW);ShowWindow(g_filterMovies,SW_SHOW);ShowWindow(g_filterTv,SW_SHOW);ShowWindow(g_seasonButton,SW_HIDE);ShowWindow(g_recommendButton,SW_HIDE);g_itemCount=0;g_selected=-1;g_localMatch=-1;RefreshWatchedButton();g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);SendMessageW(g_results,LB_RESETCONTENT,0,0);ABM_D2D_ClearImage(&g_canvas);InvalidateRect(g_window,nullptr,FALSE);
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
-    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetStatus(L"Identifying local movies and shows with keyless providers. Large libraries may take a while…");}
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetStatus(L"Identifying local movies and shows…");}
     else {delete w;SetStatus(L"Could not start library identification.");}
 }
 static void StartSeasonLoad(int seasonNumber) {
@@ -713,7 +713,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_controlFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g_edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,83,700,36,w,(HMENU)HT_EDIT,GetModuleHandleW(nullptr),nullptr);
         g_results=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
-        g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
+        g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT|SS_ENDELLIPSIS,28,650,320,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
         g_watchedButton=CreateWindowExW(0,L"BUTTON",L"Mark watched",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,640,650,150,30,w,(HMENU)HT_WATCHED,GetModuleHandleW(nullptr),nullptr);
         g_filterAll=CreateWindowExW(0,L"BUTTON",L"All",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,28,150,72,28,w,(HMENU)HT_FILTER_ALL,GetModuleHandleW(nullptr),nullptr);
