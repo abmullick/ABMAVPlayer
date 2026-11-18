@@ -259,6 +259,8 @@ static void RefreshWatchedButton(void) {
  if(g_watchedButton){SetWindowTextW(g_watchedButton,g_selectedWatched?L"Mark unwatched":L"Mark watched");EnableWindow(g_watchedButton,g_localMatch>=0&&g_localMatch<(int)g_mediaPaths.size());}
 }
 
+static void SetStatus(const wchar_t *s);
+
 static void RebuildCatalogList(void) {
  if(!g_results)return;
  SendMessageW(g_results,LB_RESETCONTENT,0,0);
