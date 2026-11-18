@@ -158,7 +158,7 @@ int wmain(int argc,wchar_t **argv) {
 
     WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.style=CS_OWNDC;wc.hInstance=GetModuleHandleW(nullptr);
     wc.lpfnWndProc=RendererWndProc;wc.lpszClassName=L"ABMProjectMIsolatedSurface";
-    wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);
+    wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));
     if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS){Cleanup();return 6;}
     g_window=CreateWindowExW(0,wc.lpszClassName,L"",WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,
         0,0,1,1,parent,nullptr,wc.hInstance,nullptr);
