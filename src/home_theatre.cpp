@@ -153,7 +153,7 @@ static int LoadManualMatch(int providerId,int type) {
 static void SaveManualMatch(int providerId,int type,int pathIndex) {
     if(providerId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
-    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
+    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches-v2.tsv",folder);
     FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
     fwprintf(fp,L"%d\t%d\t%s\n",providerId,type,g_mediaPaths[(size_t)pathIndex].c_str());fclose(fp);
 }
@@ -280,7 +280,14 @@ static DWORD WINAPI Worker(LPVOID parameter) {
     } else if(w->kind==2&&w->item.id>0) {
         MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
         r->ok=ABM_Metadata_GetDetails((ABM_METADATA_MEDIA_TYPE)item.type,item.id,json.data(),json.size());
-        if(r->ok)ParseDetails(json.data(),r,item.poster,item.id,item.backdrop,item.type);
+        if(r->ok){
+            ParseDetails(json.data(),r,item.poster,item.id,item.backdrop,item.type);
+            if(item.type==1){
+                std::vector<wchar_t> related(512*1024);
+                if(ABM_Metadata_GetRecommendations(ABM_METADATA_MOVIE,item.id,related.data(),related.size()))
+                    ParseSearchJson(related.data(),1,r->recommendations,&r->recommendationCount);
+            }
+        }
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your network connection.");
     } else if(w->kind==3) {
         size_t limit=w->paths.size();
@@ -398,6 +405,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
         g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
+        g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,136,130,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
         g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,28,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
         g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
