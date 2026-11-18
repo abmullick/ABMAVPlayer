@@ -154,10 +154,10 @@ std::wstring SparqlEscape(const wchar_t *s) {
     return out;
 }
 std::wstring MovieQuery(const wchar_t *filter,const wchar_t *query) {
-    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription ?date ?image (GROUP_CONCAT(DISTINCT ?genreLabel; separator=\" | \") AS ?genres) (GROUP_CONCAT(DISTINCT ?directorLabel; separator=\" | \") AS ?directors) (GROUP_CONCAT(DISTINCT ?castLabel; separator=\" | \") AS ?cast) WHERE { ";
+    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription (MIN(?dateValue) AS ?date) (SAMPLE(?imageValue) AS ?image) (GROUP_CONCAT(DISTINCT ?genreLabel; separator=\\" | \\") AS ?genres) (GROUP_CONCAT(DISTINCT ?directorLabel; separator=\\" | \\") AS ?directors) (GROUP_CONCAT(DISTINCT ?castLabel; separator=\\" | \\") AS ?cast) WHERE { ";
     q+=filter;
-    if(query&&*query){q+=L" ?item rdfs:label ?searchLabel . FILTER(LANG(?searchLabel)=\"en\" && CONTAINS(LCASE(STR(?searchLabel)),LCASE(\"";q+=SparqlEscape(query);q+=L"\"))) ";}
-    q+=L" OPTIONAL { ?item wdt:P577 ?date . } OPTIONAL { ?item wdt:P18 ?image . } OPTIONAL { ?item wdt:P136 ?genre . ?genre rdfs:label ?genreLabel . FILTER(LANG(?genreLabel)=\"en\") } OPTIONAL { ?item wdt:P57 ?director . ?director rdfs:label ?directorLabel . FILTER(LANG(?directorLabel)=\"en\") } OPTIONAL { ?item wdt:P161 ?actor . ?actor rdfs:label ?castLabel . FILTER(LANG(?castLabel)=\"en\") } SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } } GROUP BY ?item ?itemLabel ?itemDescription ?date ?image LIMIT 30";
+    if(query&&*query){q+=L" ?item rdfs:label ?searchLabel . FILTER(LANG(?searchLabel)=\\"en\\" && CONTAINS(LCASE(STR(?searchLabel)),LCASE(\\"";q+=SparqlEscape(query);q+=L"\\"))) ";}
+    q+=L" OPTIONAL { ?item wdt:P577 ?dateValue . } OPTIONAL { ?item wdt:P18 ?imageValue . } OPTIONAL { ?item wdt:P136 ?genre . ?genre rdfs:label ?genreLabel . FILTER(LANG(?genreLabel)=\\"en\\") } OPTIONAL { ?item wdt:P57 ?director . ?director rdfs:label ?directorLabel . FILTER(LANG(?directorLabel)=\\"en\\") } OPTIONAL { ?item wdt:P161 ?actor . ?actor rdfs:label ?castLabel . FILTER(LANG(?castLabel)=\\"en\\") } SERVICE wikibase:label { bd:serviceParam wikibase:language \\"en\\". } } GROUP BY ?item ?itemLabel ?itemDescription LIMIT 30";
     return q;
 }
 bool QueryWikidata(const std::wstring &sparql,std::vector<wchar_t> &json) {
@@ -175,14 +175,14 @@ bool MusicArtworkRateLimit() {
     return true;
 }
 std::wstring MusicAlbumQuery(const wchar_t *artist,const wchar_t *album) {
-    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription ?date ?image WHERE { ";
+    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription (MIN(?dateValue) AS ?date) (SAMPLE(?imageValue) AS ?image) WHERE { ";
     q+=L"?item wdt:P31/wdt:P279* wd:Q482994 . ";
-    q+=L"?item rdfs:label ?searchLabel . FILTER(LANG(?searchLabel)=\"en\" && CONTAINS(LCASE(STR(?searchLabel)),LCASE(\"";
-    q+=SparqlEscape(album);q+=L"\"))) ";
-    q+=L"?item wdt:P175 ?performer . ?performer rdfs:label ?artistLabel . FILTER(LANG(?artistLabel)=\"en\" && CONTAINS(LCASE(STR(?artistLabel)),LCASE(\"";
-    q+=SparqlEscape(artist);q+=L"\"))) ";
-    q+=L"OPTIONAL { ?item wdt:P577 ?date . } OPTIONAL { ?item wdt:P18 ?image . } ";
-    q+=L"SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } } LIMIT 12";
+    q+=L"?item rdfs:label ?searchLabel . FILTER(LANG(?searchLabel)=\\"en\\" && CONTAINS(LCASE(STR(?searchLabel)),LCASE(\\"";
+    q+=SparqlEscape(album);q+=L"\\"))) ";
+    q+=L"?item wdt:P175 ?performer . ?performer rdfs:label ?artistLabel . FILTER(LANG(?artistLabel)=\\"en\\" && CONTAINS(LCASE(STR(?artistLabel)),LCASE(\\"";
+    q+=SparqlEscape(artist);q+=L"\\"))) ";
+    q+=L"OPTIONAL { ?item wdt:P577 ?dateValue . } OPTIONAL { ?item wdt:P18 ?imageValue . } ";
+    q+=L"SERVICE wikibase:label { bd:serviceParam wikibase:language \\"en\\". } } GROUP BY ?item ?itemLabel ?itemDescription ORDER BY DESC(BOUND(?image)) LIMIT 12";
     return q;
 }
 bool BuildMovieResults(const wchar_t *raw,std::wstring &out,bool details) {
@@ -279,11 +279,11 @@ bool TvMazeEpisodes(int id,int season,std::wstring &out) {
 bool QueryRelatedMovies(int providerId,std::wstring &out) {
     if(providerId<=0)return false;
     wchar_t entity[64];StringCchPrintfW(entity,_countof(entity),L"wd:Q%d",providerId);
-    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription ?date ?image (COUNT(DISTINCT ?genre) AS ?sharedGenres) WHERE { ";
+    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription (MIN(?dateValue) AS ?date) (SAMPLE(?imageValue) AS ?image) (COUNT(DISTINCT ?genre) AS ?sharedGenres) WHERE { ";
     q+=entity;
     q+=L" wdt:P136 ?genre . ?item wdt:P31/wdt:P279* wd:Q11424 ; wdt:P136 ?genre . FILTER(?item != ";
     q+=entity;
-    q+=L") OPTIONAL { ?item wdt:P577 ?date . } OPTIONAL { ?item wdt:P18 ?image . } SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } } GROUP BY ?item ?itemLabel ?itemDescription ?date ?image ORDER BY DESC(?sharedGenres) LIMIT 16";
+    q+=L") OPTIONAL { ?item wdt:P577 ?dateValue . } OPTIONAL { ?item wdt:P18 ?imageValue . } SERVICE wikibase:label { bd:serviceParam wikibase:language \\"en\\". } } GROUP BY ?item ?itemLabel ?itemDescription ORDER BY DESC(?sharedGenres) LIMIT 16";
     std::vector<wchar_t> raw;
     return QueryWikidata(q,raw)&&BuildMovieResults(raw.data(),out,false);
 }
