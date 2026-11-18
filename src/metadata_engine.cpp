@@ -39,7 +39,7 @@ bool HttpGet(const wchar_t *host,const std::wstring &path,std::vector<wchar_t> &
     HINTERNET connect=WinHttpConnect(session,host,INTERNET_DEFAULT_HTTPS_PORT,0);
     HINTERNET request=connect?WinHttpOpenRequest(connect,L"GET",path.c_str(),nullptr,
         WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE):nullptr;
-    const wchar_t *headers=L"Accept: application/json\r\nUser-Agent: ABM-AV-Player/1.2\r\n";
+    const wchar_t *headers=L"Accept: application/json\r\nUser-Agent: ABM-AV-Player/1.2 (https://github.com/abmullick/ABMAVPlayer)\r\n";
     BOOL ok=request&&WinHttpSendRequest(request,headers,(DWORD)-1L,WINHTTP_NO_REQUEST_DATA,0,0,0)
         &&WinHttpReceiveResponse(request,nullptr);
     DWORD status=0,statusSize=sizeof(status);
