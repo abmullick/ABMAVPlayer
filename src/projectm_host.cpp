@@ -187,6 +187,19 @@ extern "C" BOOL ABM_ProjectM_CopyFrame(void *destination,int destinationBytes,in
     }
     return FALSE;
 }
+extern "C" void ABM_ProjectM_SetStyle(int style) {
+    if(!g_shared)return;
+    if(style<0)style=0;if(style>5)style=5;
+    InterlockedExchange(&g_shared->visualStyle,style);
+}
+extern "C" void ABM_ProjectM_SetAudioBands(const float *bands,int count) {
+    if(!g_shared||!bands||count<=0)return;
+    if(count>24)count=24;
+    InterlockedIncrement(&g_shared->sequence);
+    CopyMemory(g_shared->bands,bands,(size_t)count*sizeof(float));
+    if(count<24)ZeroMemory(g_shared->bands+count,(24-count)*sizeof(float));
+    InterlockedIncrement(&g_shared->sequence);
+}
 extern "C" void ABM_ProjectM_SetAudioSamples(const float *samples,int count) {
     if(!g_shared||!samples||count<=0)return;
     if(count>ABM_PROJECTM_PCM_COUNT)count=ABM_PROJECTM_PCM_COUNT;
