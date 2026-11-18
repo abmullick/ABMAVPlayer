@@ -283,6 +283,7 @@ extern "C" void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height) {
     if (FAILED(hr)) {
         SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->frameImage));
         ui->frameImageWidth = ui->frameImageHeight = 0;
+        ClearFileImageCache();
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
         SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
         if (ui->hwnd && IsWindow(ui->hwnd)) InvalidateRect(ui->hwnd, NULL, FALSE);
@@ -625,6 +626,7 @@ extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
 
 extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     if (!ui) return;
+    ClearFileImageCache();
     SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->image));
     SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->frameImage));
     ui->frameImageWidth = ui->frameImageHeight = 0;
