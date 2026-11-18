@@ -276,7 +276,11 @@ static void RebuildCatalogList(void) {
   if(row!=LB_ERR&&row!=LB_ERRSPACE)SendMessageW(g_results,LB_SETITEMDATA,row,(LPARAM)i);
   shown++;
  }
- if(g_filterAll)EnableWindow(g_filterAll,g_catalogFilter!=0);
+ if(g_filterAll){ShowWindow(g_filterAll,g_scanMode?SW_SHOW:SW_HIDE);EnableWindow(g_filterAll,g_catalogFilter!=0);}
+ if(g_filterMovies){ShowWindow(g_filterMovies,g_scanMode?SW_SHOW:SW_HIDE);EnableWindow(g_filterMovies,g_catalogFilter!=1);}
+ if(g_filterTv){ShowWindow(g_filterTv,g_scanMode?SW_SHOW:SW_HIDE);EnableWindow(g_filterTv,g_catalogFilter!=2);}
+ if(g_seasonButton)ShowWindow(g_seasonButton,g_scanMode?SW_HIDE:SW_SHOW);
+ if(g_recommendButton)ShowWindow(g_recommendButton,g_scanMode?SW_HIDE:SW_SHOW);
  if(g_filterMovies)EnableWindow(g_filterMovies,g_catalogFilter!=1);
  if(g_filterTv)EnableWindow(g_filterTv,g_catalogFilter!=2);
  if(g_status&&g_scanMode){wchar_t status[160];StringCchPrintfW(status,_countof(status),L"%d titles shown · %d identified in your library",shown,g_itemCount);SetStatus(status);}
