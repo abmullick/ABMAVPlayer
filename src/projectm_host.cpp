@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <strsafe.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <cwchar>
 #include "projectm_visualizer.h"
