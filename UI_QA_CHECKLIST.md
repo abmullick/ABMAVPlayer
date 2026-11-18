@@ -322,3 +322,15 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Open the 10-band equalizer from the centre; verify the existing equalizer remains functional and its window can be closed without affecting playback.
 - [ ] Check both centres at the supported window size and high-DPI scaling; confirm controls do not overlap, clip or cover the advanced-settings navigation.
 - [ ] Verify no LibVLC track-list allocations leak when opening/closing the subtitle selector repeatedly; test media with no subtitle tracks and media with many tracks.
+
+
+## Home Theatre keyless-provider regression
+
+- [ ] Verify there is no TMDB token/API-key control or credential requirement in Settings, About or F1 Help.
+- [ ] Verify About identifies Wikidata (CC0 structured data), TVmaze (CC BY-SA 4.0 data) and individual artwork licensing.
+- [ ] Search movies and TV shows repeatedly; confirm provider spacing is applied and a temporary 429/network error does not block local playback.
+- [ ] Verify Wikidata movie details (synopsis, date, available image, genres, cast and director where present) and TVmaze show details (synopsis, premiered date, genres, cast, runtime, seasons).
+- [ ] Open a TV season and verify episode numbers, titles, air dates, summaries and still artwork when supplied.
+- [ ] Match files named S01E02, S1E2, 1x02, 1x2 and Season 1 Episode 2; confirm neighbouring episode numbers are not incorrectly selected.
+- [ ] Confirm missing artwork, missing metadata, offline mode and provider rate limits are non-fatal and do not change playback state.
+- [ ] For any artwork intended for redistribution, inspect the individual source file page and record creator, source and licence; do not treat local caching as a licence grant.
