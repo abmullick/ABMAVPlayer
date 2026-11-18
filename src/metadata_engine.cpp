@@ -298,7 +298,7 @@ bool TvMazeSearch(const wchar_t *query,std::wstring &out) {
                 int id=JsonInt(obj,se,L"id");wchar_t name[256]={},date[64]={},summary[1800]={},image[512]={};
                 JsonString(obj,se,L"name",name,_countof(name));JsonString(obj,se,L"premiered",date,_countof(date));JsonString(obj,se,L"summary",summary,_countof(summary));
                 const wchar_t *im=wcsstr(obj,L"\"image\"");if(im&&im<se)JsonString(im,se,L"original",image,_countof(image));
-                if(id>0&&name[0]){if(count)out+=L",";out+=L"{\"id\":"+std::to_wstring(id)+L",\"name\":"+JsonEscape(name)+L",\"first_air_date\":"+JsonEscape(date)+L",\"overview\":"+JsonEscape(StripHtml(summary.c_str()).c_str())+L",\"poster_path\":"+JsonEscape(image)+L"}";count++;}
+                if(id>0&&name[0]){if(count)out+=L",";out+=L"{\"id\":"+std::to_wstring(id)+L",\"name\":"+JsonEscape(name)+L",\"first_air_date\":"+JsonEscape(date)+L",\"overview\":"+JsonEscape(StripHtml(summary).c_str())+L",\"poster_path\":"+JsonEscape(image)+L"}";count++;}
             }
         }
         p=end;
