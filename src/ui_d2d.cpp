@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <d2d1.h>
 #include <d2d1helper.h>
+#include <dxgiformat.h>
 #include <dwrite.h>
 #include <wincodec.h>
 #include <string.h>
@@ -262,6 +263,8 @@ extern "C" void ABM_D2D_Resize(ABM_D2D *ui, UINT width, UINT height) {
     D2D1_SIZE_U size = D2D1::SizeU(width, height);
     HRESULT hr = Target(ui)->Resize(&size);
     if (FAILED(hr)) {
+        SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->frameImage));
+        ui->frameImageWidth = ui->frameImageHeight = 0;
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
         SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
         if (ui->hwnd && IsWindow(ui->hwnd)) InvalidateRect(ui->hwnd, NULL, FALSE);
@@ -495,9 +498,34 @@ extern "C" void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, f
         D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, &source);
 }
 
+extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
+    UINT width, UINT height, float l, float t, float r, float b) {
+    if (!ui || !pixels || !width || !height || !EnsureTarget(ui)) return FALSE;
+    ID2D1Bitmap *bitmap = static_cast<ID2D1Bitmap *>(ui->frameImage);
+    if (!bitmap || ui->frameImageWidth != width || ui->frameImageHeight != height) {
+        SafeRelease(&bitmap);
+        D2D1_BITMAP_PROPERTIES props = D2D1::BitmapProperties(
+            D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE),
+            96.0f, 96.0f);
+        HRESULT hr = Target(ui)->CreateBitmap(D2D1::SizeU(width, height),
+            nullptr, 0, &props, &bitmap);
+        if (FAILED(hr)) return FALSE;
+        ui->frameImage = bitmap;
+        ui->frameImageWidth = width;
+        ui->frameImageHeight = height;
+    }
+    HRESULT hr = bitmap->CopyFromMemory(nullptr, pixels, width * 4u);
+    if (FAILED(hr)) return FALSE;
+    Target(ui)->DrawBitmap(bitmap, D2D1::RectF(l, t, r, b), 1.0f,
+        D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
+    return TRUE;
+}
+
 extern "C" void ABM_D2D_Destroy(ABM_D2D *ui) {
     if (!ui) return;
     SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->image));
+    SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->frameImage));
+    ui->frameImageWidth = ui->frameImageHeight = 0;
     SafeRelease(reinterpret_cast<IWICImagingFactory **>(&ui->wicFactory));
     SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
     SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
