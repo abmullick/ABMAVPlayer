@@ -98,6 +98,8 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 - [ ] Local audio and video playback, pause/resume, seek, volume and fullscreen.
 - [ ] Playlist add/remove/reorder, recent media and file open/save workflows.
 - [ ] Audio track, subtitle, playback speed, equalizer, ReplayGain, compressor, shuffle and repeat.
+- [ ] Repeat mode cycles Off → Repeat all → Repeat current, visibly indicates the active mode, persists as configured and advances/repeats the correct playlist item.
+- [ ] Exercise all four Direct2D and six OpenGL visualizer styles in windowed and fullscreen audio-only playback; confirm the selected OpenGL style remains selected during startup, no Neon Spectrum placeholder appears, and audio/video playback remains independent.
 - [ ] Local renderer discovery and local player casting to a TV.
 - [ ] Streaming Centre TV discovery, receiver selection, app checks, launch and stop.
 - [ ] WebView2 provider navigation, close/reopen and crash recovery.
@@ -297,6 +299,14 @@ Do not mark this feature runtime-validated until all Windows build and interacti
 
 Do not mark Continue Watching or missing-media recovery runtime-validated until all Windows build and interaction checks above pass.
 
+
+## Live music visualizer and Home Theatre
+
+- [ ] Start an audio-only track and verify the selected visualizer eases into view without an abrupt amplitude jump.
+- [ ] Test Spectrum Orbit, Fluid Waves, Particle Universe and Neon Spectrum; then test MilkDrop, 3D Spectrum, Particle Universe, Oscilloscope 3D, Fluid Motion and Geometric Tunnel (OpenGL).
+- [ ] Switch between Direct2D and OpenGL modes repeatedly; verify no extra visible window appears and the selected style is not replaced by a temporary Neon Spectrum scene.
+- [ ] Terminate the isolated renderer helper during playback; confirm audio continues and the player recovers to the Direct2D visualizer. Then play video and verify normal LibVLC rendering.
+- [ ] Test Home Theatre search, movie/TV details, posters/backdrops, recommendations, TV season/episode navigation, Identify library, manual local-file correction and Play local match. Verify missing TMDB credentials/network do not block local playback.
 
 ## Subtitle Manager and Advanced Audio Centre
 
