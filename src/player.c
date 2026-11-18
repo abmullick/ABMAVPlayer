@@ -1600,8 +1600,8 @@ static void DrawUI(HDC dc,RECT client) {
             if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
                 int fw=0,fh=0;
                 if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
-                    BITMAPINFO bi={0};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=fw;bi.bmiHeader.biHeight=fh;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
-                    SetStretchBltMode(dc,HALFTONE);StretchDIBits(dc,client.left,client.top,client.right-client.left,client.bottom-client.top,0,0,fw,fh,g_projectmFrame,&bi,DIB_RGB_COLORS,SRCCOPY);
+                    ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
+                        (float)client.left,(float)client.top,(float)client.right,(float)client.bottom);
                 } else DrawVisualizer(dc,client);
             } else DrawVisualizer(dc,client);
             return;
@@ -1739,9 +1739,8 @@ static void DrawUI(HDC dc,RECT client) {
         if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
             int fw=0,fh=0;
             if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
-                BITMAPINFO bi={0};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=fw;bi.bmiHeader.biHeight=fh;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
-                SetStretchBltMode(dc,HALFTONE);
-                StretchDIBits(dc,R_VIDEO.left,R_VIDEO.top,R_VIDEO.right-R_VIDEO.left,R_VIDEO.bottom-R_VIDEO.top,0,0,fw,fh,g_projectmFrame,&bi,DIB_RGB_COLORS,SRCCOPY);
+                ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
+                    (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom);
             } else DrawVisualizer(dc,R_VIDEO);
         } else { DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
