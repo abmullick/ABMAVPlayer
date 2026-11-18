@@ -10,9 +10,14 @@
 - Added embedded audio-track selection to Advanced Audio Centre and refined Subtitle Manager controls, layout, hit targets and user feedback.
 - Added three-state repeat mode cycling: **Off → Repeat all → Repeat current**, with a visible active-mode indication.
 - Expanded F1 Help and user/developer documentation for Home Theatre, the ten visualizer styles, repeat behaviour and audio/subtitle controls.
+- Added per-host request spacing for Wikidata and TVmaze, keeping repeated manual searches below the documented public request ceiling.
+- Expanded TV episode matching to padded/unpadded S/E and `1x2` filename forms, and cache/display TVmaze episode still artwork when available.
+- Updated About, F1 Help, Settings guidance and documentation with provider attribution, Wikidata CC0 / TVmaze CC BY-SA 4.0 data terms, request limits and per-image licensing cautions.
 - Continued refinements to Settings layout/scrolling, recent-media popup behaviour, playback controls, audio-track synchronization and QA coverage.
 
 ## Reliability and compatibility
+
+- Cached artwork remains a local performance copy, not a blanket licence. The current cache does not preserve per-image creator/licence metadata, so artwork must not be treated as a redistribution-ready commercial asset catalogue.
 
 - OpenGL/ProjectM remains isolated from the main LibVLC playback process. The helper is disposable; renderer failure must not terminate the audio playback path, and Direct2D remains the recovery visualizer.
 - The OpenGL renderer is embedded into the existing media stage; no separate visible visualizer window is introduced.
