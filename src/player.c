@@ -1728,8 +1728,23 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_visualizerActive) {
-        if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&R_VIDEO,TRUE);
-        else { ABM_ProjectM_SetBounds(NULL,FALSE); DrawVisualizer(dc,R_VIDEO); }
+        if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
+            /* A native child HWND always paints above the parent's Direct2D
+               surface. Reserve the same foreground-panel footprint as video
+               playback so ProjectM cannot cover the menu or media drawer. */
+            RECT projectmBounds=R_VIDEO;
+            if(g_drawerOpen&&!g_fullscreen) {
+                int safeRight=R_SIDEBAR.left-12;
+                if(safeRight<projectmBounds.right)projectmBounds.right=safeRight;
+            }
+            if((g_menuOpen||g_menuProgress>0)&&!g_fullscreen) {
+                int safeRight=R_MENU_PANEL.left-12;
+                if(safeRight<projectmBounds.right)projectmBounds.right=safeRight;
+            }
+            if(projectmBounds.right>projectmBounds.left)
+                ABM_ProjectM_SetBounds(&projectmBounds,TRUE);
+            else ABM_ProjectM_SetBounds(NULL,FALSE);
+        } else { ABM_ProjectM_SetBounds(NULL,FALSE); DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
