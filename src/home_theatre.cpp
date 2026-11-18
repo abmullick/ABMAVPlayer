@@ -19,6 +19,7 @@
 #include "home_theatre.h"
 #include "metadata_engine.h"
 #include "ui_d2d.h"
+#include "ui_theme.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -32,6 +33,9 @@ static const COLORREF TEXT=RGB(239,246,252), MUTED=RGB(145,169,190), ACCENT=RGB(
 static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr;
 static ABM_D2D g_canvas={};
 static BOOL g_canvasReady=FALSE;
+static ABM_D2D_CANVAS g_controlCanvas={};
+static BOOL g_controlCanvasReady=FALSE;
+static HFONT g_controlFont=nullptr;
 static HBRUSH g_darkBrush=nullptr;
 static std::vector<std::wstring> g_mediaPaths;
 static ABM_HomeTheatrePlayFn g_playCallback=nullptr;
@@ -363,24 +367,108 @@ static void SetLocalMatchStatus(const wchar_t *prefix) {
     SetStatus(message);
 }
 static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
+    if(!d||!d->hwndItem)return;
+    RECT r=d->rcItem;int width=r.right-r.left,height=r.bottom-r.top;
+    if(width<=0||height<=0)return;
+    const int id=GetDlgCtrlID(d->hwndItem);
+    const BOOL disabled=(d->itemState&ODS_DISABLED)!=0;
+    const BOOL pressed=(d->itemState&ODS_SELECTED)!=0;
+    const BOOL hot=(d->itemState&ODS_HOTLIGHT)!=0;
+    const BOOL focused=(d->itemState&ODS_FOCUS)!=0;
+    const BOOL primary=(id==HT_SEARCH||id==HT_PLAY||id==HT_SCAN);
+    COLORREF fill=disabled?ABM_UI_COLOR_SURFACE_RAISED:
+        (primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_18706F):
+        (pressed?ABM_THEME_COLOR_305E6F:(hot?ABM_THEME_COLOR_1B3447:ABM_UI_COLOR_SURFACE_RAISED)));
+    COLORREF text=disabled?ABM_UI_COLOR_TEXT_DISABLED:(primary?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY);
+    COLORREF edge=focused?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
+    wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
+    if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,d->hDC,&r)){
+        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,ABM_THEME_COLOR_0A1725);
+        ABM_D2D_CanvasFillRound(&g_controlCanvas,1,1,(float)width-1,(float)height-1,(float)ABM_UI_RADIUS_BUTTON,fill);
+        ABM_D2D_CanvasStrokeRound(&g_controlCanvas,0.5f,0.5f,(float)width-0.5f,(float)height-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
+        RECT label={5,1,width-5,height-1};
+        ABM_D2D_CanvasText(&g_controlCanvas,caption,label,text,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        ABM_D2D_CanvasEnd(&g_controlCanvas);return;
+    }
+    HBRUSH b=CreateSolidBrush(fill);FillRect(d->hDC,&r,b);DeleteObject(b);
+}
+static void DrawAbmResultItem(const DRAWITEMSTRUCT *d) {
+    if(!d||d->itemID==(UINT)-1)return;
+    RECT r=d->rcItem;int width=r.right-r.left,height=r.bottom-r.top;
+    BOOL selected=(d->itemState&ODS_SELECTED)!=0;
+    if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,d->hDC,&r)){
+        COLORREF bg=selected?ABM_UI_COLOR_ACCENT_SOFT:((d->itemID&1)?ABM_UI_COLOR_SURFACE:ABM_UI_COLOR_SURFACE_BLUE);
+        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,bg);
+        if(selected){
+            ABM_D2D_CanvasFillRound(&g_controlCanvas,3,3,(float)width-3,(float)height-3,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_SURFACE_RAISED);
+            ABM_D2D_CanvasStrokeRound(&g_controlCanvas,3,3,(float)width-3,(float)height-3,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+            ABM_D2D_CanvasFill(&g_controlCanvas,5,8,8,(float)height-8,ABM_UI_COLOR_ACCENT_BRIGHT);
+        }
+        wchar_t line[320]={};SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
+        RECT tr={14,0,width-10,height};
+        ABM_D2D_CanvasText(&g_controlCanvas,line,tr,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_controlCanvas,1,1,(float)width-1,(float)height-1,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.5f);
+        ABM_D2D_CanvasEnd(&g_controlCanvas);return;
+    }
+    HBRUSH b=CreateSolidBrush(selected?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_SURFACE);FillRect(d->hDC,&r,b);DeleteObject(b);
+}
+static void DrawAbmPickerItem(const DRAWITEMSTRUCT *d) {
     if(!d)return;
-    HDC dc=d->hDC;RECT r=d->rcItem;
-    BOOL disabled=(d->itemState&ODS_DISABLED)!=0;
-    BOOL pressed=(d->itemState&ODS_SELECTED)!=0;
-    BOOL focused=(d->itemState&ODS_FOCUS)!=0;
-    COLORREF fill=disabled?RGB(20,31,43):(pressed?RGB(22,76,78):((d->itemState&ODS_HOTLIGHT)?RGB(27,62,76):RGB(20,43,59)));
-    COLORREF edge=disabled?RGB(43,57,69):(focused?ACCENT:RGB(54,91,111));
-    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,focused?2:1,edge);
-    HGDIOBJ oldBrush=SelectObject(dc,brush),oldPen=SelectObject(dc,pen);
-    RoundRect(dc,r.left+1,r.top+1,r.right-1,r.bottom-1,10,10);
-    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(brush);DeleteObject(pen);
-    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,disabled?RGB(103,122,139):TEXT);
-    HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
-    LOGFONTW lf={};GetObjectW(font,sizeof(lf),&lf);StringCchCopyW(lf.lfFaceName,LF_FACESIZE,L"Segoe UI");lf.lfWeight=FW_SEMIBOLD;
-    HFONT custom=CreateFontIndirectW(&lf);HGDIOBJ oldFont=SelectObject(dc,custom?custom:font);
-    RECT tr=r;InflateRect(&tr,-8,-3);wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
-    DrawTextW(dc,caption,-1,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-    if(oldFont)SelectObject(dc,oldFont);if(custom)DeleteObject(custom);
+    RECT r=d->rcItem;int width=r.right-r.left,height=r.bottom-r.top;
+    BOOL selected=(d->itemState&ODS_SELECTED)!=0;
+    if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,d->hDC,&r)){
+        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,selected?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_INPUT);
+        if(d->itemID!=(UINT)-1){
+            wchar_t item[512]={};SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)item);
+            RECT tr={12,0,width-38,height};
+            ABM_D2D_CanvasText(&g_controlCanvas,item,tr,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        }
+        ABM_D2D_CanvasEnd(&g_controlCanvas);return;
+    }
+    HBRUSH b=CreateSolidBrush(selected?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_INPUT);FillRect(d->hDC,&r,b);DeleteObject(b);
+}
+static void DrawAbmControlFrame(HWND hwnd,HDC dc) {
+    RECT r={};GetClientRect(hwnd,&r);if(r.right<2||r.bottom<2)return;
+    POINT p={};GetCursorPos(&p);ScreenToClient(hwnd,&p);
+    COLORREF edge=GetFocus()==hwnd?ABM_UI_COLOR_FOCUS:(PtInRect(&r,p)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
+    if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,dc,&r)){
+        ABM_D2D_CanvasStrokeRound(&g_controlCanvas,0.5f,0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,edge,GetFocus()==hwnd?2.0f:1.0f);
+        ABM_D2D_CanvasEnd(&g_controlCanvas);
+    }
+}
+static LRESULT CALLBACK HomePremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR id,DWORD_PTR ref) {
+    (void)id;(void)ref;
+    if(msg==WM_NCDESTROY){RemoveWindowSubclass(hwnd,HomePremiumControlProc,1);return DefSubclassProc(hwnd,msg,wp,lp);}
+    if(msg==WM_SIZE){LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);RECT r={};GetClientRect(hwnd,&r);HRGN region=CreateRoundRectRgn(0,0,r.right+1,r.bottom+1,12,12);if(region)SetWindowRgn(hwnd,region,TRUE);return z;}
+    if(msg==WM_NCPAINT)return 0;
+    if(msg==WM_PAINT){
+        LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);HDC dc=GetDC(hwnd);
+        if(dc){
+            RECT r={};GetClientRect(hwnd,&r);DrawAbmControlFrame(hwnd,dc);
+            wchar_t cls[32]={};GetClassNameW(hwnd,cls,_countof(cls));
+            if(!_wcsicmp(cls,L"ComboBox")){
+                const int arrowW=32;RECT arrow={r.right-arrowW,r.top+1,r.right-1,r.bottom-1};
+                if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,dc,&r)){
+                    ABM_D2D_CanvasFillRound(&g_controlCanvas,(float)arrow.left,(float)arrow.top,(float)arrow.right,(float)arrow.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_113041);
+                    float cx=(float)(arrow.left+arrowW/2),cy=(float)((arrow.top+arrow.bottom)/2);
+                    ABM_D2D_CanvasLine(&g_controlCanvas,cx-5,cy-2,cx,cy+3,ABM_UI_COLOR_ACCENT_BRIGHT,2);
+                    ABM_D2D_CanvasLine(&g_controlCanvas,cx,cy+3,cx+5,cy-2,ABM_UI_COLOR_ACCENT_BRIGHT,2);
+                    ABM_D2D_CanvasEnd(&g_controlCanvas);
+                }
+                DrawAbmControlFrame(hwnd,dc);
+            }
+            ReleaseDC(hwnd,dc);
+        }return z;
+    }
+    if(msg==WM_SETFOCUS||msg==WM_KILLFOCUS||msg==WM_MOUSEMOVE||msg==WM_MOUSELEAVE){LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);InvalidateRect(hwnd,NULL,FALSE);return z;}
+    return DefSubclassProc(hwnd,msg,wp,lp);
+}
+static void HomePremiumizeControl(HWND hwnd) {
+    if(!hwnd)return;
+    LONG_PTR style=GetWindowLongPtrW(hwnd,GWL_STYLE);SetWindowLongPtrW(hwnd,GWL_STYLE,style&~(WS_BORDER|WS_DLGFRAME));
+    LONG_PTR ex=GetWindowLongPtrW(hwnd,GWL_EXSTYLE);SetWindowLongPtrW(hwnd,GWL_EXSTYLE,ex&~WS_EX_CLIENTEDGE);
+    SetWindowSubclass(hwnd,HomePremiumControlProc,1,0);
+    RECT r={};GetClientRect(hwnd,&r);HRGN region=CreateRoundRectRgn(0,0,r.right+1,r.bottom+1,12,12);if(region)SetWindowRgn(hwnd,region,TRUE);
 }
 static void Layout(HWND w) {
     RECT c;GetClientRect(w,&c);int width=c.right,height=c.bottom;
@@ -461,7 +549,9 @@ static void SearchNow() {
 static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:
-        g_window=w;g_darkBrush=CreateSolidBrush(PANEL2);
+        g_window=w;g_darkBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+        g_controlCanvasReady=ABM_D2D_CanvasInit(&g_controlCanvas);
+        g_controlFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g_edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,83,700,36,w,(HMENU)HT_EDIT,GetModuleHandleW(nullptr),nullptr);
         g_results=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
@@ -474,20 +564,22 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
         g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
-        SendMessageW(g_edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_results,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_edit,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_results,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SendMessageW(g_results,LB_SETITEMHEIGHT,0,48);
         SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);SetWindowTheme(g_results,L"DarkMode_Explorer",nullptr);
-        SendMessageW(g_play,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_scanButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_recommendButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_seasonButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_localPicker,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_matchButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_artButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(g_play,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_scanButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_recommendButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_seasonButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_localPicker,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_matchButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_artButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SetWindowTheme(g_localPicker,L"DarkMode_Explorer",nullptr);
+        HomePremiumizeControl(g_edit);HomePremiumizeControl(g_localPicker);
+        SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);
         EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);
-        SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
+        SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         EnableWindow(g_play,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_matchButton,FALSE);Layout(w);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *m=(MINMAXINFO*)lp;if(m){m->ptMinTrackSize.x=900;m->ptMinTrackSize.y=720;}return 0; }
     case WM_SIZE:Layout(w);if(g_canvasReady)ABM_D2D_Resize(&g_canvas,LOWORD(lp),HIWORD(lp));InvalidateRect(w,nullptr,FALSE);return 0;
@@ -539,28 +631,17 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(LOWORD(wp)==HT_PLAY&&HIWORD(wp)==BN_CLICKED&&g_localMatch>=0&&g_playCallback){int index=g_localMatch;ABM_HomeTheatrePlayFn callback=g_playCallback;DestroyWindow(w);callback(index);return 0;}
         break;
     case WM_CTLCOLORSTATIC:
-        SetBkMode((HDC)wp,TRANSPARENT);SetTextColor((HDC)wp,MUTED);return (LRESULT)g_darkBrush;
+        SetBkMode((HDC)wp,TRANSPARENT);SetTextColor((HDC)wp,ABM_UI_COLOR_TEXT_MUTED);return (LRESULT)g_darkBrush;
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX:
-        SetBkColor((HDC)wp,PANEL2);SetTextColor((HDC)wp,TEXT);return (LRESULT)g_darkBrush;
-    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;if(m&&m->CtlID==HT_RESULTS){m->itemHeight=48;return TRUE;}if(m&&m->CtlID==HT_PICKER){m->itemHeight=30;return TRUE;}break; }
+        SetBkColor((HDC)wp,ABM_UI_COLOR_INPUT);SetTextColor((HDC)wp,ABM_UI_COLOR_TEXT);return (LRESULT)g_darkBrush;
+    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;if(m&&m->CtlID==HT_RESULTS){m->itemHeight=48;return TRUE;}if(m&&m->CtlID==HT_PICKER){m->itemHeight=36;return TRUE;}break; }
     case WM_DRAWITEM: {
-        DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
-        if(d&&(d->CtlType==ODT_BUTTON)){DrawAbmButton(d);return TRUE;}
-        if(d&&d->CtlID==HT_PICKER&&d->itemID!=(UINT)-1) {
-            SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,(d->itemState&ODS_DISABLED)?MUTED:TEXT);
-            HBRUSH b=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(25,73,77):PANEL2);FillRect(d->hDC,&d->rcItem,b);DeleteObject(b);
-            wchar_t item[512]={};SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)item);
-            RECT r=d->rcItem;InflateRect(&r,-10,0);DrawTextW(d->hDC,item,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);return TRUE;
-        }
-        if(d&&d->CtlID==HT_RESULTS&&d->itemID!=(UINT)-1) {
-            MovieItem &m=g_items[d->itemID];BOOL selected=(d->itemState&ODS_SELECTED)!=0;
-            HBRUSH b=CreateSolidBrush(selected?RGB(25,73,77):PANEL);FillRect(d->hDC,&d->rcItem,b);DeleteObject(b);
-            SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,selected?TEXT:MUTED);
-            wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",m.title,m.type==1?L"MOVIE":L"TV");
-            RECT r=d->rcItem;InflateRect(&r,-12,-2);DrawTextW(d->hDC,line,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            if(d->itemState&ODS_FOCUS)DrawFocusRect(d->hDC,&d->rcItem);return TRUE;
-        }break;
+        DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;if(!d)break;
+        if(d->CtlType==ODT_BUTTON){DrawAbmButton(d);return TRUE;}
+        if(d->CtlID==HT_PICKER){DrawAbmPickerItem(d);return TRUE;}
+        if(d->CtlID==HT_RESULTS){DrawAbmResultItem(d);return TRUE;}
+        break;
     }
     case HT_SEARCH_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;
@@ -617,6 +698,8 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CLOSE:DestroyWindow(w);return 0;
     case WM_DESTROY:
         if(g_canvasReady){ABM_D2D_Destroy(&g_canvas);g_canvasReady=FALSE;}
+        if(g_controlCanvasReady){ABM_D2D_CanvasDestroy(&g_controlCanvas);g_controlCanvasReady=FALSE;}
+        if(g_controlFont){DeleteObject(g_controlFont);g_controlFont=nullptr;}
         if(g_darkBrush){DeleteObject(g_darkBrush);g_darkBrush=nullptr;}
         g_window=g_edit=g_results=g_play=g_status=g_localPicker=g_scanButton=g_matchButton=g_artButton=g_recommendButton=g_seasonButton=nullptr;g_itemCount=0;g_selected=-1;g_localMatch=-1;
         HWND owner=GetWindow(w,GW_OWNER);if(owner&&IsWindow(owner)){EnableWindow(owner,TRUE);SetActiveWindow(owner);}
