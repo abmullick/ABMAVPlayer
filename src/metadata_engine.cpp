@@ -157,7 +157,7 @@ std::wstring UrlDecode(const wchar_t *value) {
     if(!value)return {};
     int bytes=WideCharToMultiByte(CP_UTF8,0,value,-1,nullptr,0,nullptr,nullptr);
     if(bytes<=1)return {};
-    std::string encoded((size_t)bytes,'\\0');
+    std::string encoded((size_t)bytes,'\0');
     WideCharToMultiByte(CP_UTF8,0,value,-1,&encoded[0],bytes,nullptr,nullptr);
     encoded.pop_back();
     std::string decoded;
@@ -171,7 +171,7 @@ std::wstring UrlDecode(const wchar_t *value) {
     }
     int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,decoded.data(),(int)decoded.size(),nullptr,0);
     if(chars<=0)return {};
-    std::wstring result((size_t)chars,L'\\0');
+    std::wstring result((size_t)chars,L'\0');
     MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,decoded.data(),(int)decoded.size(),&result[0],chars);
     return result;
 }
@@ -192,7 +192,7 @@ std::wstring CommonsUrl(const wchar_t *file) {
     if(clean.empty())return {};
     int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,clean.c_str(),-1,nullptr,0,nullptr,nullptr);
     if(bytes<=1)return {};
-    std::string utf8((size_t)bytes,'\\0');
+    std::string utf8((size_t)bytes,'\0');
     WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,clean.c_str(),-1,&utf8[0],bytes,nullptr,nullptr);
     utf8.pop_back();
     HCRYPTPROV provider=0;HCRYPTHASH hash=0;BYTE digest[16]={};DWORD digestBytes=sizeof(digest);
