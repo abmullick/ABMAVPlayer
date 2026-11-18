@@ -1600,8 +1600,9 @@ static void DrawUI(HDC dc,RECT client) {
             if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
                 int fw=0,fh=0;
                 if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
-                    ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
-                        (float)client.left,(float)client.top,(float)client.right,(float)client.bottom);
+                    if(!ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
+                        (float)client.left,(float)client.top,(float)client.right,(float)client.bottom))
+                        DrawVisualizer(dc,client);
                 } else DrawVisualizer(dc,client);
             } else DrawVisualizer(dc,client);
             return;
@@ -1739,8 +1740,9 @@ static void DrawUI(HDC dc,RECT client) {
         if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
             int fw=0,fh=0;
             if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
-                ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
-                    (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom);
+                if(!ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
+                    (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom))
+                    DrawVisualizer(dc,R_VIDEO);
             } else DrawVisualizer(dc,R_VIDEO);
         } else { DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
