@@ -1,3 +1,21 @@
+# ABM AV Player v1.1.4 — Home Theatre metadata and library refinements
+
+## What's new
+
+- Improved Home Theatre's local metadata-match persistence so a manual file association does not overwrite a useful Media Library catalogue entry with empty metadata.
+- Tightened Media Library catalogue loading to ignore incomplete title-only records rather than presenting them as populated metadata.
+- Refined Home Theatre status feedback: the library-identification message is shorter and status labels use end ellipsis instead of clipping long messages.
+- Fixed a Home Theatre compilation issue caused by a helper declaration appearing after its first use.
+- Carries forward v1.1.3: keyless Wikidata movie and TVmaze television discovery, local matching, watched status, ten Direct2D/OpenGL visualizer styles, embedded ProjectM renderer, repeat cycling, audio/subtitle controls and playback refinements.
+
+## Validation
+
+- Maintainer reports that the Windows build completed successfully, the installer was created, and the application was installed.
+- This release source is versioned as 1.1.4. After pulling this version bump, rebuild the installer so its executable and installer version resources are 1.1.4 before publishing.
+- The reported successful installation is not a substitute for the full playback, casting, torrent, Home Theatre metadata, visualizer, clean-install and in-place-upgrade regression checklist. Record any checks not performed as unverified.
+
+---
+
 # ABM AV Player v1.1.3 — Home Theatre, immersive visualizers and playback refinements
 
 ## What's new
