@@ -499,6 +499,15 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         else SetStatus(r->error[0]?r->error:L"No library matches found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
+    case HT_RECOMMEND_DONE: {
+        Result *r=(Result*)lp;if(!r)return 0;
+        if(r->ok&&g_selected>=0&&g_selected<g_itemCount&&g_items[g_selected].type==1&&g_items[g_selected].id==r->providerId) {
+            g_recommendationCount=r->recommendationCount;
+            for(int i=0;i<g_recommendationCount;i++)g_recommendations[i]=r->recommendations[i];
+            EnableWindow(g_recommendButton,g_recommendationCount>0);
+        }
+        delete r;return 0;
+    }
     case HT_SEASON_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_results,TRUE);
         if(r->ok){g_episodeMode=TRUE;g_selected=-1;EnableWindow(g_localPicker,FALSE);EnableWindow(g_matchButton,FALSE);g_itemCount=r->episodeCount;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->episodes[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%02d  ·  %s",g_items[i].episodeNumber,g_items[i].title);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Back to seasons");SetStatus(L"Select an episode to view its synopsis and check local filename matching.");}
@@ -523,6 +532,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
             EnableWindow(g_artButton,g_backdropFile[0]!=0);EnableWindow(g_recommendButton,g_recommendationCount>0);EnableWindow(g_seasonButton,g_tvType==2&&g_seasonCount>0);EnableWindow(g_localPicker,TRUE);EnableWindow(g_matchButton,TRUE);
             if(g_localMatch>=0)SetLocalMatchStatus(L"Ready to play local file");else SetStatus(L"Metadata ready. No matching local file was found in the current library.");
+            if(g_tvType==1)StartRecommendations(g_selected);
         } else SetStatus(r->error[0]?r->error:L"Details unavailable.");
         EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
