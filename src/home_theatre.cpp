@@ -136,7 +136,7 @@ static int FindLocalMatch(const wchar_t *title) {
     return -1;
 }
 static BOOL ImageFolder(wchar_t *folder,size_t cap);
-static int LoadManualMatch(int tmdbId,int type) {
+static int LoadManualMatch(int providerId,int type) {
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return -1;
     wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches-v2.tsv",folder);
     FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"rt, ccs=UTF-8")!=0||!fp)return -1;
@@ -145,17 +145,17 @@ static int LoadManualMatch(int tmdbId,int type) {
         line[wcscspn(line,L"\r\n")]=0;
         wchar_t *a=wcschr(line,L'\t');if(!a)continue;*a++=0;
         wchar_t *b=wcschr(a,L'\t');if(!b)continue;*b++=0;
-        if(_wtoi(line)!=tmdbId||_wtoi(a)!=type)continue;
+        if(_wtoi(line)!=providerId||_wtoi(a)!=type)continue;
         for(size_t i=0;i<g_mediaPaths.size();i++)if(!_wcsicmp(g_mediaPaths[i].c_str(),b)){found=(int)i;break;}
     }
     fclose(fp);return found;
 }
 static void SaveManualMatch(int tmdbId,int type,int pathIndex) {
-    if(tmdbId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
+    if(providerId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
     wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
     FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
-    fwprintf(fp,L"%d\t%d\t%s\n",tmdbId,type,g_mediaPaths[(size_t)pathIndex].c_str());fclose(fp);
+    fwprintf(fp,L"%d\t%d\t%s\n",providerId,type,g_mediaPaths[(size_t)pathIndex].c_str());fclose(fp);
 }
 static BOOL ImageFolder(wchar_t *folder,size_t cap) {
     wchar_t app[MAX_PATH]={};if(FAILED(SHGetFolderPathW(nullptr,CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE,nullptr,SHGFP_TYPE_CURRENT,app)))return FALSE;
