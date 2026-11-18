@@ -18,6 +18,15 @@ RECT g_lastBounds{};
 bool g_surfaceVisible=false;
 bool g_starting=false;
 DWORD g_lastError=ERROR_SUCCESS;
+void HostLog(const wchar_t *message) {
+    wchar_t path[MAX_PATH]={0};DWORD n=GetTempPathW(_countof(path),path);
+    if(!n||n>=_countof(path))return;
+    StringCchCatW(path,_countof(path),L"ABM-ProjectM-renderer.log");
+    HANDLE f=CreateFileW(path,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(f==INVALID_HANDLE_VALUE)return;DWORD written=0;
+    WriteFile(f,message,(DWORD)(wcslen(message)*sizeof(wchar_t)),&written,nullptr);
+    WriteFile(f,L"\r\n",4,&written,nullptr);CloseHandle(f);
+}
 
 void ResetHost() {
     g_window=nullptr;
@@ -115,12 +124,13 @@ extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
     if(!child||!IsWindow(child)){g_window=nullptr;return;}
     g_window=child;
     if(!visible||!bounds||bounds->right<=bounds->left||bounds->bottom<=bounds->top) {
-        if(g_surfaceVisible)ShowWindow(child,SW_HIDE);
+        if(g_surfaceVisible){HostLog(L"host: hiding ProjectM child surface");ShowWindow(child,SW_HIDE);}
         g_surfaceVisible=false;return;
     }
     if(g_surfaceVisible&&EqualRect(&g_lastBounds,bounds))return;
     SetWindowPos(child,HWND_TOP,bounds->left,bounds->top,bounds->right-bounds->left,
         bounds->bottom-bounds->top,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    if(!g_surfaceVisible)HostLog(L"host: showing ProjectM child surface");
     g_lastBounds=*bounds;g_surfaceVisible=true;
 }
 extern "C" void ABM_ProjectM_SetAudioSamples(const float *samples,int count) {
