@@ -401,10 +401,20 @@ static void Draw(HWND w) {
     PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT c;GetClientRect(w,&c);
     if(!g_canvasReady){FillRect(dc,&c,(HBRUSH)GetStockObject(BLACK_BRUSH));EndPaint(w,&ps);return;}
     ABM_D2D_Begin(&g_canvas,BG);
+    /* Match the shared Streaming Centre / ABM window wordmark: a visible
+       A/play emblem, canonical ABM + AV PLAYER typography, accent rule and
+       a small window-specific subtitle. */
     ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(15,42,57),RGB(10,25,40));
     ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(40,94,111),0.9f);
-    ABM_D2D_Text(&g_canvas,L"ABM  /  HOME THEATRE",MakeRect(34,22,c.right-34,52),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_canvas,L"DISCOVER MOVIES & SHOWS  ·  KEYLESS METADATA",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    const float logoA[]={36,59,52,24,68,59};
+    const float logoPlay[]={56,39,64,45,56,51,56,39};
+    ABM_D2D_Polyline(&g_canvas,logoA,3,RGB(247,250,255),2.8f);
+    ABM_D2D_Line(&g_canvas,44,48,60,48,RGB(226,245,255),2.0f);
+    ABM_D2D_Polyline(&g_canvas,logoPlay,4,RGB(132,205,194),2.0f);
+    ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(82,17,157,52),RGB(247,250,255),ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"AV  PLAYER",MakeRect(157,17,292,52),RGB(132,205,194),ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Line(&g_canvas,82,55,253,55,RGB(54,177,168),2.0f);
+    ABM_D2D_Text(&g_canvas,L"HOME THEATRE  ·  DISCOVER MOVIES & SHOWS",MakeRect(82,56,390,68),RGB(157,177,201),ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
     ABM_D2D_Round(&g_canvas,22,82,(float)c.right-164,120,9,PANEL2);
