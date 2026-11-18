@@ -241,13 +241,30 @@ static void ParseEpisodes(const wchar_t *json,Result *r,int tvId,int seasonNumbe
     }
 }
 static int FindEpisodeMatch(int season,int episode) {
-    wchar_t pattern[32]={},alternate[32]={};
-    StringCchPrintfW(pattern,_countof(pattern),L"s%02de%02d",season,episode);
-    StringCchPrintfW(alternate,_countof(alternate),L"%dx%02d",season,episode);
+    // Accept common release naming conventions with both padded and unpadded
+    // season/episode numbers: S01E02, S1E2, 1x02, 1x2 and Season 1 Episode 2.
+    wchar_t variants[5][64]={};
+    StringCchPrintfW(variants[0],_countof(variants[0]),L"s%02de%02d",season,episode);
+    StringCchPrintfW(variants[1],_countof(variants[1]),L"s%de%d",season,episode);
+    StringCchPrintfW(variants[2],_countof(variants[2]),L"%dx%02d",season,episode);
+    StringCchPrintfW(variants[3],_countof(variants[3]),L"%dx%d",season,episode);
+    StringCchPrintfW(variants[4],_countof(variants[4]),L"season%depisode%d",season,episode);
+    std::wstring wanted[5];
+    for(int n=0;n<5;n++)wanted[n]=Normalized(variants[n]);
     for(size_t i=0;i<g_mediaPaths.size();i++) {
-        const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
+        const wchar_t *path=g_mediaPaths[i].c_str();
+        if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;
+        const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
         std::wstring name=Normalized(leaf);
-        if(name.find(Normalized(pattern).c_str())!=std::wstring::npos||name.find(Normalized(alternate).c_str())!=std::wstring::npos)return (int)i;
+        for(const std::wstring &pattern:wanted) {
+            if(pattern.empty())continue;
+            size_t at=name.find(pattern);
+            while(at!=std::wstring::npos) {
+                size_t after=at+pattern.size();
+                if(after>=name.size()||!iswdigit(name[after]))return (int)i;
+                at=name.find(pattern,at+1);
+            }
+        }
     }
     return -1;
 }
