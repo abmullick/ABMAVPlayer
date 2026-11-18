@@ -133,6 +133,21 @@ extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
     if(!g_surfaceVisible)HostLog(L"host: showing ProjectM child surface");
     g_lastBounds=*bounds;g_surfaceVisible=true;
 }
+extern "C" BOOL ABM_ProjectM_CopyFrame(void *destination,int destinationBytes,int *width,int *height) {
+    if(!g_shared||!destination||destinationBytes<ABM_PROJECTM_FRAME_BYTES)return FALSE;
+    for(int attempt=0;attempt<3;attempt++) {
+        LONG seq=InterlockedCompareExchange(&g_shared->frameSequence,0,0);
+        if(seq&1)continue;
+        LONG index=InterlockedCompareExchange(&g_shared->frameIndex,0,0)&1;
+        LONG w=InterlockedCompareExchange(&g_shared->frameWidth,0,0);
+        LONG h=InterlockedCompareExchange(&g_shared->frameHeight,0,0);
+        if(w<=0||h<=0||w>ABM_PROJECTM_FRAME_WIDTH||h>ABM_PROJECTM_FRAME_HEIGHT)return FALSE;
+        CopyMemory(destination,g_shared->frames[index],(size_t)w*(size_t)h*4u);
+        MemoryBarrier();
+        if(seq==InterlockedCompareExchange(&g_shared->frameSequence,0,0)) {if(width)*width=(int)w;if(height)*height=(int)h;return TRUE;}
+    }
+    return FALSE;
+}
 extern "C" void ABM_ProjectM_SetAudioSamples(const float *samples,int count) {
     if(!g_shared||!samples||count<=0)return;
     if(count>ABM_PROJECTM_PCM_COUNT)count=ABM_PROJECTM_PCM_COUNT;
