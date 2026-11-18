@@ -13,15 +13,16 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
-### Current release highlights — v1.0.9 candidate
+### Current release highlights — v1.1.3 candidate
 
-- Added media duration labels to Queue and Library cards, including Favourites, using background metadata resolution and a bounded cache to keep parsing off the UI thread.
-- Merged Continue Watching with automatic resume checkpoints, plus missing-media retention, status flagging and relinking across library references and saved M3U collections. These additions are in the current source tree and require Windows build/runtime validation before appearing in a published installer.
-- Polished windowed and fullscreen playback controls, seek timeline/playhead and volume rail styling, with improved clearance between the video surface and playback controls.
-- Added the Motion System 1.0 architecture audit and staged implementation plan.
-- Carries forward the v1.0.8 shared design system, VLC Runtime & Codecs diagnostics, Help Centre refinements and playback/Streaming Centre/Torrent lifecycle hardening.
+- Added Home Theatre with TMDB movie/TV discovery, local-library identification, editable local matches, cached posters and backdrops, recommendations, and TV season/episode browsing.
+- Expanded the live music visualizer to ten styles: four native Direct2D scenes and six isolated OpenGL scenes, including ProjectM MilkDrop. Fluid Motion (OpenGL) is the default; the renderer is hosted out of process and composed into the existing media stage.
+- Smoothed visualizer activation and spectrum response, and removed the temporary Neon Spectrum substitution while the selected OpenGL renderer starts.
+- Added Advanced Audio Centre track selection and output/audio-processing controls, refined Subtitle Manager interactions, and clarified audio-track/subtitle feedback.
+- Added three-state repeat cycling (Off → Repeat all → Repeat current), media information, and further playback/Settings/Help Centre refinements.
+- Carries forward Continue Watching and resume checkpoints, missing-media relinking, Queue/Library Open file location, media duration labels, the shared design system and playback/Streaming Centre/Torrent hardening.
 
-This is a source-prepared v1.0.9 candidate. Windows x64 build, runtime scrolling/performance measurement, playback/casting regression and installer upgrade validation are required before publication.
+This is a source-prepared v1.1.3 candidate. The Windows x64 build, runtime visualizer/audio/video/Home Theatre checks, casting/torrent regression, and clean-install/in-place-upgrade validation must pass before the installer is published.
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the release notes and [RELEASES.md](RELEASES.md) for build, validation and publishing requirements.
 
@@ -94,7 +95,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Open local audio and video files; drag files from File Explorer into the player.
 - Playlist operations: add, play, remove, reorder, clear, load and save M3U playlists.
 - Playback controls: play/pause, stop, previous/next, seek and volume.
-- Recent-media list, shuffle and repeat-current-track modes.
+- Recent-media list, shuffle and three repeat modes: Off, Repeat all and Repeat current.
 - Playback speed presets from 0.5x to 2.0x.
 - Fullscreen playback and keyboard controls.
 - Read-only Media Information view from the playback context menu: available metadata tags, file path/size, duration/position, decoded video dimensions and LibVLC-reported stream codecs/active tracks.
@@ -104,7 +105,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Common formats include MP3, WAV, FLAC, AAC, M4A, OGG, MP4, MKV, AVI, MOV, WMV and WebM; actual support depends on VLC codecs/plugins.
 - Audio-track and subtitle-track selection; disable subtitles or load an external subtitle file.
 - LibVLC equalizer presets and ABM 10-band graphic EQ profiles: Flat, Bass boost, Vocal clarity and Treble boost.
-- Five audio visualizer styles, including optional ProjectM MilkDrop/OpenGL rendered in an isolated helper process and embedded in the existing media stage; Direct2D styles remain the fallback.
+- Ten audio visualizer styles: four Direct2D scenes and six OpenGL scenes (including ProjectM MilkDrop), rendered in an isolated helper process and composited into the existing media stage; Direct2D remains the recovery fallback.
 - Optional ReplayGain track normalisation and dynamic-range compressor for newly opened media.
 - Hardware decoding uses LibVLC automatic selection by default. ABM_VLC_HW=none forces software decoding; ABM_VLC_HW=d3d11va requests D3D11VA when supported.
 
