@@ -279,7 +279,7 @@ static BOOL g_projectmTried=FALSE;
 static BOOL g_projectmSurfaceReady=FALSE;
 static unsigned char g_projectmFrame[ABM_PROJECTM_FRAME_BYTES];
 /* Main-process diagnostics identify the first broken ProjectM hand-off stage. */
-static volatile LONG g_pmDiagTimer=0,g_pmDiagReady=0,g_pmDiagCopy=0,g_pmDiagD2D=0;
+static volatile LONG g_pmDiagTimer=0,g_pmDiagReady=0,g_pmDiagCopy=0,g_pmDiagD2D=0,g_pmDiagD2DFail=0;
 static void ProjectMPlayerLog(const wchar_t *message) {
     wchar_t path[MAX_PATH]={0};
     DWORD n=GetTempPathW(_countof(path),path);
@@ -1632,7 +1632,7 @@ static void DrawUI(HDC dc,RECT client) {
                         BOOL drawn=ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
                             (float)client.left,(float)client.top,(float)client.right,(float)client.bottom);
                         if(drawn) { if(InterlockedCompareExchange(&g_pmDiagD2D,1,0)==0)ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw accepted"); }
-                        else { ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,client); }
+                        else { if(InterlockedCompareExchange(&g_pmDiagD2DFail,1,0)==0)ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,client); }
                     } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: fullscreen shared frame copy failed");DrawVisualizer(dc,client); }
                 } else DrawVisualizer(dc,client);
             } else DrawVisualizer(dc,client);
@@ -1780,7 +1780,7 @@ static void DrawUI(HDC dc,RECT client) {
                     BOOL drawn=ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
                         (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom);
                     if(drawn) { if(InterlockedCompareExchange(&g_pmDiagD2D,1,0)==0)ProjectMPlayerLog(L"player: windowed Direct2D frame draw accepted"); }
-                    else { ProjectMPlayerLog(L"player: windowed Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,R_VIDEO); }
+                    else { if(InterlockedCompareExchange(&g_pmDiagD2DFail,1,0)==0)ProjectMPlayerLog(L"player: windowed Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,R_VIDEO); }
                 } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: windowed shared frame copy failed");DrawVisualizer(dc,R_VIDEO); }
             } else DrawVisualizer(dc,R_VIDEO);
         } else { DrawVisualizer(dc,R_VIDEO); }
