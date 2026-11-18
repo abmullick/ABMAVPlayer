@@ -13,10 +13,14 @@ HANDLE g_mapping=nullptr;
 ABMProjectMSharedState *g_shared=nullptr;
 HANDLE g_process=nullptr;
 HWND g_window=nullptr;
+RECT g_lastBounds{};
+bool g_surfaceVisible=false;
 bool g_starting=false;
 
 void ResetHost() {
     g_window=nullptr;
+    g_surfaceVisible=false;
+    ZeroMemory(&g_lastBounds,sizeof(g_lastBounds));
     if(g_shared){UnmapViewOfFile(g_shared);g_shared=nullptr;}
     if(g_mapping){CloseHandle(g_mapping);g_mapping=nullptr;}
     if(g_process){CloseHandle(g_process);g_process=nullptr;}
@@ -108,10 +112,13 @@ extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
     if(!child||!IsWindow(child)){g_window=nullptr;return;}
     g_window=child;
     if(!visible||!bounds||bounds->right<=bounds->left||bounds->bottom<=bounds->top) {
-        ShowWindow(child,SW_HIDE);return;
+        if(g_surfaceVisible)ShowWindow(child,SW_HIDE);
+        g_surfaceVisible=false;return;
     }
+    if(g_surfaceVisible&&EqualRect(&g_lastBounds,bounds))return;
     SetWindowPos(child,HWND_TOP,bounds->left,bounds->top,bounds->right-bounds->left,
         bounds->bottom-bounds->top,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+    g_lastBounds=*bounds;g_surfaceVisible=true;
 }
 extern "C" void ABM_ProjectM_SetAudioSamples(const float *samples,int count) {
     if(!g_shared||!samples||count<=0)return;
