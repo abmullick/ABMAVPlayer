@@ -175,9 +175,18 @@ void RenderFrame() {
         if(InterlockedCompareExchange(&g_firstRenderLogged,0,0)==0) {
             /* Read the rendered back buffer once. This distinguishes a blank
                ProjectM frame from a child-HWND/DWM presentation problem. */
-            std::vector<unsigned char> pixels((size_t)w*(size_t)h*4u);
+            GLint drawFbo=-1,readFbo=-1;
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING,&drawFbo);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&readFbo);
+            /* ProjectM may leave an internal FBO bound. Read the actual
+               window back buffer explicitly, and report both bindings. */
+            while(glGetError()!=GL_NO_ERROR) {}
+            glBindFramebuffer(GL_READ_FRAMEBUFFER,0);
             glReadBuffer(GL_BACK);
+            GLenum selectError=glGetError();
+            std::vector<unsigned char> pixels((size_t)w*(size_t)h*4u,0);
             glReadPixels(0,0,w,h,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());
+            GLenum pixelsError=glGetError();
             unsigned long long lit=0;
             unsigned int maxChannel=0;
             for(size_t i=0;i<pixels.size();i+=4) {
@@ -189,8 +198,13 @@ void RenderFrame() {
             wchar_t pixelsLine[256];
             StringCchPrintfW(pixelsLine,_countof(pixelsLine),
                 L"first-frame pixels: nonblack=%llu/%llu maxRGB=%u readbackError=0x%04X",
-                lit,(unsigned long long)((size_t)w*(size_t)h),maxChannel,(unsigned)glGetError());
+                lit,(unsigned long long)((size_t)w*(size_t)h),maxChannel,(unsigned)pixelsError);
             LogText(pixelsLine);
+            wchar_t fboLine[192];
+            StringCchPrintfW(fboLine,_countof(fboLine),
+                L"framebuffer state: drawFBO=%d readFBO=%d readBufferError=0x%04X",
+                (int)drawFbo,(int)readFbo,(unsigned)selectError);
+            LogText(fboLine);
         }
         BOOL swapped=SwapBuffers(g_dc);
         if(InterlockedCompareExchange(&g_firstRenderLogged,1,0)==0) {
