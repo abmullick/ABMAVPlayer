@@ -164,6 +164,16 @@ bool QueryWikidata(const std::wstring &sparql,std::vector<wchar_t> &json) {
     std::wstring path=L"/sparql?format=json&query="+UrlEncode(sparql.c_str());
     return HttpGet(L"query.wikidata.org",path,json,20000);
 }
+bool MusicArtworkRateLimit() {
+    static SRWLOCK lock=SRWLOCK_INIT;
+    static ULONGLONG lastRequest=0;
+    AcquireSRWLockExclusive(&lock);
+    ULONGLONG now=GetTickCount64();
+    if(lastRequest&&now-lastRequest<2000)Sleep((DWORD)(2000-(now-lastRequest)));
+    lastRequest=GetTickCount64();
+    ReleaseSRWLockExclusive(&lock);
+    return true;
+}
 std::wstring MusicAlbumQuery(const wchar_t *artist,const wchar_t *album) {
     std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription ?date ?image WHERE { ";
     q+=L"?item wdt:P31/wdt:P279* wd:Q482994 . ";
@@ -316,6 +326,7 @@ extern "C" BOOL ABM_Metadata_GetSeasonDetails(int tvmazeId,int seasonNumber,wcha
 extern "C" BOOL ABM_Metadata_FindAlbumArtwork(const wchar_t *artist,const wchar_t *album,wchar_t *imageUrl,size_t capacity) {
     if(!artist||!*artist||!album||!*album||!imageUrl||capacity==0)return FALSE;
     imageUrl[0]=0;
+    MusicArtworkRateLimit();
     std::vector<wchar_t> raw;
     if(!QueryWikidata(MusicAlbumQuery(artist,album),raw))return FALSE;
     std::wstring normalized;
