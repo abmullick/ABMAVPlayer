@@ -17,8 +17,9 @@ Open **Home Theatre** from the idle home dashboard or playback context menu. Onl
 ### Discover and identify your library
 
 - Search for a movie or television title to inspect available metadata.
-- Choose **Identify library** to scan the active playlist and saved favourites for video files. ABM removes common release-quality tags from filenames before searching. The scan can take time on a large library and stops after collecting 100 matches.
-- Select an identified title to inspect its metadata. Automatic identification is a suggestion, not a guarantee that the correct edition or episode was found.
+- Choose **Identify library** to scan video files in the current Home Theatre library snapshot: the active playlist plus saved favourites. Add folders/files to the main player first if you want them included. This is not a recursive scan of every folder on a drive and does not import or move media. ABM removes common release-quality tags from filenames before searching. The scan can take time on a large library and stops after collecting 100 matches.
+- In the identification view, use **All**, **Movies** or **TV Shows** to filter the identified results. The filters only change the displayed category; they do not alter your playlist or media files.
+- Select an identified title to inspect its metadata. Automatic identification is a suggestion, not a guarantee that the correct edition or episode was found. The list selection remains associated with its original local media entry when filters change.
 
 ### Correct a local match
 
