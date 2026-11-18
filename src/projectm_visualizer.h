@@ -14,6 +14,7 @@ ABM_PROJECTM_API BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirec
 ABM_PROJECTM_API void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible);
 ABM_PROJECTM_API void ABM_ProjectM_Invalidate(void);
 ABM_PROJECTM_API void ABM_ProjectM_SetAudioSamples(const float *samples,int count);
+ABM_PROJECTM_API BOOL ABM_ProjectM_CopyFrame(void *destination,int destinationBytes,int *width,int *height);
 ABM_PROJECTM_API void ABM_ProjectM_NextPreset(void);
 ABM_PROJECTM_API void ABM_ProjectM_PreviousPreset(void);
 ABM_PROJECTM_API void ABM_ProjectM_SetAutoSwitch(BOOL enabled);
