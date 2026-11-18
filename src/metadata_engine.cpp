@@ -215,7 +215,7 @@ bool TvMazeDetails(int id,std::wstring &out) {
     JsonString(root,end,L"name",name,_countof(name));JsonString(root,end,L"premiered",date,_countof(date));JsonString(root,end,L"summary",summary,_countof(summary));
     const wchar_t *im=wcsstr(root,L"\"image\"");if(im&&im<end)JsonString(im,end,L"original",image,_countof(image));
     int minutes=JsonInt(root,end,L"runtime");if(minutes>0)StringCchPrintfW(runtime,_countof(runtime),L"%d min",minutes);
-    out=L"{";bool first=true;AddField(out,L"overview",StripHtml(summary).c_str(),first);AddField(out,L"first_air_date",date,first);AddField(out,L"poster_path",image,first);AddField(out,L"runtimeText",runtime,first);
+    out=L"{";bool first=true;AddField(out,L"overview",StripHtml(summary).c_str(),first);AddField(out,L"first_air_date",date,first);AddField(out,L"poster_path",image,first);if(minutes>0){out+=L",\"runtime\":"+std::to_wstring(minutes);}
     out+=L",\"genres\":[";const wchar_t *g=wcsstr(root,L"\"genres\"");const wchar_t *ga=g?wcschr(g,L'['):nullptr;const wchar_t *gb=ga?wcschr(ga,L']'):nullptr;bool f=true;
     if(ga&&gb)for(const wchar_t *p=ga;p<gb;){if(*p==L'"'){wchar_t genre[128]={};if(JsonString(p,gb,L"",genre,_countof(genre))&&genre[0]){}const wchar_t *q=wcschr(p+1,L'"');if(!q)break;size_t n=(size_t)(q-p-1);if(n>0&&n<120){wchar_t value[128]={};wcsncpy_s(value,p+1,n);if(!f)out+=L",";f=false;out+=L"{\"name\":"+JsonEscape(value)+L"}";}p=q+1;}else p++;}
     out+=L"],\"credits\":{\"cast\":[";f=true;
