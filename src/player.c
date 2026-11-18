@@ -276,7 +276,7 @@ static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
 static float g_visualizerBarPeaks[64];
-static int g_visualizerMode=3; /* 0 Spectrum Orbit, 1 Fluid Waves, 2 Particle Universe, 3 Neon Spectrum */
+static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4 isolated ProjectM MilkDrop */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
@@ -1277,6 +1277,20 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
         DrawLine(NULL,cx+8,cy-8,cx-4,cy,glyph,2);DrawLine(NULL,cx-4,cy,cx+8,cy+8,glyph,2);DrawLine(NULL,cx-7,cy-9,cx-7,cy+9,glyph,2);
     }
 }
+static void EnsureProjectMRenderer(HWND hwnd) {
+    if(g_projectmTried)return;
+    wchar_t exePath[PATH_CAP],presetPath[PATH_CAP],texturePath[PATH_CAP];
+    DWORD exeLen=GetModuleFileNameW(NULL,exePath,_countof(exePath));
+    if(!exeLen||exeLen>=_countof(exePath))return;
+    wchar_t *slash=wcsrchr(exePath,L'\\');
+    if(!slash)return;
+    *slash=0;
+    if(FAILED(StringCchCopyW(presetPath,_countof(presetPath),exePath))||
+       FAILED(StringCchCatW(presetPath,_countof(presetPath),L"\\assets\\visualizer\\presets"))||
+       FAILED(StringCchCopyW(texturePath,_countof(texturePath),exePath))||
+       FAILED(StringCchCatW(texturePath,_countof(texturePath),L"\\assets\\visualizer\\textures")))return;
+    if(ABM_ProjectM_Create(hwnd,presetPath,texturePath))g_projectmTried=TRUE;
+}
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
     ABM_AudioVisualizer_GetBands(levels,24);
@@ -1566,13 +1580,13 @@ static void DrawVisualizer(HDC dc,RECT area) {
     }
 }
 static void DrawUI(HDC dc,RECT client) {
-    if(!g_visualizerActive || !ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(NULL,FALSE);
+    if(!g_visualizerActive || g_visualizerMode!=4 || !ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(NULL,FALSE);
     if(g_fullscreen) {
         /* When audio visualization is active it owns the entire client area.
            Artwork/metadata layouts must not constrain it to a short footer strip. */
         if(g_visualizerActive) {
-            if(ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&client,TRUE);
-            else DrawVisualizer(dc,client);
+            if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&client,TRUE);
+            else { ABM_ProjectM_SetBounds(NULL,FALSE); DrawVisualizer(dc,client); }
             return;
         }
         /* Immersive now-playing view: artwork, track metadata and transport
@@ -1705,8 +1719,8 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_visualizerActive) {
-        if(ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&R_VIDEO,TRUE);
-        else DrawVisualizer(dc,R_VIDEO);
+        if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&R_VIDEO,TRUE);
+        else { ABM_ProjectM_SetBounds(NULL,FALSE); DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
@@ -3818,6 +3832,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(25211,g_visualizerMode==1?L"✓ Fluid Waves":L"Fluid Waves",TRUE);
     ABM_ADD(25212,g_visualizerMode==2?L"✓ Particle Universe":L"Particle Universe",TRUE);
     ABM_ADD(25213,g_visualizerMode==3?L"✓ Neon Spectrum":L"Neon Spectrum",TRUE);
+    ABM_ADD(25214,g_visualizerMode==4?L"✓ ProjectM MilkDrop (OpenGL)":L"ProjectM MilkDrop (OpenGL)",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
@@ -3870,12 +3885,18 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==24013)libvlc_video_set_crop_geometry(g_player,"1:1");
     else if(cmd==24020)libvlc_video_set_scale(g_player,0.0f);
     else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?"yadif":NULL);}
-    else if(cmd>=25210&&cmd<=25213){
+    else if(cmd>=25210&&cmd<=25214){
         g_visualizerMode=cmd-25210;
         for(int i=0;i<64;i++)g_visualizerBarPeaks[i]=0.0f;
-        SetStatus(g_visualizerMode==0?L"Visualizer: Spectrum Orbit":
-            (g_visualizerMode==1?L"Visualizer: Fluid Waves":
-            (g_visualizerMode==2?L"Visualizer: Particle Universe":L"Visualizer: Neon Spectrum")));
+        if(g_visualizerMode==4) {
+            if(g_visualizerActive)EnsureProjectMRenderer(hwnd);
+            SetStatus(L"Visualizer: ProjectM MilkDrop (isolated OpenGL renderer)");
+        } else {
+            ABM_ProjectM_SetBounds(NULL,FALSE);
+            SetStatus(g_visualizerMode==0?L"Visualizer: Spectrum Orbit":
+                (g_visualizerMode==1?L"Visualizer: Fluid Waves":
+                (g_visualizerMode==2?L"Visualizer: Particle Universe":L"Visualizer: Neon Spectrum")));
+        }
         InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
     }
     else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
@@ -8327,11 +8348,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VISUALIZER_TIMER_ID) {
             if(g_visualizerActive) {
                 ++g_visualizerFrame;
-                if(ABM_ProjectM_IsReady()) {
+                if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
                     ABM_ProjectM_SetAudioSamples(pcm,512);
-                    ABM_ProjectM_Invalidate();
                 } else InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
             } else {
                 KillTimer(hwnd,VISUALIZER_TIMER_ID);
@@ -8486,20 +8506,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_visualizerActive=ABM_AudioVisualizer_Start();
             }
             if(g_visualizerActive) {
-                if(!g_projectmTried) {
-                    wchar_t exePath[PATH_CAP],presetPath[PATH_CAP],texturePath[PATH_CAP];
-                    DWORD exeLen=GetModuleFileNameW(NULL,exePath,_countof(exePath));
-                    g_projectmTried=TRUE;
-                    if(exeLen>0 && exeLen<_countof(exePath)) {
-                        wchar_t *slash=wcsrchr(exePath,L'\\');
-                        if(slash) *slash=0;
-                        StringCchCopyW(presetPath,_countof(presetPath),exePath);
-                        StringCchCatW(presetPath,_countof(presetPath),L"\\assets\\visualizer\\presets");
-                        StringCchCopyW(texturePath,_countof(texturePath),exePath);
-                        StringCchCatW(texturePath,_countof(texturePath),L"\\assets\\visualizer\\textures");
-                        ABM_ProjectM_Create(hwnd,presetPath,texturePath);
-                    }
-                }
+                if(g_visualizerMode==4)EnsureProjectMRenderer(hwnd);
+                else ABM_ProjectM_SetBounds(NULL,FALSE);
                 if(!g_visualizerTimerRunning) {
                     g_visualizerTimerRunning=(SetTimer(hwnd,VISUALIZER_TIMER_ID,16,NULL)!=0);
                 }
@@ -8514,7 +8522,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 KillTimer(hwnd,VISUALIZER_TIMER_ID);
                 g_visualizerTimerRunning=FALSE;
             }
-            g_visualizerActive=FALSE; g_visualizerTried=FALSE; g_projectmTried=FALSE;
+            g_visualizerActive=FALSE; g_visualizerTried=FALSE;
+            if(g_projectmTried)ABM_ProjectM_Destroy();
+            g_projectmTried=FALSE;
             ABM_ProjectM_SetBounds(NULL,FALSE);
             if(g_video && !g_fullscreen) {
                 if (g_hasMedia) ShowWindow(g_video,SW_SHOWNA);
