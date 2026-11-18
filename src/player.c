@@ -1768,12 +1768,20 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_visualizerActive) {
-        if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
-            int fw=0,fh=0;
-            if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
-                if(!ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
-                    (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom))
-                    DrawVisualizer(dc,R_VIDEO);
+        if(g_visualizerMode==4) {
+            BOOL pmReady=ABM_ProjectM_IsReady();
+            if(pmReady) {
+                int fw=0,fh=0;
+                BOOL copied=ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh);
+                if(copied) {
+                    if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0) {
+                        wchar_t line[160];StringCchPrintfW(line,_countof(line),L"player: windowed frame copy succeeded %dx%d",fw,fh);ProjectMPlayerLog(line);
+                    }
+                    BOOL drawn=ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
+                        (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom);
+                    if(drawn) { if(InterlockedCompareExchange(&g_pmDiagD2D,1,0)==0)ProjectMPlayerLog(L"player: windowed Direct2D frame draw accepted"); }
+                    else { ProjectMPlayerLog(L"player: windowed Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,R_VIDEO); }
+                } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: windowed shared frame copy failed");DrawVisualizer(dc,R_VIDEO); }
             } else DrawVisualizer(dc,R_VIDEO);
         } else { DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
