@@ -362,6 +362,27 @@ static void SetLocalMatchStatus(const wchar_t *prefix) {
     StringCchPrintfW(message,_countof(message),L"%s: %s",prefix?prefix:L"Local match",leaf);
     SetStatus(message);
 }
+static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
+    if(!d)return;
+    HDC dc=d->hDC;RECT r=d->rcItem;
+    BOOL disabled=(d->itemState&ODS_DISABLED)!=0;
+    BOOL pressed=(d->itemState&ODS_SELECTED)!=0;
+    BOOL focused=(d->itemState&ODS_FOCUS)!=0;
+    COLORREF fill=disabled?RGB(20,31,43):(pressed?RGB(22,76,78):((d->itemState&ODS_HOTLIGHT)?RGB(27,62,76):RGB(20,43,59)));
+    COLORREF edge=disabled?RGB(43,57,69):(focused?ACCENT:RGB(54,91,111));
+    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,focused?2:1,edge);
+    HGDIOBJ oldBrush=SelectObject(dc,brush),oldPen=SelectObject(dc,pen);
+    RoundRect(dc,r.left+1,r.top+1,r.right-1,r.bottom-1,10,10);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(brush);DeleteObject(pen);
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,disabled?RGB(103,122,139):TEXT);
+    HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    LOGFONTW lf={};GetObjectW(font,sizeof(lf),&lf);StringCchCopyW(lf.lfFaceName,LF_FACESIZE,L"Segoe UI");lf.lfWeight=FW_SEMIBOLD;
+    HFONT custom=CreateFontIndirectW(&lf);HGDIOBJ oldFont=SelectObject(dc,custom?custom:font);
+    RECT tr=r;InflateRect(&tr,-8,-3);DrawTextW(dc,d->hwndItem?nullptr:L"",0,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
+    DrawTextW(dc,caption,-1,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    if(oldFont)SelectObject(dc,oldFont);if(custom)DeleteObject(custom);
+}
 static void Layout(HWND w) {
     RECT c;GetClientRect(w,&c);int width=c.right,height=c.bottom;
     if(g_edit)MoveWindow(g_edit,28,83,width-190,36,TRUE);
@@ -387,6 +408,12 @@ static void Draw(HWND w) {
     ABM_D2D_Text(&g_canvas,L"DISCOVER MOVIES & SHOWS  ·  KEYLESS METADATA",MakeRect(36,50,c.right-34,66),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
+    ABM_D2D_Round(&g_canvas,22,82,(float)c.right-164,120,9,PANEL2);
+    ABM_D2D_StrokeRound(&g_canvas,22,82,(float)c.right-164,120,9,RGB(53,82,101),0.9f);
+    ABM_D2D_Round(&g_canvas,26,166,334,(float)c.bottom-94,9,PANEL2);
+    ABM_D2D_StrokeRound(&g_canvas,26,166,334,(float)c.bottom-94,9,RGB(48,72,91),0.8f);
+    ABM_D2D_Round(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,PANEL2);
+    ABM_D2D_StrokeRound(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,RGB(53,82,101),0.8f);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
     ABM_D2D_StrokeRound(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
     if(g_selected>=0&&g_selected<g_itemCount) {
@@ -426,15 +453,15 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:
         g_window=w;g_darkBrush=CreateSolidBrush(PANEL2);
-        g_edit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,83,700,36,w,(HMENU)HT_EDIT,GetModuleHandleW(nullptr),nullptr);
-        g_results=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
+        g_edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,83,700,36,w,(HMENU)HT_EDIT,GetModuleHandleW(nullptr),nullptr);
+        g_results=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
-        g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
+        g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
         g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
         g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,136,130,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
         g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,28,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
-        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
+        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
         g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
         g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
@@ -507,15 +534,22 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX:
         SetBkColor((HDC)wp,PANEL2);SetTextColor((HDC)wp,TEXT);return (LRESULT)g_darkBrush;
-    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;if(m&&m->CtlID==HT_RESULTS){m->itemHeight=42;return TRUE;}break; }
+    case WM_MEASUREITEM: { MEASUREITEMSTRUCT *m=(MEASUREITEMSTRUCT*)lp;if(m&&m->CtlID==HT_RESULTS){m->itemHeight=48;return TRUE;}if(m&&m->CtlID==HT_PICKER){m->itemHeight=30;return TRUE;}break; }
     case WM_DRAWITEM: {
         DRAWITEMSTRUCT *d=(DRAWITEMSTRUCT*)lp;
+        if(d&&(d->CtlType==ODT_BUTTON)){DrawAbmButton(d);return TRUE;}
+        if(d&&d->CtlID==HT_PICKER&&d->itemID!=(UINT)-1) {
+            SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,(d->itemState&ODS_DISABLED)?MUTED:TEXT);
+            HBRUSH b=CreateSolidBrush((d->itemState&ODS_SELECTED)?RGB(25,73,77):PANEL2);FillRect(d->hDC,&d->rcItem,b);DeleteObject(b);
+            wchar_t item[512]={};SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)item);
+            RECT r=d->rcItem;InflateRect(&r,-10,0);DrawTextW(d->hDC,item,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);return TRUE;
+        }
         if(d&&d->CtlID==HT_RESULTS&&d->itemID!=(UINT)-1) {
             MovieItem &m=g_items[d->itemID];BOOL selected=(d->itemState&ODS_SELECTED)!=0;
             HBRUSH b=CreateSolidBrush(selected?RGB(25,73,77):PANEL);FillRect(d->hDC,&d->rcItem,b);DeleteObject(b);
             SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,selected?TEXT:MUTED);
             wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",m.title,m.type==1?L"MOVIE":L"TV");
-            RECT r=d->rcItem;InflateRect(&r,-10,-2);DrawTextW(d->hDC,line,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            RECT r=d->rcItem;InflateRect(&r,-12,-2);DrawTextW(d->hDC,line,-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             if(d->itemState&ODS_FOCUS)DrawFocusRect(d->hDC,&d->rcItem);return TRUE;
         }break;
     }
