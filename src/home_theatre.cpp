@@ -175,19 +175,16 @@ static void SaveLibraryCatalogEntry(int pathIndex) {
         wchar_t line[8192];
         while(fgetws(line,_countof(line),old)) {
             line[wcscspn(line,L"\r\n")]=0;
+            std::wstring fullLine=line;
             wchar_t *tab=wcschr(line,L'\t');
             if(tab)*tab=0;
-            if(line[0]&&_wcsicmp(line,selectedPath.c_str())!=0)retained.emplace_back(line);
+            if(line[0]&&_wcsicmp(line,selectedPath.c_str())!=0)retained.emplace_back(fullLine);
         }
         fclose(old);
     }
     FILE *fp=nullptr;
     if(_wfopen_s(&fp,temp,L"wt, ccs=UTF-8")!=0||!fp)return;
-    for(const std::wstring &path:retained) {
-        /* Preserve existing catalogue records verbatim by copying their original line
-           in the next version; legacy rows are replaced by the latest association. */
-        fwprintf(fp,L"%s\t\t\t\t\t\t\t\t\n",path.c_str());
-    }
+    for(const std::wstring &row:retained)fwprintf(fp,L"%s",row.c_str());
     const MovieItem &item=g_items[g_selected];
     WriteCatalogField(fp,selectedPath.c_str());fputwc(L'\t',fp);
     WriteCatalogField(fp,item.title);fputwc(L'\t',fp);
