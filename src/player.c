@@ -1956,7 +1956,7 @@ static void DrawUI(HDC dc,RECT client) {
                 } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: windowed shared frame copy failed before first frame"); }
             }
         } else { DrawVisualizer(dc,R_VIDEO); }
-    } else if(g_artworkLoaded) {
+    } else if(g_artworkLoaded&&!currentVideoForRender) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
             (float)R_VIDEO.right,(float)R_VIDEO.bottom,0.16f*(float)g_artworkFade/100.0f);
