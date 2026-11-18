@@ -275,9 +275,9 @@ Do not mark this feature runtime-validated until all Windows build and interacti
 
 ## Help Centre documentation regression
 
-- [ ] Open F1 Help and confirm the topic index includes **LIBRARY, CONTINUE WATCHING AND RESUME** and **MISSING MEDIA AND RELINKING**.
+- [ ] Open F1 Help and confirm the topic index includes **LIBRARY, CONTINUE WATCHING AND RESUME**, **MISSING MEDIA AND RELINKING**, **HOME THEATRE — TMDB DISCOVERY** and **NOW PLAYING AND VISUALIZER**.
 - [ ] Select each new topic and verify the article heading/content match the topic label and scroll correctly.
-- [ ] Search for `resume.tsv`, `MISSING MEDIA` and `Relink missing media`; verify matching topics open, the match is highlighted and F3/Enter continue searching with wraparound.
+- [ ] Search for `resume.tsv`, `MISSING MEDIA`, `Relink missing media`, `TMDB`, `MilkDrop`, `Fluid Motion` and `Repeat all`; verify matching topics open, the match is highlighted and F3/Enter continue searching with wraparound.
 - [ ] Confirm the article explains the completion threshold, local checkpoint location, missing-path retention and the fact that relinking updates references rather than moving files.
 
 ## Continue Watching and Resume Playback
