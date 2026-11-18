@@ -15,6 +15,8 @@ BOOL ABM_Metadata_Search(const wchar_t *query, ABM_METADATA_MEDIA_TYPE type,
                         wchar_t *json, size_t capacity);
 BOOL ABM_Metadata_GetDetails(ABM_METADATA_MEDIA_TYPE type, int providerId,
                              wchar_t *json, size_t capacity);
+BOOL ABM_Metadata_GetRecommendations(ABM_METADATA_MEDIA_TYPE type, int providerId,
+                                     wchar_t *json, size_t capacity);
 BOOL ABM_Metadata_GetSeasonDetails(int tvmazeId, int seasonNumber,
                                     wchar_t *json, size_t capacity);
 BOOL ABM_Metadata_DownloadImage(const wchar_t *url, const wchar_t *destination,
