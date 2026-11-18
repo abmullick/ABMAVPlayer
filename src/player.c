@@ -2374,7 +2374,11 @@ static void DrawUI(HDC dc,RECT client) {
         RECT coverInset={rowThumb.left+2,rowThumb.top+2,rowThumb.right-2,rowThumb.bottom-2};
         ABM_D2D_StrokeRound(&g_ui,(float)coverInset.left,(float)coverInset.top,(float)coverInset.right,
             (float)coverInset.bottom,7.0f,ABM_THEME_COLOR_91B8DA,0.45f);
-        if(current&&g_artworkLoaded)
+        if(htMeta&&htMeta->poster[0]&&GetFileAttributesW(htMeta->poster)!=INVALID_FILE_ATTRIBUTES&&
+           ABM_D2D_DrawImageFile(&g_ui,htMeta->poster,(float)rowThumb.left+2,(float)rowThumb.top+2,
+                (float)rowThumb.right-2,(float)rowThumb.bottom-2)) {
+            /* The shared metadata catalogue supplies the same poster used by Home Theatre. */
+        } else if(current&&g_artworkLoaded)
             ABM_D2D_DrawImage(&g_ui,(float)rowThumb.left+2,(float)rowThumb.top+2,
                 (float)rowThumb.right-2,(float)rowThumb.bottom-2);
         else
