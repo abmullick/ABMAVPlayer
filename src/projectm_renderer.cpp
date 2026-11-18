@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <cwchar>
 #include <stdlib.h>
+#include <strsafe.h>
 #include "projectm_ipc.h"
 
 #pragma comment(lib,"opengl32.lib")
@@ -29,6 +30,37 @@ HANDLE g_mapping=nullptr;
 std::vector<std::string> g_presets;
 size_t g_presetIndex=0;
 DWORD64 g_lastPresetTick=0;
+volatile LONG g_stage=0;
+WCHAR g_logPath[MAX_PATH]={0};
+
+void LogText(const wchar_t *message) {
+    if(!g_logPath[0]) {
+        wchar_t temp[MAX_PATH]={0};
+        DWORD n=GetTempPathW(_countof(temp),temp);
+        if(!n||n>=_countof(temp))return;
+        if(FAILED(StringCchPrintfW(g_logPath,_countof(g_logPath),L"%sABM-ProjectM-renderer.log",temp)))return;
+    }
+    HANDLE file=CreateFileW(g_logPath,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(file==INVALID_HANDLE_VALUE)return;
+    DWORD bytes=0;
+    WriteFile(file,message,(DWORD)(wcslen(message)*sizeof(wchar_t)),&bytes,nullptr);
+    WriteFile(file,L"\r\n",4,&bytes,nullptr);
+    CloseHandle(file);
+}
+void SetStage(LONG stage,const wchar_t *description) {
+    InterlockedExchange(&g_stage,stage);
+    wchar_t line[256];
+    StringCchPrintfW(line,_countof(line),L"stage %ld: %s",stage,description?description:L"");
+    LogText(line);
+}
+LONG WINAPI RendererUnhandledException(EXCEPTION_POINTERS *info) {
+    wchar_t line[256];
+    DWORD code=info&&info->ExceptionRecord?info->ExceptionRecord->ExceptionCode:0;
+    ULONG_PTR address=info&&info->ExceptionRecord?(ULONG_PTR)info->ExceptionRecord->ExceptionAddress:0;
+    StringCchPrintfW(line,_countof(line),L"FATAL exception 0x%08lX at 0x%p; stage %ld",(unsigned long)code,(void*)address,(long)InterlockedCompareExchange(&g_stage,0,0));
+    LogText(line);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
 float g_pcm[ABM_PROJECTM_PCM_COUNT]{};
 int g_lastWidth=0,g_lastHeight=0;
 
@@ -116,7 +148,9 @@ void RenderFrame() {
             LoadPresetDelta(1);
         ReadPcm();
         projectm_pcm_add_float(g_projectm,g_pcm,ABM_PROJECTM_PCM_COUNT,PROJECTM_MONO);
+        InterlockedExchange(&g_stage,90);
         projectm_opengl_render_frame(g_projectm);
+        InterlockedExchange(&g_stage,91);
         SwapBuffers(g_dc);
     }
     wglMakeCurrent(nullptr,nullptr);
@@ -146,32 +180,40 @@ LRESULT CALLBACK RendererWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 }
 }
 int wmain(int argc,wchar_t **argv) {
+    SetUnhandledExceptionFilter(RendererUnhandledException);
+    SetStage(1,L"renderer entry");
     /* Match the player's system-DPI coordinate space before parenting HWNDs. */
     SetProcessDPIAware();
-    if(argc<5)return 2;
+    if(argc<5){LogText(L"startup failed: insufficient command-line arguments");return 2;}
     HWND parent=(HWND)(ULONG_PTR)_wcstoui64(argv[1],nullptr,10);
-    if(!parent||!IsWindow(parent))return 3;
+    if(!parent||!IsWindow(parent)){LogText(L"startup failed: invalid parent window");return 3;}
+    SetStage(2,L"opening shared memory");
     g_mapping=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,argv[2]);
-    if(!g_mapping)return 4;
+    if(!g_mapping){LogText(L"startup failed: OpenFileMappingW");return 4;}
     g_shared=(ABMProjectMSharedState*)MapViewOfFile(g_mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(ABMProjectMSharedState));
-    if(!g_shared||g_shared->magic!=ABM_PROJECTM_IPC_MAGIC||g_shared->version!=ABM_PROJECTM_IPC_VERSION){Cleanup();return 5;}
+    if(!g_shared||g_shared->magic!=ABM_PROJECTM_IPC_MAGIC||g_shared->version!=ABM_PROJECTM_IPC_VERSION){LogText(L"startup failed: shared memory validation");Cleanup();return 5;}
+    SetStage(3,L"creating renderer window");
 
     WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.style=CS_OWNDC;wc.hInstance=GetModuleHandleW(nullptr);
     wc.lpfnWndProc=RendererWndProc;wc.lpszClassName=L"ABMProjectMIsolatedSurface";
     wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));
-    if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS){Cleanup();return 6;}
+    if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS){LogText(L"startup failed: RegisterClassExW");Cleanup();return 6;}
     g_window=CreateWindowExW(0,wc.lpszClassName,L"",WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,
         0,0,1,1,parent,nullptr,wc.hInstance,nullptr);
-    if(!g_window){Cleanup();return 7;}
-    if(!CreateContext(g_window)){Cleanup();DestroyWindow(g_window);return 8;}
+    if(!g_window){LogText(L"startup failed: CreateWindowExW");Cleanup();return 7;}
+    SetStage(4,L"creating OpenGL 3.3 context");
+    if(!CreateContext(g_window)){LogText(L"startup failed: OpenGL context creation");Cleanup();DestroyWindow(g_window);return 8;}
+    SetStage(5,L"projectm_create");
     g_projectm=projectm_create();
-    if(!g_projectm){Cleanup();DestroyWindow(g_window);return 9;}
+    if(!g_projectm){LogText(L"startup failed: projectm_create returned null");Cleanup();DestroyWindow(g_window);return 9;}
+    SetStage(6,L"configuring ProjectM");
     projectm_set_preset_duration(g_projectm,45.0);
     projectm_set_soft_cut_duration(g_projectm,4.0);
     projectm_set_beat_sensitivity(g_projectm,1.15f);
     projectm_set_aspect_correction(g_projectm,true);
     /* Preset cycling is owned by this renderer timer, not ProjectM internals. */
     projectm_set_preset_locked(g_projectm,true);
+    SetStage(7,L"loading texture paths and presets");
     if(argv[4][0]) {
         std::string texture=Utf8(argv[4]);const char *paths[]={texture.c_str()};
         projectm_set_texture_search_paths(g_projectm,paths,1);
@@ -182,14 +224,18 @@ int wmain(int argc,wchar_t **argv) {
     if(!g_presets.empty()){g_presetIndex=g_presets.size()-1;LoadPresetDelta(1);}
     else projectm_load_preset_file(g_projectm,"idle://",false);
     g_lastPresetTick=GetTickCount64();
+    wchar_t countLine[128];StringCchPrintfW(countLine,_countof(countLine),L"loaded %zu presets",g_presets.size());LogText(countLine);
+    SetStage(8,L"publishing renderer window");
     /* ProjectM initialisation and preset loading require the renderer context. */
     wglMakeCurrent(nullptr,nullptr);
     ShowWindow(g_window,SW_SHOWNA);
-    SetTimer(g_window,RENDER_TIMER,16,nullptr);
+    if(!SetTimer(g_window,RENDER_TIMER,16,nullptr))LogText(L"warning: render timer creation failed");
+    LogText(L"renderer initialized; waiting for render timer");
     InterlockedExchangePointer((PVOID volatile*)&g_shared->childWindow,(PVOID)g_window);
     InterlockedExchange(&g_shared->ready,1);
     MSG msg;
     while(GetMessageW(&msg,nullptr,0,0)>0){TranslateMessage(&msg);DispatchMessageW(&msg);}
+    LogText(L"renderer message loop ended normally");
     Cleanup();
     if(g_window&&IsWindow(g_window))DestroyWindow(g_window);
     return 0;
