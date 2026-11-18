@@ -276,8 +276,11 @@ int wmain(int argc,wchar_t **argv) {
     wc.lpfnWndProc=RendererWndProc;wc.lpszClassName=L"ABMProjectMIsolatedSurface";
     wc.hCursor=LoadCursorW(nullptr,MAKEINTRESOURCEW(32512));
     if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS){LogText(L"startup failed: RegisterClassExW");Cleanup();return 6;}
+    /* The hidden HWND is only a WGL context owner. Keep a real render
+       surface size so GetClientRect/glViewport never collapse to 1x1 when
+       the window is hidden and the host no longer positions it. */
     g_window=CreateWindowExW(0,wc.lpszClassName,L"",WS_CHILD|WS_CLIPSIBLINGS|WS_CLIPCHILDREN,
-        0,0,1,1,parent,nullptr,wc.hInstance,nullptr);
+        0,0,ABM_PROJECTM_FRAME_WIDTH,ABM_PROJECTM_FRAME_HEIGHT,parent,nullptr,wc.hInstance,nullptr);
     if(!g_window){LogText(L"startup failed: CreateWindowExW");Cleanup();return 7;}
     SetStage(4,L"creating OpenGL 3.3 context");
     if(!CreateContext(g_window)){LogText(L"startup failed: OpenGL context creation");Cleanup();DestroyWindow(g_window);return 8;}
