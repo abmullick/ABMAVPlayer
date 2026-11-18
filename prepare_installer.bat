@@ -46,6 +46,10 @@ xcopy "build\torrent-runtime" "%DEST%\torrent-runtime\" /E /I /H /Y >nul
 if errorlevel 2 exit /b 1
 
 rem Stage the isolated ProjectM host, renderer helper and runtime dependencies.
+if not exist "build\projectm-runtime\abm-projectm-renderer.exe" (
+  echo ERROR: Isolated ProjectM renderer helper is missing. Run build.bat first.
+  exit /b 1
+)
 if not exist "build\projectm-runtime\abm_projectm_bridge.dll" (
   echo ERROR: Embedded projectM bridge is missing. Run build.bat first.
   exit /b 1
