@@ -1012,7 +1012,7 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
         }
     }
     /* Embedded artwork wins. If it is absent, try standard sibling artwork
-       names before querying MusicBrainz/Cover Art Archive. */
+       names before querying Wikidata/Wikimedia Commons. */
     if(!requestStarted && EnsureDataDirectory() && g_main) {
         char *mrl=libvlc_media_get_mrl(media);
         wchar_t mediaPath[PATH_CAP]={0},folder[PATH_CAP]={0};
