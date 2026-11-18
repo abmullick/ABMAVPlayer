@@ -136,6 +136,7 @@ bool CreateContext(HWND hwnd) {
 }
 void LoadPresetDelta(int delta) {
     if(!g_projectm)return;
+    InterlockedExchange(&g_blankFrameStreak,0);
     if(g_presets.empty()){projectm_load_preset_file(g_projectm,"idle://",true);return;}
     long long count=(long long)g_presets.size();
     long long next=((long long)g_presetIndex+(long long)delta)%count;
