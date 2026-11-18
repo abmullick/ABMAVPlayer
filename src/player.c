@@ -8606,8 +8606,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            thread while fullscreen input and playback controls are active. */
         if (!g_fullscreen && (++g_videoGeometryPoll % 5u) == 0u)
             RefreshVideoGeometry();
-        BOOL audioOnlyLocal=g_hasMedia && g_player &&
-            !g_selectedRenderer && libvlc_media_player_has_vout(g_player)==0;
+        /* A missing vout during startup does not mean audio-only: LibVLC
+           creates its video output asynchronously. Wait for the parsed stream
+           snapshot and explicitly confirm that it contains no video track. */
+        BOOL mediaHasVideoTrack=FALSE;
+        if(g_vlcTrackSnapshotReady) {
+            for(unsigned int ti=0;ti<g_vlcTrackEvidenceCount;ti++) {
+                if(g_vlcTrackEvidence[ti].type==libvlc_track_video) {
+                    mediaHasVideoTrack=TRUE;
+                    break;
+                }
+            }
+        }
+        BOOL audioOnlyLocal=g_hasMedia && g_player && !g_torrentPlaybackActive &&
+            !g_selectedRenderer && g_vlcTrackSnapshotReady && !mediaHasVideoTrack &&
+            libvlc_media_player_has_vout(g_player)==0;
         if(audioOnlyLocal) {
             /* Keep capture independent from artwork; the visualizer owns the
                complete media stage whenever the local track is audio-only. */
