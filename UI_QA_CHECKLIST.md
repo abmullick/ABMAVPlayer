@@ -306,7 +306,8 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Test Spectrum Orbit, Fluid Waves, Particle Universe and Neon Spectrum; then test MilkDrop, 3D Spectrum, Particle Universe, Oscilloscope 3D, Fluid Motion and Geometric Tunnel (OpenGL).
 - [ ] Switch between Direct2D and OpenGL modes repeatedly; verify no extra visible window appears and the selected style is not replaced by a temporary Neon Spectrum scene.
 - [ ] Terminate the isolated renderer helper during playback; confirm audio continues and the player recovers to the Direct2D visualizer. Then play video and verify normal LibVLC rendering.
-- [ ] Test Home Theatre movie search/details through Wikidata and TV search/details through TVmaze without any API key or account. Verify available artwork downloads and caches, TV season/episode navigation, Identify library, manual local-file correction and Play local match. Test missing artwork, provider timeout, rate limiting and offline mode; none may block local playback.
+- [ ] Test Home Theatre movie search/details and related-movie suggestions through Wikidata, and TV search/details through TVmaze without any API key or account. Verify available artwork downloads and caches, TV season/episode navigation, Identify library, manual local-file correction, persistence after closing/reopening Home Theatre, and Play local match. Test missing artwork, provider timeout, rate limiting and offline mode; none may block local playback.
+- [ ] Test Now Playing artwork priority: embedded artwork, same-folder cover.jpg/folder.jpg/front.jpg, then keyless Wikidata/Commons lookup by artist+album. Verify image validation, cache reuse, rapid track changes/generation safety and that slow/offline lookup never delays audio playback.
 
 ## Subtitle Manager and Advanced Audio Centre
 
