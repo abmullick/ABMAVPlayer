@@ -189,7 +189,15 @@ void RenderFrame() {
     if(w>0&&h>0) {
         if(w!=g_lastWidth||h!=g_lastHeight) {if(g_projectm)projectm_set_window_size(g_projectm,(size_t)w,(size_t)h);g_lastWidth=w;g_lastHeight=h;}
         int style=InterlockedCompareExchange(&g_shared->visualStyle,0,0);ReadPcm();ReadBands();InterlockedExchange(&g_stage,90);
-        if(style==0){int delta=InterlockedExchange(&g_shared->presetDelta,0);if(delta)LoadPresetDelta(delta);bool automatic=InterlockedCompareExchange(&g_shared->autoSwitch,0,0)!=0;if(automatic&&!g_presets.empty()&&GetTickCount64()-g_lastPresetTick>45000)LoadPresetDelta(1);projectm_pcm_add_float(g_projectm,g_pcm,ABM_PROJECTM_PCM_COUNT,PROJECTM_MONO);\n            /* The custom GLSL modes share this context. Restore a clean default\n               state before entering ProjectM so shader state cannot leak into\n               MilkDrop when the user switches styles. */\n            glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);\n            glUseProgram(0);glBindVertexArray(0);glActiveTexture(GL_TEXTURE0);\n            glDisable(GL_SCISSOR_TEST);glDisable(GL_STENCIL_TEST);glDisable(GL_CULL_FACE);\n            glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);glDepthMask(GL_TRUE);\n            projectm_opengl_render_frame(g_projectm);}
+        if(style==0){int delta=InterlockedExchange(&g_shared->presetDelta,0);if(delta)LoadPresetDelta(delta);bool automatic=InterlockedCompareExchange(&g_shared->autoSwitch,0,0)!=0;if(automatic&&!g_presets.empty()&&GetTickCount64()-g_lastPresetTick>45000)LoadPresetDelta(1);projectm_pcm_add_float(g_projectm,g_pcm,ABM_PROJECTM_PCM_COUNT,PROJECTM_MONO);
+            /* The custom GLSL modes share this context. Restore a clean default
+               state before entering ProjectM so shader state cannot leak into
+               MilkDrop when the user switches styles. */
+            glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);
+            glUseProgram(0);glBindVertexArray(0);glActiveTexture(GL_TEXTURE0);
+            glDisable(GL_SCISSOR_TEST);glDisable(GL_STENCIL_TEST);glDisable(GL_CULL_FACE);
+            glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);glDepthMask(GL_TRUE);
+            projectm_opengl_render_frame(g_projectm);}
         else RenderOpenGLStyle(style,w,h);
         GLenum glError=glGetError();
         /* Publish BGRA pixels through shared memory. The main player paints
