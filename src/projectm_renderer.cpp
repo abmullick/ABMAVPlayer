@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstring>
 #include <stdint.h>
+#include <cwchar>
 #include "projectm_ipc.h"
 
 #pragma comment(lib,"opengl32.lib")
@@ -162,6 +163,8 @@ int wmain(int argc,wchar_t **argv) {
     projectm_set_soft_cut_duration(g_projectm,4.0);
     projectm_set_beat_sensitivity(g_projectm,1.15f);
     projectm_set_aspect_correction(g_projectm,true);
+    /* Preset cycling is owned by this renderer timer, not ProjectM internals. */
+    projectm_set_preset_locked(g_projectm,true);
     if(argv[4][0]) {
         std::string texture=Utf8(argv[4]);const char *paths[]={texture.c_str()};
         projectm_set_texture_search_paths(g_projectm,paths,1);
