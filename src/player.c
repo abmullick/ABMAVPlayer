@@ -274,6 +274,8 @@ static DWORD g_lastResumeSaveTick=0;
 static BOOL g_missingMedia[MAX_PLAYLIST];
 static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
+/* Ease the audio visualizer into view over roughly 400 ms after activation. */
+static float g_visualizerFade=0.0f;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
 static BOOL g_projectmSurfaceReady=FALSE;
@@ -1330,6 +1332,7 @@ static void EnsureProjectMRenderer(HWND hwnd) {
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
     ABM_AudioVisualizer_GetBands(levels,24);
+    for(int i=0;i<24;i++)levels[i]*=g_visualizerFade;
     int width=area.right-area.left,height=area.bottom-area.top;
     if(width<160||height<120)return;
 
@@ -8434,6 +8437,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VISUALIZER_TIMER_ID) {
             if(g_visualizerActive) {
                 ++g_visualizerFrame;
+                if(g_visualizerFade<1.0f){g_visualizerFade+=0.04f;if(g_visualizerFade>1.0f)g_visualizerFade=1.0f;}
                 if(g_visualizerMode>=4 && InterlockedCompareExchange(&g_pmDiagTimer,1,0)==0)
                     ProjectMPlayerLogState(L"visualizer timer entered",g_visualizerActive,g_visualizerMode,ABM_ProjectM_IsReady());
                 BOOL projectmReady=(g_visualizerMode>=4 && ABM_ProjectM_IsReady());
@@ -8442,8 +8446,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 if(projectmReady) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
+                    /* Ease the renderer's waveform as well as its spectrum so
+                       MilkDrop and the native GLSL styles start without a jump. */
+                    for(int i=0;i<512;i++)pcm[i]*=g_visualizerFade;
                     ABM_ProjectM_SetAudioSamples(pcm,512);
-                    float bands[24];ABM_AudioVisualizer_GetBands(bands,24);ABM_ProjectM_SetAudioBands(bands,24);
+                    float bands[24];ABM_AudioVisualizer_GetBands(bands,24);
+                    for(int i=0;i<24;i++)bands[i]*=g_visualizerFade;
+                    ABM_ProjectM_SetAudioBands(bands,24);
                     ABM_ProjectM_SetStyle(g_visualizerMode-4);
                     /* The renderer publishes a fresh shared-memory frame every
                        ~16 ms. Repaint on every visualizer tick, not only on the
@@ -8627,6 +8636,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(!g_visualizerTried) {
                 g_visualizerTried=TRUE;
                 g_visualizerActive=ABM_AudioVisualizer_Start();
+                if(g_visualizerActive)g_visualizerFade=0.0f;
             }
             if(g_visualizerActive) {
                 if(g_visualizerMode>=4)EnsureProjectMRenderer(hwnd);
