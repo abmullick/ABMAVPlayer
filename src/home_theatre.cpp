@@ -229,7 +229,10 @@ static void SaveManualMatch(int providerId,int type,int pathIndex) {
     fwprintf(fp,L"%d\t%d\t%s\n",providerId,type,g_mediaPaths[(size_t)pathIndex].c_str());
     BOOL writeOk=ferror(fp)==0;fclose(fp);
     if(!writeOk||!MoveFileExW(temp,file,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)){DeleteFileW(temp);return;}
-    SaveLibraryCatalogEntry(pathIndex);
+    /* A manual file association can be saved before provider details arrive.
+       Do not publish an empty/placeholder metadata row into the main Library;
+       HT_DETAILS_DONE enables this only after useful details were received. */
+    if(g_detailsReady)SaveLibraryCatalogEntry(pathIndex);
 }
 static BOOL ImageFolder(wchar_t *folder,size_t cap) {
     wchar_t app[MAX_PATH]={};if(FAILED(SHGetFolderPathW(nullptr,CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE,nullptr,SHGFP_TYPE_CURRENT,app)))return FALSE;
@@ -864,6 +867,8 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             StringCchCopyW(g_genres,_countof(g_genres),r->genres);
             StringCchCopyW(g_cast,_countof(g_cast),r->cast);
             StringCchCopyW(g_director,_countof(g_director),r->director);
+            g_detailsReady=(r->overview[0]||r->year[0]||r->runtime[0]||r->genres[0]||
+                            r->cast[0]||r->director[0]||r->posterFile[0]||r->backdropFile[0]);
             StringCchCopyW(g_posterFile,_countof(g_posterFile),r->posterFile);
             StringCchCopyW(g_backdropFile,_countof(g_backdropFile),r->backdropFile);g_showBackdrop=FALSE;
             if(g_posterFile[0])ABM_D2D_LoadImage(&g_canvas,g_posterFile);else if(g_backdropFile[0]){g_showBackdrop=TRUE;ABM_D2D_LoadImage(&g_canvas,g_backdropFile);SetWindowTextW(g_artButton,L"Show poster");}
