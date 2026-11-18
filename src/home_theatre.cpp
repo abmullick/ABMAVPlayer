@@ -205,9 +205,29 @@ static void SaveLibraryCatalogEntry(int pathIndex) {
 static void SaveManualMatch(int providerId,int type,int pathIndex) {
     if(providerId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
-    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches-v2.tsv",folder);
-    FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
-    fwprintf(fp,L"%d\t%d\t%s\n",providerId,type,g_mediaPaths[(size_t)pathIndex].c_str());fclose(fp);
+    wchar_t file[MAX_PATH]={},temp[MAX_PATH]={};
+    if(FAILED(StringCchPrintfW(file,_countof(file),L"%s\\matches-v2.tsv",folder))||
+       FAILED(StringCchPrintfW(temp,_countof(temp),L"%s\\matches-v2.tmp",folder)))return;
+    std::vector<std::wstring> retained;
+    FILE *old=nullptr;
+    if(_wfopen_s(&old,file,L"rt, ccs=UTF-8")==0&&old) {
+        wchar_t line[MAX_PATH+128];
+        while(fgetws(line,_countof(line),old)) {
+            line[wcscspn(line,L"\r\n")]=0;
+            wchar_t *a=wcschr(line,L'\t');if(!a){retained.emplace_back(line);continue;}*a++=0;
+            wchar_t *b=wcschr(a,L'\t');if(!b){retained.emplace_back(line);continue;}*b++=0;
+            if(_wtoi(line)==providerId&&_wtoi(a)==type)continue;
+            wchar_t row[MAX_PATH+128]={};
+            StringCchPrintfW(row,_countof(row),L"%d\t%d\t%s",_wtoi(line),_wtoi(a),b);
+            retained.emplace_back(row);
+        }
+        fclose(old);
+    }
+    FILE *fp=nullptr;if(_wfopen_s(&fp,temp,L"wt, ccs=UTF-8")!=0||!fp)return;
+    for(const std::wstring &row:retained)fwprintf(fp,L"%s\n",row.c_str());
+    fwprintf(fp,L"%d\t%d\t%s\n",providerId,type,g_mediaPaths[(size_t)pathIndex].c_str());
+    BOOL writeOk=ferror(fp)==0;fclose(fp);
+    if(!writeOk||!MoveFileExW(temp,file,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)){DeleteFileW(temp);return;}
     SaveLibraryCatalogEntry(pathIndex);
 }
 static BOOL ImageFolder(wchar_t *folder,size_t cap) {
