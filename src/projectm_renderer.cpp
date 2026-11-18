@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <cwchar>
 #include <stdlib.h>
+#include <cmath>
 #include <strsafe.h>
 #include "projectm_ipc.h"
 
@@ -70,6 +71,10 @@ volatile LONG g_frameLockMissLogged=0;
 /* A MilkDrop preset can evaluate to a fully black frame. Never publish that
    frame over the last good image; skip the preset if it stays black. */
 volatile LONG g_blankFrameStreak=0;
+GLuint g_visualProgram=0,g_visualVao=0;
+GLint g_visualTime=-1,g_visualResolution=-1,g_visualStyle=-1,g_visualBands=-1;
+float g_audioBands[24]{};
+ULONGLONG g_visualStart=0;
 
 std::string Utf8(const wchar_t *value) {
     if(!value||!*value)return {};
@@ -150,28 +155,41 @@ void ReadPcm() {
         if(before==after&&!(after&1))return;
     }
 }
+bool CreateVisualShader() {
+ const char *vs="#version 330 core\nout vec2 uv;void main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);uv=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}";
+ const char *fs=
+ "#version 330 core\nin vec2 uv;out vec4 frag;uniform vec2 resolution;uniform float time;uniform int style;uniform float bands[24];"
+ "float b(float x){return clamp(bands[clamp(int(x*23.0),0,23)],0.0,1.0);}float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}"
+ "void main(){vec2 p=(uv-0.5)*vec2(resolution.x/resolution.y,1.0);float t=time;float energy=0.0;for(int i=0;i<24;i++)energy+=bands[i];energy/=24.0;vec3 c=vec3(0.008,0.014,0.03);"
+ "if(style==1){float q=uv.x*48.0;float id=floor(q);float h=0.025+b((id+0.5)/48.0)*0.72;float y=0.13+h*(0.45+0.55*uv.y);float bar=step(fract(q),0.78)*step(uv.y,y)*step(0.12,uv.y);float glow=exp(-abs(uv.y-y)*45.0);vec3 k=mix(vec3(0.02,0.72,0.98),vec3(0.98,0.18,0.62),id/48.0);c+=k*(bar*0.8+glow*0.18);}"
+ "else if(style==2){for(int i=0;i<52;i++){float fi=float(i);vec2 s=vec2(hash(vec2(fi,2.1)),hash(vec2(fi,7.3)));float speed=0.025+hash(vec2(fi,4.2))*0.11;vec2 q=fract(s+vec2(t*speed,-t*speed*0.7));vec2 d=(q-uv)*vec2(resolution.x/resolution.y,1.0);float r=0.0025+b(fract(fi/52.0))*0.005;float dotp=exp(-dot(d,d)/(r*r));vec3 hue=0.5+0.5*cos(vec3(0.0,2.1,4.2)+fi*0.19+t*0.18);c+=hue*dotp*(0.45+energy);}float ring=abs(length(p)-(0.18+energy*0.25));c+=vec3(0.08,0.48,0.95)*exp(-ring*75.0)*0.5;}"
+ "else if(style==3){float a=atan(p.y,p.x);float r=length(p);float wave=0.0;for(int i=0;i<24;i++){float f=float(i)/23.0;wave+=bands[i]*sin(a*3.0+f*19.0+t*1.8)*0.006;}float trace=abs(r-(0.28+wave+0.055*sin(a*5.0-t*0.65)));c+=vec3(0.04,0.95,0.78)*exp(-trace*190.0);c+=vec3(0.10,0.35,0.95)*exp(-abs(r-0.46)*55.0)*0.42;}"
+ "else if(style==4){vec2 q=p;float v=0.0;for(int i=0;i<5;i++){float f=float(i);q=vec2(sin(q.y*3.2+t*0.24+f)+cos(q.x*2.5-t*0.18),sin(q.x*2.8+t*0.16)-cos(q.y*3.0+t*0.2));v+=sin(q.x+q.y+energy*3.5)*0.2;}float n=0.5+0.5*sin(v*3.4+t*0.35);c=mix(vec3(0.015,0.35,0.68),vec3(0.78,0.08,0.48),n);c*=0.35+0.65*abs(sin(v*5.2));}"
+ "else if(style==5){float a=atan(p.y,p.x);float r=max(length(p),0.001);float z=0.8/r-t*1.55;float spokes=abs(sin(a*14.0+floor(z)*0.3));float rings=abs(fract(z)-0.5);float glow=exp(-rings*(30.0+b(fract(a/6.28318))*28.0))*exp(-spokes*8.0);vec3 hue=0.5+0.5*cos(vec3(0.0,2.0,4.0)+z*0.22+a);c+=hue*glow*(0.45+energy);c+=vec3(0.02,0.12,0.2)*exp(-rings*8.0);}"
+ "frag=vec4(c,1.0);}";
+ auto compile=[](GLenum type,const char *src)->GLuint{GLuint sh=glCreateShader(type);glShaderSource(sh,1,&src,nullptr);glCompileShader(sh);GLint ok=0;glGetShaderiv(sh,GL_COMPILE_STATUS,&ok);if(!ok){char log[1024]={0};glGetShaderInfoLog(sh,sizeof(log),nullptr,log);wchar_t msg[1200];StringCchPrintfW(msg,_countof(msg),L"OpenGL shader compile failed: %S",log);LogText(msg);glDeleteShader(sh);return 0;}return sh;};
+ GLuint v=compile(GL_VERTEX_SHADER,vs);if(!v)return false;GLuint f=compile(GL_FRAGMENT_SHADER,fs);if(!f){glDeleteShader(v);return false;}
+ g_visualProgram=glCreateProgram();glAttachShader(g_visualProgram,v);glAttachShader(g_visualProgram,f);glLinkProgram(g_visualProgram);glDeleteShader(v);glDeleteShader(f);
+ GLint linked=0;glGetProgramiv(g_visualProgram,GL_LINK_STATUS,&linked);if(!linked){char log[1024]={0};glGetProgramInfoLog(g_visualProgram,sizeof(log),nullptr,log);wchar_t msg[1200];StringCchPrintfW(msg,_countof(msg),L"OpenGL shader link failed: %S",log);LogText(msg);glDeleteProgram(g_visualProgram);g_visualProgram=0;return false;}
+ glGenVertexArrays(1,&g_visualVao);g_visualTime=glGetUniformLocation(g_visualProgram,"time");g_visualResolution=glGetUniformLocation(g_visualProgram,"resolution");g_visualStyle=glGetUniformLocation(g_visualProgram,"style");g_visualBands=glGetUniformLocation(g_visualProgram,"bands");g_visualStart=GetTickCount64();return true;
+}
+void ReadBands(){for(int a=0;a<4;a++){LONG before=InterlockedCompareExchange(&g_shared->sequence,0,0);if(before&1)continue;CopyMemory(g_audioBands,g_shared->bands,sizeof(g_audioBands));MemoryBarrier();LONG after=InterlockedCompareExchange(&g_shared->sequence,0,0);if(before==after&&!(after&1))return;}}
+void RenderOpenGLStyle(int style,int w,int h){
+ if(!g_visualProgram&&!CreateVisualShader()){glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);glClearColor(0.008f,0.014f,0.03f,1);glClear(GL_COLOR_BUFFER_BIT);return;}
+ glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);glDisable(GL_DEPTH_TEST);glDisable(GL_BLEND);glClearColor(0.008f,0.014f,0.03f,1);glClear(GL_COLOR_BUFFER_BIT);
+ glUseProgram(g_visualProgram);glBindVertexArray(g_visualVao);glUniform2f(g_visualResolution,(float)w,(float)h);glUniform1f(g_visualTime,(float)(GetTickCount64()-g_visualStart)/1000.0f);glUniform1i(g_visualStyle,style);glUniform1fv(g_visualBands,24,g_audioBands);glDrawArrays(GL_TRIANGLES,0,3);glBindVertexArray(0);glUseProgram(0);
+}
+
 void RenderFrame() {
-    if(!g_projectm||!g_gl||!g_dc||!g_shared)return;
+    if(!g_gl||!g_dc||!g_shared)return;
     if(!wglMakeCurrent(g_dc,g_gl)) { if(InterlockedCompareExchange(&g_firstRenderLogged,2,0)==0)LogText(L"render failed: wglMakeCurrent"); return; }
     RECT rc{};GetClientRect(g_window,&rc);
     int w=rc.right-rc.left,h=rc.bottom-rc.top;
     if(w>0&&h>0) {
-        if(w!=g_lastWidth||h!=g_lastHeight) {
-            projectm_set_window_size(g_projectm,(size_t)w,(size_t)h);
-            g_lastWidth=w;g_lastHeight=h;
-        }
-        int delta=InterlockedExchange(&g_shared->presetDelta,0);
-        if(delta)LoadPresetDelta(delta);
-        bool automatic=InterlockedCompareExchange(&g_shared->autoSwitch,0,0)!=0;
-        if(automatic&&!g_presets.empty()&&GetTickCount64()-g_lastPresetTick>45000)
-            LoadPresetDelta(1);
-        ReadPcm();
-        projectm_pcm_add_float(g_projectm,g_pcm,ABM_PROJECTM_PCM_COUNT,PROJECTM_MONO);
-        glBindFramebuffer(GL_FRAMEBUFFER,0);
-        glDrawBuffer(GL_BACK);
-        glViewport(0,0,w,h);
-        InterlockedExchange(&g_stage,90);
-        projectm_opengl_render_frame(g_projectm);
+        if(w!=g_lastWidth||h!=g_lastHeight) {if(g_projectm)projectm_set_window_size(g_projectm,(size_t)w,(size_t)h);g_lastWidth=w;g_lastHeight=h;}
+        int style=InterlockedCompareExchange(&g_shared->visualStyle,0,0);ReadPcm();ReadBands();InterlockedExchange(&g_stage,90);
+        if(style==0){int delta=InterlockedExchange(&g_shared->presetDelta,0);if(delta)LoadPresetDelta(delta);bool automatic=InterlockedCompareExchange(&g_shared->autoSwitch,0,0)!=0;if(automatic&&!g_presets.empty()&&GetTickCount64()-g_lastPresetTick>45000)LoadPresetDelta(1);projectm_pcm_add_float(g_projectm,g_pcm,ABM_PROJECTM_PCM_COUNT,PROJECTM_MONO);glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);projectm_opengl_render_frame(g_projectm);}
+        else RenderOpenGLStyle(style,w,h);
         GLenum glError=glGetError();
         /* Publish BGRA pixels through shared memory. The main player paints
            them into its own GDI/Direct2D composition; no foreign child HWND. */
@@ -315,7 +333,7 @@ void RenderFrame() {
 void Cleanup() {
     if(g_window)KillTimer(g_window,RENDER_TIMER);
     if(g_dc&&g_gl)wglMakeCurrent(g_dc,g_gl);
-    if(g_projectm){projectm_destroy(g_projectm);g_projectm=nullptr;}
+    if(g_projectm){projectm_destroy(g_projectm);g_projectm=nullptr;}if(g_visualProgram){glDeleteProgram(g_visualProgram);g_visualProgram=0;}if(g_visualVao){glDeleteVertexArrays(1,&g_visualVao);g_visualVao=0;}
     if(g_gl){wglMakeCurrent(nullptr,nullptr);wglDeleteContext(g_gl);g_gl=nullptr;}
     if(g_dc&&g_window){ReleaseDC(g_window,g_dc);g_dc=nullptr;}
     if(g_shared) {
