@@ -155,12 +155,38 @@ static int LoadManualMatch(int providerId,int type) {
     }
     fclose(fp);return found;
 }
+static void WriteCatalogField(FILE *fp,const wchar_t *value) {
+    for(const wchar_t *p=value?value:L"";*p;p++) {
+        wchar_t ch=*p;
+        if(ch==L'\t'||ch==L'\r'||ch==L'\n')ch=L' ';
+        fputwc(ch,fp);
+    }
+}
+static void SaveLibraryCatalogEntry(int pathIndex) {
+    if(pathIndex<0||pathIndex>=(int)g_mediaPaths.size()||g_selected<0||g_selected>=g_itemCount)return;
+    wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
+    wchar_t file[MAX_PATH]={};if(FAILED(StringCchPrintfW(file,_countof(file),L"%s\\metadata-catalog.tsv",folder)))return;
+    FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
+    const MovieItem &item=g_items[g_selected];
+    WriteCatalogField(fp,g_mediaPaths[(size_t)pathIndex].c_str());fputwc(L'\t',fp);
+    WriteCatalogField(fp,item.title);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_year);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_genres);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_overview);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_cast);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_director);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_posterFile);fputwc(L'\t',fp);
+    WriteCatalogField(fp,g_backdropFile);fputwc(L'\n',fp);
+    fclose(fp);
+    if(g_window&&GetParent(g_window))PostMessageW(GetParent(g_window),WM_APP+0x5A6,0,0);
+}
 static void SaveManualMatch(int providerId,int type,int pathIndex) {
     if(providerId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
     wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches-v2.tsv",folder);
     FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
     fwprintf(fp,L"%d\t%d\t%s\n",providerId,type,g_mediaPaths[(size_t)pathIndex].c_str());fclose(fp);
+    SaveLibraryCatalogEntry(pathIndex);
 }
 static BOOL ImageFolder(wchar_t *folder,size_t cap) {
     wchar_t app[MAX_PATH]={};if(FAILED(SHGetFolderPathW(nullptr,CSIDL_LOCAL_APPDATA|CSIDL_FLAG_CREATE,nullptr,SHGFP_TYPE_CURRENT,app)))return FALSE;
