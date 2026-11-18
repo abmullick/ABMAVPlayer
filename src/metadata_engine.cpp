@@ -255,6 +255,17 @@ bool TvMazeEpisodes(int id,int season,std::wstring &out) {
     }
     out+=L"]}";return count>0;
 }
+bool QueryRelatedMovies(int providerId,std::wstring &out) {
+    if(providerId<=0)return false;
+    wchar_t entity[64];StringCchPrintfW(entity,_countof(entity),L"wd:Q%d",providerId);
+    std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription ?date ?image (COUNT(DISTINCT ?genre) AS ?sharedGenres) WHERE { ";
+    q+=entity;
+    q+=L" wdt:P136 ?genre . ?item wdt:P31/wdt:P279* wd:Q11424 ; wdt:P136 ?genre . FILTER(?item != ";
+    q+=entity;
+    q+=L") OPTIONAL { ?item wdt:P577 ?date . } OPTIONAL { ?item wdt:P18 ?image . } SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } } GROUP BY ?item ?itemLabel ?itemDescription ?date ?image ORDER BY DESC(?sharedGenres) LIMIT 16";
+    std::vector<wchar_t> raw;
+    return QueryWikidata(q,raw)&&BuildMovieResults(raw.data(),out,false);
+}
 bool CopyOutput(const std::wstring &value,wchar_t *out,size_t cap) {
     if(!out||!cap||value.size()>=cap)return false;
     return SUCCEEDED(StringCchCopyW(out,cap,value.c_str()));
@@ -281,6 +292,11 @@ extern "C" BOOL ABM_Metadata_GetDetails(ABM_METADATA_MEDIA_TYPE type,int provide
         if(QueryWikidata(sparql,raw))ok=BuildMovieResults(raw.data(),result,true);
     }
     return ok&&CopyOutput(result,json,capacity);
+}
+extern "C" BOOL ABM_Metadata_GetRecommendations(ABM_METADATA_MEDIA_TYPE type,int providerId,wchar_t *json,size_t capacity) {
+    if(type!=ABM_METADATA_MOVIE||providerId<=0||!json||!capacity)return FALSE;
+    std::wstring result;
+    return QueryRelatedMovies(providerId,result)&&CopyOutput(result,json,capacity);
 }
 extern "C" BOOL ABM_Metadata_GetSeasonDetails(int tvmazeId,int seasonNumber,wchar_t *json,size_t capacity) {
     if(tvmazeId<=0||seasonNumber<0||!json||!capacity)return FALSE;
