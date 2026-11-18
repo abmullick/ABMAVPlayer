@@ -275,9 +275,9 @@ Do not mark this feature runtime-validated until all Windows build and interacti
 
 ## Help Centre documentation regression
 
-- [ ] Open F1 Help and confirm the topic index includes **LIBRARY, CONTINUE WATCHING AND RESUME**, **MISSING MEDIA AND RELINKING**, **HOME THEATRE — TMDB DISCOVERY** and **NOW PLAYING AND VISUALIZER**.
+- [ ] Open F1 Help and confirm the topic index includes **LIBRARY, CONTINUE WATCHING AND RESUME**, **MISSING MEDIA AND RELINKING**, **HOME THEATRE — KEYLESS METADATA** and **NOW PLAYING AND VISUALIZER**.
 - [ ] Select each new topic and verify the article heading/content match the topic label and scroll correctly.
-- [ ] Search for `resume.tsv`, `MISSING MEDIA`, `Relink missing media`, `TMDB`, `MilkDrop`, `Fluid Motion` and `Repeat all`; verify matching topics open, the match is highlighted and F3/Enter continue searching with wraparound.
+- [ ] Search for `resume.tsv`, `MISSING MEDIA`, `Relink missing media`, `Wikidata`, `TVmaze`, `MilkDrop`, `Fluid Motion` and `Repeat all`; verify matching topics open, the match is highlighted and F3/Enter continue searching with wraparound.
 - [ ] Confirm the article explains the completion threshold, local checkpoint location, missing-path retention and the fact that relinking updates references rather than moving files.
 
 ## Continue Watching and Resume Playback
@@ -306,7 +306,7 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Test Spectrum Orbit, Fluid Waves, Particle Universe and Neon Spectrum; then test MilkDrop, 3D Spectrum, Particle Universe, Oscilloscope 3D, Fluid Motion and Geometric Tunnel (OpenGL).
 - [ ] Switch between Direct2D and OpenGL modes repeatedly; verify no extra visible window appears and the selected style is not replaced by a temporary Neon Spectrum scene.
 - [ ] Terminate the isolated renderer helper during playback; confirm audio continues and the player recovers to the Direct2D visualizer. Then play video and verify normal LibVLC rendering.
-- [ ] Test Home Theatre search, movie/TV details, posters/backdrops, recommendations, TV season/episode navigation, Identify library, manual local-file correction and Play local match. Verify missing TMDB credentials/network do not block local playback.
+- [ ] Test Home Theatre movie search/details through Wikidata and TV search/details through TVmaze without any API key or account. Verify available artwork downloads and caches, TV season/episode navigation, Identify library, manual local-file correction and Play local match. Test missing artwork, provider timeout, rate limiting and offline mode; none may block local playback.
 
 ## Subtitle Manager and Advanced Audio Centre
 
