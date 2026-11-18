@@ -26,7 +26,7 @@
 
 namespace {
 enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109, HT_PICKER=5110 };
-enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4 };
+enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4, HT_RECOMMEND_DONE=WM_APP+0x5A5 };
 static const COLORREF BG=RGB(7,15,25), PANEL=RGB(15,29,44), PANEL2=RGB(10,21,34);
 static const COLORREF TEXT=RGB(239,246,252), MUTED=RGB(145,169,190), ACCENT=RGB(73,199,181);
 static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr;
@@ -174,7 +174,7 @@ struct Work {
     int tvId=0;
 };
 struct Result {
-    int kind=0,count=0,index=-1;
+    int kind=0,count=0,index=-1,providerId=0;
     BOOL ok=FALSE;
     MovieItem items[100], recommendations[100], seasons[24], episodes[64];
     int recommendationCount=0, seasonCount=0, episodeCount=0;
@@ -265,6 +265,13 @@ static void StartSeasonLoad(int seasonNumber) {
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
     if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_results,FALSE);SetStatus(L"Loading season episodes…");}else delete w;
 }
+static void StartRecommendations(int index) {
+    if(index<0||index>=g_itemCount||g_items[index].type!=1)return;
+    Work *w=new(std::nothrow) Work();if(!w)return;
+    w->target=g_window;w->kind=5;w->index=index;w->item=g_items[index];
+    HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
+    if(thread)CloseHandle(thread);else delete w;
+}
 static DWORD WINAPI Worker(LPVOID parameter) {
     Work *w=(Work*)parameter;Result *r=new(std::nothrow) Result();
     if(!r){delete w;return 0;}r->kind=w->kind;r->index=w->index;
@@ -282,11 +289,6 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         r->ok=ABM_Metadata_GetDetails((ABM_METADATA_MEDIA_TYPE)item.type,item.id,json.data(),json.size());
         if(r->ok){
             ParseDetails(json.data(),r,item.poster,item.id,item.backdrop,item.type);
-            if(item.type==1){
-                std::vector<wchar_t> related(512*1024);
-                if(ABM_Metadata_GetRecommendations(ABM_METADATA_MOVIE,item.id,related.data(),related.size()))
-                    ParseSearchJson(related.data(),1,r->recommendations,&r->recommendationCount);
-            }
         }
         else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your network connection.");
     } else if(w->kind==3) {
@@ -315,8 +317,13 @@ static DWORD WINAPI Worker(LPVOID parameter) {
         r->ok=ABM_Metadata_GetSeasonDetails(w->tvId,w->seasonNumber,json.data(),json.size());
         if(r->ok){ParseEpisodes(json.data(),r,w->tvId,w->seasonNumber);r->ok=r->episodeCount>0;}
         if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No episode information was returned for this season.");
+    } else if(w->kind==5&&w->item.id>0&&w->item.type==1) {
+        r->providerId=w->item.id;
+        std::vector<wchar_t> json(512*1024);
+        r->ok=ABM_Metadata_GetRecommendations(ABM_METADATA_MOVIE,w->item.id,json.data(),json.size());
+        if(r->ok)ParseSearchJson(json.data(),1,r->recommendations,&r->recommendationCount);
     }
-    UINT done=w->kind==1?HT_SEARCH_DONE:w->kind==3?HT_SCAN_DONE:w->kind==4?HT_SEASON_DONE:HT_DETAILS_DONE;
+    UINT done=w->kind==1?HT_SEARCH_DONE:w->kind==3?HT_SCAN_DONE:w->kind==4?HT_SEASON_DONE:w->kind==5?HT_RECOMMEND_DONE:HT_DETAILS_DONE;
     if(!IsWindow(w->target)||!PostMessageW(w->target,done,0,(LPARAM)r))delete r;
     delete w;return 0;
 }
