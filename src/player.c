@@ -1279,6 +1279,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
 }
 static void EnsureProjectMRenderer(HWND hwnd) {
     if(g_projectmTried)return;
+    g_projectmTried=TRUE;
     wchar_t exePath[PATH_CAP],presetPath[PATH_CAP],texturePath[PATH_CAP];
     DWORD exeLen=GetModuleFileNameW(NULL,exePath,_countof(exePath));
     if(!exeLen||exeLen>=_countof(exePath))return;
@@ -1289,7 +1290,7 @@ static void EnsureProjectMRenderer(HWND hwnd) {
        FAILED(StringCchCatW(presetPath,_countof(presetPath),L"\\assets\\visualizer\\presets"))||
        FAILED(StringCchCopyW(texturePath,_countof(texturePath),exePath))||
        FAILED(StringCchCatW(texturePath,_countof(texturePath),L"\\assets\\visualizer\\textures")))return;
-    if(ABM_ProjectM_Create(hwnd,presetPath,texturePath))g_projectmTried=TRUE;
+    ABM_ProjectM_Create(hwnd,presetPath,texturePath);
 }
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
@@ -3886,7 +3887,9 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==24020)libvlc_video_set_scale(g_player,0.0f);
     else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?"yadif":NULL);}
     else if(cmd>=25210&&cmd<=25214){
+        int previousMode=g_visualizerMode;
         g_visualizerMode=cmd-25210;
+        if(g_visualizerMode==4 && previousMode!=4)g_projectmTried=FALSE;
         for(int i=0;i<64;i++)g_visualizerBarPeaks[i]=0.0f;
         if(g_visualizerMode==4) {
             if(g_visualizerActive)EnsureProjectMRenderer(hwnd);
