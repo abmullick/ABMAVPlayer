@@ -408,6 +408,7 @@ static void Draw(HWND w) {
         ABM_D2D_Text(&g_canvas,L"CAST",MakeRect(tx,490,tx+tw,512),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_Text(&g_canvas,g_cast[0]?g_cast:L"Not available",MakeRect(tx,514,tx+tw,556),TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_END_ELLIPSIS);
         if(g_director[0])ABM_D2D_Text(&g_canvas,g_director,MakeRect(tx,566,tx+tw,590),MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_Text(&g_canvas,m.type==2?L"TVmaze  ·  CC BY-SA 4.0 data  ·  tvmaze.com":L"Wikidata  ·  CC0 structured data",MakeRect(tx,594,tx+tw,616),MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     } else {
         ABM_D2D_Text(&g_canvas,L"Select a title to explore its details",MakeRect(380,170,c.right-40,215),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_Text(&g_canvas,L"Search by movie or television title. Select a result to load its synopsis, artwork, genres and credits. ABM will offer playback only when a matching local file is found in your current library.",MakeRect(380,224,c.right-60,340),MUTED,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
