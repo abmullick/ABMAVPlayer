@@ -724,6 +724,7 @@ static int CountFilteredMedia(void) {
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
         const HTMediaMetadata *htMeta=HTMetadataForPath(g_playlist[i]);
         if(g_searchText[0]&&!ContainsTextI(leaf,g_searchText)&&
+           !(htMeta&&ContainsTextI(htMeta->title,g_searchText))&&
            !(i==g_current&&((g_trackArtist[0]&&ContainsTextI(g_trackArtist,g_searchText))||
                             (g_trackAlbum[0]&&ContainsTextI(g_trackAlbum,g_searchText))||
                             (g_trackTitle[0]&&ContainsTextI(g_trackTitle,g_searchText)))))continue;
@@ -2339,6 +2340,7 @@ static void DrawUI(HDC dc,RECT client) {
     int matched=0,shown=0;g_visibleRowCount=0;
     for(int i=0;i<g_playlistCount;i++){
         const wchar_t *leaf=wcsrchr(g_playlist[i],L'\\');leaf=leaf?leaf+1:g_playlist[i];
+        const HTMediaMetadata *htMeta=HTMetadataForPath(g_playlist[i]);
         if(g_libraryTab==1&&g_showFavorites&&!IsFavoritePath(g_playlist[i]))continue;
         if(g_libraryTab==1&&g_showContinueWatching&&!g_hasResume[i])continue;
         BOOL isVideo=IsVideoPath(g_playlist[i]);
