@@ -6,7 +6,8 @@ Open **Home Theatre** from the idle home dashboard or playback context menu. Onl
 
 - **Movies:** Wikidata supplies title, description, release date and available image references.
 - **Television:** TVmaze supplies show search, summaries, artwork when available, cast, seasons and episode information.
-- Provider coverage varies. A movie may have no image or cast data; TVmaze generally supplies poster-style show artwork rather than a guaranteed cinematic backdrop. Movie recommendations are not currently available.
+- **Related movies:** Home Theatre can suggest movies sharing Wikidata genre classifications. These are similarity suggestions, not editorial recommendations; results depend on available genre data.
+- Provider coverage varies. A movie may have no image or cast data; TVmaze generally supplies poster-style show artwork rather than a guaranteed cinematic backdrop.
 - Local playback remains independent of network availability and metadata-provider responses.
 
 ### Discover and identify your library
@@ -25,6 +26,17 @@ The local-file picker lists video files in the current Home Theatre library snap
 - For a TV series, choose **Seasons**, select a season, then select an episode. Episode synopsis and air date are shown; ABM checks local filenames for common `S01E02` and `1x02` patterns before enabling playback.
 - Artwork availability and permitted reuse depend on the provider and the image's source licence. Users should respect the applicable image licence.
 
+
+## Music album artwork
+
+For audio playback, ABM resolves artwork in this order:
+
+1. Artwork URL exposed by the media file's embedded metadata.
+2. A standard image in the same folder: `cover.jpg`, `folder.jpg`, `front.jpg`, `album.jpg` and supported PNG/JPEG variants.
+3. A keyless Wikidata lookup using the embedded artist and album tags, with available Wikimedia Commons images.
+4. ABM's built-in artwork placeholder when no match is found.
+
+Network lookup and image retrieval run on a background worker and never block playback or the UI. Retrieved images are validated and cached locally. Wikidata album coverage is limited, and a Commons image is not guaranteed to be an actual commercial album cover. Image rights vary by file; check the individual Commons licence before redistribution. No API key or account is required.
 
 # ABM AV Player — User Guide
 
