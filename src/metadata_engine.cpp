@@ -127,12 +127,46 @@ std::wstring StripHtml(const wchar_t *s) {
     while(!out.empty()&&iswspace(out.front()))out.erase(out.begin());
     while(!out.empty()&&iswspace(out.back()))out.pop_back();return out;
 }
+std::wstring UrlDecode(const wchar_t *value) {
+    if(!value)return {};
+    int bytes=WideCharToMultiByte(CP_UTF8,0,value,-1,nullptr,0,nullptr,nullptr);
+    if(bytes<=1)return {};
+    std::string encoded((size_t)bytes,'\\0');
+    WideCharToMultiByte(CP_UTF8,0,value,-1,&encoded[0],bytes,nullptr,nullptr);
+    encoded.pop_back();
+    std::string decoded;
+    for(size_t i=0;i<encoded.size();i++) {
+        if(encoded[i]== '%' && i+2<encoded.size()) {
+            auto hexValue=[](char c)->int {if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;if(c>='A'&&c<='F')return c-'A'+10;return -1;};
+            int hi=hexValue(encoded[i+1]),lo=hexValue(encoded[i+2]);
+            if(hi>=0&&lo>=0){decoded.push_back((char)((hi<<4)|lo));i+=2;continue;}
+        }
+        decoded.push_back(encoded[i]);
+    }
+    int chars=MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,decoded.data(),(int)decoded.size(),nullptr,0);
+    if(chars<=0)return {};
+    std::wstring result((size_t)chars,L'\\0');
+    MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,decoded.data(),(int)decoded.size(),&result[0],chars);
+    return result;
+}
 std::wstring CommonsUrl(const wchar_t *file) {
     if(!file||!*file)return {};
-    std::wstring clean=file;if(clean.rfind(L"File:",0)==0)clean.erase(0,5);
+    std::wstring clean=file;
+    const wchar_t *specialHttp=L"http://commons.wikimedia.org/wiki/Special:FilePath/";
+    const wchar_t *specialHttps=L"https://commons.wikimedia.org/wiki/Special:FilePath/";
+    const wchar_t *uploadHttp=L"http://upload.wikimedia.org/wikipedia/commons/";
+    const wchar_t *uploadHttps=L"https://upload.wikimedia.org/wikipedia/commons/";
+    if(!_wcsnicmp(clean.c_str(),uploadHttps,wcslen(uploadHttps)))return clean;
+    if(!_wcsnicmp(clean.c_str(),uploadHttp,wcslen(uploadHttp)))return L"https"+clean.substr(4);
+    if(!_wcsnicmp(clean.c_str(),specialHttps,wcslen(specialHttps)))clean.erase(0,wcslen(specialHttps));
+    else if(!_wcsnicmp(clean.c_str(),specialHttp,wcslen(specialHttp)))clean.erase(0,wcslen(specialHttp));
+    size_t query=clean.find_first_of(L"?#");if(query!=std::wstring::npos)clean.erase(query);
+    clean=UrlDecode(clean.c_str());
+    if(clean.rfind(L"File:",0)==0)clean.erase(0,5);
+    if(clean.empty())return {};
     int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,clean.c_str(),-1,nullptr,0,nullptr,nullptr);
     if(bytes<=1)return {};
-    std::string utf8((size_t)bytes,'\0');
+    std::string utf8((size_t)bytes,'\\0');
     WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,clean.c_str(),-1,&utf8[0],bytes,nullptr,nullptr);
     utf8.pop_back();
     HCRYPTPROV provider=0;HCRYPTHASH hash=0;BYTE digest[16]={};DWORD digestBytes=sizeof(digest);
