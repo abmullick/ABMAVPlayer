@@ -240,8 +240,8 @@ static void HTMetadataReload(void) {
     wchar_t line[8192];
     while(g_htMetadataCount<MAX_PLAYLIST&&fgetws(line,_countof(line),fp)) {
         line[wcscspn(line,L"\r\n")]=0;
-        wchar_t *fields[9]={0},*ctx=NULL,*p=wcstok_s(line,L"\t",&ctx);
-        int n=0;while(p&&n<9){fields[n++]=p;p=wcstok_s(NULL,L"\t",&ctx);}
+        wchar_t *fields[9]={0},*p=line;int n=0;
+        while(n<9&&p){fields[n++]=p;wchar_t *tab=wcschr(p,L'\t');if(!tab)break;*tab=0;p=tab+1;}
         if(n<9||!fields[0][0]||!fields[1][0])continue;
         int at=-1;for(int i=0;i<g_htMetadataCount;i++)if(!_wcsicmp(g_htMetadata[i].path,fields[0])){at=i;break;}
         if(at<0)at=g_htMetadataCount++;
