@@ -783,6 +783,7 @@ typedef struct ArtworkDownloadRequest {
     wchar_t artist[256];
     wchar_t album[256];
     wchar_t localPath[PATH_CAP];
+    wchar_t folderPath[PATH_CAP];
     wchar_t url[PATH_CAP*4];
     wchar_t path[PATH_CAP];
 } ArtworkDownloadRequest;
@@ -945,28 +946,45 @@ cleanup:
     return ok;
 }
 
+static BOOL CopyLocalArtworkFile(const wchar_t *source,const wchar_t *destination,LONG generation) {
+    if(!source||!source[0]||!destination||!destination[0])return FALSE;
+    wchar_t tempPath[PATH_CAP]={0};
+    if(FAILED(StringCchPrintfW(tempPath,_countof(tempPath),L"%s.local-%ld",destination,(long)generation)))return FALSE;
+    BOOL ok=CopyFileW(source,tempPath,FALSE)&&ValidateArtworkImage(tempPath)
+        &&MoveFileExW(tempPath,destination,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
+    if(!ok)DeleteFileW(tempPath);
+    return ok;
+}
+static BOOL TryFolderArtwork(const wchar_t *folder,const wchar_t *destination,LONG generation) {
+    if(!folder||!folder[0])return FALSE;
+    static const wchar_t *names[]={L"cover.jpg",L"folder.jpg",L"front.jpg",L"album.jpg",
+        L"cover.png",L"folder.png",L"front.png",L"album.png",L"cover.jpeg",L"folder.jpeg"};
+    for(size_t i=0;i<_countof(names);i++) {
+        wchar_t candidate[PATH_CAP]={0};
+        if(FAILED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\%s",folder,names[i])))continue;
+        if(GetFileAttributesW(candidate)==INVALID_FILE_ATTRIBUTES)continue;
+        if(CopyLocalArtworkFile(candidate,destination,generation))return TRUE;
+    }
+    return FALSE;
+}
 static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
     ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)parameter;
     HRESULT com=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);
     wchar_t resolvedUrl[PATH_CAP*4]={0};
     const wchar_t *url=request->url;
-    BOOL downloaded=request->generation==InterlockedCompareExchange(&g_artworkGeneration,0,0);
-    if(downloaded&&request->localFile) {
-        wchar_t tempPath[PATH_CAP]={0};
-        downloaded=SUCCEEDED(StringCchPrintfW(tempPath,_countof(tempPath),L"%s.local-%ld",
-                                               request->path,(long)request->generation))
-            &&CopyFileW(request->localPath,tempPath,FALSE)
-            &&ValidateArtworkImage(tempPath)
-            &&MoveFileExW(tempPath,request->path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
-        if(!downloaded)DeleteFileW(tempPath);
-    } else if(downloaded) {
-        if(request->lookupMusic) {
-            downloaded=ABM_Metadata_FindAlbumArtwork(request->artist,request->album,
-                                                       resolvedUrl,_countof(resolvedUrl));
-            if(downloaded)url=resolvedUrl;
-        }
+    BOOL current=request->generation==InterlockedCompareExchange(&g_artworkGeneration,0,0);
+    BOOL downloaded=FALSE;
+    if(current&&request->localFile)
+        downloaded=CopyLocalArtworkFile(request->localPath,request->path,request->generation);
+    else if(current&&!request->lookupMusic&&request->url[0])
+        downloaded=DownloadArtworkSecurely(url,request->path,request->generation);
+    if(current&&!downloaded&&request->folderPath[0])
+        downloaded=TryFolderArtwork(request->folderPath,request->path,request->generation);
+    if(current&&!downloaded&&request->artist[0]&&request->album[0]) {
+        downloaded=ABM_Metadata_FindAlbumArtwork(request->artist,request->album,
+                                                   resolvedUrl,_countof(resolvedUrl));
         if(downloaded&&request->generation==InterlockedCompareExchange(&g_artworkGeneration,0,0))
-            downloaded=DownloadArtworkSecurely(url,request->path,request->generation);
+            downloaded=DownloadArtworkSecurely(resolvedUrl,request->path,request->generation);
         else downloaded=FALSE;
     }
     if(SUCCEEDED(com))CoUninitialize();
@@ -985,6 +1003,17 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
     CopyVlcMeta(media,libvlc_meta_Artist,g_trackArtist,256);
     CopyVlcMeta(media,libvlc_meta_Album,g_trackAlbum,256);
     CopyVlcMeta(media,libvlc_meta_Genre,g_trackGenre,256);
+
+    wchar_t mediaFolder[PATH_CAP]={0},mediaPath[PATH_CAP]={0};
+    char *mrl=libvlc_media_get_mrl(media);
+    if(mrl) {
+        MultiByteToWideChar(CP_UTF8,0,mrl,-1,mediaPath,(int)_countof(mediaPath));
+        libvlc_free(mrl);
+    }
+    DWORD pathChars=(DWORD)_countof(mediaPath);
+    if(mediaPath[0]&&SUCCEEDED(PathCreateFromUrlW(mediaPath,mediaFolder,&pathChars,0)))
+        PathRemoveFileSpecW(mediaFolder);
+
     BOOL requestStarted=FALSE;
     char *art=libvlc_media_get_meta(media,libvlc_meta_ArtworkURL);
     if (art) {
@@ -996,64 +1025,49 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
             if(request) {
                 request->target=g_main;
                 request->generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
+                wcsncpy_s(request->artist,_countof(request->artist),g_trackArtist,_TRUNCATE);
+                wcsncpy_s(request->album,_countof(request->album),g_trackAlbum,_TRUNCATE);
+                wcsncpy_s(request->folderPath,_countof(request->folderPath),mediaFolder,_TRUNCATE);
                 swprintf_s(request->path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)request->generation);
-                if(!_wcsnicmp(url,L"https://",8)) {
+                if(!_wcsnicmp(url,L"https://",8))
                     wcsncpy_s(request->url,_countof(request->url),url,_TRUNCATE);
-                } else if(!_wcsnicmp(url,L"file:",5)) {
+                else if(!_wcsnicmp(url,L"file:",5)) {
                     DWORD chars=(DWORD)_countof(request->localPath);
                     if(SUCCEEDED(PathCreateFromUrlW(url,request->localPath,&chars,0)))
                         request->localFile=TRUE;
                 }
-                if(request->localFile || request->url[0]) {
+                if(request->localFile||request->url[0]) {
                     HANDLE thread=CreateThread(NULL,0,ArtworkDownloadThread,request,0,NULL);
                     if(thread){CloseHandle(thread);requestStarted=TRUE;}else free(request);
                 } else free(request);
             }
         }
     }
-    /* Embedded artwork wins. If it is absent, try standard sibling artwork
-       names before querying Wikidata/Wikimedia Commons. */
+
+    /* Embedded art is preferred. If it is missing or cannot be decoded,
+       the worker tries same-folder covers before the online album lookup. */
     if(!requestStarted && EnsureDataDirectory() && g_main) {
-        char *mrl=libvlc_media_get_mrl(media);
-        wchar_t mediaPath[PATH_CAP]={0},folder[PATH_CAP]={0};
-        if(mrl) {
-            MultiByteToWideChar(CP_UTF8,0,mrl,-1,mediaPath,(int)_countof(mediaPath));
-            libvlc_free(mrl);
+        BOOL hasFolderCover=FALSE;
+        static const wchar_t *names[]={L"cover.jpg",L"folder.jpg",L"front.jpg",L"album.jpg",
+            L"cover.png",L"folder.png",L"front.png",L"album.png",L"cover.jpeg",L"folder.jpeg"};
+        for(size_t i=0;i<_countof(names)&&!hasFolderCover;i++) {
+            wchar_t candidate[PATH_CAP]={0};
+            if(SUCCEEDED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\%s",mediaFolder,names[i])))
+                hasFolderCover=GetFileAttributesW(candidate)!=INVALID_FILE_ATTRIBUTES;
         }
-        DWORD chars=(DWORD)_countof(mediaPath);
-        if(mediaPath[0] && SUCCEEDED(PathCreateFromUrlW(mediaPath,folder,&chars,0)) &&
-           PathRemoveFileSpecW(folder)) {
-            static const wchar_t *names[]={L"cover.jpg",L"folder.jpg",L"front.jpg",L"album.jpg",
-                L"cover.png",L"folder.png",L"front.png",L"album.png",L"cover.jpeg",L"folder.jpeg"};
-            for(size_t i=0;i<_countof(names)&&!requestStarted;i++) {
-                wchar_t candidate[PATH_CAP]={0};
-                if(FAILED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\%s",folder,names[i])) ||
-                   GetFileAttributesW(candidate)==INVALID_FILE_ATTRIBUTES)continue;
-                ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
-                if(!request)break;
+        if(hasFolderCover || (g_trackArtist[0]&&g_trackAlbum[0])) {
+            ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
+            if(request) {
                 request->target=g_main;
                 request->generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
-                request->localFile=TRUE;
-                wcsncpy_s(request->localPath,_countof(request->localPath),candidate,_TRUNCATE);
+                wcsncpy_s(request->artist,_countof(request->artist),g_trackArtist,_TRUNCATE);
+                wcsncpy_s(request->album,_countof(request->album),g_trackAlbum,_TRUNCATE);
+                wcsncpy_s(request->folderPath,_countof(request->folderPath),mediaFolder,_TRUNCATE);
+                request->lookupMusic=!hasFolderCover;
                 swprintf_s(request->path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)request->generation);
                 HANDLE thread=CreateThread(NULL,0,ArtworkDownloadThread,request,0,NULL);
                 if(thread){CloseHandle(thread);requestStarted=TRUE;}else free(request);
             }
-        }
-    }
-    /* Last resort: resolve the album via the keyless MusicBrainz and Cover
-       Art Archive APIs. The lookup and image download run off the UI thread. */
-    if(!requestStarted && g_trackArtist[0] && g_trackAlbum[0] && EnsureDataDirectory() && g_main) {
-        ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
-        if(request) {
-            request->target=g_main;
-            request->generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
-            request->lookupMusic=TRUE;
-            wcsncpy_s(request->artist,_countof(request->artist),g_trackArtist,_TRUNCATE);
-            wcsncpy_s(request->album,_countof(request->album),g_trackAlbum,_TRUNCATE);
-            swprintf_s(request->path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)request->generation);
-            HANDLE thread=CreateThread(NULL,0,ArtworkDownloadThread,request,0,NULL);
-            if(thread)CloseHandle(thread);else free(request);
         }
     }
     InvalidateRect(g_main,NULL,FALSE);
