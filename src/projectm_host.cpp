@@ -49,7 +49,7 @@ bool QuoteArg(wchar_t *out,size_t count,const wchar_t *value) {
 }
 
 extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,const wchar_t *textureDirectory) {
-    if(g_process&&WaitForSingleObject(g_process,0)==WAIT_TIMEOUT&&ABM_ProjectM_IsReady())return TRUE;
+    if(g_process&&WaitForSingleObject(g_process,0)==WAIT_TIMEOUT)return TRUE;
     if(g_starting||!parent||!IsWindow(parent))return FALSE;
     if(g_process)StopRenderer(true);
     g_starting=true;
