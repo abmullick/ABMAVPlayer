@@ -456,14 +456,14 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_results=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
-        g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
-        g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,136,130,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
+        g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
+        g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,136,130,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
-        g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,28,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
+        g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,28,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
         g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
-        g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
-        g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
-        CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
+        g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
+        g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
+        CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g_edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_results,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_results,LB_SETITEMHEIGHT,0,48);
