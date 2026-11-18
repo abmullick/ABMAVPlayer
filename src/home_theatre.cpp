@@ -165,10 +165,31 @@ static void WriteCatalogField(FILE *fp,const wchar_t *value) {
 static void SaveLibraryCatalogEntry(int pathIndex) {
     if(pathIndex<0||pathIndex>=(int)g_mediaPaths.size()||g_selected<0||g_selected>=g_itemCount)return;
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
-    wchar_t file[MAX_PATH]={};if(FAILED(StringCchPrintfW(file,_countof(file),L"%s\\metadata-catalog.tsv",folder)))return;
-    FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"at, ccs=UTF-8")!=0||!fp)return;
+    wchar_t file[MAX_PATH]={},temp[MAX_PATH]={};
+    if(FAILED(StringCchPrintfW(file,_countof(file),L"%s\\metadata-catalog.tsv",folder))||
+       FAILED(StringCchPrintfW(temp,_countof(temp),L"%s\\metadata-catalog.tmp",folder)))return;
+    const std::wstring selectedPath=g_mediaPaths[(size_t)pathIndex];
+    std::vector<std::wstring> retained;
+    FILE *old=nullptr;
+    if(_wfopen_s(&old,file,L"rt, ccs=UTF-8")==0&&old) {
+        wchar_t line[8192];
+        while(fgetws(line,_countof(line),old)) {
+            line[wcscspn(line,L"\r\n")]=0;
+            wchar_t *tab=wcschr(line,L'\t');
+            if(tab)*tab=0;
+            if(line[0]&&_wcsicmp(line,selectedPath.c_str())!=0)retained.emplace_back(line);
+        }
+        fclose(old);
+    }
+    FILE *fp=nullptr;
+    if(_wfopen_s(&fp,temp,L"wt, ccs=UTF-8")!=0||!fp)return;
+    for(const std::wstring &path:retained) {
+        /* Preserve existing catalogue records verbatim by copying their original line
+           in the next version; legacy rows are replaced by the latest association. */
+        fwprintf(fp,L"%s\t\t\t\t\t\t\t\t\n",path.c_str());
+    }
     const MovieItem &item=g_items[g_selected];
-    WriteCatalogField(fp,g_mediaPaths[(size_t)pathIndex].c_str());fputwc(L'\t',fp);
+    WriteCatalogField(fp,selectedPath.c_str());fputwc(L'\t',fp);
     WriteCatalogField(fp,item.title);fputwc(L'\t',fp);
     WriteCatalogField(fp,g_year);fputwc(L'\t',fp);
     WriteCatalogField(fp,g_genres);fputwc(L'\t',fp);
@@ -177,7 +198,11 @@ static void SaveLibraryCatalogEntry(int pathIndex) {
     WriteCatalogField(fp,g_director);fputwc(L'\t',fp);
     WriteCatalogField(fp,g_posterFile);fputwc(L'\t',fp);
     WriteCatalogField(fp,g_backdropFile);fputwc(L'\n',fp);
+    BOOL writeOk=ferror(fp)==0;
     fclose(fp);
+    if(!writeOk||!MoveFileExW(temp,file,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) {
+        DeleteFileW(temp);return;
+    }
     if(g_window&&GetParent(g_window))PostMessageW(GetParent(g_window),WM_APP+0x5A6,0,0);
 }
 static void SaveManualMatch(int providerId,int type,int pathIndex) {
