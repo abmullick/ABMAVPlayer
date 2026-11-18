@@ -11,7 +11,7 @@
 #include <cstdlib>
 
 #pragma comment(lib, "winhttp.lib")
-#pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "advapi32.lib")
 
 namespace {
 static const DWORD kConnectTimeout=5000,kSendTimeout=8000,kReceiveTimeout=12000;
