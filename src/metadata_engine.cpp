@@ -16,6 +16,31 @@
 namespace {
 static const DWORD kConnectTimeout=5000,kSendTimeout=8000,kReceiveTimeout=12000;
 
+// Respect the public provider limits even when the user repeats searches quickly.
+// TVmaze documents at least 20 requests / 10 seconds per IP; Wikidata Query
+// Service is deliberately kept to one request per second to avoid burst traffic.
+bool WaitForProviderRateLimit(const wchar_t *host) {
+    static SRWLOCK lock=SRWLOCK_INIT;
+    static ULONGLONG lastWikidata=0,lastTvmaze=0;
+    AcquireSRWLockExclusive(&lock);
+    ULONGLONG *last=nullptr;
+    DWORD interval=0;
+    if(host&&!_wcsicmp(host,L"api.tvmaze.com")) {
+        last=&lastTvmaze;
+        interval=550;
+    } else if(host&&!_wcsicmp(host,L"query.wikidata.org")) {
+        last=&lastWikidata;
+        interval=1100;
+    }
+    if(last) {
+        ULONGLONG now=GetTickCount64();
+        if(*last&&now-*last<interval)Sleep((DWORD)(interval-(now-*last)));
+        *last=GetTickCount64();
+    }
+    ReleaseSRWLockExclusive(&lock);
+    return last!=nullptr;
+}
+
 std::wstring UrlEncode(const wchar_t *value) {
     if(!value)return {};
     int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,value,-1,nullptr,0,nullptr,nullptr);
@@ -32,6 +57,7 @@ std::wstring UrlEncode(const wchar_t *value) {
     return std::wstring(encoded.begin(),encoded.end());
 }
 bool HttpGet(const wchar_t *host,const std::wstring &path,std::vector<wchar_t> &out,DWORD timeoutMs=kReceiveTimeout) {
+    if(!WaitForProviderRateLimit(host))return false;
     HINTERNET session=WinHttpOpen(L"ABM-AV-Player/1.2 (keyless metadata engine)",
         WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
     if(!session)return false;
