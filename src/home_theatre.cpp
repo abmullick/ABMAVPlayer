@@ -245,6 +245,12 @@ static void ParseEpisodes(const wchar_t *json,Result *r,int tvId,int seasonNumbe
         if(item.title[0])r->episodes[r->episodeCount++]=item;
     }
 }
+/* Keep episode links separate from show-level links in matches-v2.tsv.
+   The composite type key remains within a positive integer for supported seasons. */
+static int EpisodeMatchType(int season,int episode) {
+    if(season<0||season>999||episode<0||episode>999)return -1;
+    return 1000000+season*1000+episode;
+}
 static int FindEpisodeMatch(int season,int episode) {
     // Accept common release naming conventions with both padded and unpadded
     // season/episode numbers: S01E02, S1E2, 1x02, 1x2 and Season 1 Episode 2.
@@ -618,7 +624,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(LOWORD(wp)==HT_RECOMMEND&&HIWORD(wp)==BN_CLICKED&&g_recommendationCount){g_scanMode=FALSE;g_recommendMode=TRUE;g_seasonMode=FALSE;g_episodeMode=FALSE;g_selected=-1;g_itemCount=g_recommendationCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_recommendations[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a recommendation to explore its details.");return 0;}
         if(LOWORD(wp)==HT_SEASONS&&HIWORD(wp)==BN_CLICKED&&g_seasonCount){g_scanMode=FALSE;g_recommendMode=FALSE;g_seasonMode=TRUE;g_episodeMode=FALSE;g_selected=-1;g_itemCount=g_seasonCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_seasons[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].date);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Seasons");SetStatus(L"Select a season to browse its episodes.");return 0;}
         if(LOWORD(wp)==HT_ARTWORK&&HIWORD(wp)==BN_CLICKED){g_showBackdrop=!g_showBackdrop;const wchar_t *art=(g_showBackdrop&&g_backdropFile[0])?g_backdropFile:g_posterFile;if(art[0])ABM_D2D_LoadImage(&g_canvas,art);SetWindowTextW(g_artButton,g_showBackdrop?L"Show poster":L"Show backdrop");InvalidateRect(w,nullptr,FALSE);return 0;}
-        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);if(g_selected>=0&&g_selected<g_itemCount)SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match saved");}return 0;}
+        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);if(g_selected>=0&&g_selected<g_itemCount){if(g_episodeMode&&g_items[g_selected].episodeNumber>=0){int key=EpisodeMatchType(g_items[g_selected].seasonNumber,g_items[g_selected].episodeNumber);if(key>0)SaveManualMatch(g_tvId,key,g_localMatch);}else SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);}EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match saved");}return 0;}
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_UPDATE)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_MAXTEXT)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_SETFOCUS)return 0;
@@ -630,7 +636,11 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 g_selected=selected;
                 if(g_seasonMode&&!g_episodeMode&&g_items[selected].seasonNumber>=0){StartSeasonLoad(g_items[selected].seasonNumber);return 0;}
                 if(g_episodeMode&&g_items[selected].episodeNumber>=0){
-                    MovieItem episode=g_items[selected];g_localMatch=FindEpisodeMatch(episode.seasonNumber,episode.episodeNumber);
+                    MovieItem episode=g_items[selected];
+                    const int episodeKey=EpisodeMatchType(episode.seasonNumber,episode.episodeNumber);
+                    g_localMatch=episodeKey>0?LoadManualMatch(g_tvId,episodeKey):-1;
+                    if(g_localMatch<0)g_localMatch=FindEpisodeMatch(episode.seasonNumber,episode.episodeNumber);
+                    if(g_localMatch>=0&&episodeKey>0)SaveManualMatch(g_tvId,episodeKey,g_localMatch);
                     StringCchCopyW(g_overview,_countof(g_overview),episode.overview);StringCchCopyW(g_year,_countof(g_year),episode.date);g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;ABM_D2D_ClearImage(&g_canvas);
                     // TVmaze supplies landscape episode stills. Cache them separately
                     // from show posters and display them as a wide image in the details pane.
@@ -645,8 +655,9 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                             }
                         }
                     }
-                    EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);
-                    EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode still loaded. Local episode filename match found.":L"Episode details loaded. No matching local episode filename found.");InvalidateRect(w,nullptr,FALSE);return 0;
+                    if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
+                    EnableWindow(g_artButton,FALSE);EnableWindow(g_localPicker,TRUE);EnableWindow(g_matchButton,TRUE);
+                    EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode matched. Its local file link is saved for future sessions.":L"No episode filename match. Choose the correct local file to link this episode.");InvalidateRect(w,nullptr,FALSE);return 0;
                 }
                 g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;
