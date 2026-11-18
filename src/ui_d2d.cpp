@@ -33,6 +33,7 @@ static ID2D1HwndRenderTarget *Target(ABM_D2D *ui) { return static_cast<ID2D1Hwnd
 static ID2D1SolidColorBrush *Brush(ABM_D2D *ui) { return static_cast<ID2D1SolidColorBrush *>(ui->brush); }
 static std::vector<BYTE> g_bgraFrameUploadScratch;
 static volatile LONG g_projectMFrameDiagLogged = 0;
+static void ClearFileImageCache(void);
 static void LogProjectMFrameDiag(const wchar_t *message) {
     if (InterlockedCompareExchange(&g_projectMFrameDiagLogged, 1, 0) != 0) return;
     wchar_t path[MAX_PATH] = {};
