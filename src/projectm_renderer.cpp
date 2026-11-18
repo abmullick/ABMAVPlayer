@@ -196,6 +196,30 @@ void RenderFrame() {
                 InterlockedExchange(&g_shared->frameWidth,w);
                 InterlockedExchange(&g_shared->frameHeight,h);
                 InterlockedExchange(&g_shared->frameIndex,nextFrame);
+                /* Periodically measure the actual OpenGL readback. This tells
+                   us whether a dark display originates inside ProjectM or
+                   later in the IPC/Direct2D presentation path. */
+                LONG upcomingFrame=InterlockedCompareExchange(&g_renderFrames,0,0)+1;
+                if((upcomingFrame%120)==0) {
+                    const unsigned char *sample=g_shared->frames[nextFrame];
+                    size_t pixelCount=(size_t)w*(size_t)h;
+                    unsigned long long lit=0,luminanceSum=0;
+                    unsigned int maxChannel=0;
+                    for(size_t p=0;p<pixelCount;p++) {
+                        unsigned int b=sample[p*4u],g=sample[p*4u+1u],r=sample[p*4u+2u];
+                        unsigned int peak=(r>g?(r>b?r:b):(g>b?g:b));
+                        unsigned int luminance=(77u*r+150u*g+29u*b)>>8;
+                        if(peak>8)++lit;
+                        luminanceSum+=luminance;
+                        if(peak>maxChannel)maxChannel=peak;
+                    }
+                    wchar_t metrics[256];
+                    StringCchPrintfW(metrics,_countof(metrics),
+                        L"OpenGL output metrics: frame=%ld preset=%zu nonblack=%llu/%llu meanLuma=%llu maxRGB=%u",
+                        (long)upcomingFrame,g_presetIndex,lit,(unsigned long long)pixelCount,
+                        pixelCount?luminanceSum/pixelCount:0,maxChannel);
+                    LogText(metrics);
+                }
             } else if(InterlockedCompareExchange(&g_firstTransferErrorLogged,1,0)==0) {
                 wchar_t line[160];StringCchPrintfW(line,_countof(line),
                     L"shared frame transfer failed: 0x%04X",(unsigned)transferError);LogText(line);
