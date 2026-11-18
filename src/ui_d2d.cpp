@@ -525,6 +525,55 @@ extern "C" void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, f
         D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, &source);
 }
 
+struct FileImageCacheEntry {
+    wchar_t path[MAX_PATH];
+    ID2D1Bitmap *bitmap;
+    ULONGLONG lastUse;
+};
+static FileImageCacheEntry g_fileImageCache[64]={};
+static ID2D1HwndRenderTarget *g_fileImageCacheTarget=nullptr;
+static void ClearFileImageCache(void) {
+    for(auto &entry:g_fileImageCache){SafeRelease(&entry.bitmap);entry.path[0]=0;entry.lastUse=0;}
+    g_fileImageCacheTarget=nullptr;
+}
+extern "C" BOOL ABM_D2D_DrawImageFile(ABM_D2D *ui,const wchar_t *path,float l,float t,float r,float b) {
+    if(!ui||!path||!path[0]||!EnsureTarget(ui))return FALSE;
+    ID2D1HwndRenderTarget *target=Target(ui);
+    if(g_fileImageCacheTarget!=target){ClearFileImageCache();g_fileImageCacheTarget=target;}
+    FileImageCacheEntry *entry=nullptr,*victim=&g_fileImageCache[0];
+    ULONGLONG now=GetTickCount64();
+    for(auto &candidate:g_fileImageCache) {
+        if(candidate.bitmap&&_wcsicmp(candidate.path,path)==0){entry=&candidate;break;}
+        if(!candidate.bitmap){victim=&candidate;break;}
+        if(candidate.lastUse<victim->lastUse)victim=&candidate;
+    }
+    if(!entry) {
+        IWICImagingFactory *wic=nullptr;IWICBitmapDecoder *decoder=nullptr;
+        IWICBitmapFrameDecode *frame=nullptr;IWICFormatConverter *converter=nullptr;
+        ID2D1Bitmap *bitmap=nullptr;
+        HRESULT hr=CoCreateInstance(CLSID_WICImagingFactory,nullptr,CLSCTX_INPROC_SERVER,IID_PPV_ARGS(&wic));
+        if(SUCCEEDED(hr))hr=wic->CreateDecoderFromFilename(path,nullptr,GENERIC_READ,WICDecodeMetadataCacheOnLoad,&decoder);
+        if(SUCCEEDED(hr))hr=decoder->GetFrame(0,&frame);
+        if(SUCCEEDED(hr))hr=wic->CreateFormatConverter(&converter);
+        if(SUCCEEDED(hr))hr=converter->Initialize(frame,GUID_WICPixelFormat32bppPBGRA,WICBitmapDitherTypeNone,nullptr,0.0,WICBitmapPaletteTypeCustom);
+        if(SUCCEEDED(hr))hr=target->CreateBitmapFromWicBitmap(converter,nullptr,&bitmap);
+        SafeRelease(&converter);SafeRelease(&frame);SafeRelease(&decoder);SafeRelease(&wic);
+        if(FAILED(hr)||!bitmap){SafeRelease(&bitmap);return FALSE;}
+        entry=victim;SafeRelease(&entry->bitmap);entry->bitmap=bitmap;
+        wcsncpy_s(entry->path,_countof(entry->path),path,_TRUNCATE);
+    }
+    entry->lastUse=now;
+    D2D1_SIZE_F size=entry->bitmap->GetSize();float boxW=r-l,boxH=b-t;
+    if(size.width<=0||size.height<=0||boxW<=0||boxH<=0)return FALSE;
+    float sourceW=size.width,sourceH=size.height;
+    float imageAspect=size.width/size.height,boxAspect=boxW/boxH;
+    if(imageAspect>boxAspect)sourceW=size.height*boxAspect;else sourceH=size.width/boxAspect;
+    float sx=(size.width-sourceW)*0.5f,sy=(size.height-sourceH)*0.5f;
+    D2D1_RECT_F source=D2D1::RectF(sx,sy,sx+sourceW,sy+sourceH);
+    target->DrawBitmap(entry->bitmap,D2D1::RectF(l,t,r,b),1.0f,D2D1_BITMAP_INTERPOLATION_MODE_LINEAR,&source);
+    return TRUE;
+}
+
 extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
     UINT width, UINT height, float l, float t, float r, float b) {
     if (!ui || !pixels || !width || !height || !EnsureTarget(ui)) return FALSE;
