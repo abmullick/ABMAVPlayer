@@ -6341,7 +6341,7 @@ static const wchar_t *g_helpDocument=NULL;
 static int g_helpArticleStart=0,g_helpArticleLength=0,g_helpSearchCursor=0;
 static const wchar_t *g_helpTopicNames[]={
  L"GETTING STARTED",L"PLAYBACK AND FULLSCREEN",L"PLAYLISTS AND RECENT MEDIA",
- L"LIBRARY, CONTINUE WATCHING AND RESUME",L"MISSING MEDIA AND RELINKING",
+ L"LIBRARY, CONTINUE WATCHING AND RESUME",L"MISSING MEDIA AND RELINKING",L"HOME THEATRE — TMDB DISCOVERY",
  L"LICENSE & ACTIVATION",L"APPLICATION SETTINGS",L"AUDIO, VIDEO AND SUBTITLES",
  L"ADVANCED EQUALIZER AND AUDIO PROCESSING",L"NOW PLAYING AND VISUALIZER",
  L"LOCAL PLAYBACK OUTPUT",L"STREAMING CENTRE",L"STREAMING BROWSER CONTROLS",
@@ -6521,7 +6521,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Play/Pause starts or pauses the selected item. Stop ends playback. Previous and Next move through the playlist. Drag the timeline to seek and the volume control to change loudness. Double-click the video or use F11 to toggle fullscreen. In fullscreen, move the pointer to reveal the playback overlay; drag the timeline to seek. Press Esc or F11 to return to the window.\r\n"
             L"\r\n"
             L"PLAYLISTS AND RECENT MEDIA\r\n"
-            L"Add multiple files, double-click an item to play, and right-click a playlist row for item actions. Load Playlist and Save Playlist use M3U files. Recent media opens the recent-items list. Shuffle changes next-item order; Repeat current repeats the active item. The playlist supports up to 256 entries. Shuffle, repeat, playback speed and recent/playlist state are saved for your Windows user.\r\n"
+            L"Add multiple files, double-click an item to play, and right-click a playlist row for item actions. Load Playlist and Save Playlist use M3U files. Recent media opens the recent-items list. Shuffle changes next-item order. Repeat cycles through Off, Repeat all and Repeat current; the active mode is visibly indicated. Ctrl+R cycles the repeat mode. The playlist supports up to 256 entries. Shuffle, repeat, playback speed and recent/playlist state are saved for your Windows user.\r\n"
             L"\r\n"
             L"LIBRARY, CONTINUE WATCHING AND RESUME\r\n"
             L"Use the Library view selector to cycle All tracks, Favourites and Continue Watching. Continue Watching lists items with a saved playback position and shows an approximate progress percentage and remaining time. Resume is automatic: when you play an item with a saved checkpoint, ABM AV Player seeks after LibVLC reports that playback has started. Right-click a media row to choose Continue from checkpoint or Start from beginning. Starting from the beginning clears the old checkpoint only after playback successfully starts.\r\n"
@@ -6529,9 +6529,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"\r\n"
             L"MISSING MEDIA AND RELINKING\r\n"
             L"Playlist and saved-library entries are file-path references. If a file is moved, renamed, disconnected or deleted, its entry is retained and flagged MISSING MEDIA rather than silently removed. Open the Library/Queue drawer to refresh availability, then right-click the missing row and choose Relink missing media. Select the replacement file in the Windows file picker. Cancel leaves the original reference unchanged.\r\n"
-            L"Relinking updates matching references in the active playlist, Favourites, Recent media, resume records and saved personal M3U collections. It changes the stored path; it does not copy, move, rename or repair the file. Choose the correct replacement, because a different edit or episode may not match the saved resume position. Reconnect removable drives or network shares and reopen the drawer to refresh their status.\r\n"            L"Right-click any media row in Queue or Library and choose Open file location to open its containing folder in Windows File Explorer with the media file selected. The action is disabled for missing files; use Relink missing media first.\r\n"
+            L"Relinking updates matching references in the active playlist, Favourites, Recent media, resume records and saved personal M3U collections. It changes the stored path; it does not copy, move, rename or repair the file. Choose the correct replacement, because a different edit or episode may not match the saved resume position. Reconnect removable drives or network shares and reopen the drawer to refresh their status.\r\n"\n            L"Right-click any media row in Queue or Library and choose Open file location to open its containing folder in Windows File Explorer with the media file selected. The action is disabled for missing files; use Relink missing media first.\r\n"
             L"\r\n"
-            L"LICENSE & ACTIVATION\r\n"
+            L"HOME THEATRE — TMDB DISCOVERY\r\n"\n            L"Open Home Theatre from the idle dashboard or playback context menu. Enter the TMDB Read Access Token in Settings to enable online discovery; ordinary local playback does not depend on TMDB. Search for movie or TV titles, inspect posters, backdrops, summaries and recommendations, and browse seasons and episodes for TV series. Choose Identify library to compare filenames in the active playlist and Favourites with TMDB search results. Filename matching is a suggestion, not a guarantee. Use the local-file picker and Use selected file to correct a match; saved overrides are reused for that TMDB title. Play local match starts the selected file through the normal ABM playback engine. TMDB supplies metadata and artwork; ABM is not endorsed or certified by TMDB.\r\n"\n            L"\r\n"\n            L"LICENSE & ACTIVATION\r\n"
             L"If you begin with the 10-day trial, you can activate at any time without reinstalling. Open the Command Centre and choose License & Activation, enter the universal 16-character key, and select Activate. The player confirms successful activation and remembers it for future launches.\r\n"
             L"\r\n"
             L"APPLICATION SETTINGS\r\n"
@@ -6582,7 +6582,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Space  Play/Pause     |     Left/Right  Seek 10 seconds     |     Home  Seek to beginning\r\n"
             L"N / P  Next/Previous item     |     + / -  Change playback speed     |     F11  Fullscreen\r\n"
             L"Ctrl+L  Load playlist     |     Ctrl+S  Save playlist     |     Ctrl+J  Recent media\r\n"
-            L"Ctrl+E  Advanced equalizer     |     Ctrl+Shift+H  Shuffle     |     Ctrl+R  Repeat current\r\n"
+            L"Ctrl+E  Advanced equalizer     |     Ctrl+Shift+H  Shuffle     |     Ctrl+R  Cycle repeat mode\r\n"
             L"Ctrl+Shift+T  Torrent Stream     |     Ctrl+Shift+S  Streaming Centre\r\n"
             L"F1  This help     |     Ctrl+I  About     |     Alt+F4  Exit     |     Esc  Close menu/leave fullscreen\r\n"
             L"\r\n"
