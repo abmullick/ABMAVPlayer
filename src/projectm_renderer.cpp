@@ -147,10 +147,6 @@ void ReadPcm() {
 }
 void RenderFrame() {
     if(!g_projectm||!g_gl||!g_dc||!g_shared)return;
-    if(!IsWindowVisible(g_window)) {
-        if(InterlockedCompareExchange(&g_renderFrames,0,0)==0)LogText(L"render timer active but child HWND is not visible");
-        return;
-    }
     if(!wglMakeCurrent(g_dc,g_gl)) { if(InterlockedCompareExchange(&g_firstRenderLogged,2,0)==0)LogText(L"render failed: wglMakeCurrent"); return; }
     RECT rc{};GetClientRect(g_window,&rc);
     int w=rc.right-rc.left,h=rc.bottom-rc.top;
@@ -310,7 +306,9 @@ int wmain(int argc,wchar_t **argv) {
     SetStage(8,L"publishing renderer window");
     /* ProjectM initialisation and preset loading require the renderer context. */
     wglMakeCurrent(nullptr,nullptr);
-    ShowWindow(g_window,SW_SHOWNA);
+    /* Keep the helper window hidden: it exists only to own the WGL context.
+       The player composites shared BGRA frames into its own interface. */
+    ShowWindow(g_window,SW_HIDE);
     if(!SetTimer(g_window,RENDER_TIMER,16,nullptr))LogText(L"warning: render timer creation failed");
     LogText(L"renderer initialized; waiting for render timer");
     InterlockedExchangePointer((PVOID volatile*)&g_shared->childWindow,(PVOID)g_window);
