@@ -167,12 +167,12 @@ bool QueryWikidata(const std::wstring &sparql,std::vector<wchar_t> &json) {
 std::wstring MusicAlbumQuery(const wchar_t *artist,const wchar_t *album) {
     std::wstring q=L"SELECT ?item ?itemLabel ?itemDescription ?date ?image WHERE { ";
     q+=L"?item wdt:P31/wdt:P279* wd:Q482994 . ";
-    q+=L"?item rdfs:label ?searchLabel . FILTER(LANG(?searchLabel)=\\"en\\" && CONTAINS(LCASE(STR(?searchLabel)),LCASE(\\"";
-    q+=SparqlEscape(album);q+=L"\\"))) ";
-    q+=L"?item wdt:P175 ?performer . ?performer rdfs:label ?artistLabel . FILTER(LANG(?artistLabel)=\\"en\\" && CONTAINS(LCASE(STR(?artistLabel)),LCASE(\\"";
-    q+=SparqlEscape(artist);q+=L"\\"))) ";
+    q+=L"?item rdfs:label ?searchLabel . FILTER(LANG(?searchLabel)=\"en\" && CONTAINS(LCASE(STR(?searchLabel)),LCASE(\"";
+    q+=SparqlEscape(album);q+=L"\"))) ";
+    q+=L"?item wdt:P175 ?performer . ?performer rdfs:label ?artistLabel . FILTER(LANG(?artistLabel)=\"en\" && CONTAINS(LCASE(STR(?artistLabel)),LCASE(\"";
+    q+=SparqlEscape(artist);q+=L"\"))) ";
     q+=L"OPTIONAL { ?item wdt:P577 ?date . } OPTIONAL { ?item wdt:P18 ?image . } ";
-    q+=L"SERVICE wikibase:label { bd:serviceParam wikibase:language \\"en\\". } } LIMIT 12";
+    q+=L"SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } } LIMIT 12";
     return q;
 }
 bool BuildMovieResults(const wchar_t *raw,std::wstring &out,bool details) {
@@ -320,7 +320,7 @@ extern "C" BOOL ABM_Metadata_FindAlbumArtwork(const wchar_t *artist,const wchar_
     if(!QueryWikidata(MusicAlbumQuery(artist,album),raw))return FALSE;
     std::wstring normalized;
     if(!BuildMovieResults(raw.data(),normalized,FALSE))return FALSE;
-    const wchar_t *results=wcsstr(normalized.c_str(),L"\\"results\\"");
+    const wchar_t *results=wcsstr(normalized.c_str(),L"\"results\"");
     const wchar_t *p=results?wcschr(results,L'['):nullptr;if(!p)return FALSE;p++;
     const wchar_t *end=normalized.c_str()+normalized.size();
     while(p<end&&*p) {
