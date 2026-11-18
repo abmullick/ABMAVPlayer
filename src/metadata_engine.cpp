@@ -211,13 +211,13 @@ bool TvMazeDetails(int id,std::wstring &out) {
     wchar_t path[128];StringCchPrintfW(path,_countof(path),L"/shows/%d?embed[]=cast&embed[]=seasons",id);
     if(!HttpGet(L"api.tvmaze.com",path,raw))return false;
     const wchar_t *root=raw.data(),*end=FindObjectEnd(root);
-    wchar_t name[256]={},date[64]={},summary[1800]={},image[512]={},runtime[32]={};
+    wchar_t name[256]={},date[64]={},summary[1800]={},image[512]={};
     JsonString(root,end,L"name",name,_countof(name));JsonString(root,end,L"premiered",date,_countof(date));JsonString(root,end,L"summary",summary,_countof(summary));
     const wchar_t *im=wcsstr(root,L"\"image\"");if(im&&im<end)JsonString(im,end,L"original",image,_countof(image));
-    int minutes=JsonInt(root,end,L"runtime");if(minutes>0)StringCchPrintfW(runtime,_countof(runtime),L"%d min",minutes);
+    int minutes=JsonInt(root,end,L"runtime");
     out=L"{";bool first=true;AddField(out,L"overview",StripHtml(summary).c_str(),first);AddField(out,L"first_air_date",date,first);AddField(out,L"poster_path",image,first);if(minutes>0){out+=L",\"runtime\":"+std::to_wstring(minutes);}
     out+=L",\"genres\":[";const wchar_t *g=wcsstr(root,L"\"genres\"");const wchar_t *ga=g?wcschr(g,L'['):nullptr;const wchar_t *gb=ga?wcschr(ga,L']'):nullptr;bool f=true;
-    if(ga&&gb)for(const wchar_t *p=ga;p<gb;){if(*p==L'"'){wchar_t genre[128]={};if(JsonString(p,gb,L"",genre,_countof(genre))&&genre[0]){}const wchar_t *q=wcschr(p+1,L'"');if(!q)break;size_t n=(size_t)(q-p-1);if(n>0&&n<120){wchar_t value[128]={};wcsncpy_s(value,p+1,n);if(!f)out+=L",";f=false;out+=L"{\"name\":"+JsonEscape(value)+L"}";}p=q+1;}else p++;}
+    if(ga&&gb)for(const wchar_t *p=ga;p<gb;){if(*p==L'"'){const wchar_t *q=wcschr(p+1,L'"');if(!q)break;size_t n=(size_t)(q-p-1);if(n>0&&n<120){wchar_t value[128]={};wcsncpy_s(value,p+1,n);if(!f)out+=L",";f=false;out+=L"{\"name\":"+JsonEscape(value)+L"}";}p=q+1;}else p++;}
     out+=L"],\"credits\":{\"cast\":[";f=true;
     const wchar_t *embedded=wcsstr(root,L"\"_embedded\"");const wchar_t *cast=embedded?wcsstr(embedded,L"\"cast\""):nullptr;const wchar_t *ca=cast?wcschr(cast,L'['):nullptr;const wchar_t *ce=ca?wcschr(ca,L']'):nullptr;
     if(ca&&ce){const wchar_t *p=ca;int n=0;while((p=wcsstr(p,L"\"person\""))&&p<ce&&n<8){const wchar_t *o=wcschr(p,L'{');const wchar_t *oe=o?FindObjectEnd(o):o;if(!o||oe>ce)break;wchar_t person[128]={};JsonString(o,oe,L"name",person,_countof(person));if(person[0]){if(!f)out+=L",";f=false;out+=L"{\"name\":"+JsonEscape(person)+L"}";n++;}p=oe;}}
