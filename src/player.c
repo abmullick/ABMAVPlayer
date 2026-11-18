@@ -277,7 +277,7 @@ static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
 static float g_visualizerBarPeaks[64];
-static int g_visualizerMode=2; /* 0 Spectrum, 1 Fluid Waves, 2 Particle Visualizer */
+static int g_visualizerMode=3; /* 0 Spectrum Orbit, 1 Fluid Waves, 2 Particle Universe, 3 Neon Spectrum */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
@@ -1473,8 +1473,6 @@ static void DrawVisualizer(HDC dc,RECT area) {
         float pulse=(float)(height<width?height:width)*(0.025f+bass*0.035f);
         ABM_D2D_StrokeRound(&g_ui,cx-pulse,cy-pulse,cx+pulse,cy+pulse,
             pulse*0.8f,Blend(ink,cyan,34),1.5f*s);
-    }
-
     } else {
         /* NEON SPECTRUM: a high-density equalizer with frequency colour,
            reflected energy and slowly-decaying peak markers. This mode uses
