@@ -27,11 +27,11 @@
 #pragma comment(lib, "dwmapi.lib")
 
 namespace {
-enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109, HT_PICKER=5110 };
+enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109, HT_PICKER=5110, HT_WATCHED=5111 };
 enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4, HT_RECOMMEND_DONE=WM_APP+0x5A5 };
 static const COLORREF BG=ABM_UI_COLOR_BACKGROUND, PANEL=ABM_UI_COLOR_SURFACE, PANEL2=ABM_UI_COLOR_INPUT;
 static const COLORREF TEXT=ABM_UI_COLOR_TEXT, MUTED=ABM_UI_COLOR_TEXT_MUTED, ACCENT=ABM_UI_COLOR_ACCENT_BRIGHT;
-static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr;
+static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr, g_watchedButton=nullptr;
 static ABM_D2D g_canvas={};
 static BOOL g_canvasReady=FALSE;
 static ABM_D2D_CANVAS g_controlCanvas={};
@@ -49,7 +49,7 @@ static MovieItem g_recommendations[100],g_seasons[24];
 static int g_recommendationCount=0,g_seasonCount=0,g_tvId=0,g_tvType=1;
 static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={}, g_backdropFile[MAX_PATH]={};
 static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE, g_episodeMode=FALSE;
-static BOOL g_detailsReady=FALSE, g_busy=FALSE;
+static BOOL g_detailsReady=FALSE, g_busy=FALSE, g_selectedWatched=FALSE;
 static wchar_t g_statusText[256]=L"Search movies and television using keyless metadata providers.";
 
 static void CopyJsonString(const wchar_t *object,const wchar_t *end,const wchar_t *key,wchar_t *out,size_t cap) {
@@ -238,6 +238,25 @@ static BOOL ImageFolder(wchar_t *folder,size_t cap) {
     if(!CreateDirectoryW(folder,nullptr)&&GetLastError()!=ERROR_ALREADY_EXISTS)return FALSE;
     return TRUE;
 }
+
+static BOOL IsWatchedPath(const wchar_t *path) {
+ if(!path||!path[0])return FALSE;wchar_t folder[MAX_PATH]={},file[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return FALSE;
+ if(FAILED(StringCchPrintfW(file,_countof(file),L"%s\\watched.tsv",folder)))return FALSE;
+ FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"rt, ccs=UTF-8")!=0||!fp)return FALSE;
+ wchar_t line[MAX_PATH+8]={};BOOL found=FALSE;while(fgetws(line,_countof(line),fp)){line[wcscspn(line,L"\r\n")]=0;if(!_wcsicmp(line,path)){found=TRUE;break;}}fclose(fp);return found;
+}
+static BOOL SetWatchedPath(const wchar_t *path,BOOL watched) {
+ if(!path||!path[0])return FALSE;wchar_t folder[MAX_PATH]={},file[MAX_PATH]={},temp[MAX_PATH]={};
+ if(!ImageFolder(folder,_countof(folder))||FAILED(StringCchPrintfW(file,_countof(file),L"%s\\watched.tsv",folder))||FAILED(StringCchPrintfW(temp,_countof(temp),L"%s\\watched.tmp",folder)))return FALSE;
+ std::vector<std::wstring> entries;FILE *old=nullptr;if(_wfopen_s(&old,file,L"rt, ccs=UTF-8")==0&&old){wchar_t line[MAX_PATH+8];while(fgetws(line,_countof(line),old)){line[wcscspn(line,L"\r\n")]=0;if(line[0]&&_wcsicmp(line,path)!=0)entries.emplace_back(line);}fclose(old);}
+ if(watched)entries.emplace_back(path);FILE *fp=nullptr;if(_wfopen_s(&fp,temp,L"wt, ccs=UTF-8")!=0||!fp)return FALSE;
+ for(const auto &entry:entries)fwprintf(fp,L"%s\n",entry.c_str());BOOL ok=ferror(fp)==0;fclose(fp);
+ if(!ok||!MoveFileExW(temp,file,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)){DeleteFileW(temp);return FALSE;}return TRUE;
+}
+static void RefreshWatchedButton(void) {
+ g_selectedWatched=FALSE;if(g_localMatch>=0&&g_localMatch<(int)g_mediaPaths.size())g_selectedWatched=IsWatchedPath(g_mediaPaths[(size_t)g_localMatch].c_str());
+ if(g_watchedButton){SetWindowTextW(g_watchedButton,g_selectedWatched?L"Mark unwatched":L"Mark watched");EnableWindow(g_watchedButton,g_localMatch>=0&&g_localMatch<(int)g_mediaPaths.size());}
+}
 struct Work {
     HWND target=nullptr;int kind=0,index=-1;
     MovieItem item;
@@ -300,6 +319,9 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
 }
 static DWORD WINAPI Worker(LPVOID parameter);
 static void SetStatus(const wchar_t *s);
+static BOOL IsWatchedPath(const wchar_t *path);
+static BOOL SetWatchedPath(const wchar_t *path,BOOL watched);
+static void RefreshWatchedButton(void);
 static void ParseEpisodes(const wchar_t *json,Result *r,int tvId,int seasonNumber) {
     const wchar_t *p=wcsstr(json,L"\"episodes\"");if(!p)return;
     p=wcschr(p,L'[');if(!p)return;p++;
@@ -578,6 +600,7 @@ static void Layout(HWND w) {
     if(g_artButton)MoveWindow(g_artButton,380,height-82,150,30,TRUE);
     if(g_status)MoveWindow(g_status,28,height-70,320,24,TRUE);
     if(g_play)MoveWindow(g_play,width-176,height-82,148,42,TRUE);
+    if(g_watchedButton)MoveWindow(g_watchedButton,width-340,height-82,150,30,TRUE);
 }
 static RECT MakeRect(LONG l,LONG t,LONG r,LONG b) { RECT value={l,t,r,b};return value; }
 static void Draw(HWND w) {
@@ -657,6 +680,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_results=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|WS_VSCROLL|LBS_NOINTEGRALHEIGHT,28,180,300,450,w,(HMENU)HT_RESULTS,GetModuleHandleW(nullptr),nullptr);
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
+        g_watchedButton=CreateWindowExW(0,L"BUTTON",L"Mark watched",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,640,650,150,30,w,(HMENU)HT_WATCHED,GetModuleHandleW(nullptr),nullptr);
         g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
         g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,136,150,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
@@ -670,6 +694,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_results,LB_SETITEMHEIGHT,0,48);
         SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);SetWindowTheme(g_results,L"DarkMode_Explorer",nullptr);
         SendMessageW(g_play,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_watchedButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SendMessageW(g_scanButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SendMessageW(g_recommendButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SendMessageW(g_seasonButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
@@ -682,7 +707,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);
         EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);
         SendMessageW(GetDlgItem(w,HT_SEARCH),WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
-        EnableWindow(g_play,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_matchButton,FALSE);Layout(w);return 0;
+        EnableWindow(g_play,FALSE);EnableWindow(g_watchedButton,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_matchButton,FALSE);Layout(w);return 0;
     case WM_GETMINMAXINFO: { MINMAXINFO *m=(MINMAXINFO*)lp;if(m){m->ptMinTrackSize.x=900;m->ptMinTrackSize.y=720;}return 0; }
     case WM_SIZE:Layout(w);if(g_canvasReady)ABM_D2D_Resize(&g_canvas,LOWORD(lp),HIWORD(lp));InvalidateRect(w,nullptr,FALSE);return 0;
     case WM_ERASEBKGND:return 1;
@@ -692,7 +717,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(LOWORD(wp)==HT_RECOMMEND&&HIWORD(wp)==BN_CLICKED&&g_recommendationCount){g_scanMode=FALSE;g_recommendMode=TRUE;g_seasonMode=FALSE;g_episodeMode=FALSE;g_selected=-1;g_itemCount=g_recommendationCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_recommendations[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Select a recommendation to explore its details.");return 0;}
         if(LOWORD(wp)==HT_SEASONS&&HIWORD(wp)==BN_CLICKED&&g_seasonCount){g_scanMode=FALSE;g_recommendMode=FALSE;g_seasonMode=TRUE;g_episodeMode=FALSE;g_selected=-1;g_itemCount=g_seasonCount;for(int i=0;i<g_itemCount;i++)g_items[i]=g_seasons[i];SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].date);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetWindowTextW(g_seasonButton,L"Seasons");SetStatus(L"Select a season to browse its episodes.");return 0;}
         if(LOWORD(wp)==HT_ARTWORK&&HIWORD(wp)==BN_CLICKED){g_showBackdrop=!g_showBackdrop;const wchar_t *art=(g_showBackdrop&&g_backdropFile[0])?g_backdropFile:g_posterFile;if(art[0])ABM_D2D_LoadImage(&g_canvas,art);SetWindowTextW(g_artButton,g_showBackdrop?L"Show poster":L"Show backdrop");InvalidateRect(w,nullptr,FALSE);return 0;}
-        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);if(g_selected>=0&&g_selected<g_itemCount){if(g_episodeMode&&g_items[g_selected].episodeNumber>=0){int key=EpisodeMatchType(g_items[g_selected].seasonNumber,g_items[g_selected].episodeNumber);if(key>0)SaveManualMatch(g_tvId,key,g_localMatch);}else SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);}EnableWindow(g_play,g_localMatch>=0);SetLocalMatchStatus(L"Manual local match saved");}return 0;}
+        if(LOWORD(wp)==HT_MATCH&&HIWORD(wp)==BN_CLICKED&&g_localPicker){int pick=(int)SendMessageW(g_localPicker,CB_GETCURSEL,0,0);if(pick>=0){g_localMatch=(int)SendMessageW(g_localPicker,CB_GETITEMDATA,pick,0);if(g_selected>=0&&g_selected<g_itemCount){if(g_episodeMode&&g_items[g_selected].episodeNumber>=0){int key=EpisodeMatchType(g_items[g_selected].seasonNumber,g_items[g_selected].episodeNumber);if(key>0)SaveManualMatch(g_tvId,key,g_localMatch);}else SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);}EnableWindow(g_play,g_localMatch>=0);RefreshWatchedButton();SetLocalMatchStatus(L"Manual local match saved");}return 0;}
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_UPDATE)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_MAXTEXT)return 0;
         if(LOWORD(wp)==HT_EDIT&&HIWORD(wp)==EN_SETFOCUS)return 0;
@@ -725,6 +750,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                     }
                     if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
                     EnableWindow(g_artButton,FALSE);EnableWindow(g_localPicker,TRUE);EnableWindow(g_matchButton,TRUE);
+                    RefreshWatchedButton();
                     EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode matched. Its local file link is saved for future sessions.":L"No episode filename match. Choose the correct local file to link this episode.");InvalidateRect(w,nullptr,FALSE);return 0;
                 }
                 g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
@@ -736,6 +762,11 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             }return 0;
         }
         if(LOWORD(wp)==HT_PLAY&&HIWORD(wp)==BN_CLICKED&&g_localMatch>=0&&g_playCallback){int index=g_localMatch;ABM_HomeTheatrePlayFn callback=g_playCallback;DestroyWindow(w);callback(index);return 0;}
+        if(LOWORD(wp)==HT_WATCHED&&HIWORD(wp)==BN_CLICKED&&g_localMatch>=0&&g_localMatch<(int)g_mediaPaths.size()) {
+            BOOL next=!g_selectedWatched;
+            if(SetWatchedPath(g_mediaPaths[(size_t)g_localMatch].c_str(),next)){RefreshWatchedButton();SetStatus(next?L"Marked as watched.":L"Marked as unwatched.");InvalidateRect(w,nullptr,FALSE);}
+            else SetStatus(L"Could not save watched status.");return 0;
+        }
         break;
     case WM_CTLCOLORSTATIC:
         SetBkMode((HDC)wp,TRANSPARENT);SetTextColor((HDC)wp,ABM_UI_COLOR_TEXT_MUTED);return (LRESULT)g_darkBrush;
@@ -802,6 +833,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             }
             if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
             EnableWindow(g_artButton,g_backdropFile[0]!=0);EnableWindow(g_recommendButton,g_recommendationCount>0);EnableWindow(g_seasonButton,g_tvType==2&&g_seasonCount>0);EnableWindow(g_localPicker,TRUE);EnableWindow(g_matchButton,TRUE);
+            RefreshWatchedButton();
             if(g_localMatch>=0)SetLocalMatchStatus(L"Ready to play local file");else SetStatus(L"Metadata ready. No matching local file was found in the current library.");
             if(g_tvType==1)StartRecommendations(g_selected);
         } else SetStatus(r->error[0]?r->error:L"Details unavailable.");
@@ -815,7 +847,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_controlCanvasReady){ABM_D2D_CanvasDestroy(&g_controlCanvas);g_controlCanvasReady=FALSE;}
         if(g_controlFont){DeleteObject(g_controlFont);g_controlFont=nullptr;}
         if(g_darkBrush){DeleteObject(g_darkBrush);g_darkBrush=nullptr;}
-        g_window=g_edit=g_results=g_play=g_status=g_localPicker=g_scanButton=g_matchButton=g_artButton=g_recommendButton=g_seasonButton=nullptr;g_itemCount=0;g_selected=-1;g_localMatch=-1;
+        g_window=g_edit=g_results=g_play=g_status=g_localPicker=g_scanButton=g_matchButton=g_artButton=g_recommendButton=g_seasonButton=g_watchedButton=nullptr;g_itemCount=0;g_selected=-1;g_localMatch=-1;
         HWND owner=GetWindow(w,GW_OWNER);if(owner&&IsWindow(owner)){EnableWindow(owner,TRUE);SetActiveWindow(owner);}
         return 0;
     }
