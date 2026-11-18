@@ -184,7 +184,7 @@ static void SaveLibraryCatalogEntry(int pathIndex) {
     }
     FILE *fp=nullptr;
     if(_wfopen_s(&fp,temp,L"wt, ccs=UTF-8")!=0||!fp)return;
-    for(const std::wstring &row:retained)fwprintf(fp,L"%s",row.c_str());
+    for(const std::wstring &row:retained)fwprintf(fp,L"%s\n",row.c_str());
     const MovieItem &item=g_items[g_selected];
     WriteCatalogField(fp,selectedPath.c_str());fputwc(L'\t',fp);
     WriteCatalogField(fp,item.title);fputwc(L'\t',fp);
