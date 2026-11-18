@@ -1,24 +1,30 @@
 ## Home Theatre
 
-Open **Home Theatre** from the idle home dashboard or the playback context menu. It uses the TMDB Read Access Token already configured in Settings. TMDB lookup is optional; normal local playback does not depend on it.
+Open **Home Theatre** from the idle home dashboard or playback context menu. Online discovery requires an internet connection but **does not require an API key, token or account**.
+
+### Metadata providers
+
+- **Movies:** Wikidata supplies title, description, release date and available image references.
+- **Television:** TVmaze supplies show search, summaries, artwork when available, cast, seasons and episode information.
+- Provider coverage varies. A movie may have no image or cast data; TVmaze generally supplies poster-style show artwork rather than a guaranteed cinematic backdrop. Movie recommendations are not currently available.
+- Local playback remains independent of network availability and metadata-provider responses.
 
 ### Discover and identify your library
 
-- Search for a movie or television title to inspect its TMDB result.
-- Choose **Identify library** to scan the active playlist and saved favourites for video files. ABM searches filenames after removing common release-quality tags. The scan uses TMDB multi-search and can take time on a large library; it stops after collecting 100 matches.
-- Select an identified title to inspect its metadata. Automatic identification is a suggestion based on filename search, not a guarantee that the correct edition or episode was found.
+- Search for a movie or television title to inspect available metadata.
+- Choose **Identify library** to scan the active playlist and saved favourites for video files. ABM removes common release-quality tags from filenames before searching. The scan can take time on a large library and stops after collecting 100 matches.
+- Select an identified title to inspect its metadata. Automatic identification is a suggestion, not a guarantee that the correct edition or episode was found.
 
 ### Correct a local match
 
-The local-file picker lists video files in the current Home Theatre library snapshot. Select the intended file and choose **Use selected file** to override the automatic match. The override is saved locally by TMDB ID and media type under `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre\\matches.tsv`, and is reused when that title is opened again. **Play local match** starts the selected playlist item through the normal ABM playback engine.
+The local-file picker lists video files in the current Home Theatre library snapshot. Select the intended file and choose **Use selected file** to override the automatic match. The override is saved locally by provider ID and media type in `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre\matches-v2.tsv`, and is reused when that title is opened again. **Play local match** starts the selected playlist item through the normal ABM playback engine.
 
-### Artwork, recommendations and television
+### Artwork and television
 
-- Select **Show backdrop** / **Show poster** to switch between cached TMDB artwork when both are available. Artwork is cached below `%LOCALAPPDATA%\\ABMAVPlayer\\HomeTheatre`.
-- **Similar titles** displays TMDB's recommendations for the selected movie or series. Select a recommendation to inspect it and check for a local match.
+- Available provider artwork is downloaded in the background and cached below `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre`.
 - For a TV series, choose **Seasons**, select a season, then select an episode. Episode synopsis and air date are shown; ABM checks local filenames for common `S01E02` and `1x02` patterns before enabling playback.
+- Artwork availability and permitted reuse depend on the provider and the image's source licence. Users should respect the applicable image licence.
 
-TMDB data and artwork are supplied by TMDB. ABM is not endorsed or certified by TMDB; the attribution notice is shown in the existing About experience. Network failures, missing credentials or unavailable metadata do not block local playback.
 
 # ABM AV Player — User Guide
 
