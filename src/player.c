@@ -16,7 +16,6 @@
 #include "ui_theme.h"
 #include "projectm_visualizer.h"
 #include "projectm_ipc.h"
-#include "tmdb_metadata.h"
 #include "tmdb_home_theatre.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
@@ -1897,7 +1896,7 @@ static void DrawUI(HDC dc,RECT client) {
             }
             int footGap=12, footHeight=20;
             RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
-            Txt(dc,L"LOCAL MEDIA   •   TMDB METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"LOCAL MEDIA   •   KEYLESS METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
     }
     RECT fs=R_FULLSCREEN;
@@ -6293,7 +6292,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             r.top=550;r.bottom=580;ABM_D2D_CanvasText(&g_aboutCanvas,L"BUILT WITH",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=585;r.bottom=616;ABM_D2D_CanvasText(&g_aboutCanvas,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             r.top=628;r.bottom=656;ABM_D2D_CanvasText(&g_aboutCanvas,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-             r.top=662;r.bottom=700;ABM_D2D_CanvasText(&g_aboutCanvas,ABM_TMDB_AttributionNotice(),r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_TOP|DT_WORDBREAK);
+             r.top=662;r.bottom=700;ABM_D2D_CanvasText(&g_aboutCanvas,L"Metadata sources: Wikidata and TVmaze. Provider data and artwork remain subject to their respective terms and licences.",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_TOP|DT_WORDBREAK);
             ABM_D2D_CanvasEnd(&g_aboutCanvas);
         }else{
             SetBkMode(dc,TRANSPARENT);
@@ -6341,7 +6340,7 @@ static const wchar_t *g_helpDocument=NULL;
 static int g_helpArticleStart=0,g_helpArticleLength=0,g_helpSearchCursor=0;
 static const wchar_t *g_helpTopicNames[]={
  L"GETTING STARTED",L"PLAYBACK AND FULLSCREEN",L"PLAYLISTS AND RECENT MEDIA",
- L"LIBRARY, CONTINUE WATCHING AND RESUME",L"MISSING MEDIA AND RELINKING",L"HOME THEATRE — TMDB DISCOVERY",
+ L"LIBRARY, CONTINUE WATCHING AND RESUME",L"MISSING MEDIA AND RELINKING",L"HOME THEATRE — KEYLESS METADATA",
  L"LICENSE & ACTIVATION",L"APPLICATION SETTINGS",L"AUDIO, VIDEO AND SUBTITLES",
  L"ADVANCED EQUALIZER AND AUDIO PROCESSING",L"NOW PLAYING AND VISUALIZER",
  L"LOCAL PLAYBACK OUTPUT",L"STREAMING CENTRE",L"STREAMING BROWSER CONTROLS",
@@ -6533,7 +6532,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Right-click any media row in Queue or Library and choose Open file location to open its containing folder in Windows File Explorer with the media file selected. The action is disabled for missing files; use Relink missing media first.\r\n"
             L"\r\n"
             L"HOME THEATRE — TMDB DISCOVERY\r\n"
-            L"Open Home Theatre from the idle dashboard or playback context menu. Enter the TMDB Read Access Token in Settings to enable online discovery; ordinary local playback does not depend on TMDB. Search for movie or TV titles, inspect posters, backdrops, summaries and recommendations, and browse seasons and episodes for TV series. Choose Identify library to compare filenames in the active playlist and Favourites with TMDB search results. Filename matching is a suggestion, not a guarantee. Use the local-file picker and Use selected file to correct a match; saved overrides are reused for that TMDB title. Play local match starts the selected file through the normal ABM playback engine. TMDB supplies metadata and artwork; ABM is not endorsed or certified by TMDB.\r\n"
+            L"Open Home Theatre from the idle dashboard or playback context menu. No API key or account is required. Movie discovery uses Wikidata; television discovery and season/episode information use TVmaze. Posters and summaries are shown when the provider has them; available artwork is cached locally. Choose Identify library to compare filenames in the active playlist and Favourites with provider search results. Filename matching is a suggestion, not a guarantee. Use the local-file picker and Use selected file to correct a match; saved overrides are stored locally by provider ID and media type. Play local match starts the selected file through the normal ABM playback engine. Provider coverage varies; movie recommendations and guaranteed backdrops are not currently available.\r\n"
             L"\r\n"
             L"LICENSE & ACTIVATION\r\n"
             L"If you begin with the 10-day trial, you can activate at any time without reinstalling. Open the Command Centre and choose License & Activation, enter the universal 16-character key, and select Activate. The player confirms successful activation and remembers it for future launches.\r\n"
@@ -7001,9 +7000,9 @@ static void RefreshThemeWindows(void) {
 }
 
 static void SettingsApply(HWND w) {
- wchar_t path[PATH_CAP]={0},downloads[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0},tmdbToken[4096]={0};
+ wchar_t path[PATH_CAP]={0},downloads[PATH_CAP]={0},q[32]={0},d[32]={0},u[32]={0},v[32]={0};
  GetWindowTextW(GetDlgItem(w,6201),path,_countof(path));GetWindowTextW(GetDlgItem(w,6202),downloads,_countof(downloads));GetWindowTextW(GetDlgItem(w,6204),q,_countof(q));
- GetWindowTextW(GetDlgItem(w,6205),d,_countof(d));GetWindowTextW(GetDlgItem(w,6206),u,_countof(u));GetWindowTextW(GetDlgItem(w,6207),v,_countof(v));GetWindowTextW(GetDlgItem(w,6208),tmdbToken,_countof(tmdbToken));
+ GetWindowTextW(GetDlgItem(w,6205),d,_countof(d));GetWindowTextW(GetDlgItem(w,6206),u,_countof(u));GetWindowTextW(GetDlgItem(w,6207),v,_countof(v));
  wchar_t *qe,*de,*ue,*ve;unsigned long long quota=_wcstoui64(q,&qe,10),down=_wcstoui64(d,&de,10),up=_wcstoui64(u,&ue,10),volume=_wcstoui64(v,&ve,10);
  if(!path[0]||!downloads[0]||!q[0]||*qe||quota<1||quota>4096||!d[0]||*de||down>(unsigned long long)INT_MAX/1024||!u[0]||*ue||up>(unsigned long long)INT_MAX/1024||!v[0]||*ve||volume>100) {
   StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Invalid values. Quota 1–4096 GiB; bandwidth 0–2,097,151 KiB/s; volume 0–100.");InvalidateRect(w,NULL,FALSE);return;
@@ -7019,7 +7018,7 @@ static void SettingsApply(HWND w) {
  if((changed||downloadsChanged)&&(g_torrentInitialized||g_torrentInitPending)&&ABM_MessageBoxW(w,L"The torrent engine is running. The new location will take effect after restarting ABM AV Player. Continue?",L"Restart required",MB_YESNO|MB_ICONWARNING|MB_DEFBUTTON2)!=IDYES)return;
  wcsncpy_s(g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path,_TRUNCATE);
  wcsncpy_s(g_torrentDownloadDir,_countof(g_torrentDownloadDir),downloads,_TRUNCATE);
- if(!ABM_TMDB_SetReadToken(tmdbToken)){StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Could not securely save the TMDB token.");InvalidateRect(w,NULL,FALSE);SecureZeroMemory(tmdbToken,sizeof(tmdbToken));return;} SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
+ g_torrentCacheQuotaGiB=quota;g_torrentDownloadLimitKiB=(int)down;g_torrentUploadLimitKiB=(int)up;g_volume=(int)volume;
  g_shuffle=g_settingsShuffle;g_repeat=g_settingsRepeat;g_replayGain=g_settingsReplayGain;g_compressor=g_settingsCompressor;
  if(g_settingsRateIndex<0||g_settingsRateIndex>6)g_settingsRateIndex=2;
  g_playbackRate=g_settingsRates[g_settingsRateIndex];
@@ -7871,7 +7870,7 @@ static void SettingsMoveChildControls(HWND w){
     time lets Windows paint intermediate positions over the translated
     Direct2D surface, which looks like controls and labels are scrambling
     while the user scrolls. */
- static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29},{6208,39,730,600,30}};
+ static const struct {int id,x,y,cx,cy;} items[]={{6207,166,157,92,29},{6201,39,397,600,30},{6202,39,458,600,30},{6204,174,498,100,29},{6205,206,602,130,29},{6206,558,602,130,29}};
  HDWP batch=BeginDeferWindowPos((int)_countof(items));
  for(int i=0;i<(int)_countof(items);i++){
   HWND child=GetDlgItem(w,items[i].id);
@@ -8012,7 +8011,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,206,602,130,29,w,(HMENU)6205,NULL,NULL);
   StringCchPrintfW(n,_countof(n),L"%d",g_torrentUploadLimitKiB);
   CreateWindowExW(0,L"EDIT",n,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,558,602,130,29,w,(HMENU)6206,NULL,NULL);
-  wchar_t tmdbToken[4096]={0};ABM_TMDB_GetReadToken(tmdbToken,_countof(tmdbToken)); HWND tmdbEdit=CreateWindowExW(0,L"EDIT",tmdbToken,WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_PASSWORD,39,730,600,30,w,(HMENU)6208,NULL,NULL); if(tmdbEdit){SendMessageW(tmdbEdit,EM_SETLIMITTEXT,4096,0);SendMessageW(tmdbEdit,EM_SETMARGINS,EC_LEFTMARGIN|EC_RIGHTMARGIN,MAKELONG(8,8));} SecureZeroMemory(tmdbToken,sizeof(tmdbToken)); for(int id=6201;id<=6208;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
+  for(int id=6201;id<=6207;id++){HWND edit=GetDlgItem(w,id);if(edit){SendMessageW(edit,WM_SETFONT,(WPARAM)g_font,TRUE);SetWindowSubclass(edit,SettingsEditFocusSubclass,1,0);}}
   return 0;
  }
  case WM_THEMECHANGED:
@@ -8113,7 +8112,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsEditFrame(199,599,341,634);if(GetFocus()==GetDlgItem(w,6205))ABM_D2D_StrokeRound(&g_settingsUi,198,598,342,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Upload limit (KiB/s)",400,583,552,608,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(551,599,693,634);if(GetFocus()==GetDlgItem(w,6206))ABM_D2D_StrokeRound(&g_settingsUi,550,598,694,635,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
-   SettingsSection(666,L"TMDB METADATA",L"Movie and television information",794); SettingsText(L"TMDB API Read Access Token",40,701,420,723,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsEditFrame(34,729,644,763); if(GetFocus()==GetDlgItem(w,6208))ABM_D2D_StrokeRound(&g_settingsUi,33,728,645,764,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f); SettingsText(ABM_TMDB_IsConfigured()?L"Token encrypted for this Windows user.":L"Enter your TMDB Read Access Token to enable metadata lookup.",40,768,780,793,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS); SettingsSection(806,L"UPDATES",L"Maintenance",878);
+   SettingsSection(666,L"METADATA SOURCES",L"No API key or account required",794); SettingsText(L"Movies: Wikidata   ·   Television: TVmaze",40,701,780,723,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE); SettingsText(L"Available artwork is cached locally. Coverage depends on each provider.",40,736,780,770,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK); SettingsSection(806,L"UPDATES",L"Maintenance",878);
    SettingsButtonDraw(39,816,194,849,L"Check for updates",TRUE);
    SettingsText(L"Checks the latest published GitHub release.",210,817,770,848,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(886,L"COLOR THEME",L"Changes apply immediately",1100);
