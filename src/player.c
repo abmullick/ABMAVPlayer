@@ -276,6 +276,8 @@ static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
 static BOOL g_projectmSurfaceReady=FALSE;
+static unsigned char g_projectmFrame[ABM_PROJECTM_FRAME_BYTES];
+static int g_projectmFrameWidth=0,g_projectmFrameHeight=0;
 static float g_visualizerBarPeaks[64];
 static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4 isolated ProjectM MilkDrop */
 static BOOL g_replayGain=TRUE;
@@ -1589,13 +1591,18 @@ static void DrawVisualizer(HDC dc,RECT area) {
     }
 }
 static void DrawUI(HDC dc,RECT client) {
-    if(!g_visualizerActive || g_visualizerMode!=4 || !ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(NULL,FALSE);
+    /* ProjectM frames are copied into the owner window; no child surface to position. */
     if(g_fullscreen) {
         /* When audio visualization is active it owns the entire client area.
            Artwork/metadata layouts must not constrain it to a short footer strip. */
         if(g_visualizerActive) {
-            if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) ABM_ProjectM_SetBounds(&client,TRUE);
-            else { ABM_ProjectM_SetBounds(NULL,FALSE); DrawVisualizer(dc,client); }
+            if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
+                int fw=0,fh=0;
+                if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
+                    BITMAPINFO bi={0};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=fw;bi.bmiHeader.biHeight=fh;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+                    SetStretchBltMode(dc,HALFTONE);StretchDIBits(dc,client.left,client.top,client.right-client.left,client.bottom-client.top,0,0,fw,fh,g_projectmFrame,&bi,DIB_RGB_COLORS,SRCCOPY);
+                } else DrawVisualizer(dc,client);
+            } else DrawVisualizer(dc,client);
             return;
         }
         /* Immersive now-playing view: artwork, track metadata and transport
@@ -1729,22 +1736,13 @@ static void DrawUI(HDC dc,RECT client) {
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_visualizerActive) {
         if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
-            /* A native child HWND always paints above the parent's Direct2D
-               surface. Reserve the same foreground-panel footprint as video
-               playback so ProjectM cannot cover the menu or media drawer. */
-            RECT projectmBounds=R_VIDEO;
-            if(g_drawerOpen&&!g_fullscreen) {
-                int safeRight=R_SIDEBAR.left-12;
-                if(safeRight<projectmBounds.right)projectmBounds.right=safeRight;
-            }
-            if((g_menuOpen||g_menuProgress>0)&&!g_fullscreen) {
-                int safeRight=R_MENU_PANEL.left-12;
-                if(safeRight<projectmBounds.right)projectmBounds.right=safeRight;
-            }
-            if(projectmBounds.right>projectmBounds.left)
-                ABM_ProjectM_SetBounds(&projectmBounds,TRUE);
-            else ABM_ProjectM_SetBounds(NULL,FALSE);
-        } else { ABM_ProjectM_SetBounds(NULL,FALSE); DrawVisualizer(dc,R_VIDEO); }
+            int fw=0,fh=0;
+            if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
+                BITMAPINFO bi={0};bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);bi.bmiHeader.biWidth=fw;bi.bmiHeader.biHeight=fh;bi.bmiHeader.biPlanes=1;bi.bmiHeader.biBitCount=32;bi.bmiHeader.biCompression=BI_RGB;
+                SetStretchBltMode(dc,HALFTONE);
+                StretchDIBits(dc,R_VIDEO.left,R_VIDEO.top,R_VIDEO.right-R_VIDEO.left,R_VIDEO.bottom-R_VIDEO.top,0,0,fw,fh,g_projectmFrame,&bi,DIB_RGB_COLORS,SRCCOPY);
+            } else DrawVisualizer(dc,R_VIDEO);
+        } else { DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
         ABM_D2D_DrawImageCover(&g_ui,(float)R_VIDEO.left,(float)R_VIDEO.top,
