@@ -135,7 +135,8 @@ extern "C" void ABM_ProjectM_SetAutoSwitch(BOOL enabled) {
     if(g_shared)InterlockedExchange(&g_shared->autoSwitch,enabled?1:0);
 }
 extern "C" BOOL ABM_ProjectM_IsReady(void) {
-    if(!g_process||!g_shared||WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT)return FALSE;
+    if(!g_process||!g_shared)return FALSE;
+    if(WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT){ResetHost();return FALSE;}
     if(InterlockedCompareExchange(&g_shared->ready,0,0)!=1)return FALSE;
     HWND child=(HWND)(ULONG_PTR)InterlockedCompareExchangePointer((PVOID volatile*)&g_shared->childWindow,nullptr,nullptr);
     if(!child||!IsWindow(child))return FALSE;
