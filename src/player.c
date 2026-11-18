@@ -950,8 +950,8 @@ static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
     HRESULT com=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);
     wchar_t resolvedUrl[PATH_CAP*4]={0};
     const wchar_t *url=request->url;
-    BOOL downloaded=TRUE;
-    if(request->localFile) {
+    BOOL downloaded=request->generation==InterlockedCompareExchange(&g_artworkGeneration,0,0);
+    if(downloaded&&request->localFile) {
         wchar_t tempPath[PATH_CAP]={0};
         downloaded=SUCCEEDED(StringCchPrintfW(tempPath,_countof(tempPath),L"%s.local-%ld",
                                                request->path,(long)request->generation))
@@ -959,13 +959,15 @@ static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
             &&ValidateArtworkImage(tempPath)
             &&MoveFileExW(tempPath,request->path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
         if(!downloaded)DeleteFileW(tempPath);
-    } else {
+    } else if(downloaded) {
         if(request->lookupMusic) {
             downloaded=ABM_Metadata_FindAlbumArtwork(request->artist,request->album,
                                                        resolvedUrl,_countof(resolvedUrl));
             if(downloaded)url=resolvedUrl;
         }
-        if(downloaded)downloaded=DownloadArtworkSecurely(url,request->path,request->generation);
+        if(downloaded&&request->generation==InterlockedCompareExchange(&g_artworkGeneration,0,0))
+            downloaded=DownloadArtworkSecurely(url,request->path,request->generation);
+        else downloaded=FALSE;
     }
     if(SUCCEEDED(com))CoUninitialize();
     BOOL posted=FALSE;
