@@ -1625,6 +1625,9 @@ static void DrawUI(HDC dc,RECT client) {
            Artwork/metadata layouts must not constrain it to a short footer strip. */
         if(g_visualizerActive) {
             if(g_visualizerMode>=4) {
+                /* Keep the selected OpenGL mode visually consistent while its
+                   isolated renderer starts; never substitute Neon Spectrum. */
+                GradientRect(dc,client,RGB(3,8,24),RGB(5,10,22));
                 BOOL pmReady=ABM_ProjectM_IsReady();
                 if(InterlockedCompareExchange(&g_pmDiagReady,1,0)==0)
                     ProjectMPlayerLogState(L"fullscreen paint readiness",g_visualizerActive,g_visualizerMode,pmReady);
@@ -1643,9 +1646,9 @@ static void DrawUI(HDC dc,RECT client) {
                         BOOL drawn=ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
                             (float)client.left,(float)client.top,(float)client.right,(float)client.bottom);
                         if(drawn) { if(InterlockedCompareExchange(&g_pmDiagD2D,1,0)==0)ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw accepted"); }
-                        else { if(InterlockedCompareExchange(&g_pmDiagD2DFail,1,0)==0)ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,client); }
-                    } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: fullscreen shared frame copy failed before first frame");DrawVisualizer(dc,client); }
-                } else DrawVisualizer(dc,client);
+                        else { if(InterlockedCompareExchange(&g_pmDiagD2DFail,1,0)==0)ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw failed; retaining OpenGL loading surface"); }
+                    } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: fullscreen shared frame copy failed before first frame"); }
+                }
             } else DrawVisualizer(dc,client);
             return;
         }
@@ -1796,9 +1799,9 @@ static void DrawUI(HDC dc,RECT client) {
                     BOOL drawn=ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
                         (float)R_VIDEO.left,(float)R_VIDEO.top,(float)R_VIDEO.right,(float)R_VIDEO.bottom);
                     if(drawn) { if(InterlockedCompareExchange(&g_pmDiagD2D,1,0)==0)ProjectMPlayerLog(L"player: windowed Direct2D frame draw accepted"); }
-                    else { if(InterlockedCompareExchange(&g_pmDiagD2DFail,1,0)==0)ProjectMPlayerLog(L"player: windowed Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,R_VIDEO); }
-                } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: windowed shared frame copy failed before first frame");DrawVisualizer(dc,R_VIDEO); }
-            } else DrawVisualizer(dc,R_VIDEO);
+                    else { if(InterlockedCompareExchange(&g_pmDiagD2DFail,1,0)==0)ProjectMPlayerLog(L"player: windowed Direct2D frame draw failed; retaining OpenGL loading surface"); }
+                } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: windowed shared frame copy failed before first frame"); }
+            }
         } else { DrawVisualizer(dc,R_VIDEO); }
     } else if(g_artworkLoaded) {
         int areaW=R_VIDEO.right-R_VIDEO.left, areaH=R_VIDEO.bottom-R_VIDEO.top;
