@@ -680,7 +680,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case HT_SCAN_DONE: {
         Result *r=(Result*)lp;if(!r)return 0;g_busy=FALSE;EnableWindow(g_scanButton,TRUE);EnableWindow(g_edit,TRUE);EnableWindow(GetDlgItem(w,HT_SEARCH),TRUE);EnableWindow(g_results,TRUE);
-        if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_selected=-1;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];wchar_t line[320];StringCchPrintfW(line,_countof(line),L"%s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV");SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}SetStatus(L"Library identification complete. Up to 100 matches are listed; select one to inspect metadata.");}
+        if(r->ok){g_scanMode=TRUE;g_recommendMode=g_seasonMode=g_episodeMode=FALSE;g_selected=-1;g_itemCount=r->count;SendMessageW(g_results,LB_RESETCONTENT,0,0);for(int i=0;i<g_itemCount;i++){g_items[i]=r->items[i];const int local=g_items[i].localIndex;const wchar_t *leaf=L"";if(local>=0&&local<(int)g_mediaPaths.size()){leaf=wcsrchr(g_mediaPaths[(size_t)local].c_str(),L'\\');leaf=leaf?leaf+1:g_mediaPaths[(size_t)local].c_str();}wchar_t line[480];StringCchPrintfW(line,_countof(line),L"%s   ·   %s   ·   %s",g_items[i].title,g_items[i].type==1?L"MOVIE":L"TV",leaf);SendMessageW(g_results,LB_ADDSTRING,0,(LPARAM)line);}wchar_t status[160];StringCchPrintfW(status,_countof(status),L"Identified %d local titles. Select one to view details and play its matched file.",g_itemCount);SetStatus(status);}
         else SetStatus(r->error[0]?r->error:L"No library matches found.");
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
@@ -714,6 +714,14 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             g_recommendationCount=r->recommendationCount;for(int i=0;i<g_recommendationCount;i++)g_recommendations[i]=r->recommendations[i];
             g_seasonCount=r->seasonCount;for(int i=0;i<g_seasonCount;i++)g_seasons[i]=r->seasons[i];
             g_tvId=g_items[g_selected].id;g_tvType=g_items[g_selected].type;
+            /* A library-identification result already carries the exact source
+               playlist index. Persist that association automatically so the
+               next Home Theatre session does not require a manual relink. */
+            if(g_localMatch>=0&&g_localMatch<(int)g_mediaPaths.size()&&
+               g_items[g_selected].localIndex==g_localMatch&&
+               GetFileAttributesW(g_mediaPaths[(size_t)g_localMatch].c_str())!=INVALID_FILE_ATTRIBUTES) {
+                SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);
+            }
             if(g_localPicker){SendMessageW(g_localPicker,CB_RESETCONTENT,0,0);for(size_t i=0;i<g_mediaPaths.size();i++){const wchar_t *path=g_mediaPaths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;const wchar_t *leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;int n=(int)SendMessageW(g_localPicker,CB_ADDSTRING,0,(LPARAM)leaf);SendMessageW(g_localPicker,CB_SETITEMDATA,n,(LPARAM)i);if((int)i==g_localMatch)SendMessageW(g_localPicker,CB_SETCURSEL,n,0);}}
             EnableWindow(g_artButton,g_backdropFile[0]!=0);EnableWindow(g_recommendButton,g_recommendationCount>0);EnableWindow(g_seasonButton,g_tvType==2&&g_seasonCount>0);EnableWindow(g_localPicker,TRUE);EnableWindow(g_matchButton,TRUE);
             if(g_localMatch>=0)SetLocalMatchStatus(L"Ready to play local file");else SetStatus(L"Metadata ready. No matching local file was found in the current library.");
