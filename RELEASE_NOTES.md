@@ -1,4 +1,33 @@
-# ABM AV Player v1.1.2 — media continuity, recovery and Queue/Library improvements
+# ABM AV Player v1.1.3 — Home Theatre, immersive visualizers and playback refinements
+
+## What's new
+
+- Added **Home Theatre**, an optional TMDB-powered movie and television discovery workspace. Search titles, inspect posters/backdrops and recommendations, browse TV seasons and episodes, identify titles across the active playlist and Favourites, correct filename matches with a local-file override, and play the selected local match through the existing player.
+- Expanded live music visualization to **ten selectable styles**: four Direct2D scenes (Spectrum Orbit, Fluid Waves, Particle Universe and Neon Spectrum) and six isolated OpenGL scenes (MilkDrop, 3D Spectrum, Particle Universe, Oscilloscope 3D, Fluid Motion and Geometric Tunnel). Fluid Motion (OpenGL) is the default.
+- Kept OpenGL rendering in the separate `abm-projectm-renderer.exe` helper and composed its frames into the existing media stage. The selected style remains selected during asynchronous renderer startup; a neutral dark surface is shown until the first frame is ready instead of temporarily displaying Neon Spectrum.
+- Smoothed spectrum attack/release and eased visualizer activation to reduce abrupt starts.
+- Added embedded audio-track selection to Advanced Audio Centre and refined Subtitle Manager controls, layout, hit targets and user feedback.
+- Added three-state repeat mode cycling: **Off → Repeat all → Repeat current**, with a visible active-mode indication.
+- Expanded F1 Help and user/developer documentation for Home Theatre, the ten visualizer styles, repeat behaviour and audio/subtitle controls.
+- Continued refinements to Settings layout/scrolling, recent-media popup behaviour, playback controls, audio-track synchronization and QA coverage.
+
+## Reliability and compatibility
+
+- OpenGL/ProjectM remains isolated from the main LibVLC playback process. The helper is disposable; renderer failure must not terminate the audio playback path, and Direct2D remains the recovery visualizer.
+- The OpenGL renderer is embedded into the existing media stage; no separate visible visualizer window is introduced.
+- Visualizer capture uses WASAPI loopback on the Windows default render endpoint. Other applications using that endpoint may influence the visualization; process-specific capture is not implemented.
+- Home Theatre metadata and artwork require a configured TMDB Read Access Token and network access. TMDB discovery is optional and does not gate local media playback. Filename identification is a suggestion and should be corrected when the local match is wrong.
+- Existing installer identity, installation directory, licensing state and per-user AppData separation must remain unchanged for in-place upgrades.
+
+## Release validation
+
+- This is a **source-prepared v1.1.3 release candidate** based on the latest `main` branch.
+- Windows x64/MSVC compilation, runtime testing of all ten visualizer styles, Home Theatre network and local-match flows, audio/subtitle track selection, repeat-mode persistence, playback/casting/torrent regression, clean installation and in-place upgrade have not yet been certified by this source update.
+- Complete [UI_QA_CHECKLIST.md](UI_QA_CHECKLIST.md), build the installer on the Windows machine, inspect its version metadata, and complete clean-install and upgrade tests before publishing. Do not treat this source candidate as a certified release until those gates pass.
+
+---
+
+# ABM AV Player v1.1.2 — media continuity, recovery and Queue/Library improvements (previous published release)
 
 ## What's new
 
@@ -21,7 +50,7 @@
 
 ## Release validation
 
-- This is a **source-prepared v1.1.2 release candidate** based on the latest `main` branch.
+- This was the source-prepared v1.1.2 candidate, subsequently published as the previous stable release.
 - Windows x64 compilation, runtime playback/resume/relink testing, Queue/Library scrolling performance measurement, casting regression, clean installation and in-place upgrade have not been performed by this source update.
 - Complete the Windows QA checklist, build and inspect the installer, and test clean installation and in-place upgrade before publishing. Do not treat this source candidate as a certified release until those gates pass.
 
