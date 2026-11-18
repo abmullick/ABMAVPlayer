@@ -275,6 +275,7 @@ static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
+static BOOL g_projectmSurfaceReady=FALSE;
 static float g_visualizerBarPeaks[64];
 static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4 isolated ProjectM MilkDrop */
 static BOOL g_replayGain=TRUE;
@@ -3889,6 +3890,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd>=25210&&cmd<=25214){
         int previousMode=g_visualizerMode;
         g_visualizerMode=cmd-25210;
+        g_projectmSurfaceReady=FALSE;
         if(g_visualizerMode==4 && previousMode!=4)g_projectmTried=FALSE;
         for(int i=0;i<64;i++)g_visualizerBarPeaks[i]=0.0f;
         if(g_visualizerMode==4) {
@@ -8355,7 +8357,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
                     ABM_ProjectM_SetAudioSamples(pcm,512);
-                } else InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+                    if(!g_projectmSurfaceReady)InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+                    g_projectmSurfaceReady=TRUE;
+                } else {
+                    g_projectmSurfaceReady=FALSE;
+                    InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+                }
             } else {
                 KillTimer(hwnd,VISUALIZER_TIMER_ID);
                 g_visualizerTimerRunning=FALSE;
@@ -8525,7 +8532,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 KillTimer(hwnd,VISUALIZER_TIMER_ID);
                 g_visualizerTimerRunning=FALSE;
             }
-            g_visualizerActive=FALSE; g_visualizerTried=FALSE;
+            g_visualizerActive=FALSE; g_visualizerTried=FALSE;g_projectmSurfaceReady=FALSE;
             if(g_projectmTried)ABM_ProjectM_Destroy();
             g_projectmTried=FALSE;
             ABM_ProjectM_SetBounds(NULL,FALSE);
