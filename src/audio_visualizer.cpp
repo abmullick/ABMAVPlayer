@@ -70,7 +70,12 @@ static void PublishSpectrum(const float *samples, int count) {
     std::lock_guard<std::mutex> lock(bandsMutex);
     std::memcpy(latestPcm,samples,(size_t)(count<FFT_SIZE?count:FFT_SIZE)*sizeof(float));
     if(count<FFT_SIZE)std::memset(latestPcm+count,0,(size_t)(FFT_SIZE-count)*sizeof(float));
-    for (int i=0;i<BAND_COUNT;i++) bands[i]=bands[i]*0.58f+next[i]*0.42f;
+    /* Asymmetric envelope smoothing: a responsive attack with a gentler
+       release avoids harsh FFT jumps while retaining beat detail. */
+    for (int i=0;i<BAND_COUNT;i++) {
+        const float coefficient=next[i]>bands[i]?0.28f:0.12f;
+        bands[i]+=(next[i]-bands[i])*coefficient;
+    }
 }
 
 static float ReadSample(const BYTE *p, const WAVEFORMATEX *fmt, bool isFloat) {
