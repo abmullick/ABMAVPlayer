@@ -64,6 +64,7 @@ LONG WINAPI RendererUnhandledException(EXCEPTION_POINTERS *info) {
 float g_pcm[ABM_PROJECTM_PCM_COUNT]{};
 int g_lastWidth=0,g_lastHeight=0;
 volatile LONG g_firstRenderLogged=0;
+volatile LONG g_renderFrames=0;
 
 std::string Utf8(const wchar_t *value) {
     if(!value||!*value)return {};
@@ -145,7 +146,11 @@ void ReadPcm() {
     }
 }
 void RenderFrame() {
-    if(!g_projectm||!g_gl||!g_dc||!g_shared||!IsWindowVisible(g_window))return;
+    if(!g_projectm||!g_gl||!g_dc||!g_shared)return;
+    if(!IsWindowVisible(g_window)) {
+        if(InterlockedCompareExchange(&g_renderFrames,0,0)==0)LogText(L"render timer active but child HWND is not visible");
+        return;
+    }
     if(!wglMakeCurrent(g_dc,g_gl)) { if(InterlockedCompareExchange(&g_firstRenderLogged,2,0)==0)LogText(L"render failed: wglMakeCurrent"); return; }
     RECT rc{};GetClientRect(g_window,&rc);
     int w=rc.right-rc.left,h=rc.bottom-rc.top;
@@ -161,6 +166,9 @@ void RenderFrame() {
             LoadPresetDelta(1);
         ReadPcm();
         projectm_pcm_add_float(g_projectm,g_pcm,ABM_PROJECTM_PCM_COUNT,PROJECTM_MONO);
+        glBindFramebuffer(GL_FRAMEBUFFER,0);
+        glDrawBuffer(GL_BACK);
+        glViewport(0,0,w,h);
         InterlockedExchange(&g_stage,90);
         projectm_opengl_render_frame(g_projectm);
         GLenum glError=glGetError();
@@ -171,6 +179,12 @@ void RenderFrame() {
             wchar_t line[512];
             StringCchPrintfW(line,_countof(line),L"first frame: %dx%d, GL=%S, vendor=%S, glError=0x%04X, SwapBuffers=%s",w,h,version?(const char*)version:"unknown",vendor?(const char*)vendor:"unknown",(unsigned)glError,swapped?L"true":L"false");
             LogText(line);
+        }
+        LONG frame=InterlockedIncrement(&g_renderFrames);
+        if((frame%120)==0) {
+            wchar_t heartbeat[192];
+            StringCchPrintfW(heartbeat,_countof(heartbeat),L"render heartbeat: %ld frames, visible=%d, size=%dx%d, glError=0x%04X",(long)frame,(int)IsWindowVisible(g_window),w,h,(unsigned)glGetError());
+            LogText(heartbeat);
         }
         InterlockedExchange(&g_stage,91);
     }
