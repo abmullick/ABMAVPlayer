@@ -17,7 +17,7 @@
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 #include "tmdb_home_theatre.h"
-#include "tmdb_metadata.h"
+#include "metadata_engine.h"
 #include "ui_d2d.h"
 
 #pragma comment(lib, "comctl32.lib")
@@ -45,7 +45,7 @@ static int g_recommendationCount=0,g_seasonCount=0,g_tvId=0,g_tvType=1;
 static wchar_t g_overview[1800]={}, g_year[32]={}, g_runtime[64]={}, g_genres[256]={}, g_cast[512]={}, g_director[128]={}, g_posterFile[MAX_PATH]={}, g_backdropFile[MAX_PATH]={};
 static BOOL g_showBackdrop=FALSE, g_scanMode=FALSE, g_recommendMode=FALSE, g_seasonMode=FALSE, g_episodeMode=FALSE;
 static BOOL g_detailsReady=FALSE, g_busy=FALSE;
-static wchar_t g_statusText[256]=L"Search TMDB for a movie or television series in your local collection.";
+static wchar_t g_statusText[256]=L"Search movies and television using keyless metadata providers.";
 
 static void CopyJsonString(const wchar_t *object,const wchar_t *end,const wchar_t *key,wchar_t *out,size_t cap) {
     if(!out||!cap)return;out[0]=0;
@@ -138,7 +138,7 @@ static int FindLocalMatch(const wchar_t *title) {
 static BOOL ImageFolder(wchar_t *folder,size_t cap);
 static int LoadManualMatch(int tmdbId,int type) {
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return -1;
-    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
+    wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches-v2.tsv",folder);
     FILE *fp=nullptr;if(_wfopen_s(&fp,file,L"rt, ccs=UTF-8")!=0||!fp)return -1;
     wchar_t line[MAX_PATH+64];int found=-1;
     while(fgetws(line,_countof(line),fp)) {
@@ -180,7 +180,7 @@ struct Result {
     int recommendationCount=0, seasonCount=0, episodeCount=0;
     wchar_t overview[1800]={},year[32]={},runtime[64]={},genres[256]={},cast[512]={},director[128]={},posterFile[MAX_PATH]={},backdropFile[MAX_PATH]={},error[256]={};
 };
-static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster,int tmdbId,const wchar_t *fallbackBackdrop,int mediaType) {
+static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPoster,int providerId,const wchar_t *fallbackBackdrop,int mediaType) {
     const wchar_t *end=json+wcslen(json);
     CopyJsonString(json,end,L"overview",r->overview,_countof(r->overview));
     CopyJsonString(json,end,L"release_date",r->year,_countof(r->year));
@@ -200,14 +200,14 @@ static void ParseDetails(const wchar_t *json,Result *r,const wchar_t *fallbackPo
     wchar_t poster[256]={};CopyJsonString(json,end,L"poster_path",poster,_countof(poster));
     if(!poster[0]&&fallbackPoster)StringCchCopyW(poster,_countof(poster),fallbackPoster);
     wchar_t folder[MAX_PATH]={};if(ImageFolder(folder,_countof(folder))&&poster[0]){
-        StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\tmdb-%d.jpg",folder,tmdbId);
-        if(GetFileAttributesW(r->posterFile)==INVALID_FILE_ATTRIBUTES && !ABM_TMDB_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
+        StringCchPrintfW(r->posterFile,_countof(r->posterFile),L"%s\\metadata-%d-%d.jpg",folder,mediaType,providerId);
+        if(GetFileAttributesW(r->posterFile)==INVALID_FILE_ATTRIBUTES && !ABM_Metadata_DownloadImage(poster,r->posterFile,12000))r->posterFile[0]=0;
     }
     wchar_t backdrop[256]={};CopyJsonString(json,end,L"backdrop_path",backdrop,_countof(backdrop));
     if(!backdrop[0]&&fallbackBackdrop)StringCchCopyW(backdrop,_countof(backdrop),fallbackBackdrop);
     if(ImageFolder(folder,_countof(folder))&&backdrop[0]) {
-        StringCchPrintfW(r->backdropFile,_countof(r->backdropFile),L"%s\\tmdb-%d-backdrop.jpg",folder,tmdbId);
-        if(GetFileAttributesW(r->backdropFile)==INVALID_FILE_ATTRIBUTES&&!ABM_TMDB_DownloadImage(backdrop,r->backdropFile,12000))r->backdropFile[0]=0;
+        StringCchPrintfW(r->backdropFile,_countof(r->backdropFile),L"%s\\metadata-%d-%d-backdrop.jpg",folder,mediaType,providerId);
+        if(GetFileAttributesW(r->backdropFile)==INVALID_FILE_ATTRIBUTES&&!ABM_Metadata_DownloadImage(backdrop,r->backdropFile,12000))r->backdropFile[0]=0;
     }
     const wchar_t *rec=wcsstr(json,L"\"recommendations\"");
     if(rec)ParseSearchJson(rec,mediaType==2?2:1,r->recommendations,&r->recommendationCount);
@@ -256,7 +256,7 @@ static void StartLibraryScan() {
     Work *w=new(std::nothrow) Work();if(!w){SetStatus(L"Could not allocate library scan.");return;}
     w->target=g_window;w->kind=3;w->paths=g_mediaPaths;g_itemCount=0;g_selected=-1;g_localMatch=-1;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);SendMessageW(g_results,LB_RESETCONTENT,0,0);ABM_D2D_ClearImage(&g_canvas);InvalidateRect(g_window,nullptr,FALSE);
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
-    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetStatus(L"Identifying local playlist and favourite items with TMDB. Large libraries may take a while…");}
+    if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetStatus(L"Identifying local movies and shows with keyless providers. Large libraries may take a while…");}
     else {delete w;SetStatus(L"Could not start library identification.");}
 }
 static void StartSeasonLoad(int seasonNumber) {
@@ -269,41 +269,43 @@ static DWORD WINAPI Worker(LPVOID parameter) {
     Work *w=(Work*)parameter;Result *r=new(std::nothrow) Result();
     if(!r){delete w;return 0;}r->kind=w->kind;r->index=w->index;
     if(w->kind==1) {
-        if(!ABM_TMDB_IsConfigured())StringCchCopyW(r->error,_countof(r->error),L"Configure your TMDB Read Access Token in Settings first.");
-        else {
-            std::vector<wchar_t> json(512*1024);
-            if(ABM_TMDB_Search(w->query,ABM_TMDB_MOVIE,json.data(),json.size()))ParseSearchJson(json.data(),1,r->items,&r->count);
-            json.assign(512*1024,0);
-            if(ABM_TMDB_Search(w->query,ABM_TMDB_TV,json.data(),json.size()))ParseSearchJson(json.data(),2,r->items,&r->count);
-            r->ok=r->count>0;
-            if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No TMDB matches found. Check the title or try another search.");
-        }
+        std::vector<wchar_t> json(512*1024);
+        if(ABM_Metadata_Search(w->query,ABM_METADATA_MOVIE,json.data(),json.size()))
+            ParseSearchJson(json.data(),1,r->items,&r->count);
+        json.assign(512*1024,0);
+        if(ABM_Metadata_Search(w->query,ABM_METADATA_TV,json.data(),json.size()))
+            ParseSearchJson(json.data(),2,r->items,&r->count);
+        r->ok=r->count>0;
+        if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No matches found. Check the title or try another search.");
     } else if(w->kind==2&&w->item.id>0) {
         MovieItem item=w->item;std::vector<wchar_t> json(512*1024);
-        r->ok=ABM_TMDB_GetDetails(item.type==1?ABM_TMDB_MOVIE:ABM_TMDB_TV,item.id,json.data(),json.size());
+        r->ok=ABM_Metadata_GetDetails((ABM_METADATA_MEDIA_TYPE)item.type,item.id,json.data(),json.size());
         if(r->ok)ParseDetails(json.data(),r,item.poster,item.id,item.backdrop,item.type);
-        else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your connection and TMDB token.");
+        else StringCchCopyW(r->error,_countof(r->error),L"Could not retrieve details. Check your network connection.");
     } else if(w->kind==3) {
-        if(!ABM_TMDB_IsConfigured())StringCchCopyW(r->error,_countof(r->error),L"Configure your TMDB Read Access Token in Settings first.");
-        else {
-            size_t limit=w->paths.size();
-            for(size_t i=0;i<limit&&r->count<100;i++) {
-                const wchar_t *path=w->paths[i].c_str();if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;
-                wchar_t query[256]={};MakeMediaSearchTitle(path,query,_countof(query));
-                wchar_t *year=wcsstr(query,L" (");if(year&&wcslen(year)>=6)year[0]=0;
-                if(!query[0])continue;
-                std::vector<wchar_t> json(512*1024);
-                if(ABM_TMDB_Search(query,(ABM_TMDB_MEDIA_TYPE)0,json.data(),json.size())) {
-                    MovieItem found[100];int count=0;ParseSearchJson(json.data(),0,found,&count);
-                    if(count>0){found[0].localIndex=(int)i;r->items[r->count++]=found[0];}
-                }
-                Sleep(250);
+        size_t limit=w->paths.size();
+        for(size_t i=0;i<limit&&r->count<100;i++) {
+            const wchar_t *path=w->paths[i].c_str();
+            if(!IsVideoMediaPath(path)||GetFileAttributesW(path)==INVALID_FILE_ATTRIBUTES)continue;
+            wchar_t query[256]={};MakeMediaSearchTitle(path,query,_countof(query));
+            wchar_t *year=wcsstr(query,L" (");if(year&&wcslen(year)>=6)year[0]=0;
+            if(!query[0])continue;
+            std::vector<wchar_t> json(512*1024);MovieItem found[100];int count=0;
+            if(ABM_Metadata_Search(query,ABM_METADATA_MOVIE,json.data(),json.size()))
+                ParseSearchJson(json.data(),1,found,&count);
+            if(count==0) {
+                json.assign(512*1024,0);
+                if(ABM_Metadata_Search(query,ABM_METADATA_TV,json.data(),json.size()))
+                    ParseSearchJson(json.data(),2,found,&count);
             }
-            r->ok=r->count>0;if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No library titles were identified. Try a more descriptive filename.");
+            if(count>0){found[0].localIndex=(int)i;r->items[r->count++]=found[0];}
+            Sleep(250);
         }
+        r->ok=r->count>0;
+        if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No library titles were identified. Try a more descriptive filename.");
     } else if(w->kind==4&&w->tvId>0&&w->seasonNumber>=0) {
         std::vector<wchar_t> json(512*1024);
-        r->ok=ABM_TMDB_GetSeasonDetails(w->tvId,w->seasonNumber,json.data(),json.size());
+        r->ok=ABM_Metadata_GetSeasonDetails(w->tvId,w->seasonNumber,json.data(),json.size());
         if(r->ok){ParseEpisodes(json.data(),r,w->tvId,w->seasonNumber);r->ok=r->episodeCount>0;}
         if(!r->ok)StringCchCopyW(r->error,_countof(r->error),L"No episode information was returned for this season.");
     }
@@ -385,7 +387,7 @@ static void SearchNow() {
     wchar_t query[256]={};GetWindowTextW(g_edit,query,_countof(query));
     if(!query[0]){SetStatus(L"Enter a movie or television title to search.");return;}
     g_itemCount=0;g_selected=-1;g_localMatch=-1;g_detailsReady=FALSE;g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);ABM_D2D_ClearImage(&g_canvas);
-    SendMessageW(g_results,LB_RESETCONTENT,0,0);SetStatus(L"Searching TMDB…");StartWork(1,-1,query);InvalidateRect(g_window,nullptr,FALSE);
+    SendMessageW(g_results,LB_RESETCONTENT,0,0);SetStatus(L"Searching metadata providers…");StartWork(1,-1,query);InvalidateRect(g_window,nullptr,FALSE);
 }
 static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
