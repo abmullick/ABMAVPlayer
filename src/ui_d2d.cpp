@@ -8,6 +8,7 @@
 #include <string.h>
 #include <algorithm>
 #include <vector>
+#include <strsafe.h>
 #include "ui_d2d.h"
 #include "ui_theme.h"
 
@@ -31,6 +32,21 @@ static ID2D1Factory *Factory(ABM_D2D *ui) { return static_cast<ID2D1Factory *>(u
 static ID2D1HwndRenderTarget *Target(ABM_D2D *ui) { return static_cast<ID2D1HwndRenderTarget *>(ui->target); }
 static ID2D1SolidColorBrush *Brush(ABM_D2D *ui) { return static_cast<ID2D1SolidColorBrush *>(ui->brush); }
 static std::vector<BYTE> g_bgraFrameUploadScratch;
+static volatile LONG g_projectMFrameDiagLogged = 0;
+static void LogProjectMFrameDiag(const wchar_t *message) {
+    if (InterlockedCompareExchange(&g_projectMFrameDiagLogged, 1, 0) != 0) return;
+    wchar_t path[MAX_PATH] = {};
+    DWORD n = GetTempPathW(_countof(path), path);
+    if (!n || n >= _countof(path)) return;
+    StringCchCatW(path, _countof(path), L"ABM-ProjectM-renderer.log");
+    HANDLE file = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    DWORD written = 0;
+    WriteFile(file, message, (DWORD)(wcslen(message) * sizeof(wchar_t)), &written, nullptr);
+    WriteFile(file, L"\\r\\n", 4, &written, nullptr);
+    CloseHandle(file);
+}
 
 static void SetColor(ABM_D2D *ui, COLORREF color);
 
@@ -511,11 +527,16 @@ extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
         ui->frameImage = nullptr;
         ui->frameImageWidth = ui->frameImageHeight = 0;
         D2D1_BITMAP_PROPERTIES props = D2D1::BitmapProperties(
-            D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE),
+            D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
             96.0f, 96.0f);
         HRESULT hr = Target(ui)->CreateBitmap(D2D1::SizeU(width, height),
             nullptr, 0, &props, &bitmap);
-        if (FAILED(hr)) return FALSE;
+        if (FAILED(hr)) {
+            wchar_t line[160]; StringCchPrintfW(line, _countof(line),
+                L"player: Direct2D CreateBitmap failed: 0x%08lX", (unsigned long)hr);
+            LogProjectMFrameDiag(line);
+            return FALSE;
+        }
         ui->frameImage = bitmap;
         ui->frameImageWidth = width;
         ui->frameImageHeight = height;
@@ -526,11 +547,21 @@ extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
     const size_t bytes = stride * (size_t)height;
     if (g_bgraFrameUploadScratch.size() < bytes) g_bgraFrameUploadScratch.resize(bytes);
     const BYTE *source = static_cast<const BYTE *>(pixels);
-    for (UINT y = 0; y < height; ++y)
-        memcpy(g_bgraFrameUploadScratch.data() + (size_t)y * stride,
-               source + (size_t)(height - 1u - y) * stride, stride);
+    for (UINT y = 0; y < height; ++y) {
+        BYTE *destinationRow = g_bgraFrameUploadScratch.data() + (size_t)y * stride;
+        memcpy(destinationRow, source + (size_t)(height - 1u - y) * stride, stride);
+        /* MilkDrop output is opaque. Force alpha to 255 for the premultiplied
+           Direct2D target so driver-specific GL alpha values cannot hide it. */
+        for (UINT x = 0; x < width; ++x) destinationRow[(size_t)x * 4u + 3u] = 255;
+    }
     HRESULT hr = bitmap->CopyFromMemory(nullptr, g_bgraFrameUploadScratch.data(), (UINT32)stride);
-    if (FAILED(hr)) return FALSE;
+    if (FAILED(hr)) {
+        wchar_t line[160]; StringCchPrintfW(line, _countof(line),
+            L"player: Direct2D CopyFromMemory failed: 0x%08lX", (unsigned long)hr);
+        LogProjectMFrameDiag(line);
+        return FALSE;
+    }
+    LogProjectMFrameDiag(L"player: Direct2D accepted first ProjectM frame upload");
     Target(ui)->DrawBitmap(bitmap, D2D1::RectF(l, t, r, b), 1.0f,
         D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
     return TRUE;
