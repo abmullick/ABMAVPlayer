@@ -171,12 +171,12 @@ bool CreateVisualShader() {
  GLuint v=compile(GL_VERTEX_SHADER,vs);if(!v)return false;GLuint f=compile(GL_FRAGMENT_SHADER,fs);if(!f){glDeleteShader(v);return false;}
  g_visualProgram=glCreateProgram();glAttachShader(g_visualProgram,v);glAttachShader(g_visualProgram,f);glLinkProgram(g_visualProgram);glDeleteShader(v);glDeleteShader(f);
  GLint linked=0;glGetProgramiv(g_visualProgram,GL_LINK_STATUS,&linked);if(!linked){char log[1024]={0};glGetProgramInfoLog(g_visualProgram,sizeof(log),nullptr,log);wchar_t msg[1200];StringCchPrintfW(msg,_countof(msg),L"OpenGL shader link failed: %S",log);LogText(msg);glDeleteProgram(g_visualProgram);g_visualProgram=0;return false;}
- glGenVertexArrays(1,&g_visualVao);g_visualTime=glGetUniformLocation(g_visualProgram,"time");g_visualResolution=glGetUniformLocation(g_visualProgram,"resolution");g_visualStyle=glGetUniformLocation(g_visualProgram,"style");g_visualBands=glGetUniformLocation(g_visualProgram,"bands");g_visualStart=GetTickCount64();return true;
+ glGenVertexArrays(1,&g_visualVao);g_visualTime=glGetUniformLocation(g_visualProgram,"time");g_visualResolution=glGetUniformLocation(g_visualProgram,"resolution");g_visualStyle=glGetUniformLocation(g_visualProgram,"style");g_visualBands=glGetUniformLocation(g_visualProgram,"bands[0]");g_visualStart=GetTickCount64();return true;
 }
 void ReadBands(){for(int a=0;a<4;a++){LONG before=InterlockedCompareExchange(&g_shared->sequence,0,0);if(before&1)continue;CopyMemory(g_audioBands,g_shared->bands,sizeof(g_audioBands));MemoryBarrier();LONG after=InterlockedCompareExchange(&g_shared->sequence,0,0);if(before==after&&!(after&1))return;}}
 void RenderOpenGLStyle(int style,int w,int h){
  if(!g_visualProgram&&!CreateVisualShader()){glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);glClearColor(0.008f,0.014f,0.03f,1);glClear(GL_COLOR_BUFFER_BIT);return;}
- glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);glDisable(GL_DEPTH_TEST);glDisable(GL_BLEND);glClearColor(0.008f,0.014f,0.03f,1);glClear(GL_COLOR_BUFFER_BIT);
+ glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,w,h);glDisable(GL_DEPTH_TEST);glDisable(GL_BLEND);glDisable(GL_SCISSOR_TEST);glDisable(GL_STENCIL_TEST);glDisable(GL_CULL_FACE);glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);glDepthMask(GL_TRUE);glClearColor(0.008f,0.014f,0.03f,1);glClear(GL_COLOR_BUFFER_BIT);
  glUseProgram(g_visualProgram);glBindVertexArray(g_visualVao);glUniform2f(g_visualResolution,(float)w,(float)h);glUniform1f(g_visualTime,(float)(GetTickCount64()-g_visualStart)/1000.0f);glUniform1i(g_visualStyle,style);glUniform1fv(g_visualBands,24,g_audioBands);glDrawArrays(GL_TRIANGLES,0,3);glBindVertexArray(0);glUseProgram(0);
 }
 
@@ -238,7 +238,7 @@ void RenderFrame() {
                     InterlockedExchange(&g_shared->frameIndex,nextFrame);
                 } else {
                     LONG blank=InterlockedIncrement(&g_blankFrameStreak);
-                    if(blank==90) {
+                    if(blank==90&&style==0) {
                         wchar_t line[256];
                         StringCchPrintfW(line,_countof(line),
                             L"ProjectM preset %zu produced 90 consecutive black frames; advancing automatically",g_presetIndex);
