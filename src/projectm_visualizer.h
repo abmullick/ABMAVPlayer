@@ -19,6 +19,7 @@ ABM_PROJECTM_API void ABM_ProjectM_PreviousPreset(void);
 ABM_PROJECTM_API void ABM_ProjectM_SetAutoSwitch(BOOL enabled);
 ABM_PROJECTM_API void ABM_ProjectM_Destroy(void);
 ABM_PROJECTM_API BOOL ABM_ProjectM_IsReady(void);
+ABM_PROJECTM_API DWORD ABM_ProjectM_GetLastError(void);
 #ifdef __cplusplus
 }
 #endif
