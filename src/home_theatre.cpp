@@ -16,7 +16,7 @@
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
-#include "tmdb_home_theatre.h"
+#include "home_theatre.h"
 #include "metadata_engine.h"
 #include "ui_d2d.h"
 
@@ -150,7 +150,7 @@ static int LoadManualMatch(int providerId,int type) {
     }
     fclose(fp);return found;
 }
-static void SaveManualMatch(int tmdbId,int type,int pathIndex) {
+static void SaveManualMatch(int providerId,int type,int pathIndex) {
     if(providerId<=0||pathIndex<0||pathIndex>=(int)g_mediaPaths.size())return;
     wchar_t folder[MAX_PATH]={};if(!ImageFolder(folder,_countof(folder)))return;
     wchar_t file[MAX_PATH]={};StringCchPrintfW(file,_countof(file),L"%s\\matches.tsv",folder);
