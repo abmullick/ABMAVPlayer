@@ -373,7 +373,7 @@ static int FindEpisodeMatch(int season,int episode) {
 static void StartLibraryScan() {
     if(g_busy)return;
     Work *w=new(std::nothrow) Work();if(!w){SetStatus(L"Could not allocate library scan.");return;}
-    w->target=g_window;w->kind=3;w->paths=g_mediaPaths;g_itemCount=0;g_selected=-1;g_localMatch=-1;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);SendMessageW(g_results,LB_RESETCONTENT,0,0);ABM_D2D_ClearImage(&g_canvas);InvalidateRect(g_window,nullptr,FALSE);
+    w->target=g_window;w->kind=3;w->paths=g_mediaPaths;g_itemCount=0;g_selected=-1;g_localMatch=-1;RefreshWatchedButton();g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);SendMessageW(g_results,LB_RESETCONTENT,0,0);ABM_D2D_ClearImage(&g_canvas);InvalidateRect(g_window,nullptr,FALSE);
     HANDLE thread=CreateThread(nullptr,0,Worker,w,0,nullptr);
     if(thread){CloseHandle(thread);g_busy=TRUE;EnableWindow(g_scanButton,FALSE);EnableWindow(g_edit,FALSE);EnableWindow(GetDlgItem(g_window,HT_SEARCH),FALSE);EnableWindow(g_results,FALSE);SetStatus(L"Identifying local movies and shows with keyless providers. Large libraries may take a while…");}
     else {delete w;SetStatus(L"Could not start library identification.");}
@@ -667,7 +667,7 @@ static void Draw(HWND w) {
 static void SearchNow() {
     wchar_t query[256]={};GetWindowTextW(g_edit,query,_countof(query));
     if(!query[0]){SetStatus(L"Enter a movie or television title to search.");return;}
-    g_itemCount=0;g_selected=-1;g_localMatch=-1;g_detailsReady=FALSE;g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);ABM_D2D_ClearImage(&g_canvas);
+    g_itemCount=0;g_selected=-1;g_localMatch=-1;RefreshWatchedButton();g_detailsReady=FALSE;g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;g_recommendationCount=g_seasonCount=0;EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);ABM_D2D_ClearImage(&g_canvas);
     SendMessageW(g_results,LB_RESETCONTENT,0,0);SetStatus(L"Searching metadata providers…");StartWork(1,-1,query);InvalidateRect(g_window,nullptr,FALSE);
 }
 static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
@@ -731,7 +731,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_episodeMode&&g_items[selected].episodeNumber>=0){
                     MovieItem episode=g_items[selected];
                     const int episodeKey=EpisodeMatchType(episode.seasonNumber,episode.episodeNumber);
-                    g_localMatch=episodeKey>0?LoadManualMatch(g_tvId,episodeKey):-1;
+                    g_localMatch=episodeKey>0?LoadManualMatch(g_tvId,episodeKey):-1;RefreshWatchedButton();
                     if(g_localMatch<0)g_localMatch=FindEpisodeMatch(episode.seasonNumber,episode.episodeNumber);
                     if(g_localMatch>=0&&episodeKey>0)SaveManualMatch(g_tvId,episodeKey,g_localMatch);
                     StringCchCopyW(g_overview,_countof(g_overview),episode.overview);StringCchCopyW(g_year,_countof(g_year),episode.date);g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;ABM_D2D_ClearImage(&g_canvas);
@@ -753,7 +753,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                     RefreshWatchedButton();
                     EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode matched. Its local file link is saved for future sessions.":L"No episode filename match. Choose the correct local file to link this episode.");InvalidateRect(w,nullptr,FALSE);return 0;
                 }
-                g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
+                g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);RefreshWatchedButton();if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;
                 g_showBackdrop=FALSE;g_detailsReady=FALSE;g_recommendationCount=g_seasonCount=0;EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);EnableWindow(g_artButton,FALSE);EnableWindow(g_recommendButton,FALSE);EnableWindow(g_seasonButton,FALSE);ABM_D2D_ClearImage(&g_canvas);
                 EnableWindow(g_play,g_localMatch>=0);
