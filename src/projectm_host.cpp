@@ -18,6 +18,7 @@ RECT g_lastBounds{};
 bool g_surfaceVisible=false;
 bool g_starting=false;
 DWORD g_lastError=ERROR_SUCCESS;
+volatile LONG g_firstFrameCopyLogged=0;
 void HostLog(const wchar_t *message) {
     wchar_t path[MAX_PATH]={0};DWORD n=GetTempPathW(_countof(path),path);
     if(!n||n>=_countof(path))return;
@@ -144,7 +145,15 @@ extern "C" BOOL ABM_ProjectM_CopyFrame(void *destination,int destinationBytes,in
         if(w<=0||h<=0||w>ABM_PROJECTM_FRAME_WIDTH||h>ABM_PROJECTM_FRAME_HEIGHT)return FALSE;
         CopyMemory(destination,g_shared->frames[index],(size_t)w*(size_t)h*4u);
         MemoryBarrier();
-        if(seq==InterlockedCompareExchange(&g_shared->frameSequence,0,0)) {if(width)*width=(int)w;if(height)*height=(int)h;return TRUE;}
+        if(seq==InterlockedCompareExchange(&g_shared->frameSequence,0,0)) {
+            if(width)*width=(int)w;if(height)*height=(int)h;
+            if(InterlockedCompareExchange(&g_firstFrameCopyLogged,1,0)==0) {
+                wchar_t line[160];StringCchPrintfW(line,_countof(line),
+                    L"player: first shared frame copy succeeded: %ldx%ld, sequence=%ld, buffer=%ld",w,h,seq,index);
+                HostLog(line);
+            }
+            return TRUE;
+        }
     }
     return FALSE;
 }
