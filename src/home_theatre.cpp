@@ -391,6 +391,11 @@ static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
         ABM_D2D_CanvasEnd(&g_controlCanvas);return;
     }
     HBRUSH b=CreateSolidBrush(fill);FillRect(d->hDC,&r,b);DeleteObject(b);
+    SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,text);
+    HGDIOBJ old=SelectObject(d->hDC,g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT));
+    RECT label={r.left+5,r.top+1,r.right-5,r.bottom-1};
+    DrawTextW(d->hDC,caption,-1,&label,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    SelectObject(d->hDC,old);
 }
 static void DrawAbmResultItem(const DRAWITEMSTRUCT *d) {
     if(!d||d->itemID==(UINT)-1)return;
@@ -411,6 +416,10 @@ static void DrawAbmResultItem(const DRAWITEMSTRUCT *d) {
         ABM_D2D_CanvasEnd(&g_controlCanvas);return;
     }
     HBRUSH b=CreateSolidBrush(selected?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_SURFACE);FillRect(d->hDC,&r,b);DeleteObject(b);
+    wchar_t line[320]={};SendMessageW(d->hwndItem,LB_GETTEXT,d->itemID,(LPARAM)line);
+    SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY);
+    HGDIOBJ old=SelectObject(d->hDC,g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT));
+    RECT tr={r.left+14,r.top,r.right-10,r.bottom};DrawTextW(d->hDC,line,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);SelectObject(d->hDC,old);
 }
 static void DrawAbmPickerItem(const DRAWITEMSTRUCT *d) {
     if(!d)return;
@@ -426,6 +435,10 @@ static void DrawAbmPickerItem(const DRAWITEMSTRUCT *d) {
         ABM_D2D_CanvasEnd(&g_controlCanvas);return;
     }
     HBRUSH b=CreateSolidBrush(selected?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_INPUT);FillRect(d->hDC,&r,b);DeleteObject(b);
+    if(d->itemID!=(UINT)-1){wchar_t item[512]={};SendMessageW(d->hwndItem,CB_GETLBTEXT,d->itemID,(LPARAM)item);
+        SetBkMode(d->hDC,TRANSPARENT);SetTextColor(d->hDC,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY);
+        HGDIOBJ old=SelectObject(d->hDC,g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT));
+        RECT tr={r.left+12,r.top,r.right-38,r.bottom};DrawTextW(d->hDC,item,-1,&tr,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);SelectObject(d->hDC,old);}
 }
 static void DrawAbmControlFrame(HWND hwnd,HDC dc) {
     RECT r={};GetClientRect(hwnd,&r);if(r.right<2||r.bottom<2)return;
