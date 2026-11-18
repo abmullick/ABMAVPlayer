@@ -1,7 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
-#include <gl/GL.h>
+#include <GL/glew.h>
 #include <projectM-4/projectM.h>
 #include <string>
 #include <vector>
@@ -108,6 +108,18 @@ bool CreateContext(HWND hwnd) {
     wglMakeCurrent(nullptr,nullptr);wglDeleteContext(bootstrap);
     if(!modern)return false;
     if(!wglMakeCurrent(g_dc,modern)){wglDeleteContext(modern);return false;}
+    /* projectM 4 uses GLEW on Windows. It must be initialized only after
+       the renderer context is current and before projectm_create(). */
+    glewExperimental=GL_TRUE;
+    GLenum glewStatus=glewInit();
+    if(glewStatus!=GLEW_OK) {
+        wchar_t line[256];
+        StringCchPrintfW(line,_countof(line),L"GLEW initialization failed: %S",glewGetErrorString(glewStatus));
+        LogText(line);
+        wglMakeCurrent(nullptr,nullptr);wglDeleteContext(modern);return false;
+    }
+    /* GLEW may leave GL_INVALID_ENUM behind on core contexts. */
+    while(glGetError()!=GL_NO_ERROR) {}
     g_gl=modern;return true;
 }
 void LoadPresetDelta(int delta) {
