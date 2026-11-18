@@ -136,24 +136,32 @@ extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
 }
 extern "C" BOOL ABM_ProjectM_CopyFrame(void *destination,int destinationBytes,int *width,int *height) {
     if(!g_shared||!destination||destinationBytes<ABM_PROJECTM_FRAME_BYTES)return FALSE;
-    for(int attempt=0;attempt<3;attempt++) {
+    /* frameSequence is a cross-process mutex: odd means owned, even means free.
+       Do not copy while the renderer is publishing the next 8 MB frame. */
+    for(int attempt=0;attempt<200;attempt++) {
         LONG seq=InterlockedCompareExchange(&g_shared->frameSequence,0,0);
-        if(seq&1)continue;
+        if(seq&1) { SwitchToThread(); continue; }
+        if(InterlockedCompareExchange(&g_shared->frameSequence,seq+1,seq)!=seq) {
+            SwitchToThread(); continue;
+        }
         LONG index=InterlockedCompareExchange(&g_shared->frameIndex,0,0)&1;
         LONG w=InterlockedCompareExchange(&g_shared->frameWidth,0,0);
         LONG h=InterlockedCompareExchange(&g_shared->frameHeight,0,0);
-        if(w<=0||h<=0||w>ABM_PROJECTM_FRAME_WIDTH||h>ABM_PROJECTM_FRAME_HEIGHT)return FALSE;
+        if(w<=0||h<=0||w>ABM_PROJECTM_FRAME_WIDTH||h>ABM_PROJECTM_FRAME_HEIGHT||
+           (size_t)w*(size_t)h*4u>(size_t)destinationBytes) {
+            InterlockedExchange(&g_shared->frameSequence,seq+2);
+            return FALSE;
+        }
         CopyMemory(destination,g_shared->frames[index],(size_t)w*(size_t)h*4u);
         MemoryBarrier();
-        if(seq==InterlockedCompareExchange(&g_shared->frameSequence,0,0)) {
-            if(width)*width=(int)w;if(height)*height=(int)h;
-            if(InterlockedCompareExchange(&g_firstFrameCopyLogged,1,0)==0) {
-                wchar_t line[160];StringCchPrintfW(line,_countof(line),
-                    L"player: first shared frame copy succeeded: %ldx%ld, sequence=%ld, buffer=%ld",w,h,seq,index);
-                HostLog(line);
-            }
-            return TRUE;
+        InterlockedExchange(&g_shared->frameSequence,seq+2);
+        if(width)*width=(int)w;if(height)*height=(int)h;
+        if(InterlockedCompareExchange(&g_firstFrameCopyLogged,1,0)==0) {
+            wchar_t line[160];StringCchPrintfW(line,_countof(line),
+                L"player: first shared frame copy succeeded: %ldx%ld, sequence=%ld, buffer=%ld",w,h,seq+2,index);
+            HostLog(line);
         }
+        return TRUE;
     }
     return FALSE;
 }
