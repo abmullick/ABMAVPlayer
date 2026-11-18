@@ -46,14 +46,14 @@ Because much of the interface is custom-painted, adding a setting normally requi
 
 ## Home Theatre and metadata providers
 
-The optional Home Theatre window remains implemented in `src/tmdb_home_theatre.cpp` with its C-compatible entry point in `src/tmdb_home_theatre.h`. The window receives an immutable snapshot of the active playlist plus saved favourites and the existing `PlayIndex` callback. It owns its Direct2D surface and Win32 controls; it does not replace or share state with Streaming Centre, Torrent Stream or the LibVLC playback lifecycle.
+The optional Home Theatre window remains implemented in `src/home_theatre.cpp` with its C-compatible entry point in `src/home_theatre.h`. The window receives an immutable snapshot of the active playlist plus saved favourites and the existing `PlayIndex` callback. It owns its Direct2D surface and Win32 controls; it does not replace or share state with Streaming Centre, Torrent Stream or the LibVLC playback lifecycle.
 
 Provider access is isolated in `src/metadata_engine.cpp` / `src/metadata_engine.h`. The current keyless adapters are:
 - **Wikidata** for movie search and details through the public SPARQL endpoint. Movie IDs are Wikidata Q-numbers.
 - **TVmaze** for TV search, show details, cast, seasons and episode lists. TV IDs are TVmaze IDs.
 - No API token, account, or user-entered credential is required. Requests use WinHTTP and are synchronous only inside Home Theatre worker threads. All HWND and Direct2D updates remain on the Home Theatre window thread.
 
-The Home Theatre parser consumes a provider-neutral, TMDB-shaped internal JSON representation so the UI can remain independent of provider response schemas. Provider IDs are scoped by media type. Manual local-file overrides use `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre\matches-v2.tsv`, preventing old TMDB ID mappings from being mistaken for the new provider IDs. Downloaded images are cached in the same Home Theatre directory.
+The Home Theatre parser consumes a provider-neutral, normalized internal JSON representation so the UI can remain independent of provider response schemas. Provider IDs are scoped by media type. Manual local-file overrides use `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre\matches-v2.tsv`, preventing legacy provider ID mappings from being mistaken for the new provider IDs. Downloaded images are cached in the same Home Theatre directory.
 
 The image downloader accepts HTTPS artwork URLs only from the current provider image hosts (TVmaze and Wikimedia Commons/upload). The current Wikidata movie adapter uses available Commons image references; the TVmaze adapter uses its original show image when available. Neither source guarantees a cinematic backdrop. Recommendations are not implemented by these providers. Do not imply that every title has artwork, cast, recommendations or complete metadata. Image licensing and attribution must be checked against the individual source before commercial redistribution; public API access does not grant blanket image rights.
 
