@@ -15,7 +15,7 @@ The source version can be ahead of the latest published installer while a releas
 
 ### Current release highlights — v1.1.3 candidate
 
-- Added Home Theatre with TMDB movie/TV discovery, local-library identification, editable local matches, cached posters and backdrops, recommendations, and TV season/episode browsing.
+- Home Theatre now uses keyless metadata providers: Wikidata for movie discovery and TVmaze for television search, details and season/episode browsing. It retains local-library identification, editable local matches and cached artwork; no API key or account is required. Provider coverage varies; movie recommendations and guaranteed backdrops are not provided.
 - Expanded the live music visualizer to ten styles: four native Direct2D scenes and six isolated OpenGL scenes, including ProjectM MilkDrop. Fluid Motion (OpenGL) is the default; the renderer is hosted out of process and composed into the existing media stage.
 - Smoothed visualizer activation and spectrum response, and removed the temporary Neon Spectrum substitution while the selected OpenGL renderer starts.
 - Added Advanced Audio Centre track selection and output/audio-processing controls, refined Subtitle Manager interactions, and clarified audio-track/subtitle feedback.
