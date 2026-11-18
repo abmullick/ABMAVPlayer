@@ -67,6 +67,9 @@ volatile LONG g_firstRenderLogged=0;
 volatile LONG g_renderFrames=0;
 volatile LONG g_firstTransferErrorLogged=0;
 volatile LONG g_frameLockMissLogged=0;
+/* A MilkDrop preset can evaluate to a fully black frame. Never publish that
+   frame over the last good image; skip the preset if it stays black. */
+volatile LONG g_blankFrameStreak=0;
 
 std::string Utf8(const wchar_t *value) {
     if(!value||!*value)return {};
@@ -193,15 +196,42 @@ void RenderFrame() {
             glReadPixels(0,0,w,h,GL_BGRA,GL_UNSIGNED_BYTE,g_shared->frames[nextFrame]);
             GLenum transferError=glGetError();
             if(transferError==GL_NO_ERROR) {
-                InterlockedExchange(&g_shared->frameWidth,w);
-                InterlockedExchange(&g_shared->frameHeight,h);
-                InterlockedExchange(&g_shared->frameIndex,nextFrame);
-                /* Periodically measure the actual OpenGL readback. This tells
-                   us whether a dark display originates inside ProjectM or
-                   later in the IPC/Direct2D presentation path. */
+                const unsigned char *sample=g_shared->frames[nextFrame];
+                /* Sample a 64x36 grid instead of scanning 8 MB on every
+                   frame. A single illuminated sample is enough to preserve
+                   intentionally dark presets; only a truly black image is
+                   considered a failed preset. */
+                unsigned int visibleSamples=0;
+                for(int sy=0;sy<36;sy++) {
+                    int y=(sy*h)/36;
+                    for(int sx=0;sx<64;sx++) {
+                        int x=(sx*w)/64;
+                        const unsigned char *px=sample+((size_t)y*(size_t)w+(size_t)x)*4u;
+                        if(px[0]>2||px[1]>2||px[2]>2)++visibleSamples;
+                    }
+                }
+                if(visibleSamples>0) {
+                    InterlockedExchange(&g_blankFrameStreak,0);
+                    /* Only commit a frame to the consumer after it contains
+                       actual image data. A transient black frame therefore
+                       cannot erase the last successfully displayed frame. */
+                    InterlockedExchange(&g_shared->frameWidth,w);
+                    InterlockedExchange(&g_shared->frameHeight,h);
+                    InterlockedExchange(&g_shared->frameIndex,nextFrame);
+                } else {
+                    LONG blank=InterlockedIncrement(&g_blankFrameStreak);
+                    if(blank==90) {
+                        wchar_t line[256];
+                        StringCchPrintfW(line,_countof(line),
+                            L"ProjectM preset %zu produced 90 consecutive black frames; advancing automatically",g_presetIndex);
+                        LogText(line);
+                        LoadPresetDelta(1);
+                        InterlockedExchange(&g_blankFrameStreak,0);
+                    }
+                }
+                /* Periodically measure the actual OpenGL readback. */
                 LONG upcomingFrame=InterlockedCompareExchange(&g_renderFrames,0,0)+1;
                 if((upcomingFrame%120)==0) {
-                    const unsigned char *sample=g_shared->frames[nextFrame];
                     size_t pixelCount=(size_t)w*(size_t)h;
                     unsigned long long lit=0,luminanceSum=0;
                     unsigned int maxChannel=0;
@@ -215,9 +245,10 @@ void RenderFrame() {
                     }
                     wchar_t metrics[256];
                     StringCchPrintfW(metrics,_countof(metrics),
-                        L"OpenGL output metrics: frame=%ld preset=%zu nonblack=%llu/%llu meanLuma=%llu maxRGB=%u",
+                        L"OpenGL output metrics: frame=%ld preset=%zu nonblack=%llu/%llu meanLuma=%llu maxRGB=%u sampledVisible=%u blankStreak=%ld",
                         (long)upcomingFrame,g_presetIndex,lit,(unsigned long long)pixelCount,
-                        pixelCount?luminanceSum/pixelCount:0,maxChannel);
+                        pixelCount?luminanceSum/pixelCount:0,maxChannel,visibleSamples,
+                        (long)InterlockedCompareExchange(&g_blankFrameStreak,0,0));
                     LogText(metrics);
                 }
             } else if(InterlockedCompareExchange(&g_firstTransferErrorLogged,1,0)==0) {
