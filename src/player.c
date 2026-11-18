@@ -243,6 +243,10 @@ static void HTMetadataReload(void) {
         wchar_t *fields[9]={0},*p=line;int n=0;
         while(n<9&&p){fields[n++]=p;wchar_t *tab=wcschr(p,L'\t');if(!tab)break;*tab=0;p=tab+1;}
         if(n<9||!fields[0][0]||!fields[1][0])continue;
+        /* Ignore stale Home Theatre rows that contain only a title/path.
+           They are not useful metadata and must not mask normal media labels. */
+        if(!fields[2][0]&&!fields[3][0]&&!fields[4][0]&&!fields[5][0]&&
+           !fields[6][0]&&!fields[7][0]&&!fields[8][0])continue;
         int at=-1;for(int i=0;i<g_htMetadataCount;i++)if(!_wcsicmp(g_htMetadata[i].path,fields[0])){at=i;break;}
         if(at<0)at=g_htMetadataCount++;
         HTMediaMetadata *m=&g_htMetadata[at];ZeroMemory(m,sizeof(*m));
