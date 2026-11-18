@@ -568,3 +568,12 @@ Each detected stream is listed with its type, ID, codec and whether that ID is c
 ### Live music visualizers
 
 When an audio-only track is playing, ABM renders an immersive, full-stage live visualizer in the existing player surface. It fills the complete media stage in windowed mode and the complete display area in fullscreen mode; it is not confined to the album-art information strip. The visuals use the display's native client resolution (up to 3840 × 2160 on a 4K display), a vivid multi-colour palette, layered frequency-reactive ribbons, particles, travelling sparks, halo geometry and a full-width spectrum floor. Direct2D handles GPU-accelerated drawing, while a dedicated 16 ms animation timer targets 60 Hz without increasing the general playback/UI timer frequency. Right-click the media stage and choose one of the **Live Music Visualizer** modes: **Spectrum**, **Fluid Waves**, or **Particle Visualizer**. The selected preference remains available without restarting playback. The analysis currently uses WASAPI loopback on the Windows default render endpoint; other applications playing through that endpoint can therefore influence the visualization. Process-specific capture is not implemented.
+
+
+## Home Theatre metadata providers and attribution
+
+Home Theatre is keyless and has no TMDB token, API-key or account setting. Movie metadata comes from Wikidata (structured data is CC0); television metadata comes from TVmaze (CC BY-SA 4.0). TVmaze requires attribution and ShareAlike compliance when reusing its data. The application identifies TVmaze as a source in About and F1 Help.
+
+TVmaze documents a public rate limit of at least 20 requests per 10 seconds per IP address. ABM spaces provider requests below that ceiling. Wikidata Query Service requests are also deliberately spaced. Provider outages, network failures and rate limits affect online discovery only, never local playback.
+
+Artwork is not covered by a blanket metadata licence. TVmaze image assets and Wikimedia Commons files can have rights that differ from the associated metadata. Each Commons file page identifies its author and licence; review the individual file terms before redistribution or commercial use. ABM caches artwork locally for performance, which does not change the licence or grant additional rights. Some titles have no artwork, and cinematic backdrops are not guaranteed.
