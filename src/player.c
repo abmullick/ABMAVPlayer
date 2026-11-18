@@ -8379,7 +8379,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
                     ABM_ProjectM_SetAudioSamples(pcm,512);
-                    if(!g_projectmSurfaceReady)InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+                    /* The renderer publishes a fresh shared-memory frame every
+                       ~16 ms. Repaint on every visualizer tick, not only on the
+                       first ready transition; otherwise an early paint can fall
+                       back to the legacy bars and remain there indefinitely. */
+                    InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
                     g_projectmSurfaceReady=TRUE;
                 } else {
                     g_projectmSurfaceReady=FALSE;
