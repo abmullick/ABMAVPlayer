@@ -3,6 +3,9 @@
 ## What's new
 
 - Added **Home Theatre**, an optional keyless metadata workspace. Wikidata provides movie search/details and related-movie suggestions based on shared genres; TVmaze provides television search, show details, cast, seasons and episodes. No API key, token or account is required. Available images are cached locally; provider coverage varies and guaranteed cinematic backdrops are not included.
+- Expanded Home Theatre's local-library identification view with **All / Movies / TV Shows** filters, preserving each result's original local-media association when filters change.
+- Added persistent per-title **Watched / Unwatched** status, stored per local media path independently of the main player's Continue Watching checkpoints.
+- Clarified that Identify library scans the active playlist and saved Favourites snapshot (up to 100 suggestions), not every folder or drive on disk; local matches continue to play through the existing LibVLC playback path.
 - Added a keyless Now Playing album-art fallback: embedded artwork first, then common same-folder cover images, then Wikidata/Wikimedia Commons lookup by artist and album. Network work is asynchronous and downloaded images are validated and cached locally.
 - Expanded live music visualization to **ten selectable styles**: four Direct2D scenes (Spectrum Orbit, Fluid Waves, Particle Universe and Neon Spectrum) and six isolated OpenGL scenes (MilkDrop, 3D Spectrum, Particle Universe, Oscilloscope 3D, Fluid Motion and Geometric Tunnel). Fluid Motion (OpenGL) is the default.
 - Kept OpenGL rendering in the separate `abm-projectm-renderer.exe` helper and composed its frames into the existing media stage. The selected style remains selected during asynchronous renderer startup; a neutral dark surface is shown until the first frame is ready instead of temporarily displaying Neon Spectrum.
