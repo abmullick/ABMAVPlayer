@@ -505,8 +505,8 @@ static void Draw(HWND w) {
     ABM_D2D_Begin(&g_canvas,BG);
     /* Use the exact main-player brand geometry and monogram. Keep the
        product wordmark, accent rule and subtitle on separate baselines. */
-    ABM_D2D_GradientRound(&g_canvas,0,0,(float)c.right,96,0,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
-    ABM_D2D_GradientRound(&g_canvas,0,82,(float)c.right,96,0,ABM_THEME_COLOR_08111D,ABM_THEME_COLOR_050A12);
+    ABM_D2D_Fill(&g_canvas,0,0,(float)c.right,96,ABM_THEME_COLOR_0D1B2D);
+    ABM_D2D_Fill(&g_canvas,0,82,(float)c.right,96,ABM_THEME_COLOR_08111D);
     ABM_D2D_Fill(&g_canvas,0,95,(float)c.right,96,ABM_THEME_COLOR_273D53);
     ABM_D2D_Fill(&g_canvas,0,92,(float)c.right,95,ABM_THEME_COLOR_0D1827);
     ABM_D2D_Round(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
@@ -577,7 +577,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_status=CreateWindowExW(0,L"STATIC",g_statusText,WS_CHILD|WS_VISIBLE|SS_LEFT,28,650,700,24,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g_play=CreateWindowExW(0,L"BUTTON",L"Play local match",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,650,148,42,w,(HMENU)HT_PLAY,GetModuleHandleW(nullptr),nullptr);
         g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
-        g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,136,130,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
+        g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,136,150,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
         g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,28,150,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
         g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
