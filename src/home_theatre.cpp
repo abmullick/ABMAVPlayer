@@ -261,7 +261,8 @@ static int FindEpisodeMatch(int season,int episode) {
             size_t at=name.find(pattern);
             while(at!=std::wstring::npos) {
                 size_t after=at+pattern.size();
-                if(after>=name.size()||!iswdigit(name[after]))return (int)i;
+                BOOL qualitySuffix=name.compare(after,5,L"1080p")==0||name.compare(after,5,L"2160p")==0||name.compare(after,4,L"720p")==0||name.compare(after,4,L"480p")==0||name.compare(after,2,L"4k")==0;
+                if(after>=name.size()||!iswdigit(name[after])||qualitySuffix)return (int)i;
                 at=name.find(pattern,at+1);
             }
         }
