@@ -34,6 +34,7 @@
 #include <limits.h>
 #include <shlobj.h>
 #include <shobjidl.h>
+#include <shlwapi.h>
 #include <KnownFolders.h>
 #include <urlmon.h>
 #include <winhttp.h>
@@ -50,6 +51,7 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "uuid.lib")
+#pragma comment(lib, "shlwapi.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -777,8 +779,10 @@ typedef struct ArtworkDownloadRequest {
     HWND target;
     LONG generation;
     BOOL lookupMusic;
+    BOOL localFile;
     wchar_t artist[256];
     wchar_t album[256];
+    wchar_t localPath[PATH_CAP];
     wchar_t url[PATH_CAP*4];
     wchar_t path[PATH_CAP];
 } ArtworkDownloadRequest;
@@ -947,12 +951,22 @@ static DWORD WINAPI ArtworkDownloadThread(LPVOID parameter) {
     wchar_t resolvedUrl[PATH_CAP*4]={0};
     const wchar_t *url=request->url;
     BOOL downloaded=TRUE;
-    if(request->lookupMusic) {
-        downloaded=ABM_Metadata_FindAlbumArtwork(request->artist,request->album,
-                                                   resolvedUrl,_countof(resolvedUrl));
-        if(downloaded)url=resolvedUrl;
+    if(request->localFile) {
+        wchar_t tempPath[PATH_CAP]={0};
+        downloaded=SUCCEEDED(StringCchPrintfW(tempPath,_countof(tempPath),L"%s.local-%ld",
+                                               request->path,(long)request->generation))
+            &&CopyFileW(request->localPath,tempPath,FALSE)
+            &&ValidateArtworkImage(tempPath)
+            &&MoveFileExW(tempPath,request->path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
+        if(!downloaded)DeleteFileW(tempPath);
+    } else {
+        if(request->lookupMusic) {
+            downloaded=ABM_Metadata_FindAlbumArtwork(request->artist,request->album,
+                                                       resolvedUrl,_countof(resolvedUrl));
+            if(downloaded)url=resolvedUrl;
+        }
+        if(downloaded)downloaded=DownloadArtworkSecurely(url,request->path,request->generation);
     }
-    if(downloaded)downloaded=DownloadArtworkSecurely(url,request->path,request->generation);
     if(SUCCEEDED(com))CoUninitialize();
     BOOL posted=FALSE;
     if(IsWindow(request->target))
@@ -975,21 +989,58 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
         wchar_t url[PATH_CAP*4]={0};
         int n=MultiByteToWideChar(CP_UTF8,0,art,-1,url,(int)_countof(url));
         libvlc_free(art);
-        if(n>0 && !_wcsnicmp(url,L"https://",8) && EnsureDataDirectory() && g_main) {
+        if(n>0 && EnsureDataDirectory() && g_main) {
             ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
             if(request) {
                 request->target=g_main;
                 request->generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
-                wcsncpy_s(request->url,_countof(request->url),url,_TRUNCATE);
+                swprintf_s(request->path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)request->generation);
+                if(!_wcsnicmp(url,L"https://",8)) {
+                    wcsncpy_s(request->url,_countof(request->url),url,_TRUNCATE);
+                } else if(!_wcsnicmp(url,L"file:",5)) {
+                    DWORD chars=(DWORD)_countof(request->localPath);
+                    if(SUCCEEDED(PathCreateFromUrlW(url,request->localPath,&chars,0)))
+                        request->localFile=TRUE;
+                }
+                if(request->localFile || request->url[0]) {
+                    HANDLE thread=CreateThread(NULL,0,ArtworkDownloadThread,request,0,NULL);
+                    if(thread){CloseHandle(thread);requestStarted=TRUE;}else free(request);
+                } else free(request);
+            }
+        }
+    }
+    /* Embedded artwork wins. If it is absent, try standard sibling artwork
+       names before querying MusicBrainz/Cover Art Archive. */
+    if(!requestStarted && EnsureDataDirectory() && g_main) {
+        char *mrl=libvlc_media_get_mrl(media);
+        wchar_t mediaPath[PATH_CAP]={0},folder[PATH_CAP]={0};
+        if(mrl) {
+            MultiByteToWideChar(CP_UTF8,0,mrl,-1,mediaPath,(int)_countof(mediaPath));
+            libvlc_free(mrl);
+        }
+        DWORD chars=(DWORD)_countof(mediaPath);
+        if(mediaPath[0] && SUCCEEDED(PathCreateFromUrlW(mediaPath,folder,&chars,0)) &&
+           PathRemoveFileSpecW(folder)) {
+            static const wchar_t *names[]={L"cover.jpg",L"folder.jpg",L"front.jpg",L"album.jpg",
+                L"cover.png",L"folder.png",L"front.png",L"album.png",L"cover.jpeg",L"folder.jpeg"};
+            for(size_t i=0;i<_countof(names)&&!requestStarted;i++) {
+                wchar_t candidate[PATH_CAP]={0};
+                if(FAILED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\%s",folder,names[i])) ||
+                   GetFileAttributesW(candidate)==INVALID_FILE_ATTRIBUTES)continue;
+                ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
+                if(!request)break;
+                request->target=g_main;
+                request->generation=InterlockedCompareExchange(&g_artworkGeneration,0,0);
+                request->localFile=TRUE;
+                wcsncpy_s(request->localPath,_countof(request->localPath),candidate,_TRUNCATE);
                 swprintf_s(request->path,PATH_CAP,L"%s\\artwork-%ld.bin",g_dataDir,(long)request->generation);
                 HANDLE thread=CreateThread(NULL,0,ArtworkDownloadThread,request,0,NULL);
                 if(thread){CloseHandle(thread);requestStarted=TRUE;}else free(request);
             }
         }
     }
-    /* If the file has no downloadable embedded artwork URL, resolve its
-       album through MusicBrainz and Cover Art Archive on a worker thread.
-       This never runs on the playback or window-message thread. */
+    /* Last resort: resolve the album via the keyless MusicBrainz and Cover
+       Art Archive APIs. The lookup and image download run off the UI thread. */
     if(!requestStarted && g_trackArtist[0] && g_trackAlbum[0] && EnsureDataDirectory() && g_main) {
         ArtworkDownloadRequest *request=(ArtworkDownloadRequest *)calloc(1,sizeof(*request));
         if(request) {
