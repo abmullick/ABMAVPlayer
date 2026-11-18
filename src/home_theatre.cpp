@@ -474,8 +474,22 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 if(g_seasonMode&&!g_episodeMode&&g_items[selected].seasonNumber>=0){StartSeasonLoad(g_items[selected].seasonNumber);return 0;}
                 if(g_episodeMode&&g_items[selected].episodeNumber>=0){
                     MovieItem episode=g_items[selected];g_localMatch=FindEpisodeMatch(episode.seasonNumber,episode.episodeNumber);
-                    StringCchCopyW(g_overview,_countof(g_overview),episode.overview);StringCchCopyW(g_year,_countof(g_year),episode.date);g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;ABM_D2D_ClearImage(&g_canvas);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);
-                    EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode filename match found.":L"No matching local episode filename found.");InvalidateRect(w,nullptr,FALSE);return 0;
+                    StringCchCopyW(g_overview,_countof(g_overview),episode.overview);StringCchCopyW(g_year,_countof(g_year),episode.date);g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;g_showBackdrop=FALSE;ABM_D2D_ClearImage(&g_canvas);
+                    // TVmaze supplies landscape episode stills. Cache them separately
+                    // from show posters and display them as a wide image in the details pane.
+                    if(episode.backdrop[0]) {
+                        wchar_t folder[MAX_PATH]={},cache[MAX_PATH]={};
+                        if(ImageFolder(folder,_countof(folder))&&SUCCEEDED(StringCchPrintfW(cache,_countof(cache),L"%s\\episode-%d-s%02d-e%02d.jpg",folder,episode.id,episode.seasonNumber,episode.episodeNumber))) {
+                            if(GetFileAttributesW(cache)==INVALID_FILE_ATTRIBUTES)ABM_Metadata_DownloadImage(episode.backdrop,cache,12000);
+                            if(GetFileAttributesW(cache)!=INVALID_FILE_ATTRIBUTES) {
+                                StringCchCopyW(g_posterFile,_countof(g_posterFile),cache);
+                                StringCchCopyW(g_backdropFile,_countof(g_backdropFile),cache);
+                                g_showBackdrop=TRUE;ABM_D2D_LoadImage(&g_canvas,cache);
+                            }
+                        }
+                    }
+                    EnableWindow(g_artButton,FALSE);EnableWindow(g_matchButton,FALSE);EnableWindow(g_localPicker,FALSE);
+                    EnableWindow(g_play,g_localMatch>=0);SetStatus(g_localMatch>=0?L"Episode still loaded. Local episode filename match found.":L"Episode details loaded. No matching local episode filename found.");InvalidateRect(w,nullptr,FALSE);return 0;
                 }
                 g_localMatch=LoadManualMatch(g_items[selected].id,g_items[selected].type);if(g_localMatch<0)g_localMatch=g_items[selected].localIndex>=0?g_items[selected].localIndex:FindLocalMatch(g_items[selected].title);
                 g_overview[0]=g_year[0]=g_runtime[0]=g_genres[0]=g_cast[0]=g_director[0]=g_posterFile[0]=g_backdropFile[0]=0;
