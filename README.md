@@ -100,7 +100,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Playback speed presets from 0.5x to 2.0x.
 - Fullscreen playback and keyboard controls.
 - Read-only Media Information view from the playback context menu: available metadata tags, file path/size, duration/position, decoded video dimensions and LibVLC-reported stream codecs/active tracks.
-- Home Theatre: keyless Wikidata movie discovery and related-movie suggestions, TVmaze television discovery, active-playlist and favourites identification, editable/persisted local-file matches, cached available artwork, TV season/episode browsing and local episode filename matching.
+- Home Theatre: keyless Wikidata movie discovery and related-movie suggestions, TVmaze television discovery, active-playlist and favourites identification, All / Movies / TV Shows filters, editable/persisted local-file matches, per-title watched status, cached available artwork, TV season/episode browsing and local episode filename matching. The identification scan uses the active playlist/favourites snapshot; it is not a recursive disk scan or a separate filesystem-wide media importer.
 - Music artwork fallback: embedded artwork, local folder covers and keyless Wikidata/Wikimedia Commons album-image lookup, with asynchronous retrieval and local caching.
 
 ### Audio, video and subtitles
