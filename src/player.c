@@ -8533,8 +8533,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_visualizerTimerRunning=FALSE;
             }
             g_visualizerActive=FALSE; g_visualizerTried=FALSE;g_projectmSurfaceReady=FALSE;
-            if(g_projectmTried)ABM_ProjectM_Destroy();
-            g_projectmTried=FALSE;
+            /* Keep the isolated helper dormant between audio tracks. Its
+               render timer skips hidden surfaces; teardown is reserved for
+               application shutdown so a video transition never waits on GL. */
             ABM_ProjectM_SetBounds(NULL,FALSE);
             if(g_video && !g_fullscreen) {
                 if (g_hasMedia) ShowWindow(g_video,SW_SHOWNA);
