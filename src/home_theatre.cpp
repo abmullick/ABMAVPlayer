@@ -456,10 +456,28 @@ static LRESULT CALLBACK HomePremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,LPAR
     if(msg==WM_SIZE){LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);RECT r={};GetClientRect(hwnd,&r);HRGN region=CreateRoundRectRgn(0,0,r.right+1,r.bottom+1,12,12);if(region)SetWindowRgn(hwnd,region,TRUE);return z;}
     if(msg==WM_NCPAINT)return 0;
     if(msg==WM_PAINT){
+        wchar_t cls[32]={};GetClassNameW(hwnd,cls,_countof(cls));
+        if(!_wcsicmp(cls,L"ComboBox")){
+            PAINTSTRUCT ps={};HDC dc=BeginPaint(hwnd,&ps);RECT r={};GetClientRect(hwnd,&r);
+            if(dc&&g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,dc,&r)){
+                ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)r.right,(float)r.bottom,ABM_UI_COLOR_INPUT);
+                ABM_D2D_CanvasStrokeRound(&g_controlCanvas,0.5f,0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,GetFocus()==hwnd?ABM_UI_COLOR_FOCUS:ABM_UI_COLOR_BORDER_STRONG,GetFocus()==hwnd?2.0f:1.0f);
+                int arrowW=34;RECT ar={r.right-arrowW,1,r.right-1,r.bottom-1};
+                ABM_D2D_CanvasFillRound(&g_controlCanvas,(float)ar.left,(float)ar.top,(float)ar.right,(float)ar.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_113041);
+                int selected=(int)SendMessageW(hwnd,CB_GETCURSEL,0,0);wchar_t label[512]={};
+                if(selected!=CB_ERR)SendMessageW(hwnd,CB_GETLBTEXT,(WPARAM)selected,(LPARAM)label);
+                RECT tr={12,0,r.right-arrowW-8,r.bottom};
+                ABM_D2D_CanvasText(&g_controlCanvas,label,tr,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                float cx=(float)(ar.left+arrowW/2),cy=(float)((ar.top+ar.bottom)/2);
+                ABM_D2D_CanvasLine(&g_controlCanvas,cx-5,cy-2,cx,cy+3,ABM_UI_COLOR_ACCENT_BRIGHT,2);
+                ABM_D2D_CanvasLine(&g_controlCanvas,cx,cy+3,cx+5,cy-2,ABM_UI_COLOR_ACCENT_BRIGHT,2);
+                ABM_D2D_CanvasEnd(&g_controlCanvas);
+            }
+            EndPaint(hwnd,&ps);return 0;
+        }
         LRESULT z=DefSubclassProc(hwnd,msg,wp,lp);HDC dc=GetDC(hwnd);
         if(dc){
             RECT r={};GetClientRect(hwnd,&r);DrawAbmControlFrame(hwnd,dc);
-            wchar_t cls[32]={};GetClassNameW(hwnd,cls,_countof(cls));
             if(!_wcsicmp(cls,L"ComboBox")){
                 const int arrowW=32;RECT arrow={r.right-arrowW,r.top+1,r.right-1,r.bottom-1};
                 if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,dc,&r)){
@@ -492,11 +510,11 @@ static void Layout(HWND w) {
     
     if(g_seasonButton)MoveWindow(g_seasonButton,28,150,100,28,TRUE);
     if(g_results)MoveWindow(g_results,28,186,300,height-272,TRUE);
-    if(g_localPicker)MoveWindow(g_localPicker,380,height-118,360,260,TRUE);
-    if(g_matchButton)MoveWindow(g_matchButton,748,height-118,150,30,TRUE);
-    if(g_artButton)MoveWindow(g_artButton,380,height-78,150,30,TRUE);
+    if(g_localPicker)MoveWindow(g_localPicker,380,height-136,360,250,TRUE);
+    if(g_matchButton)MoveWindow(g_matchButton,748,height-136,150,30,TRUE);
+    if(g_artButton)MoveWindow(g_artButton,380,height-82,150,30,TRUE);
     if(g_status)MoveWindow(g_status,28,height-70,320,24,TRUE);
-    if(g_play)MoveWindow(g_play,width-176,height-78,148,42,TRUE);
+    if(g_play)MoveWindow(g_play,width-176,height-82,148,42,TRUE);
 }
 static RECT MakeRect(LONG l,LONG t,LONG r,LONG b) { RECT value={l,t,r,b};return value; }
 static void Draw(HWND w) {
@@ -529,10 +547,10 @@ static void Draw(HWND w) {
     ABM_D2D_StrokeRound(&g_canvas,22,102,(float)c.right-164,140,9,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     ABM_D2D_Round(&g_canvas,26,186,334,(float)c.bottom-94,9,PANEL2);
     ABM_D2D_StrokeRound(&g_canvas,26,186,334,(float)c.bottom-94,9,ABM_UI_COLOR_BORDER,0.8f);
-    ABM_D2D_Round(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,PANEL2);
-    ABM_D2D_StrokeRound(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,RGB(53,82,101),0.8f);
-    ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
-    ABM_D2D_StrokeRound(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
+    ABM_D2D_Round(&g_canvas,380,(float)c.bottom-136,742,(float)c.bottom-96,8,PANEL2);
+    ABM_D2D_StrokeRound(&g_canvas,380,(float)c.bottom-136,742,(float)c.bottom-96,8,ABM_UI_COLOR_BORDER_STRONG,0.8f);
+    ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-40,14,PANEL);
+    ABM_D2D_StrokeRound(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-40,14,ABM_UI_COLOR_BORDER,0.8f);
     if(g_selected>=0&&g_selected<g_itemCount) {
         MovieItem &m=g_items[g_selected];
         ABM_D2D_Text(&g_canvas,m.title,MakeRect(380,150,c.right-390,196),TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
