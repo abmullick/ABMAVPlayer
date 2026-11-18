@@ -1052,7 +1052,7 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
             L"cover.png",L"folder.png",L"front.png",L"album.png",L"cover.jpeg",L"folder.jpeg"};
         for(size_t i=0;i<_countof(names)&&!hasFolderCover;i++) {
             wchar_t candidate[PATH_CAP]={0};
-            if(SUCCEEDED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\%s",mediaFolder,names[i])))
+            if(mediaFolder[0]&&SUCCEEDED(StringCchPrintfW(candidate,_countof(candidate),L"%s\\%s",mediaFolder,names[i])))
                 hasFolderCover=GetFileAttributesW(candidate)!=INVALID_FILE_ATTRIBUTES;
         }
         if(hasFolderCover || (g_trackArtist[0]&&g_trackAlbum[0])) {
