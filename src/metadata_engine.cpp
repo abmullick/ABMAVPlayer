@@ -160,6 +160,78 @@ std::wstring MovieQuery(const wchar_t *filter,const wchar_t *query) {
     q+=L" OPTIONAL { ?item wdt:P577 ?date . } OPTIONAL { ?item wdt:P18 ?image . } OPTIONAL { ?item wdt:P136 ?genre . ?genre rdfs:label ?genreLabel . FILTER(LANG(?genreLabel)=\"en\") } OPTIONAL { ?item wdt:P57 ?director . ?director rdfs:label ?directorLabel . FILTER(LANG(?directorLabel)=\"en\") } OPTIONAL { ?item wdt:P161 ?actor . ?actor rdfs:label ?castLabel . FILTER(LANG(?castLabel)=\"en\") } SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". } } GROUP BY ?item ?itemLabel ?itemDescription ?date ?image LIMIT 30";
     return q;
 }
+std::wstring MusicBrainzEscape(const wchar_t *value) {
+    std::wstring out;
+    for(;value&&*value;value++) {
+        wchar_t c=*value;
+        if(c==L'\\'||c==L'"'||c==L'+'||c==L'-'||c==L'!'||c==L'('||c==L')'||
+           c==L'{'||c==L'}'||c==L'['||c==L']'||c==L'^'||c==L'~'||
+           c==L'*'||c==L'?'||c==L':'||c==L'/')out.push_back(L'\\');
+        if(c==L'\r'||c==L'\n')out.push_back(L' ');else out.push_back(c);
+    }
+    return out;
+}
+bool MusicBrainzRateLimit() {
+    static SRWLOCK lock=SRWLOCK_INIT;
+    static ULONGLONG lastRequest=0;
+    AcquireSRWLockExclusive(&lock);
+    ULONGLONG now=GetTickCount64();
+    if(lastRequest&&now-lastRequest<1100)Sleep((DWORD)(1100-(now-lastRequest)));
+    lastRequest=GetTickCount64();
+    ReleaseSRWLockExclusive(&lock);
+    return true;
+}
+bool ResolveCoverArtRedirect(const wchar_t *releaseGroup,std::wstring &imageUrl) {
+    if(!releaseGroup||wcslen(releaseGroup)!=36)return false;
+    std::wstring path=L"/release-group/";path+=releaseGroup;path+=L"/front-500";
+    HINTERNET session=WinHttpOpen(L"ABM-AV-Player/1.2 (https://github.com/abmullick/ABMAVPlayer)",
+        WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
+    if(!session)return false;
+    WinHttpSetTimeouts(session,5000,5000,8000,12000);
+    HINTERNET connect=WinHttpConnect(session,L"coverartarchive.org",INTERNET_DEFAULT_HTTPS_PORT,0);
+    HINTERNET request=connect?WinHttpOpenRequest(connect,L"GET",path.c_str(),nullptr,
+        WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE):nullptr;
+    DWORD policy=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
+    if(request)WinHttpSetOption(request,WINHTTP_OPTION_REDIRECT_POLICY,&policy,sizeof(policy));
+    BOOL ok=request&&WinHttpSendRequest(request,WINHTTP_NO_ADDITIONAL_HEADERS,0,WINHTTP_NO_REQUEST_DATA,0,0,0)
+        &&WinHttpReceiveResponse(request,nullptr);
+    DWORD status=0,statusSize=sizeof(status);
+    if(ok)ok=WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,
+        WINHTTP_HEADER_NAME_BY_INDEX,&status,&statusSize,WINHTTP_NO_HEADER_INDEX)
+        &&(status==301||status==302||status==303||status==307||status==308);
+    wchar_t location[4096]={};DWORD locationBytes=sizeof(location);
+    if(ok)ok=WinHttpQueryHeaders(request,WINHTTP_QUERY_LOCATION,WINHTTP_HEADER_NAME_BY_INDEX,
+        location,&locationBytes,WINHTTP_NO_HEADER_INDEX);
+    if(ok&&location[0]) {
+        if(!_wcsnicmp(location,L"https://",8))imageUrl=location;
+        else if(!wcsncmp(location,L"//",2))imageUrl=L"https:"+std::wstring(location);
+        else if(location[0]==L'/')imageUrl=L"https://coverartarchive.org"+std::wstring(location);
+        else ok=FALSE;
+    } else ok=FALSE;
+    if(request)WinHttpCloseHandle(request);if(connect)WinHttpCloseHandle(connect);WinHttpCloseHandle(session);
+    return ok&&!imageUrl.empty();
+}
+bool FindMusicBrainzReleaseGroup(const wchar_t *artist,const wchar_t *album,std::wstring &mbid) {
+    if(!artist||!*artist||!album||!*album)return false;
+    MusicBrainzRateLimit();
+    std::wstring query=L"artist:\\"";query+=MusicBrainzEscape(artist);query+=L"\\" AND releasegroup:\\"";
+    query+=MusicBrainzEscape(album);query+=L"\\"";
+    std::wstring path=L"/ws/2/release-group/?query="+UrlEncode(query.c_str())+L"&fmt=json&limit=5";
+    std::vector<wchar_t> raw;
+    if(!HttpGet(L"musicbrainz.org",path,raw,20000))return false;
+    const wchar_t *list=wcsstr(raw.data(),L"\\"release-groups\\"");if(!list)return false;
+    const wchar_t *p=wcschr(list,L'[');if(!p)return false;p++;
+    while(*p) {
+        while(*p&&(iswspace(*p)||*p==L','))p++;
+        if(*p==L']'||!*p)break;
+        if(*p!=L'{'){p++;continue;}
+        const wchar_t *end=FindObjectEnd(p);if(end<=p)break;
+        wchar_t id[64]={};JsonString(p,end,L"id",id,_countof(id));
+        if(wcslen(id)==36){mbid=id;return true;}
+        p=end;
+    }
+    return false;
+}
 bool QueryWikidata(const std::wstring &sparql,std::vector<wchar_t> &json) {
     std::wstring path=L"/sparql?format=json&query="+UrlEncode(sparql.c_str());
     return HttpGet(L"query.wikidata.org",path,json,20000);
@@ -301,6 +373,13 @@ extern "C" BOOL ABM_Metadata_GetRecommendations(ABM_METADATA_MEDIA_TYPE type,int
 extern "C" BOOL ABM_Metadata_GetSeasonDetails(int tvmazeId,int seasonNumber,wchar_t *json,size_t capacity) {
     if(tvmazeId<=0||seasonNumber<0||!json||!capacity)return FALSE;
     std::wstring result;return TvMazeEpisodes(tvmazeId,seasonNumber,result)&&CopyOutput(result,json,capacity);
+}
+extern "C" BOOL ABM_Metadata_FindAlbumArtwork(const wchar_t *artist,const wchar_t *album,wchar_t *imageUrl,size_t capacity) {
+    if(!artist||!album||!imageUrl||capacity==0)return FALSE;
+    imageUrl[0]=0;
+    std::wstring mbid,url;
+    if(!FindMusicBrainzReleaseGroup(artist,album,mbid)||!ResolveCoverArtRedirect(mbid.c_str(),url))return FALSE;
+    return SUCCEEDED(StringCchCopyW(imageUrl,capacity,url.c_str()));
 }
 extern "C" const wchar_t *ABM_Metadata_ProviderName(ABM_METADATA_MEDIA_TYPE type) {
     return type==ABM_METADATA_TV?L"TVmaze":L"Wikidata";
