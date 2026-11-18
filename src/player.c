@@ -278,6 +278,27 @@ static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
 static BOOL g_projectmSurfaceReady=FALSE;
 static unsigned char g_projectmFrame[ABM_PROJECTM_FRAME_BYTES];
+/* Main-process diagnostics identify the first broken ProjectM hand-off stage. */
+static volatile LONG g_pmDiagTimer=0,g_pmDiagReady=0,g_pmDiagCopy=0,g_pmDiagD2D=0;
+static void ProjectMPlayerLog(const wchar_t *message) {
+    wchar_t path[MAX_PATH]={0};
+    DWORD n=GetTempPathW(_countof(path),path);
+    if(!n||n>=_countof(path))return;
+    if(FAILED(StringCchCatW(path,_countof(path),L"ABM-ProjectM-renderer.log")))return;
+    HANDLE file=CreateFileW(path,FILE_APPEND_DATA,FILE_SHARE_READ|FILE_SHARE_WRITE,
+        NULL,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);
+    if(file==INVALID_HANDLE_VALUE)return;
+    DWORD written=0;
+    WriteFile(file,message,(DWORD)(wcslen(message)*sizeof(wchar_t)),&written,NULL);
+    WriteFile(file,L"\r\n",4,&written,NULL);
+    CloseHandle(file);
+}
+static void ProjectMPlayerLogState(const wchar_t *stage,BOOL active,int mode,BOOL ready) {
+    wchar_t line[192];
+    StringCchPrintfW(line,_countof(line),
+        L"player: %s active=%d mode=%d ready=%d",stage,active?1:0,mode,ready?1:0);
+    ProjectMPlayerLog(line);
+}
 static int g_projectmFrameWidth=0,g_projectmFrameHeight=0;
 static float g_visualizerBarPeaks[64];
 static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4 isolated ProjectM MilkDrop */
@@ -1597,12 +1618,22 @@ static void DrawUI(HDC dc,RECT client) {
         /* When audio visualization is active it owns the entire client area.
            Artwork/metadata layouts must not constrain it to a short footer strip. */
         if(g_visualizerActive) {
-            if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
-                int fw=0,fh=0;
-                if(ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh)) {
-                    if(!ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
-                        (float)client.left,(float)client.top,(float)client.right,(float)client.bottom))
-                        DrawVisualizer(dc,client);
+            if(g_visualizerMode==4) {
+                BOOL pmReady=ABM_ProjectM_IsReady();
+                if(InterlockedCompareExchange(&g_pmDiagReady,1,0)==0)
+                    ProjectMPlayerLogState(L"fullscreen paint readiness",g_visualizerActive,g_visualizerMode,pmReady);
+                if(pmReady) {
+                    int fw=0,fh=0;
+                    BOOL copied=ABM_ProjectM_CopyFrame(g_projectmFrame,sizeof(g_projectmFrame),&fw,&fh);
+                    if(copied) {
+                        if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0) {
+                            wchar_t line[160];StringCchPrintfW(line,_countof(line),L"player: fullscreen frame copy succeeded %dx%d",fw,fh);ProjectMPlayerLog(line);
+                        }
+                        BOOL drawn=ABM_D2D_DrawBgraFrame(&g_ui,g_projectmFrame,(UINT)fw,(UINT)fh,
+                            (float)client.left,(float)client.top,(float)client.right,(float)client.bottom);
+                        if(drawn) { if(InterlockedCompareExchange(&g_pmDiagD2D,1,0)==0)ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw accepted"); }
+                        else { ProjectMPlayerLog(L"player: fullscreen Direct2D frame draw failed; using legacy visualizer");DrawVisualizer(dc,client); }
+                    } else { if(InterlockedCompareExchange(&g_pmDiagCopy,1,0)==0)ProjectMPlayerLog(L"player: fullscreen shared frame copy failed");DrawVisualizer(dc,client); }
                 } else DrawVisualizer(dc,client);
             } else DrawVisualizer(dc,client);
             return;
@@ -8375,7 +8406,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VISUALIZER_TIMER_ID) {
             if(g_visualizerActive) {
                 ++g_visualizerFrame;
+                if(g_visualizerMode==4 && InterlockedCompareExchange(&g_pmDiagTimer,1,0)==0)
+                    ProjectMPlayerLogState(L"visualizer timer entered",g_visualizerActive,g_visualizerMode,ABM_ProjectM_IsReady());
                 BOOL projectmReady=(g_visualizerMode==4 && ABM_ProjectM_IsReady());
+                if(projectmReady && InterlockedCompareExchange(&g_pmDiagReady,1,0)==0)
+                    ProjectMPlayerLogState(L"renderer ready on main thread",g_visualizerActive,g_visualizerMode,TRUE);
                 if(projectmReady) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
