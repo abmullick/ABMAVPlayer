@@ -276,7 +276,7 @@ static BOOL g_hasResume[MAX_PLAYLIST];
 static BOOL g_visualizerActive=FALSE;
 static BOOL g_visualizerTried=FALSE;
 static BOOL g_projectmTried=FALSE;
-static BOOL g_autoPresetTransitions=TRUE;
+static float g_visualizerBarPeaks[64];
 static int g_visualizerMode=2; /* 0 Spectrum, 1 Fluid Waves, 2 Particle Visualizer */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
@@ -1413,7 +1413,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
         /* A quiet luminous horizon anchors the liquid volume. */
         ABM_D2D_Line(&g_ui,(float)area.left,(float)cy+height*0.31f,
             (float)area.right,(float)cy+height*0.31f,Blend(ink,cyan,18),1.0f*s);
-    } else {
+    } else if(g_visualizerMode==2) {
         /* PARTICLE UNIVERSE: a perspective star tunnel with a fixed vanishing
            point. Depth, apparent size, trails and turbulence are derived from
            each particle's Z position and the live frequency bands. */
@@ -1473,6 +1473,56 @@ static void DrawVisualizer(HDC dc,RECT area) {
         float pulse=(float)(height<width?height:width)*(0.025f+bass*0.035f);
         ABM_D2D_StrokeRound(&g_ui,cx-pulse,cy-pulse,cx+pulse,cy+pulse,
             pulse*0.8f,Blend(ink,cyan,34),1.5f*s);
+    }
+
+    } else {
+        /* NEON SPECTRUM: a high-density equalizer with frequency colour,
+           reflected energy and slowly-decaying peak markers. This mode uses
+           the same lightweight 24-band FFT snapshot as the other compositions. */
+        GradientRect(dc,area,RGB(2,9,19),RGB(8,12,31));
+        ABM_D2D_GradientRound(&g_ui,(float)area.left+width*0.08f,
+            (float)area.top+height*0.08f,(float)area.right-width*0.08f,
+            (float)area.bottom-height*0.05f,height*0.28f,
+            RGB(10,58,77),ink);
+        for(int grid=1;grid<=3;grid++) {
+            float gy=(float)area.bottom-height*(0.16f+grid*0.19f);
+            ABM_D2D_Line(&g_ui,(float)area.left+width*0.045f,gy,
+                (float)area.right-width*0.045f,gy,Blend(ink,blue,10),0.7f*s);
+        }
+        const int bars=64;
+        float slot=(float)width/(float)bars;
+        float barW=slot*0.62f;
+        float baseline=(float)area.bottom-height*0.16f;
+        for(int i=0;i<bars;i++) {
+            float bandPos=(float)i*23.0f/(float)(bars-1);
+            int band=(int)bandPos;if(band>23)band=23;
+            int next=band<23?band+1:23;
+            float frac=bandPos-(float)band;
+            float v=levels[band]*(1.0f-frac)+levels[next]*frac;
+            v=sqrtf((v<0.0f)?0.0f:v);
+            float h=height*(0.025f+v*0.57f);
+            if(h>height*0.70f)h=height*0.70f;
+            if(v>g_visualizerBarPeaks[i])g_visualizerBarPeaks[i]=v;
+            else g_visualizerBarPeaks[i]=(g_visualizerBarPeaks[i]-0.012f)>0.0f?
+                g_visualizerBarPeaks[i]-0.012f:0.0f;
+            float x=(float)area.left+slot*(float)i+(slot-barW)*0.5f;
+            float top=baseline-h;
+            COLORREF col=band<4?gold:(band<10?mint:(band<17?cyan:(band<21?blue:violet)));
+            ABM_D2D_Round(&g_ui,x-2.2f*s,top-2.2f*s,x+barW+2.2f*s,
+                baseline+1.0f*s,4.0f*s,Blend(ink,col,16));
+            ABM_D2D_GradientRound(&g_ui,x,top,x+barW,baseline,2.8f*s,
+                Blend(ink,col,68),col);
+            /* Soft mirror below the baseline adds depth without clutter. */
+            float reflection=h*0.20f;
+            ABM_D2D_GradientRound(&g_ui,x,baseline+3.0f*s,x+barW,
+                baseline+3.0f*s+reflection,2.0f*s,
+                Blend(ink,col,15),ink);
+            float peakY=baseline-height*(0.025f+g_visualizerBarPeaks[i]*0.57f);
+            ABM_D2D_Line(&g_ui,x-1.0f*s,peakY,x+barW+1.0f*s,peakY,
+                Blend(ink,col,82),1.8f*s);
+        }
+        ABM_D2D_Line(&g_ui,(float)area.left+width*0.04f,baseline,
+            (float)area.right-width*0.04f,baseline,Blend(ink,mint,30),1.0f*s);
     }
 
     /* Compact now-playing identity stays visible without competing with the
@@ -3766,10 +3816,11 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(24013,L"Crop: 1:1",TRUE);
     ABM_ADD(24020,L"Reset video scaling",TRUE);
     ABM_ADD(24021,L"Deinterlace: Toggle Yadif",TRUE);
-    ABM_HEAD(L"MILKDROP VISUALIZER");
-    ABM_ADD(25200,L"Next visual preset",TRUE);
-    ABM_ADD(25201,L"Previous visual preset",TRUE);
-    ABM_ADD(25202,g_autoPresetTransitions?L"✓ Automatic preset transitions":L"Automatic preset transitions",TRUE);
+    ABM_HEAD(L"AUDIO VISUALIZER STYLE");
+    ABM_ADD(25210,g_visualizerMode==0?L"✓ Spectrum Orbit":L"Spectrum Orbit",TRUE);
+    ABM_ADD(25211,g_visualizerMode==1?L"✓ Fluid Waves":L"Fluid Waves",TRUE);
+    ABM_ADD(25212,g_visualizerMode==2?L"✓ Particle Universe":L"Particle Universe",TRUE);
+    ABM_ADD(25213,g_visualizerMode==3?L"✓ Neon Spectrum":L"Neon Spectrum",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
@@ -3822,9 +3873,14 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==24013)libvlc_video_set_crop_geometry(g_player,"1:1");
     else if(cmd==24020)libvlc_video_set_scale(g_player,0.0f);
     else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?"yadif":NULL);}
-    else if(cmd==25200)ABM_ProjectM_NextPreset();
-    else if(cmd==25201)ABM_ProjectM_PreviousPreset();
-    else if(cmd==25202){g_autoPresetTransitions=!g_autoPresetTransitions;ABM_ProjectM_SetAutoSwitch(g_autoPresetTransitions);InvalidateRect(hwnd,&R_VIDEO,FALSE);}
+    else if(cmd>=25210&&cmd<=25213){
+        g_visualizerMode=cmd-25210;
+        for(int i=0;i<64;i++)g_visualizerBarPeaks[i]=0.0f;
+        SetStatus(g_visualizerMode==0?L"Visualizer: Spectrum Orbit":
+            (g_visualizerMode==1?L"Visualizer: Fluid Waves":
+            (g_visualizerMode==2?L"Visualizer: Particle Universe":L"Visualizer: Neon Spectrum")));
+        InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
+    }
     else if(cmd>=20000&&cmd<21000)libvlc_audio_set_track(g_player,cmd-20000);
     else if(cmd>=21000&&cmd<22000)libvlc_video_set_spu(g_player,cmd-21000);
     else if(cmd==23001)LoadExternalSubtitle(hwnd); else if(cmd>=22000&&cmd<=22020){
