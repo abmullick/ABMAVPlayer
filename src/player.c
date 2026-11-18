@@ -16,7 +16,7 @@
 #include "ui_theme.h"
 #include "projectm_visualizer.h"
 #include "projectm_ipc.h"
-#include "tmdb_home_theatre.h"
+#include "home_theatre.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
 #include "licensing.h"
