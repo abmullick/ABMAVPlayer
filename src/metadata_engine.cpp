@@ -214,12 +214,12 @@ bool ResolveCoverArtRedirect(const wchar_t *releaseGroup,std::wstring &imageUrl)
 bool FindMusicBrainzReleaseGroup(const wchar_t *artist,const wchar_t *album,std::wstring &mbid) {
     if(!artist||!*artist||!album||!*album)return false;
     MusicBrainzRateLimit();
-    std::wstring query=L"artist:\\"";query+=MusicBrainzEscape(artist);query+=L"\\" AND releasegroup:\\"";
-    query+=MusicBrainzEscape(album);query+=L"\\"";
+    std::wstring query=L"artist:\"";query+=MusicBrainzEscape(artist);query+=L"\" AND releasegroup:\"";
+    query+=MusicBrainzEscape(album);query+=L"\"";
     std::wstring path=L"/ws/2/release-group/?query="+UrlEncode(query.c_str())+L"&fmt=json&limit=5";
     std::vector<wchar_t> raw;
     if(!HttpGet(L"musicbrainz.org",path,raw,20000))return false;
-    const wchar_t *list=wcsstr(raw.data(),L"\\"release-groups\\"");if(!list)return false;
+    const wchar_t *list=wcsstr(raw.data(),L"\"release-groups\"");if(!list)return false;
     const wchar_t *p=wcschr(list,L'[');if(!p)return false;p++;
     while(*p) {
         while(*p&&(iswspace(*p)||*p==L','))p++;
