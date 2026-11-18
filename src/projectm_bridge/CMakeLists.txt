@@ -16,7 +16,7 @@ add_executable(abm-projectm-renderer ../projectm_renderer.cpp)
 target_compile_features(abm-projectm-renderer PRIVATE cxx_std_17)
 target_include_directories(abm-projectm-renderer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(abm-projectm-renderer PRIVATE libprojectM::projectM opengl32 user32 gdi32)
-set_target_properties(abm_projectm-renderer PROPERTIES
+set_target_properties(abm-projectm-renderer PROPERTIES
   OUTPUT_NAME "abm-projectm-renderer"
   MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
