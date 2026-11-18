@@ -718,7 +718,6 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                playlist index. Persist that association automatically so the
                next Home Theatre session does not require a manual relink. */
             if(g_localMatch>=0&&g_localMatch<(int)g_mediaPaths.size()&&
-               g_items[g_selected].localIndex==g_localMatch&&
                GetFileAttributesW(g_mediaPaths[(size_t)g_localMatch].c_str())!=INVALID_FILE_ATTRIBUTES) {
                 SaveManualMatch(g_items[g_selected].id,g_items[g_selected].type,g_localMatch);
             }
