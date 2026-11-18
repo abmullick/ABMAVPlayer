@@ -304,7 +304,7 @@ static void ProjectMPlayerLogState(const wchar_t *stage,BOOL active,int mode,BOO
 }
 static int g_projectmFrameWidth=0,g_projectmFrameHeight=0;
 static float g_visualizerBarPeaks[64];
-static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4 isolated ProjectM MilkDrop */
+static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4-9 isolated OpenGL styles */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
@@ -1621,7 +1621,7 @@ static void DrawUI(HDC dc,RECT client) {
         /* When audio visualization is active it owns the entire client area.
            Artwork/metadata layouts must not constrain it to a short footer strip. */
         if(g_visualizerActive) {
-            if(g_visualizerMode==4) {
+            if(g_visualizerMode>=4) {
                 BOOL pmReady=ABM_ProjectM_IsReady();
                 if(InterlockedCompareExchange(&g_pmDiagReady,1,0)==0)
                     ProjectMPlayerLogState(L"fullscreen paint readiness",g_visualizerActive,g_visualizerMode,pmReady);
@@ -1776,7 +1776,7 @@ static void DrawUI(HDC dc,RECT client) {
     Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     if(g_visualizerActive) {
-        if(g_visualizerMode==4) {
+        if(g_visualizerMode>=4) {
             BOOL pmReady=ABM_ProjectM_IsReady();
             if(pmReady) {
                 int fw=0,fh=0;
@@ -3908,7 +3908,12 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABM_ADD(25211,g_visualizerMode==1?L"✓ Fluid Waves":L"Fluid Waves",TRUE);
     ABM_ADD(25212,g_visualizerMode==2?L"✓ Particle Universe":L"Particle Universe",TRUE);
     ABM_ADD(25213,g_visualizerMode==3?L"✓ Neon Spectrum":L"Neon Spectrum",TRUE);
-    ABM_ADD(25214,g_visualizerMode==4?L"✓ ProjectM MilkDrop (OpenGL)":L"ProjectM MilkDrop (OpenGL)",TRUE);
+    ABM_ADD(25214,g_visualizerMode==4?L"✓ MilkDrop (OpenGL)":L"MilkDrop (OpenGL)",TRUE);
+    ABM_ADD(25215,g_visualizerMode==5?L"✓ 3D Spectrum (OpenGL)":L"3D Spectrum (OpenGL)",TRUE);
+    ABM_ADD(25216,g_visualizerMode==6?L"✓ Particle Universe (OpenGL)":L"Particle Universe (OpenGL)",TRUE);
+    ABM_ADD(25217,g_visualizerMode==7?L"✓ Oscilloscope 3D (OpenGL)":L"Oscilloscope 3D (OpenGL)",TRUE);
+    ABM_ADD(25218,g_visualizerMode==8?L"✓ Fluid Motion (OpenGL)":L"Fluid Motion (OpenGL)",TRUE);
+    ABM_ADD(25219,g_visualizerMode==9?L"✓ Geometric Tunnel (OpenGL)":L"Geometric Tunnel (OpenGL)",TRUE);
     ABM_HEAD(L"AUDIO TRACK");
     libvlc_track_description_t *tracks=libvlc_audio_get_track_description(g_player);
     for(libvlc_track_description_t *t=tracks;t&&trackCount<24;t=t->p_next){
@@ -3961,15 +3966,17 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     else if(cmd==24013)libvlc_video_set_crop_geometry(g_player,"1:1");
     else if(cmd==24020)libvlc_video_set_scale(g_player,0.0f);
     else if(cmd==24021){static BOOL deinterlace=FALSE;deinterlace=!deinterlace;libvlc_video_set_deinterlace(g_player,deinterlace?"yadif":NULL);}
-    else if(cmd>=25210&&cmd<=25214){
+    else if(cmd>=25210&&cmd<=25219){
         int previousMode=g_visualizerMode;
         g_visualizerMode=cmd-25210;
         g_projectmSurfaceReady=FALSE;
-        if(g_visualizerMode==4 && previousMode!=4)g_projectmTried=FALSE;
+        if(g_visualizerMode>=4 && previousMode<4)g_projectmTried=FALSE;
         for(int i=0;i<64;i++)g_visualizerBarPeaks[i]=0.0f;
-        if(g_visualizerMode==4) {
+        if(g_visualizerMode>=4) {
             if(g_visualizerActive)EnsureProjectMRenderer(hwnd);
-            SetStatus(L"Visualizer: ProjectM MilkDrop (isolated OpenGL renderer)");
+            ABM_ProjectM_SetStyle(g_visualizerMode-4);
+            static const wchar_t *glNames[6]={L"MilkDrop",L"3D Spectrum",L"Particle Universe",L"Oscilloscope 3D",L"Fluid Motion",L"Geometric Tunnel"};
+            wchar_t status[128];StringCchPrintfW(status,_countof(status),L"Visualizer: %s (isolated OpenGL)",glNames[g_visualizerMode-4]);SetStatus(status);
         } else {
             ABM_ProjectM_SetBounds(NULL,FALSE);
             SetStatus(g_visualizerMode==0?L"Visualizer: Spectrum Orbit":
@@ -8427,15 +8434,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VISUALIZER_TIMER_ID) {
             if(g_visualizerActive) {
                 ++g_visualizerFrame;
-                if(g_visualizerMode==4 && InterlockedCompareExchange(&g_pmDiagTimer,1,0)==0)
+                if(g_visualizerMode>=4 && InterlockedCompareExchange(&g_pmDiagTimer,1,0)==0)
                     ProjectMPlayerLogState(L"visualizer timer entered",g_visualizerActive,g_visualizerMode,ABM_ProjectM_IsReady());
-                BOOL projectmReady=(g_visualizerMode==4 && ABM_ProjectM_IsReady());
+                BOOL projectmReady=(g_visualizerMode>=4 && ABM_ProjectM_IsReady());
                 if(projectmReady && InterlockedCompareExchange(&g_pmDiagReady,1,0)==0)
                     ProjectMPlayerLogState(L"renderer ready on main thread",g_visualizerActive,g_visualizerMode,TRUE);
                 if(projectmReady) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
                     ABM_ProjectM_SetAudioSamples(pcm,512);
+                    float bands[24];ABM_AudioVisualizer_GetBands(bands,24);ABM_ProjectM_SetAudioBands(bands,24);
+                    ABM_ProjectM_SetStyle(g_visualizerMode-4);
                     /* The renderer publishes a fresh shared-memory frame every
                        ~16 ms. Repaint on every visualizer tick, not only on the
                        first ready transition; otherwise an early paint can fall
@@ -8444,7 +8453,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     g_projectmSurfaceReady=TRUE;
                 } else {
                     g_projectmSurfaceReady=FALSE;
-                    if(g_visualizerMode==4) {
+                    if(g_visualizerMode>=4) {
                         DWORD error=ABM_ProjectM_GetLastError();
                         if(error) {
                             wchar_t message[160];
@@ -8607,7 +8616,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 g_visualizerActive=ABM_AudioVisualizer_Start();
             }
             if(g_visualizerActive) {
-                if(g_visualizerMode==4)EnsureProjectMRenderer(hwnd);
+                if(g_visualizerMode>=4)EnsureProjectMRenderer(hwnd);
                 else ABM_ProjectM_SetBounds(NULL,FALSE);
                 if(!g_visualizerTimerRunning) {
                     g_visualizerTimerRunning=(SetTimer(hwnd,VISUALIZER_TIMER_ID,16,NULL)!=0);
