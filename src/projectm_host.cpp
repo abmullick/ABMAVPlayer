@@ -1,0 +1,157 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#include <strsafe.h>
+#include <stdint.h>
+#include <stdio.h>
+#include "projectm_visualizer.h"
+#include "projectm_ipc.h"
+
+namespace {
+HANDLE g_mapping=nullptr;
+ABMProjectMSharedState *g_shared=nullptr;
+HANDLE g_process=nullptr;
+HWND g_window=nullptr;
+bool g_starting=false;
+
+void ResetHost() {
+    g_window=nullptr;
+    if(g_shared){UnmapViewOfFile(g_shared);g_shared=nullptr;}
+    if(g_mapping){CloseHandle(g_mapping);g_mapping=nullptr;}
+    if(g_process){CloseHandle(g_process);g_process=nullptr;}
+}
+void StopRenderer(bool force) {
+    if(g_process) {
+        if(g_window&&IsWindow(g_window))PostMessageW(g_window,WM_CLOSE,0,0);
+        DWORD wait=WaitForSingleObject(g_process,force?250:1500);
+        if(wait==WAIT_TIMEOUT) {
+            TerminateProcess(g_process,0);
+            WaitForSingleObject(g_process,1000);
+        }
+    }
+    ResetHost();
+}
+bool QuoteArg(wchar_t *out,size_t count,const wchar_t *value) {
+    if(!out||!count||!value)return false;
+    HRESULT hr=StringCchCopyW(out,count,L"\"");
+    if(FAILED(hr))return false;
+    for(const wchar_t *p=value;*p;p++) {
+        if(*p==L'\"') {
+            if(FAILED(StringCchCatW(out,count,L"\\\"")))return false;
+        } else {
+            wchar_t one[2]={*p,0};
+            if(FAILED(StringCchCatW(out,count,one)))return false;
+        }
+    }
+    return SUCCEEDED(StringCchCatW(out,count,L"\""));
+}
+}
+
+extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,const wchar_t *textureDirectory) {
+    if(g_process&&WaitForSingleObject(g_process,0)==WAIT_TIMEOUT&&ABM_ProjectM_IsReady())return TRUE;
+    if(g_starting||!parent||!IsWindow(parent))return FALSE;
+    if(g_process)StopRenderer(true);
+    g_starting=true;
+    wchar_t exe[MAX_PATH]={0},dir[MAX_PATH]={0},helper[MAX_PATH]={0};
+    DWORD n=GetModuleFileNameW(nullptr,exe,_countof(exe));
+    if(!n||n>=_countof(exe)){g_starting=false;return FALSE;}
+    StringCchCopyW(dir,_countof(dir),exe);
+    wchar_t *slash=wcsrchr(dir,L'\\');
+    if(!slash){g_starting=false;return FALSE;}
+    *slash=0;
+    if(FAILED(StringCchCopyW(helper,_countof(helper),dir))||
+       FAILED(StringCchCatW(helper,_countof(helper),L"\\abm-projectm-renderer.exe"))) {
+        g_starting=false;return FALSE;
+    }
+    if(GetFileAttributesW(helper)==INVALID_FILE_ATTRIBUTES){g_starting=false;return FALSE;}
+
+    wchar_t mapName[96];
+    StringCchPrintfW(mapName,_countof(mapName),L"Local\\ABMProjectM_%lu_%llu",
+        GetCurrentProcessId(),(unsigned long long)GetTickCount64());
+    g_mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,
+        (DWORD)sizeof(ABMProjectMSharedState),mapName);
+    if(!g_mapping){g_starting=false;ResetHost();return FALSE;}
+    g_shared=(ABMProjectMSharedState*)MapViewOfFile(g_mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(ABMProjectMSharedState));
+    if(!g_shared){g_starting=false;ResetHost();return FALSE;}
+    ZeroMemory(g_shared,sizeof(*g_shared));
+    g_shared->magic=ABM_PROJECTM_IPC_MAGIC;
+    g_shared->version=ABM_PROJECTM_IPC_VERSION;
+    g_shared->autoSwitch=1;
+
+    wchar_t parentArg[40],mapArg[160],presetArg[MAX_PATH*2],textureArg[MAX_PATH*2],cmd[4096];
+    StringCchPrintfW(parentArg,_countof(parentArg),L"%llu",(unsigned long long)(ULONG_PTR)parent);
+    if(!QuoteArg(mapArg,_countof(mapArg),mapName)||
+       !QuoteArg(presetArg,_countof(presetArg),presetDirectory?presetDirectory:L"")||
+       !QuoteArg(textureArg,_countof(textureArg),textureDirectory?textureDirectory:L"")) {
+        g_starting=false;ResetHost();return FALSE;
+    }
+    HRESULT hr=StringCchPrintfW(cmd,_countof(cmd),L"\"%s\" %s %s %s %s",
+        helper,parentArg,mapArg,presetArg,textureArg);
+    if(FAILED(hr)){g_starting=false;ResetHost();return FALSE;}
+    STARTUPINFOW si{};si.cb=sizeof(si);PROCESS_INFORMATION pi{};
+    if(!CreateProcessW(helper,cmd,nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,dir,&si,&pi)) {
+        g_starting=false;ResetHost();return FALSE;
+    }
+    CloseHandle(pi.hThread);
+    g_process=pi.hProcess;
+    DWORD start=GetTickCount();
+    while(GetTickCount()-start<3500) {
+        if(WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT)break;
+        if(InterlockedCompareExchange(&g_shared->ready,0,0)==1) {
+            g_window=(HWND)(ULONG_PTR)InterlockedCompareExchangePointer(
+                (PVOID volatile*)&g_shared->childWindow,nullptr,nullptr);
+            if(g_window&&IsWindow(g_window)) {
+                g_starting=false;
+                return TRUE;
+            }
+        }
+        Sleep(10);
+    }
+    g_starting=false;
+    StopRenderer(true);
+    return FALSE;
+}
+
+extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
+    if(!g_shared||!g_process||WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT)return;
+    HWND child=(HWND)(ULONG_PTR)InterlockedCompareExchangePointer((PVOID volatile*)&g_shared->childWindow,nullptr,nullptr);
+    if(!child||!IsWindow(child)){g_window=nullptr;return;}
+    g_window=child;
+    if(!visible||!bounds||bounds->right<=bounds->left||bounds->bottom<=bounds->top) {
+        ShowWindow(child,SW_HIDE);return;
+    }
+    SetWindowPos(child,HWND_TOP,bounds->left,bounds->top,bounds->right-bounds->left,
+        bounds->bottom-bounds->top,SWP_NOACTIVATE|SWP_SHOWWINDOW);
+}
+extern "C" void ABM_ProjectM_SetAudioSamples(const float *samples,int count) {
+    if(!g_shared||!samples||count<=0)return;
+    if(count>ABM_PROJECTM_PCM_COUNT)count=ABM_PROJECTM_PCM_COUNT;
+    InterlockedIncrement(&g_shared->sequence); /* odd: write in progress */
+    CopyMemory(g_shared->pcm,samples,(size_t)count*sizeof(float));
+    if(count<ABM_PROJECTM_PCM_COUNT)
+        ZeroMemory(g_shared->pcm+count,(ABM_PROJECTM_PCM_COUNT-count)*sizeof(float));
+    InterlockedIncrement(&g_shared->sequence); /* even: stable snapshot */
+}
+extern "C" void ABM_ProjectM_Invalidate(void) {
+    /* The isolated renderer owns a fixed-rate render timer; no paint message is required. */
+}
+extern "C" void ABM_ProjectM_NextPreset(void) {
+    if(g_shared)InterlockedIncrement(&g_shared->presetDelta);
+}
+extern "C" void ABM_ProjectM_PreviousPreset(void) {
+    if(g_shared)InterlockedDecrement(&g_shared->presetDelta);
+}
+extern "C" void ABM_ProjectM_SetAutoSwitch(BOOL enabled) {
+    if(g_shared)InterlockedExchange(&g_shared->autoSwitch,enabled?1:0);
+}
+extern "C" BOOL ABM_ProjectM_IsReady(void) {
+    if(!g_process||!g_shared||WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT)return FALSE;
+    if(InterlockedCompareExchange(&g_shared->ready,0,0)!=1)return FALSE;
+    HWND child=(HWND)(ULONG_PTR)InterlockedCompareExchangePointer((PVOID volatile*)&g_shared->childWindow,nullptr,nullptr);
+    if(!child||!IsWindow(child))return FALSE;
+    g_window=child;
+    return TRUE;
+}
+extern "C" void ABM_ProjectM_Destroy(void) {
+    StopRenderer(false);
+}
