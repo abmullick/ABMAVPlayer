@@ -20,6 +20,7 @@
 #include "metadata_engine.h"
 #include "ui_d2d.h"
 #include "ui_theme.h"
+#include "resource.h"
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shell32.lib")
@@ -485,12 +486,12 @@ static void HomePremiumizeControl(HWND hwnd) {
 }
 static void Layout(HWND w) {
     RECT c;GetClientRect(w,&c);int width=c.right,height=c.bottom;
-    if(g_edit)MoveWindow(g_edit,28,83,width-190,36,TRUE);
-    if(GetDlgItem(w,HT_SEARCH))MoveWindow(GetDlgItem(w,HT_SEARCH),width-150,83,122,36,TRUE);
-    if(g_scanButton)MoveWindow(g_scanButton,width-282,130,126,28,TRUE);
+    if(g_edit)MoveWindow(g_edit,28,103,width-190,36,TRUE);
+    if(GetDlgItem(w,HT_SEARCH))MoveWindow(GetDlgItem(w,HT_SEARCH),width-150,103,122,36,TRUE);
+    if(g_scanButton)MoveWindow(g_scanButton,width-282,150,126,28,TRUE);
     
-    if(g_seasonButton)MoveWindow(g_seasonButton,28,130,100,28,TRUE);
-    if(g_results)MoveWindow(g_results,28,166,300,height-252,TRUE);
+    if(g_seasonButton)MoveWindow(g_seasonButton,28,150,100,28,TRUE);
+    if(g_results)MoveWindow(g_results,28,186,300,height-272,TRUE);
     if(g_localPicker)MoveWindow(g_localPicker,380,height-118,360,260,TRUE);
     if(g_matchButton)MoveWindow(g_matchButton,748,height-118,150,30,TRUE);
     if(g_artButton)MoveWindow(g_artButton,380,height-78,150,30,TRUE);
@@ -502,26 +503,32 @@ static void Draw(HWND w) {
     PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT c;GetClientRect(w,&c);
     if(!g_canvasReady){FillRect(dc,&c,(HBRUSH)GetStockObject(BLACK_BRUSH));EndPaint(w,&ps);return;}
     ABM_D2D_Begin(&g_canvas,BG);
-    /* Match the shared Streaming Centre / ABM window wordmark: a visible
-       A/play emblem, canonical ABM + AV PLAYER typography, accent rule and
-       a small window-specific subtitle. */
-    ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_THEME_COLOR_0F2230,ABM_THEME_COLOR_0A1928);
-    ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_UI_COLOR_BORDER_STRONG,0.9f);
-    const float logoA[]={36,59,52,24,68,59};
-    const float logoPlay[]={56,39,64,45,56,51,56,39};
-    ABM_D2D_Polyline(&g_canvas,logoA,3,ABM_UI_COLOR_TEXT,2.8f);
-    ABM_D2D_Line(&g_canvas,44,48,60,48,ABM_THEME_COLOR_E2F5FF,2.0f);
-    ABM_D2D_Polyline(&g_canvas,logoPlay,4,ABM_UI_COLOR_ACCENT_BRIGHT,2.0f);
-    ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(82,17,157,52),RGB(247,250,255),ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Text(&g_canvas,L"AV  PLAYER",MakeRect(157,17,292,52),RGB(132,205,194),ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Line(&g_canvas,82,55,253,55,ABM_UI_COLOR_ACCENT,2.0f);
-    ABM_D2D_Text(&g_canvas,L"HOME THEATRE  ·  DISCOVER MOVIES & SHOWS",MakeRect(82,56,390,68),ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
-    ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,ABM_UI_COLOR_BORDER,0.8f);
-    ABM_D2D_Round(&g_canvas,22,82,(float)c.right-164,120,9,PANEL2);
-    ABM_D2D_StrokeRound(&g_canvas,22,82,(float)c.right-164,120,9,ABM_UI_COLOR_BORDER_STRONG,0.9f);
-    ABM_D2D_Round(&g_canvas,26,166,334,(float)c.bottom-94,9,PANEL2);
-    ABM_D2D_StrokeRound(&g_canvas,26,166,334,(float)c.bottom-94,9,ABM_UI_COLOR_BORDER,0.8f);
+    /* Use the exact main-player brand geometry and monogram. Keep the
+       product wordmark, accent rule and subtitle on separate baselines. */
+    ABM_D2D_GradientRound(&g_canvas,0,0,(float)c.right,96,0,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
+    ABM_D2D_GradientRound(&g_canvas,0,82,(float)c.right,96,0,ABM_THEME_COLOR_08111D,ABM_THEME_COLOR_050A12);
+    ABM_D2D_Fill(&g_canvas,0,95,(float)c.right,96,ABM_THEME_COLOR_273D53);
+    ABM_D2D_Fill(&g_canvas,0,92,(float)c.right,95,ABM_THEME_COLOR_0D1827);
+    ABM_D2D_Round(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
+    ABM_D2D_StrokeRound(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_3F97B4,1.0f);
+    ABM_D2D_GradientRound(&g_canvas,28,14,94,80,17,ABM_THEME_COLOR_1C9D9D,ABM_THEME_COLOR_34777E);
+    ABM_D2D_StrokeRound(&g_canvas,33,19,89,75,14,ABM_THEME_COLOR_BEE5FF,0.8f);
+    ABM_D2D_Line(&g_canvas,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3.0f);
+    ABM_D2D_Line(&g_canvas,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3.0f);
+    ABM_D2D_Line(&g_canvas,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2.0f);
+    ABM_D2D_Line(&g_canvas,62,40,75,48,ABM_THEME_COLOR_FFFFFF,2.0f);
+    ABM_D2D_Line(&g_canvas,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2.0f);
+    ABM_D2D_Line(&g_canvas,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2.0f);
+    ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(116,8,420,49),ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Text(&g_canvas,L"AV  PLAYER",MakeRect(188,20,390,48),ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_GradientRound(&g_canvas,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
+    ABM_D2D_Text(&g_canvas,L"HOME THEATRE  ·  DISCOVER MOVIES & SHOWS",MakeRect(116,60,510,83),ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Round(&g_canvas,16,150,344,(float)c.bottom-88,14,PANEL);
+    ABM_D2D_StrokeRound(&g_canvas,16,150,344,(float)c.bottom-88,14,ABM_UI_COLOR_BORDER,0.8f);
+    ABM_D2D_Round(&g_canvas,22,102,(float)c.right-164,140,9,PANEL2);
+    ABM_D2D_StrokeRound(&g_canvas,22,102,(float)c.right-164,140,9,ABM_UI_COLOR_BORDER_STRONG,0.9f);
+    ABM_D2D_Round(&g_canvas,26,186,334,(float)c.bottom-94,9,PANEL2);
+    ABM_D2D_StrokeRound(&g_canvas,26,186,334,(float)c.bottom-94,9,ABM_UI_COLOR_BORDER,0.8f);
     ABM_D2D_Round(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,PANEL2);
     ABM_D2D_StrokeRound(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,RGB(53,82,101),0.8f);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
@@ -572,7 +579,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_scanButton=CreateWindowExW(0,L"BUTTON",L"Identify library",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,130,126,28,w,(HMENU)HT_SCAN,GetModuleHandleW(nullptr),nullptr);
         g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,136,130,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
-        g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,28,130,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
+        g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,28,150,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
         g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
         g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
         g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
@@ -727,12 +734,14 @@ extern "C" void ABM_HomeTheatre_Show(HWND owner,const wchar_t *const *mediaPaths
     g_mediaPaths.clear();for(int i=0;mediaPaths&&i<mediaCount;i++)if(mediaPaths[i]&&mediaPaths[i][0])g_mediaPaths.emplace_back(mediaPaths[i]);
     g_playCallback=playCallback;g_itemCount=0;g_selected=-1;g_localMatch=-1;
     static BOOL registered=FALSE;HINSTANCE instance=GetModuleHandleW(nullptr);
-    if(!registered){WNDCLASSEXW wc={};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HomeWndProc;wc.hInstance=instance;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerHomeTheatre";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HomeWndProc;wc.hInstance=instance;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(instance,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerHomeTheatre";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr={0,0,1080,720};DWORD style=WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN;
     AdjustWindowRectEx(&wr,style,FALSE,0);RECT o={};GetWindowRect(owner,&o);
     int x=o.left+(o.right-o.left-(wr.right-wr.left))/2,y=o.top+(o.bottom-o.top-(wr.bottom-wr.top))/2;
     g_window=CreateWindowExW(WS_EX_APPWINDOW,L"ABMAVPlayerHomeTheatre",L"ABM AV Player — Home Theatre",style,x,y,wr.right-wr.left,wr.bottom-wr.top,owner,nullptr,instance,nullptr);
     if(!g_window)return;
+    HICON appIcon=LoadIconW(instance,MAKEINTRESOURCEW(IDI_APP_ICON));
+    if(appIcon){SendMessageW(g_window,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_window,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
     BOOL dark=TRUE;DwmSetWindowAttribute(g_window, DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     g_canvasReady=ABM_D2D_Init(&g_canvas,g_window);
     EnableWindow(owner,FALSE);
