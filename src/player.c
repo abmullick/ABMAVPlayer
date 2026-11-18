@@ -15,6 +15,7 @@
 #include "ui_d2d.h"
 #include "ui_theme.h"
 #include "projectm_visualizer.h"
+#include "projectm_ipc.h"
 #include "tmdb_metadata.h"
 #include "tmdb_home_theatre.h"
 #include "streaming/streaming_host.h"
