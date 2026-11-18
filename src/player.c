@@ -1055,6 +1055,19 @@ static void LoadParsedArtwork(libvlc_media_t *media) {
     DWORD pathChars=(DWORD)_countof(mediaPath);
     if(mediaPath[0]&&SUCCEEDED(PathCreateFromUrlW(mediaPath,mediaFolder,&pathChars,0)))
         PathRemoveFileSpecW(mediaFolder);
+    wchar_t decodedMediaPath[PATH_CAP]={0};DWORD decodedChars=(DWORD)_countof(decodedMediaPath);
+    if(mediaPath[0]&&SUCCEEDED(PathCreateFromUrlW(mediaPath,decodedMediaPath,&decodedChars,0))) {
+        const HTMediaMetadata *linked=HTMetadataForPath(decodedMediaPath);
+        if(linked) {
+            if(linked->title[0])wcsncpy_s(g_trackTitle,_countof(g_trackTitle),linked->title,_TRUNCATE);
+            if(linked->director[0])wcsncpy_s(g_trackArtist,_countof(g_trackArtist),linked->director,_TRUNCATE);
+            if(linked->year[0])wcsncpy_s(g_trackAlbum,_countof(g_trackAlbum),linked->year,_TRUNCATE);
+            if(linked->genres[0])wcsncpy_s(g_trackGenre,_countof(g_trackGenre),linked->genres,_TRUNCATE);
+            if(linked->poster[0]&&GetFileAttributesW(linked->poster)!=INVALID_FILE_ATTRIBUTES&&ABM_D2D_LoadImage(&g_ui,linked->poster)) {
+                g_artworkLoaded=TRUE;g_artworkFade=100;InvalidateRect(g_main,NULL,FALSE);return;
+            }
+        }
+    }
 
     BOOL requestStarted=FALSE;
     char *art=libvlc_media_get_meta(media,libvlc_meta_ArtworkURL);
