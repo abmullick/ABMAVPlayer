@@ -324,6 +324,18 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Verify no LibVLC track-list allocations leak when opening/closing the subtitle selector repeatedly; test media with no subtitle tracks and media with many tracks.
 
 
+## Home Theatre local-library workflow regression
+
+- [ ] Add several movie and TV files to the main playlist and mark at least one additional file as a favourite; run **Identify library** and confirm the scan uses that active playlist/favourites snapshot.
+- [ ] Confirm files that exist elsewhere on disk but are not in the active playlist or saved favourites are not implied to be scanned. Add them to the player and rescan.
+- [ ] Switch **All → Movies → TV Shows**; verify each view contains only its category and the visible count updates.
+- [ ] Select a result, change filters, select another result and return; verify each row still opens the correct metadata/local-file association and Play local match starts the intended playlist item.
+- [ ] Mark a local title watched, select another title and return; verify the watched control follows the selected local path.
+- [ ] Close and reopen Home Theatre; verify watched state persists from `%LOCALAPPDATA%\ABMAVPlayer\HomeTheatre\watched.tsv`.
+- [ ] Verify watched state is independent per local path and does not change the main player's Continue Watching checkpoint or playback position.
+- [ ] Confirm filters are visible in library-identification mode and hidden in ordinary search, season and recommendation views; verify no overlap with Seasons/Recommendations controls.
+- [ ] Test empty All/Movies/TV results and a scan with no matching metadata; verify selection and playback remain safe.
+
 ## Home Theatre keyless-provider regression
 
 - [ ] Verify there is no TMDB token/API-key control or credential requirement in Settings, About or F1 Help.
