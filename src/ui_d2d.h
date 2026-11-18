@@ -86,6 +86,8 @@ BOOL ABM_D2D_LoadImage(ABM_D2D *ui, const wchar_t *path);
 void ABM_D2D_ClearImage(ABM_D2D *ui);
 void ABM_D2D_DrawImage(ABM_D2D *ui, float l, float t, float r, float b);
 void ABM_D2D_DrawImageCover(ABM_D2D *ui, float l, float t, float r, float b, float opacity);
+/* Cached per-path artwork for library rows; cache is tied to the HWND render target. */
+BOOL ABM_D2D_DrawImageFile(ABM_D2D *ui,const wchar_t *path,float l,float t,float r,float b);
 /* Upload and draw a BGRA frame on the active HWND render target. */
 BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels, UINT width, UINT height, float l, float t, float r, float b);
 
