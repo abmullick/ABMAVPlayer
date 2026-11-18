@@ -2,6 +2,7 @@
 #include "metadata_engine.h"
 #include <windows.h>
 #include <winhttp.h>
+#include <wincrypt.h>
 #include <strsafe.h>
 #include <string>
 #include <vector>
@@ -10,6 +11,7 @@
 #include <cstdlib>
 
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "crypt32.lib")
 
 namespace {
 static const DWORD kConnectTimeout=5000,kSendTimeout=8000,kReceiveTimeout=12000;
@@ -128,7 +130,23 @@ std::wstring StripHtml(const wchar_t *s) {
 std::wstring CommonsUrl(const wchar_t *file) {
     if(!file||!*file)return {};
     std::wstring clean=file;if(clean.rfind(L"File:",0)==0)clean.erase(0,5);
-    return L"https://commons.wikimedia.org/wiki/Special:FilePath/"+UrlEncode(clean.c_str())+L"?width=700";
+    int bytes=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,clean.c_str(),-1,nullptr,0,nullptr,nullptr);
+    if(bytes<=1)return {};
+    std::string utf8((size_t)bytes,'\0');
+    WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,clean.c_str(),-1,&utf8[0],bytes,nullptr,nullptr);
+    utf8.pop_back();
+    HCRYPTPROV provider=0;HCRYPTHASH hash=0;BYTE digest[16]={};DWORD digestBytes=sizeof(digest);
+    BOOL ok=CryptAcquireContextW(&provider,nullptr,nullptr,PROV_RSA_FULL,CRYPT_VERIFYCONTEXT)
+        &&CryptCreateHash(provider,CALG_MD5,0,0,&hash)
+        &&CryptHashData(hash,(const BYTE*)utf8.data(),(DWORD)utf8.size(),0)
+        &&CryptGetHashParam(hash,HP_HASHVAL,digest,&digestBytes,0);
+    if(hash)CryptDestroyHash(hash);if(provider)CryptReleaseContext(provider,0);
+    if(!ok||digestBytes!=16)return {};
+    static const wchar_t hex[]=L"0123456789abcdef";
+    std::wstring first,second;
+    first.push_back(hex[digest[0]>>4]);first.push_back(hex[digest[0]&15]);
+    second.push_back(hex[digest[1]>>4]);second.push_back(hex[digest[1]&15]);
+    return L"https://upload.wikimedia.org/wikipedia/commons/"+first+L"/"+second+L"/"+UrlEncode(clean.c_str());
 }
 std::wstring SparqlEscape(const wchar_t *s) {
     std::wstring out;
@@ -279,13 +297,14 @@ extern "C" BOOL ABM_Metadata_DownloadImage(const wchar_t *url,const wchar_t *des
     parts.lpszUrlPath=path;parts.dwUrlPathLength=_countof(path);
     parts.lpszExtraInfo=extra;parts.dwExtraInfoLength=_countof(extra);
     if(!WinHttpCrackUrl(url,0,0,&parts)||parts.nScheme!=INTERNET_SCHEME_HTTPS)return FALSE;
-    if(_wcsicmp(host,L"static.tvmaze.com")&&_wcsicmp(host,L"commons.wikimedia.org")&&_wcsicmp(host,L"upload.wikimedia.org"))return FALSE;
+    if(_wcsicmp(host,L"static.tvmaze.com")&&_wcsicmp(host,L"upload.wikimedia.org"))return FALSE;
     std::wstring requestPath(path);if(extra[0])requestPath+=extra;
     HINTERNET session=WinHttpOpen(L"ABM-AV-Player/1.2",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
     if(!session)return FALSE;
     WinHttpSetTimeouts(session,(int)kConnectTimeout,(int)kConnectTimeout,(int)kSendTimeout,(int)(timeoutMs?timeoutMs:kReceiveTimeout));
     HINTERNET connect=WinHttpConnect(session,host,parts.nPort,0);
     HINTERNET request=connect?WinHttpOpenRequest(connect,L"GET",requestPath.c_str(),nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE):nullptr;
+    DWORD noRedirect=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;if(request)WinHttpSetOption(request,WINHTTP_OPTION_REDIRECT_POLICY,&noRedirect,sizeof(noRedirect));
     BOOL ok=request&&WinHttpSendRequest(request,WINHTTP_NO_ADDITIONAL_HEADERS,0,WINHTTP_NO_REQUEST_DATA,0,0,0)&&WinHttpReceiveResponse(request,nullptr);
     DWORD status=0,statusSize=sizeof(status);if(ok)ok=WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&statusSize,WINHTTP_NO_HEADER_INDEX)&&status==200;
     HANDLE file=INVALID_HANDLE_VALUE;if(ok)file=CreateFileW(destination,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL|FILE_ATTRIBUTE_NOT_CONTENT_INDEXED,nullptr);
