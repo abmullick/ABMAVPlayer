@@ -30,6 +30,7 @@ std::vector<std::string> g_presets;
 size_t g_presetIndex=0;
 DWORD64 g_lastPresetTick=0;
 float g_pcm[ABM_PROJECTM_PCM_COUNT]{};
+int g_lastWidth=0,g_lastHeight=0;
 
 std::string Utf8(const wchar_t *value) {
     if(!value||!*value)return {};
@@ -104,7 +105,10 @@ void RenderFrame() {
     RECT rc{};GetClientRect(g_window,&rc);
     int w=rc.right-rc.left,h=rc.bottom-rc.top;
     if(w>0&&h>0) {
-        projectm_set_window_size(g_projectm,(size_t)w,(size_t)h);
+        if(w!=g_lastWidth||h!=g_lastHeight) {
+            projectm_set_window_size(g_projectm,(size_t)w,(size_t)h);
+            g_lastWidth=w;g_lastHeight=h;
+        }
         int delta=InterlockedExchange(&g_shared->presetDelta,0);
         if(delta)LoadPresetDelta(delta);
         bool automatic=InterlockedCompareExchange(&g_shared->autoSwitch,0,0)!=0;
