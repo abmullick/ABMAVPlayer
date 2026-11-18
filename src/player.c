@@ -6388,7 +6388,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             r.top=550;r.bottom=580;ABM_D2D_CanvasText(&g_aboutCanvas,L"BUILT WITH",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=585;r.bottom=616;ABM_D2D_CanvasText(&g_aboutCanvas,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             r.top=628;r.bottom=656;ABM_D2D_CanvasText(&g_aboutCanvas,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-             r.top=662;r.bottom=700;ABM_D2D_CanvasText(&g_aboutCanvas,L"Metadata: Wikidata (CC0 data) and TVmaze (CC BY-SA 4.0 data). Artwork: Wikimedia Commons / TVmaze; individual image rights and licences apply.",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_TOP|DT_WORDBREAK);
+             r.top=662;r.bottom=700;ABM_D2D_CanvasText(&g_aboutCanvas,L"Metadata: Wikidata (CC0 data) and TVmaze (CC BY-SA 4.0 data; tvmaze.com). Artwork: Wikimedia Commons / TVmaze; individual image rights and licences apply.",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_TOP|DT_WORDBREAK);
             ABM_D2D_CanvasEnd(&g_aboutCanvas);
         }else{
             SetBkMode(dc,TRANSPARENT);
