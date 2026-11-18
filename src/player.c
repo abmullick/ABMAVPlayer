@@ -304,7 +304,7 @@ static void ProjectMPlayerLogState(const wchar_t *stage,BOOL active,int mode,BOO
 }
 static int g_projectmFrameWidth=0,g_projectmFrameHeight=0;
 static float g_visualizerBarPeaks[64];
-static int g_visualizerMode=3; /* 0-3 Direct2D styles, 4-9 isolated OpenGL styles */
+static int g_visualizerMode=8; /* Default: Fluid Motion (OpenGL); 0-3 Direct2D, 4-9 isolated OpenGL */
 static BOOL g_replayGain=TRUE;
 static BOOL g_compressor=FALSE;
 static int g_eqProfile=0;
