@@ -378,7 +378,7 @@ static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
     const BOOL primary=(id==HT_SEARCH||id==HT_PLAY||id==HT_SCAN);
     COLORREF fill=disabled?ABM_UI_COLOR_SURFACE_RAISED:
         (primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_18706F):
-        (pressed?ABM_THEME_COLOR_305E6F:(hot?ABM_THEME_COLOR_1B3447:ABM_UI_COLOR_SURFACE_RAISED)));
+        (pressed?ABM_THEME_COLOR_305E6F:(hot?ABM_THEME_COLOR_1F3648:ABM_UI_COLOR_SURFACE_RAISED)));
     COLORREF text=disabled?ABM_UI_COLOR_TEXT_DISABLED:(primary?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY);
     COLORREF edge=focused?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
     wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
@@ -505,7 +505,7 @@ static void Draw(HWND w) {
     /* Match the shared Streaming Centre / ABM window wordmark: a visible
        A/play emblem, canonical ABM + AV PLAYER typography, accent rule and
        a small window-specific subtitle. */
-    ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_THEME_COLOR_0F2A39,ABM_THEME_COLOR_0A1928);
+    ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_THEME_COLOR_0F2230,ABM_THEME_COLOR_0A1928);
     ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     const float logoA[]={36,59,52,24,68,59};
     const float logoPlay[]={56,39,64,45,56,51,56,39};
