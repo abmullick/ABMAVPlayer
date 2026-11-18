@@ -2,7 +2,8 @@
 
 ## What's new
 
-- Added **Home Theatre**, an optional keyless metadata workspace. Wikidata provides movie search/details and TVmaze provides television search, show details, cast, seasons and episodes. No API key, token or account is required. Available images are cached locally; provider coverage varies, and movie recommendations/guaranteed backdrops are not included.
+- Added **Home Theatre**, an optional keyless metadata workspace. Wikidata provides movie search/details and related-movie suggestions based on shared genres; TVmaze provides television search, show details, cast, seasons and episodes. No API key, token or account is required. Available images are cached locally; provider coverage varies and guaranteed cinematic backdrops are not included.
+- Added a keyless Now Playing album-art fallback: embedded artwork first, then common same-folder cover images, then Wikidata/Wikimedia Commons lookup by artist and album. Network work is asynchronous and downloaded images are validated and cached locally.
 - Expanded live music visualization to **ten selectable styles**: four Direct2D scenes (Spectrum Orbit, Fluid Waves, Particle Universe and Neon Spectrum) and six isolated OpenGL scenes (MilkDrop, 3D Spectrum, Particle Universe, Oscilloscope 3D, Fluid Motion and Geometric Tunnel). Fluid Motion (OpenGL) is the default.
 - Kept OpenGL rendering in the separate `abm-projectm-renderer.exe` helper and composed its frames into the existing media stage. The selected style remains selected during asynchronous renderer startup; a neutral dark surface is shown until the first frame is ready instead of temporarily displaying Neon Spectrum.
 - Smoothed spectrum attack/release and eased visualizer activation to reduce abrupt starts.
@@ -16,7 +17,7 @@
 - OpenGL/ProjectM remains isolated from the main LibVLC playback process. The helper is disposable; renderer failure must not terminate the audio playback path, and Direct2D remains the recovery visualizer.
 - The OpenGL renderer is embedded into the existing media stage; no separate visible visualizer window is introduced.
 - Visualizer capture uses WASAPI loopback on the Windows default render endpoint. Other applications using that endpoint may influence the visualization; process-specific capture is not implemented.
-- Home Theatre uses keyless Wikidata and TVmaze adapters; network access is needed for online discovery, but no API credentials are required. Local playback is independent of provider availability. Movie/TV matches remain suggestions and should be corrected when the local match is wrong. Image licensing varies by source and must be reviewed before redistribution.
+- Home Theatre uses keyless Wikidata and TVmaze adapters; Now Playing music artwork can also query Wikidata/Wikimedia Commons. Network access is needed for online discovery, but no API credentials are required. Local playback is independent of provider availability. Movie/TV matches remain suggestions and should be corrected when the local match is wrong. Image licensing varies by source and must be reviewed before redistribution.
 - Existing installer identity, installation directory, licensing state and per-user AppData separation must remain unchanged for in-place upgrades.
 
 ## Release validation
