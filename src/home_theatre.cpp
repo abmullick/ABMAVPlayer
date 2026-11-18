@@ -593,7 +593,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g_recommendButton=CreateWindowExW(0,L"BUTTON",L"Related movies",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,136,150,120,28,w,(HMENU)HT_RECOMMEND,GetModuleHandleW(nullptr),nullptr);
         
         g_seasonButton=CreateWindowExW(0,L"BUTTON",L"Seasons",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,28,150,100,28,w,(HMENU)HT_SEASONS,GetModuleHandleW(nullptr),nullptr);
-        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
+        g_localPicker=CreateWindowExW(WS_EX_CLIENTEDGE,L"COMBOBOX",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|CBS_DROPDOWNLIST|CBS_OWNERDRAWFIXED|CBS_HASSTRINGS|WS_VSCROLL,380,602,360,260,w,(HMENU)HT_PICKER,GetModuleHandleW(nullptr),nullptr);
         g_matchButton=CreateWindowExW(0,L"BUTTON",L"Use selected file",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,748,602,150,30,w,(HMENU)HT_MATCH,GetModuleHandleW(nullptr),nullptr);
         g_artButton=CreateWindowExW(0,L"BUTTON",L"Show backdrop",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,380,642,150,30,w,(HMENU)HT_ARTWORK,GetModuleHandleW(nullptr),nullptr);
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
