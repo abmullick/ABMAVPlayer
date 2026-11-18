@@ -9,6 +9,7 @@
 #include <cstring>
 #include <stdint.h>
 #include <cwchar>
+#include <stdlib.h>
 #include "projectm_ipc.h"
 
 #pragma comment(lib,"opengl32.lib")
@@ -141,6 +142,8 @@ LRESULT CALLBACK RendererWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
 }
 }
 int wmain(int argc,wchar_t **argv) {
+    /* Match the player's system-DPI coordinate space before parenting HWNDs. */
+    SetProcessDPIAware();
     if(argc<5)return 2;
     HWND parent=(HWND)(ULONG_PTR)_wcstoui64(argv[1],nullptr,10);
     if(!parent||!IsWindow(parent))return 3;
