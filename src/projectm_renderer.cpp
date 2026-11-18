@@ -185,6 +185,10 @@ void RenderFrame() {
         }
         if(frameLock) {
             LONG nextFrame=(InterlockedCompareExchange(&g_shared->frameIndex,0,0)^1)&1;
+            /* projectM may leave its internal FBO bound after rendering.
+               GL_BACK is valid only for the default window framebuffer.
+               Select framebuffer 0 explicitly for the read path before reading. */
+            glBindFramebuffer(GL_READ_FRAMEBUFFER,0);
             glReadBuffer(GL_BACK);
             glReadPixels(0,0,w,h,GL_BGRA,GL_UNSIGNED_BYTE,g_shared->frames[nextFrame]);
             GLenum transferError=glGetError();
