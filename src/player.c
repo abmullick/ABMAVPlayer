@@ -2404,7 +2404,6 @@ static void DrawUI(HDC dc,RECT client) {
         else if(g_hasResume[i])FormatResumeLabel(g_playlist[i],metaLine,_countof(metaLine));
         else if(g_groupMode==1&&current&&g_trackArtist[0])swprintf_s(metaLine,320,L"%s  ·  %s",g_trackArtist,isVideo?L"VIDEO":L"AUDIO");
         else if(g_groupMode==2&&current&&g_trackAlbum[0])swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",g_trackAlbum);
-        else if(htMeta)swprintf_s(metaLine,320,L"%s%s%s  ·  %s",htMeta->year,htMeta->year[0]?L"  ·  ":L"",htMeta->genres,isVideo?L"VIDEO":"AUDIO");
         else swprintf_s(metaLine,320,L"%s  ·  LOCAL FILE",isVideo?L"VIDEO":L"AUDIO");
         Txt(dc,metaLine,subline,g_missingMedia[i]?ABM_THEME_COLOR_FFBECD:(g_hasResume[i]?ABM_THEME_COLOR_63E1CD:ABM_THEME_COLOR_91A6BE),g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         DurationRequest(g_playlist[i]);
