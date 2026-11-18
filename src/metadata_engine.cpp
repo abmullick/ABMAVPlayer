@@ -308,12 +308,13 @@ extern "C" const wchar_t *ABM_Metadata_ProviderName(ABM_METADATA_MEDIA_TYPE type
 extern "C" BOOL ABM_Metadata_DownloadImage(const wchar_t *url,const wchar_t *destination,DWORD timeoutMs) {
     if(!url||!destination||!destination[0])return FALSE;
     URL_COMPONENTS parts={};parts.dwStructSize=sizeof(parts);
-    wchar_t host[256]={},path[4096]={},extra[2048]={};
+    wchar_t host[256]={},path[4096]={},extra[2048]={},tempPath[MAX_PATH]={};
     parts.lpszHostName=host;parts.dwHostNameLength=_countof(host);
     parts.lpszUrlPath=path;parts.dwUrlPathLength=_countof(path);
     parts.lpszExtraInfo=extra;parts.dwExtraInfoLength=_countof(extra);
     if(!WinHttpCrackUrl(url,0,0,&parts)||parts.nScheme!=INTERNET_SCHEME_HTTPS)return FALSE;
     if(_wcsicmp(host,L"static.tvmaze.com")&&_wcsicmp(host,L"upload.wikimedia.org"))return FALSE;
+    if(FAILED(StringCchPrintfW(tempPath,_countof(tempPath),L"%s.part",destination)))return FALSE;
     std::wstring requestPath(path);if(extra[0])requestPath+=extra;
     HINTERNET session=WinHttpOpen(L"ABM-AV-Player/1.2",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0);
     if(!session)return FALSE;
@@ -322,10 +323,23 @@ extern "C" BOOL ABM_Metadata_DownloadImage(const wchar_t *url,const wchar_t *des
     HINTERNET request=connect?WinHttpOpenRequest(connect,L"GET",requestPath.c_str(),nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE):nullptr;
     DWORD noRedirect=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;if(request)WinHttpSetOption(request,WINHTTP_OPTION_REDIRECT_POLICY,&noRedirect,sizeof(noRedirect));
     BOOL ok=request&&WinHttpSendRequest(request,WINHTTP_NO_ADDITIONAL_HEADERS,0,WINHTTP_NO_REQUEST_DATA,0,0,0)&&WinHttpReceiveResponse(request,nullptr);
-    DWORD status=0,statusSize=sizeof(status);if(ok)ok=WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&statusSize,WINHTTP_NO_HEADER_INDEX)&&status==200;
-    HANDLE file=INVALID_HANDLE_VALUE;if(ok)file=CreateFileW(destination,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL|FILE_ATTRIBUTE_NOT_CONTENT_INDEXED,nullptr);
+    DWORD status=0,statusSize=sizeof(status);
+    if(ok)ok=WinHttpQueryHeaders(request,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&status,&statusSize,WINHTTP_NO_HEADER_INDEX)&&status==200;
+    wchar_t contentType[128]={};DWORD contentTypeSize=sizeof(contentType);
+    if(ok)ok=WinHttpQueryHeaders(request,WINHTTP_QUERY_CONTENT_TYPE,WINHTTP_HEADER_NAME_BY_INDEX,contentType,&contentTypeSize,WINHTTP_NO_HEADER_INDEX)&&_wcsnicmp(contentType,L"image/",6)==0;
+    HANDLE file=INVALID_HANDLE_VALUE;if(ok)file=CreateFileW(tempPath,GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL|FILE_ATTRIBUTE_NOT_CONTENT_INDEXED,nullptr);
     if(ok&&file==INVALID_HANDLE_VALUE)ok=FALSE;
-    while(ok){DWORD available=0;if(!WinHttpQueryDataAvailable(request,&available)){ok=FALSE;break;}if(!available)break;BYTE buffer[16384];DWORD got=0,take=available<(DWORD)sizeof(buffer)?available:(DWORD)sizeof(buffer);if(!WinHttpReadData(request,buffer,take,&got)){ok=FALSE;break;}if(!got)break;DWORD written=0;if(!WriteFile(file,buffer,got,&written,nullptr)||written!=got){ok=FALSE;break;}}
-    if(file!=INVALID_HANDLE_VALUE){FlushFileBuffers(file);CloseHandle(file);}if(!ok)DeleteFileW(destination);
+    ULONGLONG total=0;
+    while(ok){
+        DWORD available=0;if(!WinHttpQueryDataAvailable(request,&available)){ok=FALSE;break;}if(!available)break;
+        BYTE buffer[16384];DWORD got=0,take=available<(DWORD)sizeof(buffer)?available:(DWORD)sizeof(buffer);
+        if(!WinHttpReadData(request,buffer,take,&got)){ok=FALSE;break;}if(!got)break;
+        total+=got;if(total>15ull*1024ull*1024ull){ok=FALSE;break;}
+        DWORD written=0;if(!WriteFile(file,buffer,got,&written,nullptr)||written!=got){ok=FALSE;break;}
+    }
+    if(file!=INVALID_HANDLE_VALUE){if(!FlushFileBuffers(file))ok=FALSE;CloseHandle(file);}
+    if(ok&&total>=16)ok=MoveFileExW(tempPath,destination,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
+    else ok=FALSE;
+    if(!ok)DeleteFileW(tempPath);
     if(request)WinHttpCloseHandle(request);if(connect)WinHttpCloseHandle(connect);WinHttpCloseHandle(session);return ok;
 }
