@@ -1291,7 +1291,14 @@ static void EnsureProjectMRenderer(HWND hwnd) {
        FAILED(StringCchCatW(presetPath,_countof(presetPath),L"\\assets\\visualizer\\presets"))||
        FAILED(StringCchCopyW(texturePath,_countof(texturePath),exePath))||
        FAILED(StringCchCatW(texturePath,_countof(texturePath),L"\\assets\\visualizer\\textures")))return;
-    ABM_ProjectM_Create(hwnd,presetPath,texturePath);
+    if(!ABM_ProjectM_Create(hwnd,presetPath,texturePath)) {
+        DWORD error=ABM_ProjectM_GetLastError();
+        wchar_t message[160];
+        StringCchPrintfW(message,_countof(message),L"ProjectM renderer could not start (error %lu)",(unsigned long)error);
+        SetStatus(message);
+    } else {
+        SetStatus(L"ProjectM MilkDrop: starting isolated OpenGL renderer...");
+    }
 }
 static void DrawVisualizer(HDC dc,RECT area) {
     float levels[24]={0};
@@ -8353,7 +8360,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(wp==VISUALIZER_TIMER_ID) {
             if(g_visualizerActive) {
                 ++g_visualizerFrame;
-                if(g_visualizerMode==4 && ABM_ProjectM_IsReady()) {
+                BOOL projectmReady=(g_visualizerMode==4 && ABM_ProjectM_IsReady());
+                if(projectmReady) {
                     float pcm[512];
                     ABM_AudioVisualizer_GetSamples(pcm,512);
                     ABM_ProjectM_SetAudioSamples(pcm,512);
@@ -8361,6 +8369,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     g_projectmSurfaceReady=TRUE;
                 } else {
                     g_projectmSurfaceReady=FALSE;
+                    if(g_visualizerMode==4) {
+                        DWORD error=ABM_ProjectM_GetLastError();
+                        if(error) {
+                            wchar_t message[160];
+                            StringCchPrintfW(message,_countof(message),L"ProjectM renderer failed to start (exit/error %lu)",(unsigned long)error);
+                            SetStatus(message);
+                        }
+                    }
                     InvalidateRect(hwnd,g_fullscreen?NULL:&R_VIDEO,FALSE);
                 }
             } else {
