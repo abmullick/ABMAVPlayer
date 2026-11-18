@@ -104,6 +104,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Common formats include MP3, WAV, FLAC, AAC, M4A, OGG, MP4, MKV, AVI, MOV, WMV and WebM; actual support depends on VLC codecs/plugins.
 - Audio-track and subtitle-track selection; disable subtitles or load an external subtitle file.
 - LibVLC equalizer presets and ABM 10-band graphic EQ profiles: Flat, Bass boost, Vocal clarity and Treble boost.
+- Five audio visualizer styles, including optional ProjectM MilkDrop/OpenGL rendered in an isolated helper process and embedded in the existing media stage; Direct2D styles remain the fallback.
 - Optional ReplayGain track normalisation and dynamic-range compressor for newly opened media.
 - Hardware decoding uses LibVLC automatic selection by default. ABM_VLC_HW=none forces software decoding; ABM_VLC_HW=d3d11va requests D3D11VA when supported.
 
