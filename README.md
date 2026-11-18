@@ -15,7 +15,8 @@ The source version can be ahead of the latest published installer while a releas
 
 ### Current release highlights — v1.1.3 candidate
 
-- Home Theatre now uses keyless metadata providers: Wikidata for movie discovery and TVmaze for television search, details and season/episode browsing. It retains local-library identification, editable local matches and cached artwork; no API key or account is required. Provider coverage varies; movie recommendations and guaranteed backdrops are not provided.
+- Home Theatre now uses keyless providers: Wikidata for movies and related-movie discovery, and TVmaze for television search, details and season/episode browsing. It retains local-library identification, editable local matches and cached artwork; no API key or account is required. Provider coverage varies and cinematic backdrops are not guaranteed.
+- Now Playing artwork resolution prefers embedded artwork, then standard images beside the media file, then a keyless Wikidata/Wikimedia Commons album lookup using artist and album metadata. Lookups and downloads run asynchronously and are cached locally.
 - Expanded the live music visualizer to ten styles: four native Direct2D scenes and six isolated OpenGL scenes, including ProjectM MilkDrop. Fluid Motion (OpenGL) is the default; the renderer is hosted out of process and composed into the existing media stage.
 - Smoothed visualizer activation and spectrum response, and removed the temporary Neon Spectrum substitution while the selected OpenGL renderer starts.
 - Added Advanced Audio Centre track selection and output/audio-processing controls, refined Subtitle Manager interactions, and clarified audio-track/subtitle feedback.
@@ -99,7 +100,8 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Playback speed presets from 0.5x to 2.0x.
 - Fullscreen playback and keyboard controls.
 - Read-only Media Information view from the playback context menu: available metadata tags, file path/size, duration/position, decoded video dimensions and LibVLC-reported stream codecs/active tracks.
-- Home Theatre: keyless Wikidata movie discovery and TVmaze television discovery, active-playlist and favourites identification, editable/persisted local-file matches, cached available artwork, TV season/episode browsing and local episode filename matching.
+- Home Theatre: keyless Wikidata movie discovery and related-movie suggestions, TVmaze television discovery, active-playlist and favourites identification, editable/persisted local-file matches, cached available artwork, TV season/episode browsing and local episode filename matching.
+- Music artwork fallback: embedded artwork, local folder covers and keyless Wikidata/Wikimedia Commons album-image lookup, with asynchronous retrieval and local caching.
 
 ### Audio, video and subtitles
 - Common formats include MP3, WAV, FLAC, AAC, M4A, OGG, MP4, MKV, AVI, MOV, WMV and WebM; actual support depends on VLC codecs/plugins.
