@@ -51,7 +51,7 @@ if not exist "build\projectm-runtime\abm-projectm-renderer.exe" (
   exit /b 1
 )
 if not exist "build\projectm-runtime\abm_projectm_bridge.dll" (
-  echo ERROR: Embedded projectM bridge is missing. Run build.bat first.
+  echo ERROR: ProjectM host bridge is missing. Run build.bat first.
   exit /b 1
 )
 xcopy "build\projectm-runtime" "%DEST%\" /E /I /H /Y >nul
