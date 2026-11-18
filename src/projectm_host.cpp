@@ -17,6 +17,7 @@ HWND g_window=nullptr;
 RECT g_lastBounds{};
 bool g_surfaceVisible=false;
 bool g_starting=false;
+DWORD g_lastError=ERROR_SUCCESS;
 
 void ResetHost() {
     g_window=nullptr;
@@ -55,7 +56,8 @@ bool QuoteArg(wchar_t *out,size_t count,const wchar_t *value) {
 
 extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,const wchar_t *textureDirectory) {
     if(g_process&&WaitForSingleObject(g_process,0)==WAIT_TIMEOUT)return TRUE;
-    if(g_starting||!parent||!IsWindow(parent))return FALSE;
+    if(g_starting||!parent||!IsWindow(parent)){g_lastError=ERROR_INVALID_WINDOW_HANDLE;return FALSE;}
+    g_lastError=ERROR_SUCCESS;
     if(g_process)StopRenderer(true);
     g_starting=true;
     wchar_t exe[MAX_PATH]={0},dir[MAX_PATH]={0},helper[MAX_PATH]={0};
@@ -69,16 +71,16 @@ extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,c
        FAILED(StringCchCatW(helper,_countof(helper),L"\\abm-projectm-renderer.exe"))) {
         g_starting=false;return FALSE;
     }
-    if(GetFileAttributesW(helper)==INVALID_FILE_ATTRIBUTES){g_starting=false;return FALSE;}
+    if(GetFileAttributesW(helper)==INVALID_FILE_ATTRIBUTES){g_lastError=ERROR_FILE_NOT_FOUND;g_starting=false;return FALSE;}
 
     wchar_t mapName[96];
     StringCchPrintfW(mapName,_countof(mapName),L"Local\\ABMProjectM_%lu_%llu",
         GetCurrentProcessId(),(unsigned long long)GetTickCount64());
     g_mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,
         (DWORD)sizeof(ABMProjectMSharedState),mapName);
-    if(!g_mapping){g_starting=false;ResetHost();return FALSE;}
+    if(!g_mapping){g_lastError=GetLastError();g_starting=false;ResetHost();return FALSE;}
     g_shared=(ABMProjectMSharedState*)MapViewOfFile(g_mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(ABMProjectMSharedState));
-    if(!g_shared){g_starting=false;ResetHost();return FALSE;}
+    if(!g_shared){g_lastError=GetLastError();g_starting=false;ResetHost();return FALSE;}
     ZeroMemory(g_shared,sizeof(*g_shared));
     g_shared->magic=ABM_PROJECTM_IPC_MAGIC;
     g_shared->version=ABM_PROJECTM_IPC_VERSION;
@@ -96,7 +98,7 @@ extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,c
     if(FAILED(hr)){g_starting=false;ResetHost();return FALSE;}
     STARTUPINFOW si{};si.cb=sizeof(si);PROCESS_INFORMATION pi{};
     if(!CreateProcessW(helper,cmd,nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,dir,&si,&pi)) {
-        g_starting=false;ResetHost();return FALSE;
+        g_lastError=GetLastError();g_starting=false;ResetHost();return FALSE;
     }
     CloseHandle(pi.hThread);
     g_process=pi.hProcess;
@@ -144,13 +146,20 @@ extern "C" void ABM_ProjectM_SetAutoSwitch(BOOL enabled) {
 }
 extern "C" BOOL ABM_ProjectM_IsReady(void) {
     if(!g_process||!g_shared)return FALSE;
-    if(WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT){ResetHost();return FALSE;}
+    if(WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT){
+        DWORD exitCode=ERROR_GEN_FAILURE;
+        if(GetExitCodeProcess(g_process,&exitCode))g_lastError=exitCode;
+        else g_lastError=GetLastError();
+        if(g_lastError==ERROR_SUCCESS)g_lastError=ERROR_PROCESS_ABORTED;
+        ResetHost();return FALSE;
+    }
     if(InterlockedCompareExchange(&g_shared->ready,0,0)!=1)return FALSE;
     HWND child=(HWND)(ULONG_PTR)InterlockedCompareExchangePointer((PVOID volatile*)&g_shared->childWindow,nullptr,nullptr);
     if(!child||!IsWindow(child))return FALSE;
     g_window=child;
     return TRUE;
 }
+extern "C" DWORD ABM_ProjectM_GetLastError(void) { return g_lastError; }
 extern "C" void ABM_ProjectM_Destroy(void) {
     StopRenderer(false);
 }
