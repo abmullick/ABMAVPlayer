@@ -172,6 +172,19 @@ void RenderFrame() {
         InterlockedExchange(&g_stage,90);
         projectm_opengl_render_frame(g_projectm);
         GLenum glError=glGetError();
+        /* Publish BGRA pixels through shared memory. The main player paints
+           them into its own GDI/Direct2D composition; no foreign child HWND. */
+        LONG nextFrame=(InterlockedCompareExchange(&g_shared->frameIndex,0,0)^1)&1;
+        InterlockedIncrement(&g_shared->frameSequence);
+        glReadBuffer(GL_BACK);
+        glReadPixels(0,0,w,h,GL_BGRA,GL_UNSIGNED_BYTE,g_shared->frames[nextFrame]);
+        GLenum transferError=glGetError();
+        if(transferError==GL_NO_ERROR) {
+            InterlockedExchange(&g_shared->frameWidth,w);
+            InterlockedExchange(&g_shared->frameHeight,h);
+            InterlockedExchange(&g_shared->frameIndex,nextFrame);
+        }
+        InterlockedIncrement(&g_shared->frameSequence);
         if(InterlockedCompareExchange(&g_firstRenderLogged,0,0)==0) {
             /* Read the rendered back buffer once. This distinguishes a blank
                ProjectM frame from a child-HWND/DWM presentation problem. */
