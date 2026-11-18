@@ -177,7 +177,7 @@ bool BuildMovieResults(const wchar_t *raw,std::wstring &out,bool details) {
         BindingValue(start,end,L"item",uri,_countof(uri));
         BindingValue(start,end,L"itemLabel",title,_countof(title));
         BindingValue(start,end,L"itemDescription",description,_countof(description));
-        BindingValue(start,end,L"date",date,_countof(date));
+        BindingValue(start,end,L"date",date,_countof(date));if(wcslen(date)>10)date[10]=0;
         BindingValue(start,end,L"image",image,_countof(image));
         BindingValue(start,end,L"genres",genres,_countof(genres));
         BindingValue(start,end,L"directors",directors,_countof(directors));
