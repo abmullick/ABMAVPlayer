@@ -28,8 +28,8 @@
 namespace {
 enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109, HT_PICKER=5110 };
 enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4, HT_RECOMMEND_DONE=WM_APP+0x5A5 };
-static const COLORREF BG=RGB(7,15,25), PANEL=RGB(15,29,44), PANEL2=RGB(10,21,34);
-static const COLORREF TEXT=RGB(239,246,252), MUTED=RGB(145,169,190), ACCENT=RGB(73,199,181);
+static const COLORREF BG=ABM_UI_COLOR_BACKGROUND, PANEL=ABM_UI_COLOR_SURFACE, PANEL2=ABM_UI_COLOR_INPUT;
+static const COLORREF TEXT=ABM_UI_COLOR_TEXT, MUTED=ABM_UI_COLOR_TEXT_MUTED, ACCENT=ABM_UI_COLOR_ACCENT_BRIGHT;
 static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr;
 static ABM_D2D g_canvas={};
 static BOOL g_canvasReady=FALSE;
@@ -492,23 +492,23 @@ static void Draw(HWND w) {
     /* Match the shared Streaming Centre / ABM window wordmark: a visible
        A/play emblem, canonical ABM + AV PLAYER typography, accent rule and
        a small window-specific subtitle. */
-    ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(15,42,57),RGB(10,25,40));
-    ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,RGB(40,94,111),0.9f);
+    ABM_D2D_GradientRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_THEME_COLOR_0F2A39,ABM_THEME_COLOR_0A1928);
+    ABM_D2D_StrokeRound(&g_canvas,16,14,(float)c.right-16,70,16,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     const float logoA[]={36,59,52,24,68,59};
     const float logoPlay[]={56,39,64,45,56,51,56,39};
-    ABM_D2D_Polyline(&g_canvas,logoA,3,RGB(247,250,255),2.8f);
-    ABM_D2D_Line(&g_canvas,44,48,60,48,RGB(226,245,255),2.0f);
-    ABM_D2D_Polyline(&g_canvas,logoPlay,4,RGB(132,205,194),2.0f);
+    ABM_D2D_Polyline(&g_canvas,logoA,3,ABM_UI_COLOR_TEXT,2.8f);
+    ABM_D2D_Line(&g_canvas,44,48,60,48,ABM_THEME_COLOR_E2F5FF,2.0f);
+    ABM_D2D_Polyline(&g_canvas,logoPlay,4,ABM_UI_COLOR_ACCENT_BRIGHT,2.0f);
     ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(82,17,157,52),RGB(247,250,255),ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Text(&g_canvas,L"AV  PLAYER",MakeRect(157,17,292,52),RGB(132,205,194),ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_Line(&g_canvas,82,55,253,55,RGB(54,177,168),2.0f);
-    ABM_D2D_Text(&g_canvas,L"HOME THEATRE  ·  DISCOVER MOVIES & SHOWS",MakeRect(82,56,390,68),RGB(157,177,201),ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Line(&g_canvas,82,55,253,55,ABM_UI_COLOR_ACCENT,2.0f);
+    ABM_D2D_Text(&g_canvas,L"HOME THEATRE  ·  DISCOVER MOVIES & SHOWS",MakeRect(82,56,390,68),ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,130,344,(float)c.bottom-88,14,PANEL);
-    ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,RGB(37,65,85),0.8f);
+    ABM_D2D_StrokeRound(&g_canvas,16,130,344,(float)c.bottom-88,14,ABM_UI_COLOR_BORDER,0.8f);
     ABM_D2D_Round(&g_canvas,22,82,(float)c.right-164,120,9,PANEL2);
-    ABM_D2D_StrokeRound(&g_canvas,22,82,(float)c.right-164,120,9,RGB(53,82,101),0.9f);
+    ABM_D2D_StrokeRound(&g_canvas,22,82,(float)c.right-164,120,9,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     ABM_D2D_Round(&g_canvas,26,166,334,(float)c.bottom-94,9,PANEL2);
-    ABM_D2D_StrokeRound(&g_canvas,26,166,334,(float)c.bottom-94,9,RGB(48,72,91),0.8f);
+    ABM_D2D_StrokeRound(&g_canvas,26,166,334,(float)c.bottom-94,9,ABM_UI_COLOR_BORDER,0.8f);
     ABM_D2D_Round(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,PANEL2);
     ABM_D2D_StrokeRound(&g_canvas,380,(float)c.bottom-124,742,(float)c.bottom-84,8,RGB(53,82,101),0.8f);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-88,14,PANEL);
@@ -519,7 +519,7 @@ static void Draw(HWND w) {
         wchar_t meta[160];StringCchPrintfW(meta,_countof(meta),L"%s  ·  %s%s%s",m.type==1?L"MOVIE":L"TELEVISION",g_year[0]?g_year:(m.date[0]?m.date:L"Year unavailable"),g_runtime[0]?L"  ·  ":L"",g_runtime);
         ABM_D2D_Text(&g_canvas,meta,MakeRect(380,198,c.right-390,224),ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         if((g_showBackdrop&&g_backdropFile[0])||g_posterFile[0]) {
-            ABM_D2D_Round(&g_canvas,380,244,590,550,12,RGB(7,12,20));
+            ABM_D2D_Round(&g_canvas,380,244,590,550,12,ABM_UI_COLOR_BACKGROUND);
             if(g_showBackdrop)ABM_D2D_DrawImageCover(&g_canvas,386,250,584,544,0.92f);else ABM_D2D_DrawImage(&g_canvas,386,250,584,544);
         } else {
             ABM_D2D_GradientRound(&g_canvas,380,244,590,550,12,RGB(24,59,69),RGB(12,26,40));
@@ -575,6 +575,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g_localPicker,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SendMessageW(g_matchButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SendMessageW(g_artButton,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
+        SendMessageW(g_status,WM_SETFONT,(WPARAM)(g_controlFont?g_controlFont:GetStockObject(DEFAULT_GUI_FONT)),TRUE);
         SetWindowTheme(g_localPicker,L"DarkMode_Explorer",nullptr);
         HomePremiumizeControl(g_edit);HomePremiumizeControl(g_localPicker);
         SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);
