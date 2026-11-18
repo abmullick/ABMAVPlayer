@@ -378,8 +378,7 @@ static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
     HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
     LOGFONTW lf={};GetObjectW(font,sizeof(lf),&lf);StringCchCopyW(lf.lfFaceName,LF_FACESIZE,L"Segoe UI");lf.lfWeight=FW_SEMIBOLD;
     HFONT custom=CreateFontIndirectW(&lf);HGDIOBJ oldFont=SelectObject(dc,custom?custom:font);
-    RECT tr=r;InflateRect(&tr,-8,-3);DrawTextW(dc,d->hwndItem?nullptr:L"",0,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-    wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
+    RECT tr=r;InflateRect(&tr,-8,-3);wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
     DrawTextW(dc,caption,-1,&tr,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(oldFont)SelectObject(dc,oldFont);if(custom)DeleteObject(custom);
 }
@@ -467,7 +466,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         CreateWindowExW(0,L"BUTTON",L"Search",WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_PUSHBUTTON,800,83,122,36,w,(HMENU)HT_SEARCH,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g_edit,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_results,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
-        SendMessageW(g_results,LB_SETITEMHEIGHT,0,42);
+        SendMessageW(g_results,LB_SETITEMHEIGHT,0,48);
         SetWindowTheme(g_edit,L"DarkMode_Explorer",nullptr);SetWindowTheme(g_results,L"DarkMode_Explorer",nullptr);
         SendMessageW(g_play,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
         SendMessageW(g_scanButton,WM_SETFONT,(WPARAM)GetStockObject(DEFAULT_GUI_FONT),TRUE);
