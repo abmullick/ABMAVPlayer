@@ -94,22 +94,11 @@ extern "C" BOOL ABM_ProjectM_Create(HWND parent,const wchar_t *presetDirectory,c
     }
     CloseHandle(pi.hThread);
     g_process=pi.hProcess;
-    DWORD start=GetTickCount();
-    while(GetTickCount()-start<3500) {
-        if(WaitForSingleObject(g_process,0)!=WAIT_TIMEOUT)break;
-        if(InterlockedCompareExchange(&g_shared->ready,0,0)==1) {
-            g_window=(HWND)(ULONG_PTR)InterlockedCompareExchangePointer(
-                (PVOID volatile*)&g_shared->childWindow,nullptr,nullptr);
-            if(g_window&&IsWindow(g_window)) {
-                g_starting=false;
-                return TRUE;
-            }
-        }
-        Sleep(10);
-    }
+    /* Do not wait for WGL/ProjectM startup on the playback UI thread.
+       The Direct2D visualizer remains visible until IsReady observes the
+       helper's completed child-window handshake. */
     g_starting=false;
-    StopRenderer(true);
-    return FALSE;
+    return TRUE;
 }
 
 extern "C" void ABM_ProjectM_SetBounds(const RECT *bounds,BOOL visible) {
