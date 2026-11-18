@@ -172,6 +172,26 @@ void RenderFrame() {
         InterlockedExchange(&g_stage,90);
         projectm_opengl_render_frame(g_projectm);
         GLenum glError=glGetError();
+        if(InterlockedCompareExchange(&g_firstRenderLogged,0,0)==0) {
+            /* Read the rendered back buffer once. This distinguishes a blank
+               ProjectM frame from a child-HWND/DWM presentation problem. */
+            std::vector<unsigned char> pixels((size_t)w*(size_t)h*4u);
+            glReadBuffer(GL_BACK);
+            glReadPixels(0,0,w,h,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());
+            unsigned long long lit=0;
+            unsigned int maxChannel=0;
+            for(size_t i=0;i<pixels.size();i+=4) {
+                unsigned int r=pixels[i],g=pixels[i+1],b=pixels[i+2];
+                unsigned int peak=(r>g?(r>b?r:b):(g>b?g:b));
+                if(peak>8)++lit;
+                if(peak>maxChannel)maxChannel=peak;
+            }
+            wchar_t pixelsLine[256];
+            StringCchPrintfW(pixelsLine,_countof(pixelsLine),
+                L"first-frame pixels: nonblack=%llu/%llu maxRGB=%u readbackError=0x%04X",
+                lit,(unsigned long long)((size_t)w*(size_t)h),maxChannel,(unsigned)glGetError());
+            LogText(pixelsLine);
+        }
         BOOL swapped=SwapBuffers(g_dc);
         if(InterlockedCompareExchange(&g_firstRenderLogged,1,0)==0) {
             const GLubyte *version=glGetString(GL_VERSION);
