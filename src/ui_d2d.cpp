@@ -7,6 +7,7 @@
 #include <wincodec.h>
 #include <string.h>
 #include <algorithm>
+#include <vector>
 #include "ui_d2d.h"
 #include "ui_theme.h"
 
@@ -29,6 +30,7 @@ static D2D1_COLOR_F ToD2D(COLORREF c) {
 static ID2D1Factory *Factory(ABM_D2D *ui) { return static_cast<ID2D1Factory *>(ui->factory); }
 static ID2D1HwndRenderTarget *Target(ABM_D2D *ui) { return static_cast<ID2D1HwndRenderTarget *>(ui->target); }
 static ID2D1SolidColorBrush *Brush(ABM_D2D *ui) { return static_cast<ID2D1SolidColorBrush *>(ui->brush); }
+static std::vector<BYTE> g_bgraFrameUploadScratch;
 
 static void SetColor(ABM_D2D *ui, COLORREF color);
 
@@ -306,6 +308,8 @@ extern "C" BOOL ABM_D2D_End(ABM_D2D *ui) {
     }
     HRESULT hr = Target(ui)->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET) {
+        SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->frameImage));
+        ui->frameImageWidth = ui->frameImageHeight = 0;
         SafeRelease(reinterpret_cast<ID2D1SolidColorBrush **>(&ui->brush));
         SafeRelease(reinterpret_cast<ID2D1HwndRenderTarget **>(&ui->target));
         if (ui->hwnd && IsWindow(ui->hwnd)) InvalidateRect(ui->hwnd, NULL, FALSE);
@@ -504,6 +508,8 @@ extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
     ID2D1Bitmap *bitmap = static_cast<ID2D1Bitmap *>(ui->frameImage);
     if (!bitmap || ui->frameImageWidth != width || ui->frameImageHeight != height) {
         SafeRelease(&bitmap);
+        ui->frameImage = nullptr;
+        ui->frameImageWidth = ui->frameImageHeight = 0;
         D2D1_BITMAP_PROPERTIES props = D2D1::BitmapProperties(
             D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE),
             96.0f, 96.0f);
@@ -514,7 +520,16 @@ extern "C" BOOL ABM_D2D_DrawBgraFrame(ABM_D2D *ui, const void *pixels,
         ui->frameImageWidth = width;
         ui->frameImageHeight = height;
     }
-    HRESULT hr = bitmap->CopyFromMemory(nullptr, pixels, width * 4u);
+    /* OpenGL readback is bottom-up; Direct2D bitmap memory is top-down. Flip
+       rows into a reusable scratch buffer so the MilkDrop image is upright. */
+    const size_t stride = (size_t)width * 4u;
+    const size_t bytes = stride * (size_t)height;
+    if (g_bgraFrameUploadScratch.size() < bytes) g_bgraFrameUploadScratch.resize(bytes);
+    const BYTE *source = static_cast<const BYTE *>(pixels);
+    for (UINT y = 0; y < height; ++y)
+        memcpy(g_bgraFrameUploadScratch.data() + (size_t)y * stride,
+               source + (size_t)(height - 1u - y) * stride, stride);
+    HRESULT hr = bitmap->CopyFromMemory(nullptr, g_bgraFrameUploadScratch.data(), (UINT32)stride);
     if (FAILED(hr)) return FALSE;
     Target(ui)->DrawBitmap(bitmap, D2D1::RectF(l, t, r, b), 1.0f,
         D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
