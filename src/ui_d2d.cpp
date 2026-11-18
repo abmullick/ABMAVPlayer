@@ -323,6 +323,13 @@ extern "C" BOOL ABM_D2D_End(ABM_D2D *ui) {
         ui->clipActive = FALSE;
     }
     HRESULT hr = Target(ui)->EndDraw();
+    if (FAILED(hr)) {
+        wchar_t line[192];
+        StringCchPrintfW(line, _countof(line),
+            L"player: Direct2D EndDraw failed: 0x%08lX (recreate=%d)",
+            (unsigned long)hr, hr == D2DERR_RECREATE_TARGET ? 1 : 0);
+        LogProjectMFrameDiag(line);
+    }
     if (hr == D2DERR_RECREATE_TARGET) {
         SafeRelease(reinterpret_cast<ID2D1Bitmap **>(&ui->frameImage));
         ui->frameImageWidth = ui->frameImageHeight = 0;
