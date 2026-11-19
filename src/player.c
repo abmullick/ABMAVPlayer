@@ -4077,8 +4077,8 @@ static BOOL AutoLoadLocalSidecarSubtitle(const wchar_t *mediaPath){
 /* Build a keyless web-search query from Home Theatre metadata or the media filename.
    The browser performs the remote search; ABM never scrapes sites or stores credentials. */
 static void FindOnlineSubtitles(HWND owner){
-    if(!g_hasMedia||g_current<0||g_current>=g_playlistCount){
-        ABM_MessageBoxW(owner,L"Play a local movie or episode before searching for subtitles.",APP_NAME,MB_ICONINFORMATION);
+    if(!g_hasMedia||g_current<0||g_current>=g_playlistCount||!IsVideoPath(g_playlist[g_current])){
+        ABM_MessageBoxW(owner,L"Play a local movie or TV episode before searching for subtitles.",APP_NAME,MB_ICONINFORMATION);
         return;
     }
     const wchar_t *mediaPath=g_playlist[g_current];
