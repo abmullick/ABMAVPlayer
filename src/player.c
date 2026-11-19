@@ -4888,7 +4888,7 @@ static void VideoEnhancementSetFromPoint(HWND w,int i,int x) {
     if(i<0||i>=5)return;RECT r=g_videoEnhancementSliderRects[i];int l=r.left+18,h=r.right-18;
     if(h<=l)return;if(x<l)x=l;if(x>h)x=h;
     int v=(int)(((long long)(x-l)*g_videoEnhancementMax[i]+(h-l)/2)/(h-l));
-    if(v!=g_videoEnhancementValues[i]){g_videoEnhancementValues[i]=v;ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}
+    if(v!=g_videoEnhancementValues[i]){g_videoEnhancementValues[i]=v;VideoEnhancementUpdatePreset();ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}
 }
 static void VideoEnhancementPaint(HWND w) {
     PAINTSTRUCT ps;BeginPaint(w,&ps);
@@ -4904,7 +4904,7 @@ static void VideoEnhancementPaint(HWND w) {
         for(int p=0;p<4;p++){
             RECT pr=g_videoEnhancementPresetRects[p];BOOL active=(g_videoEnhancementActivePreset==p),hot=(g_videoEnhancementPresetHover==p);
             COLORREF fill=active?ABM_UI_COLOR_ACCENT_SOFT:(hot?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
-            COLORREF edge=active?ABM_UI_COLOR_ACCENT_BRIGHT:(hot?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER);
+            COLORREF edge=(g_videoEnhancementFocus==7+p)?ABM_UI_COLOR_FOCUS:(active?ABM_UI_COLOR_ACCENT_BRIGHT:(hot?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER));
             ABM_D2D_CanvasFillRound(c,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,ABM_UI_RADIUS_BUTTON,fill);
             ABM_D2D_CanvasStrokeRound(c,(float)pr.left+.5f,(float)pr.top+.5f,(float)pr.right-.5f,(float)pr.bottom-.5f,ABM_UI_RADIUS_BUTTON,edge,active?1.4f:.8f);
             ABM_D2D_CanvasText(c,g_videoEnhancementPresetNames[p],pr,active?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -4963,11 +4963,16 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         if(h!=g_videoEnhancementHover||rh!=g_videoEnhancementResetHover||ch!=g_videoEnhancementCompareHover||ph!=g_videoEnhancementPresetHover){g_videoEnhancementHover=h;g_videoEnhancementResetHover=rh;g_videoEnhancementCompareHover=ch;g_videoEnhancementPresetHover=ph;InvalidateRect(w,NULL,FALSE);}
         if(g_videoEnhancementPressed>=0&&(wp&MK_LBUTTON))VideoEnhancementSetFromPoint(w,g_videoEnhancementPressed,x);return 0;}
     case WM_MOUSELEAVE:g_videoEnhancementHover=-1;g_videoEnhancementResetHover=FALSE;g_videoEnhancementCompareHover=FALSE;g_videoEnhancementPresetHover=-1;InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_MOUSEWHEEL:{
+        int i=g_videoEnhancementFocus;if(i>=0&&i<5){int delta=GET_WHEEL_DELTA_WPARAM(wp)>0?1:-1;int step=(GetKeyState(VK_CONTROL)&0x8000)?10:2;
+            int v=g_videoEnhancementValues[i]+delta*step;if(v<0)v=0;if(v>g_videoEnhancementMax[i])v=g_videoEnhancementMax[i];
+            if(v!=g_videoEnhancementValues[i]){g_videoEnhancementValues[i]=v;VideoEnhancementUpdatePreset();ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}}
+        return 0;}
     case WM_LBUTTONDOWN:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);SetFocus(w);
         if(PtInRect(&g_videoEnhancementResetRect,(POINT){x,y})){g_videoEnhancementFocus=6;g_videoEnhancementResetPressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}
         if(PtInRect(&g_videoEnhancementCompareRect,(POINT){x,y})){g_videoEnhancementFocus=5;g_videoEnhancementComparePressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}
-        for(int p=0;p<4;p++)if(PtInRect(&g_videoEnhancementPresetRects[p],(POINT){x,y})){VideoEnhancementApplyPreset(w,p);return 0;}
+        for(int p=0;p<4;p++)if(PtInRect(&g_videoEnhancementPresetRects[p],(POINT){x,y})){g_videoEnhancementFocus=7+p;VideoEnhancementApplyPreset(w,p);return 0;}
         for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){g_videoEnhancementFocus=i;g_videoEnhancementPressed=i;VideoEnhancementSetFromPoint(w,i,x);SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}return 0;}
     case WM_LBUTTONUP:{
         BOOL resetClick=g_videoEnhancementResetPressed&&PtInRect(&g_videoEnhancementResetRect,(POINT){GET_X_LPARAM(lp),GET_Y_LPARAM(lp)});
@@ -4980,14 +4985,14 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     case WM_CAPTURECHANGED:g_videoEnhancementPressed=-1;g_videoEnhancementResetPressed=FALSE;g_videoEnhancementComparePressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
     case WM_KEYDOWN:
         if(wp==VK_ESCAPE){ShowWindow(w,SW_HIDE);return 0;}
-        if(wp==VK_TAB){int delta=(GetKeyState(VK_SHIFT)&0x8000)?-1:1;g_videoEnhancementFocus=(g_videoEnhancementFocus+delta+7)%7;InvalidateRect(w,NULL,FALSE);return 0;}
-        if(wp==VK_RETURN||wp==VK_SPACE){if(g_videoEnhancementFocus==5){g_videoEnhancementCompareOriginal=!g_videoEnhancementCompareOriginal;ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}else if(g_videoEnhancementFocus==6)VideoEnhancementReset(w);return 0;}
+        if(wp==VK_TAB){int delta=(GetKeyState(VK_SHIFT)&0x8000)?-1:1;g_videoEnhancementFocus=(g_videoEnhancementFocus+delta+11)%11;InvalidateRect(w,NULL,FALSE);return 0;}
+        if(wp==VK_RETURN||wp==VK_SPACE){if(g_videoEnhancementFocus==5){g_videoEnhancementCompareOriginal=!g_videoEnhancementCompareOriginal;ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}else if(g_videoEnhancementFocus==6)VideoEnhancementReset(w);else if(g_videoEnhancementFocus>=7)VideoEnhancementApplyPreset(w,g_videoEnhancementFocus-7);return 0;}
         if(wp==VK_LEFT||wp==VK_DOWN||wp==VK_RIGHT||wp==VK_UP||wp==VK_HOME||wp==VK_END){
             int i=g_videoEnhancementFocus;if(i<5){int step=(wp==VK_RIGHT||wp==VK_UP)?1:-1;
                 if(wp==VK_HOME)g_videoEnhancementValues[i]=0;else if(wp==VK_END)g_videoEnhancementValues[i]=g_videoEnhancementMax[i];
                 else {int v=g_videoEnhancementValues[i]+step*(i==4?1:2);if(v<0)v=0;if(v>g_videoEnhancementMax[i])v=g_videoEnhancementMax[i];g_videoEnhancementValues[i]=v;}
-                ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);
-            }else if(i==5)VideoEnhancementReset(w);return 0;}break;
+                VideoEnhancementUpdatePreset();ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);
+            }else if(i==5){g_videoEnhancementCompareOriginal=!g_videoEnhancementCompareOriginal;ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}else if(i==6)VideoEnhancementReset(w);return 0;}break;
     case WM_CLOSE:ShowWindow(w,SW_HIDE);return 0;
     case WM_DESTROY:if(g_videoEnhancementCanvasReady){ABM_D2D_CanvasDestroy(&g_videoEnhancementCanvas);g_videoEnhancementCanvasReady=FALSE;}g_videoEnhancementWindow=NULL;return 0;
     }
