@@ -464,7 +464,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[19], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[20], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
 static RECT R_ADVANCED_SETTINGS_BUTTON;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
@@ -1280,14 +1280,14 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    const int menuStarts[5]={0,1,3,11,13};
-    const int menuEnds[5]={1,3,11,13,19};
+    const int menuStarts[5]={0,1,3,11,14};
+    const int menuEnds[5]={1,3,11,14,20};
     int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
     int showSectionLabels=(R_MENU_PANEL.bottom-R_MENU_PANEL.top)>=620;
     int sectionHeaderH=showSectionLabels?16:0;
     int sectionGap=showSectionLabels?5:3;
     int sectionSpace=5*sectionHeaderH+5*sectionGap;
-    int menuUnit=(menuUsable-sectionSpace)/21;
+    int menuUnit=(menuUsable-sectionSpace)/22;
     if(menuUnit<15)menuUnit=15;
     int menuY=R_MENU_PANEL.top+54;
     for(int group=0;group<5;group++){
@@ -1295,7 +1295,7 @@ static void UpdateLayout(HWND hwnd) {
         menuY+=sectionHeaderH;
         int groupTop=menuY;
         for(int i=menuStarts[group];i<menuEnds[group];i++){
-            int weight=(i==11||i==12)?2:1;
+            int weight=(i==12||i==13)?2:1;
             int rowH=menuUnit*weight;
             R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+12,menuY,R_MENU_PANEL.right-12,menuY+rowH-3};
             menuY+=rowH;
@@ -2622,33 +2622,33 @@ static void DrawUI(HDC dc,RECT client) {
                 if(lineX<section.right)DrawLine(dc,lineX,(section.top+section.bottom)/2,section.right,(section.top+section.bottom)/2,ABM_THEME_COLOR_1C3445,1);
             }
         }
-        const wchar_t *labels[19]={
+        const wchar_t *labels[20]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Video Enhancement Studio",
-            L"Streaming services",L"Torrent Stream",L"Help & User Guide",
+            L"Advanced Equalizer",L"Streaming services",L"Torrent Stream",L"Help & User Guide",
             L"Check for updates",L"License & Activation",L"Settings",L"About ABM AV Player",L"Exit player"
         };
-        const wchar_t *shortcuts[19]={
+        const wchar_t *shortcuts[20]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+Shift+V",
-            L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
+            L"Ctrl+E",L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
             L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",L"Alt+F4"
         };
-        const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
-        for(int i=0;i<19;i++) {
+        const wchar_t *icons[20]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
+        for(int i=0;i<20;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==9)labels[9]=g_repeat==2?L"Repeat all: On":(g_repeat==1?L"Repeat current: On":L"Repeat: Off");
             if(item.bottom>menu.bottom)item.bottom=menu.bottom;
             if(item.top>=menu.bottom)continue;
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
-            BOOL featured=(i==11||i==12);
+            BOOL featured=(i==12||i==13);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=featured?(i==11?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_193041;
-            COLORREF edge=featured?(i==11?ABM_THEME_COLOR_2B7E7D:ABM_THEME_COLOR_8B5B3B):ABM_THEME_COLOR_1F3041;
-            if(hot){fill=featured?(i==11?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_1C3445;edge=ABM_THEME_COLOR_53B5AB;}
+            COLORREF fill=featured?(i==12?ABM_THEME_COLOR_0D373D:ABM_THEME_COLOR_3E271D):ABM_THEME_COLOR_193041;
+            COLORREF edge=featured?(i==12?ABM_THEME_COLOR_2B7E7D:ABM_THEME_COLOR_8B5B3B):ABM_THEME_COLOR_1F3041;
+            if(hot){fill=featured?(i==12?ABM_THEME_COLOR_145353:ABM_THEME_COLOR_5B3622):ABM_THEME_COLOR_1C3445;edge=ABM_THEME_COLOR_53B5AB;}
             if(featured||hot){
                 RoundBox(dc,row,fill,featured?ABM_UI_RADIUS_CARD:ABM_UI_RADIUS_CONTROL);
                 ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
@@ -2683,7 +2683,7 @@ static void DrawUI(HDC dc,RECT client) {
                 DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             /* Quiet dividers reinforce the command groups without adding
                extra hit targets or changing menu order. */
-            if(i==2||i==7||i==10||i==12||i==15||i==16){
+            if(i==2||i==7||i==11||i==13||i==16||i==17){
                 int y=item.bottom+1;
                 if(y<menu.bottom-5)DrawLine(dc,item.left+8,y,item.right-8,y,ABM_THEME_COLOR_243544,1);
             }
@@ -9181,7 +9181,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_HOME_RECENT,x,y)){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);ReleaseCapture();return 0;}
         }
         if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
+            for(int mi=0;mi<20;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
                 g_menuOpen=FALSE;
                 PositionVideoWindow();
                 SyncRendererComboVisibility();
@@ -9196,14 +9196,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
                 else if(mi==9){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();}
                 else if(mi==10)ShowVideoEnhancementStudio();
-                else if(mi==11)ABM_Streaming_Show(hwnd);
-                else if(mi==12)ShowTorrentWindow(hwnd);
-                else if(mi==13)ShowHelpDialog(hwnd);
-                else if(mi==14)ABM_CheckForUpdates(hwnd,APP_VERSION);
-                else if(mi==15){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);}
-                else if(mi==16)ShowSettingsDialog(hwnd);
-                else if(mi==17)ShowAboutDialog(hwnd);
-                else if(mi==18)PostMessageW(hwnd,WM_CLOSE,0,0);
+                else if(mi==11)ShowEqualizer();
+                else if(mi==12)ABM_Streaming_Show(hwnd);
+                else if(mi==13)ShowTorrentWindow(hwnd);
+                else if(mi==14)ShowHelpDialog(hwnd);
+                else if(mi==15)ABM_CheckForUpdates(hwnd,APP_VERSION);
+                else if(mi==16){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);}
+                else if(mi==17)ShowSettingsDialog(hwnd);
+                else if(mi==18)ShowAboutDialog(hwnd);
+                else if(mi==19)PostMessageW(hwnd,WM_CLOSE,0,0);
                 InvalidateRect(hwnd,NULL,FALSE);return 0;
             }
         }
@@ -9281,10 +9282,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+18)%19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%20;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+19)%20;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=18;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
         if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
