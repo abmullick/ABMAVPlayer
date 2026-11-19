@@ -4137,7 +4137,7 @@ static void FindOnlineSubtitles(HWND owner){
         StringCchPrintfW(query,_countof(query),L"%s%s subtitles",title,language);
     wchar_t escaped[3600]=L"",url[4096]=L"";
     DWORD escapedChars=(DWORD)_countof(escaped);
-    if(FAILED(UrlEscapeW(query,escaped,&escapedChars,URL_ESCAPE_SEGMENT_ONLY))||
+    if(FAILED(UrlEscapeW(query,escaped,&escapedChars,URL_ESCAPE_SEGMENT_ONLY|URL_ESCAPE_AS_UTF8))||
        FAILED(StringCchPrintfW(url,_countof(url),L"https://www.google.com/search?q=%s",escaped))){
         SetStatus(L"Could not prepare the subtitle search.");
         return;
