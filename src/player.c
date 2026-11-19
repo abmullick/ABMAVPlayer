@@ -7641,6 +7641,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==3){
+   if(AdvancedSettingsPoint(x,y,320,628,1018,660)){ShowVideoEnhancementStudio();return 0;}
    for(int n=0;n<4;n++){
     int top=260+n*74;
     if(AdvancedSettingsPoint(x,y,320,top,1018,top+66)){
@@ -7919,6 +7920,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      AdvancedSettingsText(g_advancedAspectLabels[n],344,top+12,990,top+54,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
     AdvancedSettingsText(L"Changes apply immediately and are saved for future playback.",322,580,1018,620,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_Round(&g_advancedSettingsUi,320,628,1018,660,8,ABM_UI_COLOR_SURFACE_BLUE);
+    ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,628.5f,1017.5f,659.5f,8,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+    AdvancedSettingsText(L"OPEN VIDEO ENHANCEMENT STUDIO  ·  BRIGHTNESS  ·  CONTRAST  ·  SATURATION  ·  GAMMA  ·  HUE",336,630,1002,658,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==1){
     AdvancedSettingsText(L"Hardware acceleration",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     const wchar_t *hwNames[3]={L"Automatic (recommended)",L"Software decoding",L"Direct3D 11 Video Acceleration"};
