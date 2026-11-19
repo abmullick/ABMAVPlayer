@@ -4830,6 +4830,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
    filter; no frame interception, renderer replacement, or extra video window. */
 enum { ID_VE_BRIGHTNESS=7301, ID_VE_CONTRAST, ID_VE_SATURATION, ID_VE_GAMMA, ID_VE_HUE, ID_VE_RESET=7306 };
 static HWND g_videoEnhancementWindow=NULL;
+static HBRUSH g_videoEnhancementBrush=NULL;
 static HWND g_videoEnhancementSliders[5]={NULL,NULL,NULL,NULL,NULL};
 static const int g_videoEnhancementIds[5]={ID_VE_BRIGHTNESS,ID_VE_CONTRAST,ID_VE_SATURATION,ID_VE_GAMMA,ID_VE_HUE};
 static const wchar_t *g_videoEnhancementNames[5]={L"Brightness",L"Contrast",L"Saturation",L"Gamma",L"Hue"};
@@ -4859,6 +4860,7 @@ static void VideoEnhancementReset(HWND w) {
 static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE: {
+        if(!g_videoEnhancementBrush)g_videoEnhancementBrush=CreateSolidBrush(ABM_THEME_COLOR_0A0F19);
         HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
         for(int i=0;i<5;i++){
             int y=76+i*62;
@@ -4885,6 +4887,11 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         if(hint)SendMessageW(hint,WM_SETFONT,(WPARAM)font,TRUE);
         return 0;
     }
+    case WM_CTLCOLORSTATIC: {
+        HDC dc=(HDC)wp;SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_E4ECF7);
+        return (LRESULT)(g_videoEnhancementBrush?g_videoEnhancementBrush:GetStockObject(BLACK_BRUSH));
+    }
+    case WM_CTLCOLORBTN: return (LRESULT)(g_videoEnhancementBrush?g_videoEnhancementBrush:GetStockObject(BLACK_BRUSH));
     case WM_HSCROLL: {
         HWND slider=(HWND)lp;int id=GetDlgCtrlID(slider);
         for(int i=0;i<5;i++)if(id==g_videoEnhancementIds[i]){
@@ -4905,7 +4912,9 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     case WM_CLOSE:ShowWindow(w,SW_HIDE);return 0;
     case WM_DESTROY:
         for(int i=0;i<5;i++)g_videoEnhancementSliders[i]=NULL;
-        g_videoEnhancementWindow=NULL;return 0;
+        g_videoEnhancementWindow=NULL;
+        if(g_videoEnhancementBrush){DeleteObject(g_videoEnhancementBrush);g_videoEnhancementBrush=NULL;}
+        return 0;
     }
     return DefWindowProcW(w,msg,wp,lp);
 }
@@ -4916,7 +4925,7 @@ static void ShowVideoEnhancementStudio(void) {
         if(!registered){
             WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;
             wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
-            wc.hbrBackground=(HBRUSH)(COLOR_BTNFACE+1);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
+            wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
             if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
             registered=TRUE;
         }
@@ -9221,6 +9230,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && !shift && wp==VK_OEM_COMMA){ShowSettingsDialog(hwnd);return 0;}
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
+        if(ctrl && shift && wp=='V'){ShowVideoEnhancementStudio();return 0;}
         if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ScreenToClient(hwnd,&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
