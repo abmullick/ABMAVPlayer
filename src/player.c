@@ -427,6 +427,23 @@ static int g_advancedSubtitleColor=16777215; /* RGB white */
 static BOOL g_advancedSubtitleBold=FALSE;
 static int g_advancedSubtitleOutline=4; /* 0 none, 2 thin, 4 normal, 6 thick */
 static int g_advancedSubtitleMargin=10; /* pixels from the bottom edge */
+static int g_subtitlePreferredLanguage=0; /* 0 = Any; persisted language preference */
+static const wchar_t *g_subtitleLanguageNames[13]={L"Any",L"English",L"Bengali",L"Hindi",L"Spanish",L"French",L"German",L"Japanese",L"Korean",L"Chinese",L"Portuguese",L"Russian",L"Arabic"};
+static const wchar_t *g_subtitleLanguageAliases[13][4]={
+    {NULL,NULL,NULL,NULL},
+    {L"en",L"eng",L"english",NULL},
+    {L"bn",L"ben",L"bengali",NULL},
+    {L"hi",L"hin",L"hindi",NULL},
+    {L"es",L"spa",L"spanish",NULL},
+    {L"fr",L"fre",L"fra",L"french"},
+    {L"de",L"ger",L"deu",L"german"},
+    {L"ja",L"jpn",L"japanese",NULL},
+    {L"ko",L"kor",L"korean",NULL},
+    {L"zh",L"chi",L"zho",L"chinese"},
+    {L"pt",L"por",L"portuguese",NULL},
+    {L"ru",L"rus",L"russian",NULL},
+    {L"ar",L"ara",L"arabic",NULL}
+};
 static void ApplySubtitleAppearanceOption(libvlc_media_t *media) {
     if(!media)return;
     char option[64];
@@ -4007,14 +4024,25 @@ static BOOL FindLocalSidecarSubtitle(const wchar_t *mediaPath,wchar_t *subtitleP
     const wchar_t *dot=wcsrchr(base,L'.');
     size_t stemLen=dot?(size_t)(dot-base):wcslen(base);
     if(stemLen==0||stemLen>=PATH_CAP)return FALSE;
-    wchar_t stem[PATH_CAP];wmemcpy(stem,base,stemLen);stem[stemLen]=0;
+    wchar_t stem[PATH_CAP];wmemcpy(stem,mediaPath,(size_t)(base-mediaPath));wmemcpy(stem+(base-mediaPath),base,stemLen);stem[(base-mediaPath)+stemLen]=0;
     static const wchar_t *extensions[]={L".srt",L".ass",L".ssa",L".vtt",L".sub"};
     wchar_t candidate[PATH_CAP];
-    for(size_t i=0;i<_countof(extensions);i++){
-        HRESULT hr=slash?
-            StringCchPrintfW(candidate,_countof(candidate),L"%.*s\\%s%s",(int)(slash-mediaPath),mediaPath,stem,extensions[i]):
-            StringCchPrintfW(candidate,_countof(candidate),L"%s%s",stem,extensions[i]);
-        if(FAILED(hr))continue;
+    /* A configured language-specific sidecar outranks an unqualified sidecar. */
+    if(g_subtitlePreferredLanguage>0&&g_subtitlePreferredLanguage<(int)_countof(g_subtitleLanguageNames)){
+        for(int a=0;a<4&&g_subtitleLanguageAliases[g_subtitlePreferredLanguage][a];a++){
+            for(size_t e=0;e<_countof(extensions);e++){
+                if(FAILED(StringCchPrintfW(candidate,_countof(candidate),L"%s.%s%s",stem,g_subtitleLanguageAliases[g_subtitlePreferredLanguage][a],extensions[e])))continue;
+                DWORD attr=GetFileAttributesW(candidate);
+                if(attr!=INVALID_FILE_ATTRIBUTES&&(attr&FILE_ATTRIBUTE_DIRECTORY)==0){
+                    if(FAILED(StringCchCopyW(subtitlePath,capacity,candidate)))return FALSE;
+                    return TRUE;
+                }
+            }
+        }
+    }
+    /* Preserve Phase 1 behaviour as a fallback for unqualified sidecars. */
+    for(size_t e=0;e<_countof(extensions);e++){
+        if(FAILED(StringCchPrintfW(candidate,_countof(candidate),L"%s%s",stem,extensions[e])))continue;
         DWORD attr=GetFileAttributesW(candidate);
         if(attr!=INVALID_FILE_ATTRIBUTES&&(attr&FILE_ATTRIBUTE_DIRECTORY)==0){
             if(FAILED(StringCchCopyW(subtitlePath,capacity,candidate)))return FALSE;
@@ -7749,6 +7777,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);g_advancedSubtitleBold=GetPrivateProfileIntW(L"Subtitles",L"Bold",0,p)!=0;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"OutlineThickness",4,p);if(v!=0&&v!=2&&v!=4&&v!=6)v=4;g_advancedSubtitleOutline=v;}
   {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"Margin",10,p);if(v!=0&&v!=10&&v!=25&&v!=50)v=10;g_advancedSubtitleMargin=v;}
+  {wchar_t p[PATH_CAP]={0};StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);int v=GetPrivateProfileIntW(L"Subtitles",L"PreferredLanguage",0,p);if(v<0||v>12)v=0;g_subtitlePreferredLanguage=v;}
   {wchar_t env[32]={0};if(GetEnvironmentVariableW(L"ABM_VLC_HW",env,(DWORD)_countof(env))>0){
    if(!_wcsicmp(env,L"none")){g_advancedHwDraft=1;g_advancedHwEnvOverride=TRUE;}
    else if(!_wcsicmp(env,L"d3d11va")){g_advancedHwDraft=2;g_advancedHwEnvOverride=TRUE;}
@@ -7869,6 +7898,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    }
   }
   if(g_advancedSettingsPage==4){
+   if(AdvancedSettingsPoint(x,y,820,228,1032,258)){
+    g_subtitlePreferredLanguage=(g_subtitlePreferredLanguage+1)%13;
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",g_subtitlePreferredLanguage);WritePrivateProfileStringW(L"Subtitles",L"PreferredLanguage",v,p);}
+    InvalidateRect(w,NULL,FALSE);return 0;
+   }
    if(AdvancedSettingsPoint(x,y,320,624,540,662)){ShowSubtitleTrackMenu(w);return 0;}
    if(AdvancedSettingsPoint(x,y,552,624,772,662)){if(g_player)libvlc_video_set_spu(g_player,-1);InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,784,624,1004,662)){LoadExternalSubtitle(w);InvalidateRect(w,NULL,FALSE);return 0;}
@@ -8073,7 +8107,9 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     for(int n=0;n<3;n++){int top=260+n*112;ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+96,9,ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+95.5f,9,SETTINGS_BORDER,0.8f);AdvancedSettingsText(labels[n],340,top+10,790,top+38,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(helps[n],340,top+43,790,top+80,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);AdvancedSettingsButtonDraw(830,top+24,996,top+68,values[n]?L"Enabled":L"Disabled",values[n]);}
     AdvancedSettingsText(L"Preferences are saved immediately and apply to the next matching interaction.",322,612,1018,642,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==4){
-    AdvancedSettingsText(L"Subtitle timing",322,232,1018,254,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Subtitle timing",322,232,790,254,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    wchar_t languageLabel[80];StringCchPrintfW(languageLabel,_countof(languageLabel),L"Language: %s",g_subtitleLanguageNames[g_subtitlePreferredLanguage]);
+    AdvancedSettingsButtonDraw(820,228,1032,258,languageLabel,g_subtitlePreferredLanguage!=0);
     ABM_D2D_Round(&g_advancedSettingsUi,320,258,1018,324,10,ABM_UI_COLOR_SURFACE);
     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,258.5f,1017.5f,323.5f,10,SETTINGS_BORDER,0.8f);
     wchar_t delayText[64];StringCchPrintfW(delayText,_countof(delayText),L"Offset: %+.0f ms",(double)g_advancedSubtitleDelayUs/1000.0);
