@@ -33,6 +33,18 @@ This is a targeted source inspection, not a formal static-analysis report or a c
 - [ ] Check startup with missing optional WebView2 runtime, unavailable VLC plugins, and no network; errors should remain understandable and recoverable.
 - [ ] Confirm no unexpected native message boxes or legacy-looking application popup menus appear during normal use.
 
+## Subtitle Manager — keyless online search
+
+- [ ] With a local movie playing, right-click the video and choose **Find subtitles online...**; confirm the default browser opens a search containing the detected title and year when available.
+- [ ] Test TV filenames using both `Show.Name.S02E05...` and `Show.Name.2x05...`; confirm the search query includes the correct season/episode token.
+- [ ] Change the preferred language to English, Bengali and Any; confirm the selected language is appended only when a specific language is selected.
+- [ ] Test a Home Theatre catalogue entry with a title/year override; confirm it takes precedence over the filename.
+- [ ] Test filenames containing release tags, punctuation, brackets and non-ASCII characters; confirm the browser URL is correctly encoded and the app remains responsive.
+- [ ] Cancel or close the browser; confirm playback continues uninterrupted. Verify no API key, account, background scraping or automatic download is used.
+- [ ] Download a trusted subtitle manually and load it with **Load external subtitle...**; verify playback continues and the selected subtitle appears.
+- [ ] Test browser association failure and confirm ABM displays a useful warning.
+- [ ] Repeat with torrent playback and audio-only media; confirm the command is unavailable or gives an appropriate explanation rather than searching an unrelated playlist item.
+
 ## 3. Display, DPI and window geometry
 
 Run at 100%, 125%, 150% and 200% Windows display scaling.
