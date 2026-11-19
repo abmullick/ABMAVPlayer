@@ -4025,10 +4025,17 @@ static BOOL FindLocalSidecarSubtitle(const wchar_t *mediaPath,wchar_t *subtitleP
 }
 static BOOL AutoLoadLocalSidecarSubtitle(const wchar_t *mediaPath){
     if(!g_player||!mediaPath||!mediaPath[0])return FALSE;
-    /* Do not override an embedded subtitle track chosen by LibVLC. */
-    libvlc_track_description_t *tracks=libvlc_video_get_spu_description(g_player);
-    BOOL hasEmbedded=tracks!=NULL;
-    if(tracks)libvlc_track_description_list_release(tracks);
+    /* Check actual media stream types; the SPU description list can include
+       a synthetic "Disable" entry even when the file has no subtitle stream. */
+    BOOL hasEmbedded=FALSE;
+    libvlc_media_t *currentMedia=libvlc_media_player_get_media(g_player);
+    if(currentMedia){
+        libvlc_media_track_t **tracks=NULL;
+        unsigned int count=libvlc_media_tracks_get(currentMedia,&tracks);
+        for(unsigned int i=0;i<count;i++)if(tracks[i]&&tracks[i]->i_type==libvlc_track_text){hasEmbedded=TRUE;break;}
+        if(tracks)libvlc_media_tracks_release(tracks,count);
+        libvlc_media_release(currentMedia);
+    }
     if(hasEmbedded)return FALSE;
     wchar_t path[PATH_CAP];if(!FindLocalSidecarSubtitle(mediaPath,path,_countof(path)))return FALSE;
     char utf8[PATH_CAP*4];
