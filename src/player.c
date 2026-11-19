@@ -4894,10 +4894,13 @@ static void VideoEnhancementPaint(HWND w) {
     PAINTSTRUCT ps;BeginPaint(w,&ps);
     if(g_videoEnhancementCanvasReady&&ABM_D2D_CanvasBegin(&g_videoEnhancementCanvas,ps.hdc,&ps.rcPaint)){
         ABM_D2D_CANVAS *c=&g_videoEnhancementCanvas;RECT rc={0};GetClientRect(w,&rc);
+        /* Match the Advanced Equalizer's frameless floating surface. */
         ABM_D2D_CanvasFill(c,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
-        RECT t={22,18,rc.right-22,50},sub={22,53,rc.right-22,78};
+        ABM_D2D_CanvasFillRound(c,8,8,(float)rc.right-8,(float)rc.bottom-8,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
+        ABM_D2D_CanvasStrokeRound(c,8.5f,8.5f,(float)rc.right-8.5f,(float)rc.bottom-8.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+        RECT t={28,20,rc.right-28,48},sub={28,49,rc.right-28,73};
         ABM_D2D_CanvasText(c,L"VIDEO ENHANCEMENT STUDIO",t,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_CanvasText(c,L"Fine-tune the picture while your video is playing",sub,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(c,L"REAL-TIME PICTURE PROCESSING  /  FINE-TUNE YOUR VIDEO",sub,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT presetLabel={22,78,rc.right-22,94};
         ABM_D2D_CanvasText(c,L"QUICK LOOKS",presetLabel,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         VideoEnhancementLayout(w);
@@ -4946,6 +4949,10 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     case WM_CREATE:g_videoEnhancementCanvasReady=ABM_D2D_CanvasInit(&g_videoEnhancementCanvas);VideoEnhancementLayout(w);return 0;
     case WM_PAINT:VideoEnhancementPaint(w);return 0;
     case WM_ERASEBKGND:return 1;
+    case WM_NCHITTEST:{
+        LRESULT hit=DefWindowProcW(w,msg,wp,lp);
+        if(hit==HTCLIENT){POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};ScreenToClient(w,&pt);if(pt.y>=8&&pt.y<76)return HTCAPTION;}
+        return hit;}
     case WM_SIZE:VideoEnhancementLayout(w);InvalidateRect(w,NULL,FALSE);return 0;
     case WM_DPICHANGED:{
         const RECT *suggested=(const RECT *)lp;
@@ -5010,9 +5017,10 @@ static void ShowVideoEnhancementStudio(void) {
         HINSTANCE inst=GetModuleHandleW(NULL);static BOOL registered=FALSE;
         if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
             wc.style=CS_DBLCLKS;if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
-        DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_MINIMIZEBOX;RECT fr={0,0,540,670};AdjustWindowRectEx(&fr,style,FALSE,WS_EX_TOOLWINDOW|WS_EX_TOPMOST);
-        g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",style,0,0,fr.right-fr.left,fr.bottom-fr.top,g_main,NULL,inst,NULL);
-        if(!g_videoEnhancementWindow)return;BOOL dark=TRUE;DwmSetWindowAttribute(g_videoEnhancementWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));int corners=2;DwmSetWindowAttribute(g_videoEnhancementWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+        DWORD style=WS_POPUP;RECT fr={0,0,540,670};
+        g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_LAYERED|WS_EX_TOPMOST,L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",style,0,0,fr.right-fr.left,fr.bottom-fr.top,g_main,NULL,inst,NULL);
+        if(!g_videoEnhancementWindow)return;
+        SetLayeredWindowAttributes(g_videoEnhancementWindow,0,244,LWA_ALPHA);
     }
     RECT owner={0};if(g_main&&IsWindow(g_main))GetWindowRect(g_main,&owner);else SystemParametersInfoW(SPI_GETWORKAREA,0,&owner,0);
     int x=owner.left+(owner.right-owner.left-540)/2,y=owner.top+(owner.bottom-owner.top-670)/2;
