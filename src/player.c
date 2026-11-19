@@ -4809,13 +4809,6 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
         }
         EndPaint(hwnd,&ps);return 0;
     }
-    case WM_LBUTTONDBLCLK:{
-        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
-        for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){
-            g_videoEnhancementFocus=i;g_videoEnhancementValues[i]=g_videoEnhancementDefault[i];
-            g_videoEnhancementCompareOriginal=FALSE;VideoEnhancementUpdatePreset();ApplyVideoEnhancement();
-            InvalidateRect(w,NULL,FALSE);return 0;}
-        return 0;}
     case WM_LBUTTONDOWN:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
         if(y>=354&&y<=386&&x>=30&&x<=649){
@@ -4974,6 +4967,13 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         int i=g_videoEnhancementFocus;if(i>=0&&i<5){int delta=GET_WHEEL_DELTA_WPARAM(wp)>0?1:-1;int step=(GetKeyState(VK_CONTROL)&0x8000)?10:2;
             int v=g_videoEnhancementValues[i]+delta*step;if(v<0)v=0;if(v>g_videoEnhancementMax[i])v=g_videoEnhancementMax[i];
             if(v!=g_videoEnhancementValues[i]){g_videoEnhancementValues[i]=v;g_videoEnhancementCompareOriginal=FALSE;VideoEnhancementUpdatePreset();ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}}
+        return 0;}
+    case WM_LBUTTONDBLCLK:{
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+        for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){
+            g_videoEnhancementFocus=i;g_videoEnhancementValues[i]=g_videoEnhancementDefault[i];
+            g_videoEnhancementCompareOriginal=FALSE;VideoEnhancementUpdatePreset();ApplyVideoEnhancement();
+            InvalidateRect(w,NULL,FALSE);return 0;}
         return 0;}
     case WM_LBUTTONDOWN:{
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);SetFocus(w);
