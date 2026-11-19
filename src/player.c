@@ -4091,8 +4091,8 @@ static void FindOnlineSubtitles(HWND owner){
     wchar_t *ext=wcsrchr(filename,L'.');if(ext)*ext=0;
     /* Recognise common SxxEyy and NxNN episode notation before cleaning release tags. */
     for(wchar_t *p=filename;*p;p++){
-        if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&
-           (p[2]==L'E'||p[2]==L'e')&&iswdigit(p[3])&&iswdigit(p[4])&&iswdigit(p[5])){
+        if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&iswdigit(p[2])&&
+           (p[3]==L'E'||p[3]==L'e')&&iswdigit(p[4])&&iswdigit(p[5])){
             StringCchPrintfW(episode,_countof(episode),L"S%c%cE%c%c",p[1],p[2],p[4],p[5]);
             break;
         }
