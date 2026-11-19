@@ -124,6 +124,7 @@ The status area reports video-window availability, decoded dimensions and client
 | Control | Available values | What changes in practice | Activation / caveat |
 |---|---|---|---|
 | Timing | −50 ms, +50 ms, Reset; range ±10,000 ms | If text appears before speech, add delay; if text appears after speech, reduce delay. Adjust in small steps while watching dialogue. | Timing can update current playback when possible. Reset returns to zero. |
+| Preferred language | Any, English, Bengali, Hindi, Spanish, French, German, Japanese, Korean, Chinese, Portuguese, Russian, Arabic | When automatic local sidecar matching is used, try a language-tagged same-basename subtitle before an untagged sidecar. | Saved in `settings.ini`; offline filename matching only. It does not translate subtitles or change embedded-track selection. |
 | Font size | 10, 13, 16, 19 | Larger values improve readability on a distant display; smaller values leave more picture unobstructed. | Appearance settings are attached to newly opened media. Values are LibVLC relative sizes, not guaranteed pixel heights. |
 | Text colour | White, Yellow, Cyan, Green | Choose a colour with strong contrast against the scene. Yellow may stand out over bright/white scenes; white is familiar but can disappear on snow or bright backgrounds. | New media; embedded subtitle styling may override. |
 | Bold | On / Off | On makes glyph strokes heavier and may help at a distance; Off is less visually heavy. | New media; format/player support can vary. |
