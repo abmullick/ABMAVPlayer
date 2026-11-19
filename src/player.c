@@ -4074,6 +4074,76 @@ static BOOL AutoLoadLocalSidecarSubtitle(const wchar_t *mediaPath){
     }
     return FALSE;
 }
+/* Build a keyless web-search query from Home Theatre metadata or the media filename.
+   The browser performs the remote search; ABM never scrapes sites or stores credentials. */
+static void FindOnlineSubtitles(HWND owner){
+    if(!g_hasMedia||g_current<0||g_current>=g_playlistCount){
+        ABM_MessageBoxW(owner,L"Play a local movie or episode before searching for subtitles.",APP_NAME,MB_ICONINFORMATION);
+        return;
+    }
+    const wchar_t *mediaPath=g_playlist[g_current];
+    const HTMediaMetadata *metadata=HTMetadataForPath(mediaPath);
+    wchar_t title[512]=L"",year[32]=L"",episode[64]=L"";
+    if(metadata&&metadata->title[0])StringCchCopyW(title,_countof(title),metadata->title);
+    if(metadata&&metadata->year[0])StringCchCopyW(year,_countof(year),metadata->year);
+    const wchar_t *leaf=wcsrchr(mediaPath,L'\\');leaf=leaf?leaf+1:mediaPath;
+    wchar_t filename[PATH_CAP];StringCchCopyW(filename,_countof(filename),leaf);
+    wchar_t *ext=wcsrchr(filename,L'.');if(ext)*ext=0;
+    /* Recognise common SxxEyy and NxNN episode notation before cleaning release tags. */
+    for(wchar_t *p=filename;*p;p++){
+        if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&
+           (p[2]==L'E'||p[2]==L'e')&&iswdigit(p[3])&&iswdigit(p[4])){
+            StringCchPrintfW(episode,_countof(episode),L"S%c%cE%c%c",p[1],p[1]?p[2]:p[2],p[3],p[4]);
+            break;
+        }
+        if(iswdigit(p[0])&&p[1]==L'x'&&iswdigit(p[2])&&iswdigit(p[3])){
+            StringCchPrintfW(episode,_countof(episode),L"S%02dE%02d",p[0]-L'0',10*(p[2]-L'0')+(p[3]-L'0'));
+            break;
+        }
+    }
+    if(!title[0]){
+        /* Prefer the leading title portion; stop at episode, year or release-quality markers. */
+        size_t used=0;
+        for(wchar_t *p=filename;*p&&used+1<_countof(title);){
+            if(*p==L'['||*p==L'(')break;
+            if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&(p[2]==L'E'||p[2]==L'e'))break;
+            if(iswdigit(p[0])&&p[1]==L'x'&&iswdigit(p[2]))break;
+            if((*p==L' '||*p==L'.'||*p==L'_')&&
+               ((!_wcsnicmp(p,L"1080p",5))||(!_wcsnicmp(p,L"720p",4))||
+                (!_wcsnicmp(p,L"2160p",5))||(!_wcsnicmp(p,L"WEB-DL",6))||
+                (!_wcsnicmp(p,L"WEBRip",6))||(!_wcsnicmp(p,L" BluRay",7))||
+                (!_wcsnicmp(p,L" HDR",4))))break;
+            wchar_t c=*p++;
+            if(c==L'.'||c==L'_')c=L' ';
+            title[used++]=c;
+        }
+        while(used&&title[used-1]==L' ')used--;
+        title[used]=0;
+    }
+    if(!title[0])StringCchCopyW(title,_countof(title),filename);
+    wchar_t query[1200]=L"",language[80]=L"";
+    if(g_subtitlePreferredLanguage>0&&g_subtitlePreferredLanguage<(int)_countof(g_subtitleLanguageNames))
+        StringCchPrintfW(language,_countof(language),L" %s",g_subtitleLanguageNames[g_subtitlePreferredLanguage]);
+    if(episode[0])
+        StringCchPrintfW(query,_countof(query),L"%s %s%s subtitles",title,episode,language);
+    else if(year[0])
+        StringCchPrintfW(query,_countof(query),L"%s %s%s subtitles",title,year,language);
+    else
+        StringCchPrintfW(query,_countof(query),L"%s%s subtitles",title,language);
+    wchar_t escaped[3600]=L"",url[4096]=L"";
+    DWORD escapedChars=(DWORD)_countof(escaped);
+    if(FAILED(UrlEscapeW(query,escaped,&escapedChars,URL_ESCAPE_SEGMENT_ONLY))||
+       FAILED(StringCchPrintfW(url,_countof(url),L"https://www.google.com/search?q=%s",escaped))){
+        SetStatus(L"Could not prepare the subtitle search.");
+        return;
+    }
+    HINSTANCE opened=ShellExecuteW(owner,L"open",url,NULL,NULL,SW_SHOWNORMAL);
+    if((INT_PTR)opened<=32){
+        ABM_MessageBoxW(owner,L"Windows could not open your default browser. Check the default browser association and try again.",APP_NAME,MB_ICONWARNING);
+        return;
+    }
+    wchar_t status[256];StringCchPrintfW(status,_countof(status),L"Online subtitle search opened: %s",title);SetStatus(status);
+}
 static void LoadExternalSubtitle(HWND owner){
     if(!g_player||(!g_hasMedia&&!g_torrentPlaybackActive)){ABM_MessageBoxW(owner,L"Start playing a media file before loading an external subtitle.",APP_NAME,MB_ICONINFORMATION);return;}
     OPENFILENAMEW ofn={0};wchar_t path[PATH_CAP]=L"";
@@ -4142,7 +4212,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
 #define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
     ABM_ADD(23009,L"Home Theatre...",TRUE);
-    ABM_ADD(23007,L"Subtitle Manager...",TRUE);
+    ABM_ADD(23007,L"Subtitle Manager...",TRUE);\n    ABM_ADD(23010,L"Find subtitles online...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
     ABM_HEAD(L"VIDEO PICTURE");
     ABM_ADD(24000,L"Aspect ratio: Automatic",TRUE);
@@ -4206,7 +4276,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
 #undef ABM_ADD
 #undef ABM_HEAD
     if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
-    else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
+    else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);\n    else if(cmd==23010)FindOnlineSubtitles(hwnd);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
     else if(cmd==24000)libvlc_video_set_aspect_ratio(g_player,NULL);
     else if(cmd==24001)libvlc_video_set_aspect_ratio(g_player,"16:9");
