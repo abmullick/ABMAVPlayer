@@ -4826,21 +4826,22 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
 
-/* Floating Video Enhancement Studio. Uses LibVLC's built-in video adjustment
-   filter; no frame interception, renderer replacement, or extra video window. */
+/* Floating Video Enhancement Studio: ABM Direct2D/DirectWrite surface. */
 enum { ID_VE_BRIGHTNESS=7301, ID_VE_CONTRAST, ID_VE_SATURATION, ID_VE_GAMMA, ID_VE_HUE, ID_VE_RESET=7306 };
 static HWND g_videoEnhancementWindow=NULL;
-static HBRUSH g_videoEnhancementBrush=NULL;
-static HWND g_videoEnhancementSliders[5]={NULL,NULL,NULL,NULL,NULL};
-static const int g_videoEnhancementIds[5]={ID_VE_BRIGHTNESS,ID_VE_CONTRAST,ID_VE_SATURATION,ID_VE_GAMMA,ID_VE_HUE};
+static ABM_D2D_CANVAS g_videoEnhancementCanvas;
+static BOOL g_videoEnhancementCanvasReady=FALSE;
 static const wchar_t *g_videoEnhancementNames[5]={L"Brightness",L"Contrast",L"Saturation",L"Gamma",L"Hue"};
+static const int g_videoEnhancementIds[5]={ID_VE_BRIGHTNESS,ID_VE_CONTRAST,ID_VE_SATURATION,ID_VE_GAMMA,ID_VE_HUE};
 static const int g_videoEnhancementMax[5]={200,200,300,300,360};
 static const int g_videoEnhancementDefault[5]={100,100,100,100,0};
 static int g_videoEnhancementValues[5]={100,100,100,100,0};
+static int g_videoEnhancementHover=-1,g_videoEnhancementFocus=0,g_videoEnhancementPressed=-1;
+static BOOL g_videoEnhancementResetHover=FALSE,g_videoEnhancementResetPressed=FALSE;
+static RECT g_videoEnhancementSliderRects[5],g_videoEnhancementResetRect;
 static void ApplyVideoEnhancement(void) {
     if(!g_player)return;
-    BOOL active=FALSE;
-    for(int i=0;i<5;i++)if(g_videoEnhancementValues[i]!=g_videoEnhancementDefault[i])active=TRUE;
+    BOOL active=FALSE;for(int i=0;i<5;i++)if(g_videoEnhancementValues[i]!=g_videoEnhancementDefault[i])active=TRUE;
     if(!active){libvlc_video_set_adjust_int(g_player,libvlc_adjust_Enable,0);return;}
     libvlc_video_set_adjust_int(g_player,libvlc_adjust_Enable,1);
     libvlc_video_set_adjust_float(g_player,libvlc_adjust_Brightness,(float)g_videoEnhancementValues[0]/100.0f);
@@ -4849,109 +4850,114 @@ static void ApplyVideoEnhancement(void) {
     libvlc_video_set_adjust_float(g_player,libvlc_adjust_Gamma,(float)g_videoEnhancementValues[3]/100.0f);
     libvlc_video_set_adjust_int(g_player,libvlc_adjust_Hue,g_videoEnhancementValues[4]);
 }
+static void VideoEnhancementFormatValue(int i,wchar_t *out,size_t n) {
+    if(i==4)StringCchPrintfW(out,n,L"%d°",g_videoEnhancementValues[i]);
+    else if(i==3)StringCchPrintfW(out,n,L"%.2f",(double)g_videoEnhancementValues[i]/100.0);
+    else StringCchPrintfW(out,n,L"%d%%",g_videoEnhancementValues[i]);
+}
+static void VideoEnhancementLayout(HWND w) {
+    RECT c={0};GetClientRect(w,&c);int left=22,right=c.right-22,top=108;
+    int avail=c.bottom-top-94,gap=9,row=(avail-gap*4)/5;if(row<58)row=58;
+    for(int i=0;i<5;i++){int y=top+i*(row+gap);g_videoEnhancementSliderRects[i]=(RECT){left,y,right,y+row};}
+    g_videoEnhancementResetRect=(RECT){left,c.bottom-62,left+190,c.bottom-22};
+}
 static void VideoEnhancementReset(HWND w) {
-    for(int i=0;i<5;i++){
-        g_videoEnhancementValues[i]=g_videoEnhancementDefault[i];
-        if(g_videoEnhancementSliders[i])SendMessageW(g_videoEnhancementSliders[i],TBM_SETPOS,TRUE,g_videoEnhancementValues[i]);
+    for(int i=0;i<5;i++)g_videoEnhancementValues[i]=g_videoEnhancementDefault[i];
+    ApplyVideoEnhancement();if(w)InvalidateRect(w,NULL,FALSE);
+}
+static void VideoEnhancementSetFromPoint(HWND w,int i,int x) {
+    if(i<0||i>=5)return;RECT r=g_videoEnhancementSliderRects[i];int l=r.left+18,h=r.right-18;
+    if(h<=l)return;if(x<l)x=l;if(x>h)x=h;
+    int v=(int)(((long long)(x-l)*g_videoEnhancementMax[i]+(h-l)/2)/(h-l));
+    if(v!=g_videoEnhancementValues[i]){g_videoEnhancementValues[i]=v;ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);}
+}
+static void VideoEnhancementPaint(HWND w) {
+    PAINTSTRUCT ps;BeginPaint(w,&ps);
+    if(g_videoEnhancementCanvasReady&&ABM_D2D_CanvasBegin(&g_videoEnhancementCanvas,ps.hdc,&ps.rcPaint)){
+        ABM_D2D_CANVAS *c=&g_videoEnhancementCanvas;RECT rc={0};GetClientRect(w,&rc);
+        ABM_D2D_CanvasFill(c,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+        RECT t={22,18,rc.right-22,50},sub={22,53,rc.right-22,78};
+        ABM_D2D_CanvasText(c,L"VIDEO ENHANCEMENT STUDIO",t,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(c,L"Fine-tune the picture while your video is playing",sub,ABM_UI_COLOR_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasFill(c,22,91,(float)rc.right-22,92,ABM_UI_COLOR_BORDER);
+        VideoEnhancementLayout(w);
+        for(int i=0;i<5;i++){
+            RECT r=g_videoEnhancementSliderRects[i];BOOL hot=g_videoEnhancementHover==i,down=g_videoEnhancementPressed==i,focus=g_videoEnhancementFocus==i;
+            ABM_D2D_CanvasFillRound(c,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_CARD,hot?ABM_UI_COLOR_SURFACE_HOVER:ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasStrokeRound(c,(float)r.left+.5f,(float)r.top+.5f,(float)r.right-.5f,(float)r.bottom-.5f,ABM_UI_RADIUS_CARD,focus?ABM_UI_COLOR_ACCENT_BRIGHT:(hot?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER),focus?1.7f:.9f);
+            RECT label={r.left+16,r.top+7,r.right-105,r.top+30},value={r.right-96,r.top+7,r.right-16,r.top+30};
+            ABM_D2D_CanvasText(c,g_videoEnhancementNames[i],label,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            wchar_t v[32];VideoEnhancementFormatValue(i,v,_countof(v));
+            ABM_D2D_CanvasText(c,v,value,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_RIGHT|DT_VCENTER|DT_SINGLELINE);
+            float l=(float)r.left+18,rr=(float)r.right-18,y=((float)r.top+(float)r.bottom)*.5f+11;
+            float k=l+(rr-l)*(float)g_videoEnhancementValues[i]/(float)g_videoEnhancementMax[i];
+            ABM_D2D_CanvasFillRound(c,l,y-3,rr,y+3,3,ABM_UI_COLOR_BORDER);
+            ABM_D2D_CanvasFillRound(c,l,y-3,k,y+3,3,ABM_UI_COLOR_ACCENT);
+            ABM_D2D_CanvasFillRound(c,k-7,y-7,k+7,y+7,7,down?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT);
+            if(focus)ABM_D2D_CanvasStrokeRound(c,k-9,y-9,k+9,y+9,9,ABM_UI_COLOR_TEXT,1);
+        }
+        RECT r=g_videoEnhancementResetRect;
+        ABM_D2D_CanvasFillRound(c,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_BUTTON,
+            g_videoEnhancementResetPressed?ABM_UI_COLOR_ACCENT_PRESSED:(g_videoEnhancementResetHover?ABM_UI_COLOR_ACCENT_HOVER:ABM_UI_COLOR_SURFACE_RAISED));
+        ABM_D2D_CanvasStrokeRound(c,(float)r.left+.5f,(float)r.top+.5f,(float)r.right-.5f,(float)r.bottom-.5f,ABM_UI_RADIUS_BUTTON,g_videoEnhancementFocus==5?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER,g_videoEnhancementFocus==5?1.7f:.9f);
+        ABM_D2D_CanvasText(c,L"RESET TO ORIGINAL",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        RECT hint={r.right+16,r.top,rc.right-18,r.bottom};
+        ABM_D2D_CanvasText(c,L"Changes apply live through LibVLC",hint,ABM_UI_COLOR_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        ABM_D2D_CanvasEnd(c);
     }
-    ApplyVideoEnhancement();
-    if(w)InvalidateRect(w,NULL,TRUE);
+    EndPaint(w,&ps);
 }
 static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
-    switch(msg) {
-    case WM_CREATE: {
-        if(!g_videoEnhancementBrush)g_videoEnhancementBrush=CreateSolidBrush(ABM_THEME_COLOR_0A0F19);
-        HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
-        for(int i=0;i<5;i++){
-            int y=76+i*62;
-            HWND label=CreateWindowExW(0,L"STATIC",g_videoEnhancementNames[i],WS_CHILD|WS_VISIBLE|SS_LEFT,
-                28,y,130,22,w,NULL,GetModuleHandleW(NULL),NULL);
-            if(label)SendMessageW(label,WM_SETFONT,(WPARAM)font,TRUE);
-            HWND value=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_RIGHT,
-                350,y,72,22,w,(HMENU)(INT_PTR)(ID_VE_BRIGHTNESS+20+i),GetModuleHandleW(NULL),NULL);
-            if(value)SendMessageW(value,WM_SETFONT,(WPARAM)font,TRUE);
-            g_videoEnhancementSliders[i]=CreateWindowExW(0,TRACKBAR_CLASSW,L"",
-                WS_CHILD|WS_VISIBLE|TBS_AUTOTICKS|TBS_HORZ,
-                24,y+23,402,30,w,(HMENU)(INT_PTR)g_videoEnhancementIds[i],GetModuleHandleW(NULL),NULL);
-            if(g_videoEnhancementSliders[i]){
-                SendMessageW(g_videoEnhancementSliders[i],TBM_SETRANGE,TRUE,MAKELONG(0,g_videoEnhancementMax[i]));
-                SendMessageW(g_videoEnhancementSliders[i],TBM_SETTICFREQ, i==4?30:25,0);
-                SendMessageW(g_videoEnhancementSliders[i],TBM_SETPOS,TRUE,g_videoEnhancementValues[i]);
-                SetWindowTheme(g_videoEnhancementSliders[i],L"DarkMode_Explorer",NULL);
-            }
-        }
-        CreateWindowExW(0,L"BUTTON",L"Reset to Original",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
-            24,402,160,38,w,(HMENU)(INT_PTR)ID_VE_RESET,GetModuleHandleW(NULL),NULL);
-        HWND hint=CreateWindowExW(0,L"STATIC",L"Adjustments are applied live through LibVLC. Reset disables the adjustment filter.",
-            WS_CHILD|WS_VISIBLE|SS_LEFT,24,454,402,34,w,NULL,GetModuleHandleW(NULL),NULL);
-        if(hint)SendMessageW(hint,WM_SETFONT,(WPARAM)font,TRUE);
-        return 0;
-    }
-    case WM_CTLCOLORSTATIC: {
-        HDC dc=(HDC)wp;SetBkMode(dc,TRANSPARENT);SetTextColor(dc,ABM_THEME_COLOR_E4ECF7);
-        return (LRESULT)(g_videoEnhancementBrush?g_videoEnhancementBrush:GetStockObject(BLACK_BRUSH));
-    }
-    case WM_CTLCOLORBTN: return (LRESULT)(g_videoEnhancementBrush?g_videoEnhancementBrush:GetStockObject(BLACK_BRUSH));
-    case WM_HSCROLL: {
-        HWND slider=(HWND)lp;int id=GetDlgCtrlID(slider);
-        for(int i=0;i<5;i++)if(id==g_videoEnhancementIds[i]){
-            g_videoEnhancementValues[i]=(int)SendMessageW(slider,TBM_GETPOS,0,0);
-            wchar_t valueText[32];
-            if(i==4)StringCchPrintfW(valueText,_countof(valueText),L"%d°",g_videoEnhancementValues[i]);
-            else if(i==3)StringCchPrintfW(valueText,_countof(valueText),L"%.2f",(double)g_videoEnhancementValues[i]/100.0);
-            else StringCchPrintfW(valueText,_countof(valueText),L"%d%%",g_videoEnhancementValues[i]);
-            HWND value=GetDlgItem(w,ID_VE_BRIGHTNESS+20+i);
-            if(value)SetWindowTextW(value,valueText);
-            ApplyVideoEnhancement();return 0;
-        }
-        return 0;
-    }
-    case WM_COMMAND:
-        if(LOWORD(wp)==ID_VE_RESET){VideoEnhancementReset(w);return 0;}
-        break;
+    switch(msg){
+    case WM_CREATE:g_videoEnhancementCanvasReady=ABM_D2D_CanvasInit(&g_videoEnhancementCanvas);VideoEnhancementLayout(w);return 0;
+    case WM_PAINT:VideoEnhancementPaint(w);return 0;
+    case WM_ERASEBKGND:return 1;
+    case WM_SIZE:VideoEnhancementLayout(w);InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_GETMINMAXINFO:{MINMAXINFO *m=(MINMAXINFO *)lp;m->ptMinTrackSize.x=390;m->ptMinTrackSize.y=500;return 0;}
+    case WM_MOUSEMOVE:{
+        TRACKMOUSEEVENT tm={sizeof(tm),TME_LEAVE,w,0};TrackMouseEvent(&tm);
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),h=-1;for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){h=i;break;}
+        BOOL rh=PtInRect(&g_videoEnhancementResetRect,(POINT){x,y});
+        if(h!=g_videoEnhancementHover||rh!=g_videoEnhancementResetHover){g_videoEnhancementHover=h;g_videoEnhancementResetHover=rh;InvalidateRect(w,NULL,FALSE);}
+        if(g_videoEnhancementPressed>=0&&(wp&MK_LBUTTON))VideoEnhancementSetFromPoint(w,g_videoEnhancementPressed,x);return 0;}
+    case WM_MOUSELEAVE:g_videoEnhancementHover=-1;g_videoEnhancementResetHover=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_LBUTTONDOWN:{
+        int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);SetFocus(w);
+        if(PtInRect(&g_videoEnhancementResetRect,(POINT){x,y})){g_videoEnhancementFocus=5;g_videoEnhancementResetPressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}
+        for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){g_videoEnhancementFocus=i;g_videoEnhancementPressed=i;VideoEnhancementSetFromPoint(w,i,x);SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}return 0;}
+    case WM_LBUTTONUP:
+        if(GetCapture()==w)ReleaseCapture();
+        if(g_videoEnhancementResetPressed&&PtInRect(&g_videoEnhancementResetRect,(POINT){GET_X_LPARAM(lp),GET_Y_LPARAM(lp)}))VideoEnhancementReset(w);
+        g_videoEnhancementPressed=-1;g_videoEnhancementResetPressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_CAPTURECHANGED:g_videoEnhancementPressed=-1;g_videoEnhancementResetPressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_KEYDOWN:
+        if(wp==VK_ESCAPE){ShowWindow(w,SW_HIDE);return 0;}
+        if(wp==VK_TAB){g_videoEnhancementFocus=(g_videoEnhancementFocus+((GetKeyState(VK_SHIFT)&0x8000)?5:1))%6;InvalidateRect(w,NULL,FALSE);return 0;}
+        if(wp==VK_RETURN||wp==VK_SPACE){if(g_videoEnhancementFocus==5)VideoEnhancementReset(w);return 0;}
+        if(wp==VK_LEFT||wp==VK_DOWN||wp==VK_RIGHT||wp==VK_UP||wp==VK_HOME||wp==VK_END){
+            int i=g_videoEnhancementFocus;if(i<5){int step=(wp==VK_RIGHT||wp==VK_UP)?1:-1;
+                if(wp==VK_HOME)g_videoEnhancementValues[i]=0;else if(wp==VK_END)g_videoEnhancementValues[i]=g_videoEnhancementMax[i];
+                else {int v=g_videoEnhancementValues[i]+step*(i==4?1:2);if(v<0)v=0;if(v>g_videoEnhancementMax[i])v=g_videoEnhancementMax[i];g_videoEnhancementValues[i]=v;}
+                ApplyVideoEnhancement();InvalidateRect(w,NULL,FALSE);
+            }else if(i==5)VideoEnhancementReset(w);return 0;}break;
     case WM_CLOSE:ShowWindow(w,SW_HIDE);return 0;
-    case WM_DESTROY:
-        for(int i=0;i<5;i++)g_videoEnhancementSliders[i]=NULL;
-        g_videoEnhancementWindow=NULL;
-        if(g_videoEnhancementBrush){DeleteObject(g_videoEnhancementBrush);g_videoEnhancementBrush=NULL;}
-        return 0;
+    case WM_DESTROY:if(g_videoEnhancementCanvasReady){ABM_D2D_CanvasDestroy(&g_videoEnhancementCanvas);g_videoEnhancementCanvasReady=FALSE;}g_videoEnhancementWindow=NULL;return 0;
     }
     return DefWindowProcW(w,msg,wp,lp);
 }
 static void ShowVideoEnhancementStudio(void) {
     if(!g_videoEnhancementWindow){
-        INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_BAR_CLASSES};InitCommonControlsEx(&icc);
-        static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-        if(!registered){
-            WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;
-            wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
-            wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
-            if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
-            registered=TRUE;
-        }
-        g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,
-            L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",
-            WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,0,0,470,540,g_main,NULL,inst,NULL);
-        if(!g_videoEnhancementWindow)return;
-        BOOL dark=TRUE;DwmSetWindowAttribute(g_videoEnhancementWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-        int corners=2;DwmSetWindowAttribute(g_videoEnhancementWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+        HINSTANCE inst=GetModuleHandleW(NULL);static BOOL registered=FALSE;
+        if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
+            if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+        DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_MINIMIZEBOX;RECT fr={0,0,540,670};AdjustWindowRectEx(&fr,style,FALSE,WS_EX_TOOLWINDOW|WS_EX_TOPMOST);
+        g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",style,0,0,fr.right-fr.left,fr.bottom-fr.top,g_main,NULL,inst,NULL);
+        if(!g_videoEnhancementWindow)return;BOOL dark=TRUE;DwmSetWindowAttribute(g_videoEnhancementWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));int corners=2;DwmSetWindowAttribute(g_videoEnhancementWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
     }
-    RECT owner={0};if(g_main&&IsWindow(g_main))GetWindowRect(g_main,&owner);
-    else SystemParametersInfoW(SPI_GETWORKAREA,0,&owner,0);
-    int x=owner.left+(owner.right-owner.left-470)/2;
-    int y=owner.top+(owner.bottom-owner.top-540)/2;
-    SetWindowPos(g_videoEnhancementWindow,HWND_TOPMOST,x,y,470,540,SWP_SHOWWINDOW);
-    ShowWindow(g_videoEnhancementWindow,SW_SHOWNORMAL);SetForegroundWindow(g_videoEnhancementWindow);
-    for(int i=0;i<5;i++){
-        if(g_videoEnhancementSliders[i])SendMessageW(g_videoEnhancementSliders[i],TBM_SETPOS,TRUE,g_videoEnhancementValues[i]);
-        wchar_t valueText[32];
-        if(i==4)StringCchPrintfW(valueText,_countof(valueText),L"%d°",g_videoEnhancementValues[i]);
-        else if(i==3)StringCchPrintfW(valueText,_countof(valueText),L"%.2f",(double)g_videoEnhancementValues[i]/100.0);
-        else StringCchPrintfW(valueText,_countof(valueText),L"%d%%",g_videoEnhancementValues[i]);
-        HWND value=GetDlgItem(g_videoEnhancementWindow,ID_VE_BRIGHTNESS+20+i);
-        if(value)SetWindowTextW(value,valueText);
-    }
-    ApplyVideoEnhancement();
+    RECT owner={0};if(g_main&&IsWindow(g_main))GetWindowRect(g_main,&owner);else SystemParametersInfoW(SPI_GETWORKAREA,0,&owner,0);
+    int x=owner.left+(owner.right-owner.left-540)/2,y=owner.top+(owner.bottom-owner.top-670)/2;
+    SetWindowPos(g_videoEnhancementWindow,HWND_TOPMOST,x,y,540,670,SWP_SHOWWINDOW);ShowWindow(g_videoEnhancementWindow,SW_SHOWNORMAL);SetForegroundWindow(g_videoEnhancementWindow);SetFocus(g_videoEnhancementWindow);
+    VideoEnhancementLayout(g_videoEnhancementWindow);InvalidateRect(g_videoEnhancementWindow,NULL,FALSE);ApplyVideoEnhancement();
 }
 
 static void ShowEqualizer(void) {
