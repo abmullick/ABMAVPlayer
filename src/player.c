@@ -3868,7 +3868,10 @@ static void PlayIndex(int index) {
             ABM_MessageBoxW(g_main,L"Playback could not start. The file may be unsupported or damaged, or a decoder/output component may have failed. Review Video & Decoding settings and check the VLC plugins.",APP_NAME,MB_ICONERROR);
         return;
     }
-    if(!g_selectedRenderer)libvlc_audio_set_delay(g_player,g_audioDelayUs);
+    if(!g_selectedRenderer){
+        libvlc_audio_set_delay(g_player,g_audioDelayUs);
+        AutoLoadLocalSidecarSubtitle(g_playlist[index]);
+    }
     g_videoWidth=0;g_videoHeight=0;g_videoBoundsValid=FALSE;
     g_current=index;g_selected=index;g_hasMedia=TRUE;g_lastUiTime=-1;g_overlayLength=0;g_overlayPlaying=TRUE;g_endHandled=FALSE;
     g_pendingResume=FALSE;g_pendingResumeTicks=0;
@@ -3993,6 +3996,48 @@ static void LoadPlaylist(void) {
     }
     fclose(fp);PruneUnavailablePlaylistItems();if(g_playlistCount)g_selected=0;
     InvalidateRect(g_main,NULL,FALSE);
+}
+/* Phase 1 subtitle intelligence: discover a same-basename local sidecar.
+   Keep this deterministic and offline; language/release ranking is a later phase. */
+static BOOL FindLocalSidecarSubtitle(const wchar_t *mediaPath,wchar_t *subtitlePath,size_t capacity){
+    if(!mediaPath||!mediaPath[0]||!subtitlePath||capacity==0)return FALSE;
+    subtitlePath[0]=0;
+    const wchar_t *slash=wcsrchr(mediaPath,L'\\');
+    const wchar_t *base=slash?slash+1:mediaPath;
+    const wchar_t *dot=wcsrchr(base,L'.');
+    size_t stemLen=dot?(size_t)(dot-base):wcslen(base);
+    if(stemLen==0||stemLen>=PATH_CAP)return FALSE;
+    wchar_t stem[PATH_CAP];wmemcpy(stem,base,stemLen);stem[stemLen]=0;
+    static const wchar_t *extensions[]={L".srt",L".ass",L".ssa",L".vtt",L".sub"};
+    wchar_t candidate[PATH_CAP];
+    for(size_t i=0;i<_countof(extensions);i++){
+        HRESULT hr=slash?
+            StringCchPrintfW(candidate,_countof(candidate),L"%.*s\\%s%s",(int)(slash-mediaPath),mediaPath,stem,extensions[i]):
+            StringCchPrintfW(candidate,_countof(candidate),L"%s%s",stem,extensions[i]);
+        if(FAILED(hr))continue;
+        DWORD attr=GetFileAttributesW(candidate);
+        if(attr!=INVALID_FILE_ATTRIBUTES&&(attr&FILE_ATTRIBUTE_DIRECTORY)==0){
+            if(FAILED(StringCchCopyW(subtitlePath,capacity,candidate)))return FALSE;
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+static BOOL AutoLoadLocalSidecarSubtitle(const wchar_t *mediaPath){
+    if(!g_player||!mediaPath||!mediaPath[0])return FALSE;
+    /* Do not override an embedded subtitle track chosen by LibVLC. */
+    libvlc_track_description_t *tracks=libvlc_video_get_spu_description(g_player);
+    BOOL hasEmbedded=tracks!=NULL;
+    if(tracks)libvlc_track_description_list_release(tracks);
+    if(hasEmbedded)return FALSE;
+    wchar_t path[PATH_CAP];if(!FindLocalSidecarSubtitle(mediaPath,path,_countof(path)))return FALSE;
+    char utf8[PATH_CAP*4];
+    if(WideCharToMultiByte(CP_UTF8,0,path,-1,utf8,(int)sizeof(utf8),NULL,NULL)<=0)return FALSE;
+    if(libvlc_video_set_subtitle_file(g_player,utf8)==0){
+        SetStatus(L"Automatically loaded matching local subtitle.");
+        return TRUE;
+    }
+    return FALSE;
 }
 static void LoadExternalSubtitle(HWND owner){
     if(!g_player||(!g_hasMedia&&!g_torrentPlaybackActive)){ABM_MessageBoxW(owner,L"Start playing a media file before loading an external subtitle.",APP_NAME,MB_ICONINFORMATION);return;}
