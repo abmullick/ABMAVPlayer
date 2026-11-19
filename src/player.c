@@ -2625,18 +2625,18 @@ static void DrawUI(HDC dc,RECT client) {
         const wchar_t *labels[19]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
-            L"Shuffle: Off",L"Repeat current: Off",L"Advanced equalizer",
+            L"Shuffle: Off",L"Repeat current: Off",L"Video Enhancement Studio",
             L"Streaming services",L"Torrent Stream",L"Help & User Guide",
             L"Check for updates",L"License & Activation",L"Settings",L"About ABM AV Player",L"Exit player"
         };
         const wchar_t *shortcuts[19]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
-            L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+E",
+            L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+Shift+V",
             L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
             L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",L"Alt+F4"
         };
-        const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
+        const wchar_t *icons[19]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
         for(int i=0;i<19;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -4825,6 +4825,126 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
+
+/* Floating Video Enhancement Studio. Uses LibVLC's built-in video adjustment
+   filter; no frame interception, renderer replacement, or extra video window. */
+enum { ID_VE_BRIGHTNESS=7301, ID_VE_CONTRAST, ID_VE_SATURATION, ID_VE_GAMMA, ID_VE_HUE, ID_VE_RESET=7306 };
+static HWND g_videoEnhancementWindow=NULL;
+static HWND g_videoEnhancementSliders[5]={NULL,NULL,NULL,NULL,NULL};
+static const int g_videoEnhancementIds[5]={ID_VE_BRIGHTNESS,ID_VE_CONTRAST,ID_VE_SATURATION,ID_VE_GAMMA,ID_VE_HUE};
+static const wchar_t *g_videoEnhancementNames[5]={L"Brightness",L"Contrast",L"Saturation",L"Gamma",L"Hue"};
+static const int g_videoEnhancementMax[5]={200,200,300,300,360};
+static const int g_videoEnhancementDefault[5]={100,100,100,100,0};
+static int g_videoEnhancementValues[5]={100,100,100,100,0};
+static void ApplyVideoEnhancement(void) {
+    if(!g_player)return;
+    BOOL active=FALSE;
+    for(int i=0;i<5;i++)if(g_videoEnhancementValues[i]!=g_videoEnhancementDefault[i])active=TRUE;
+    if(!active){libvlc_video_set_adjust_int(g_player,libvlc_adjust_Enable,0);return;}
+    libvlc_video_set_adjust_int(g_player,libvlc_adjust_Enable,1);
+    libvlc_video_set_adjust_float(g_player,libvlc_adjust_Brightness,(float)g_videoEnhancementValues[0]/100.0f);
+    libvlc_video_set_adjust_float(g_player,libvlc_adjust_Contrast,(float)g_videoEnhancementValues[1]/100.0f);
+    libvlc_video_set_adjust_float(g_player,libvlc_adjust_Saturation,(float)g_videoEnhancementValues[2]/100.0f);
+    libvlc_video_set_adjust_float(g_player,libvlc_adjust_Gamma,(float)g_videoEnhancementValues[3]/100.0f);
+    libvlc_video_set_adjust_int(g_player,libvlc_adjust_Hue,g_videoEnhancementValues[4]);
+}
+static void VideoEnhancementReset(HWND w) {
+    for(int i=0;i<5;i++){
+        g_videoEnhancementValues[i]=g_videoEnhancementDefault[i];
+        if(g_videoEnhancementSliders[i])SendMessageW(g_videoEnhancementSliders[i],TBM_SETPOS,TRUE,g_videoEnhancementValues[i]);
+    }
+    ApplyVideoEnhancement();
+    if(w)InvalidateRect(w,NULL,TRUE);
+}
+static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
+    case WM_CREATE: {
+        HFONT font=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        for(int i=0;i<5;i++){
+            int y=76+i*62;
+            HWND label=CreateWindowExW(0,L"STATIC",g_videoEnhancementNames[i],WS_CHILD|WS_VISIBLE|SS_LEFT,
+                28,y,130,22,w,NULL,GetModuleHandleW(NULL),NULL);
+            if(label)SendMessageW(label,WM_SETFONT,(WPARAM)font,TRUE);
+            HWND value=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_RIGHT,
+                350,y,72,22,w,(HMENU)(INT_PTR)(ID_VE_BRIGHTNESS+20+i),GetModuleHandleW(NULL),NULL);
+            if(value)SendMessageW(value,WM_SETFONT,(WPARAM)font,TRUE);
+            g_videoEnhancementSliders[i]=CreateWindowExW(0,TRACKBAR_CLASSW,L"",
+                WS_CHILD|WS_VISIBLE|TBS_AUTOTICKS|TBS_HORZ,
+                24,y+23,402,30,w,(HMENU)(INT_PTR)g_videoEnhancementIds[i],GetModuleHandleW(NULL),NULL);
+            if(g_videoEnhancementSliders[i]){
+                SendMessageW(g_videoEnhancementSliders[i],TBM_SETRANGE,TRUE,MAKELONG(0,g_videoEnhancementMax[i]));
+                SendMessageW(g_videoEnhancementSliders[i],TBM_SETTICFREQ, i==4?30:25,0);
+                SendMessageW(g_videoEnhancementSliders[i],TBM_SETPOS,TRUE,g_videoEnhancementValues[i]);
+                SetWindowTheme(g_videoEnhancementSliders[i],L"DarkMode_Explorer",NULL);
+            }
+        }
+        CreateWindowExW(0,L"BUTTON",L"Reset to Original",WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
+            24,402,160,38,w,(HMENU)(INT_PTR)ID_VE_RESET,GetModuleHandleW(NULL),NULL);
+        HWND hint=CreateWindowExW(0,L"STATIC",L"Adjustments are applied live through LibVLC. Reset disables the adjustment filter.",
+            WS_CHILD|WS_VISIBLE|SS_LEFT,24,454,402,34,w,NULL,GetModuleHandleW(NULL),NULL);
+        if(hint)SendMessageW(hint,WM_SETFONT,(WPARAM)font,TRUE);
+        return 0;
+    }
+    case WM_HSCROLL: {
+        HWND slider=(HWND)lp;int id=GetDlgCtrlID(slider);
+        for(int i=0;i<5;i++)if(id==g_videoEnhancementIds[i]){
+            g_videoEnhancementValues[i]=(int)SendMessageW(slider,TBM_GETPOS,0,0);
+            wchar_t valueText[32];
+            if(i==4)StringCchPrintfW(valueText,_countof(valueText),L"%d°",g_videoEnhancementValues[i]);
+            else if(i==3)StringCchPrintfW(valueText,_countof(valueText),L"%.2f",(double)g_videoEnhancementValues[i]/100.0);
+            else StringCchPrintfW(valueText,_countof(valueText),L"%d%%",g_videoEnhancementValues[i]);
+            HWND value=GetDlgItem(w,ID_VE_BRIGHTNESS+20+i);
+            if(value)SetWindowTextW(value,valueText);
+            ApplyVideoEnhancement();return 0;
+        }
+        return 0;
+    }
+    case WM_COMMAND:
+        if(LOWORD(wp)==ID_VE_RESET){VideoEnhancementReset(w);return 0;}
+        break;
+    case WM_CLOSE:ShowWindow(w,SW_HIDE);return 0;
+    case WM_DESTROY:
+        for(int i=0;i<5;i++)g_videoEnhancementSliders[i]=NULL;
+        g_videoEnhancementWindow=NULL;return 0;
+    }
+    return DefWindowProcW(w,msg,wp,lp);
+}
+static void ShowVideoEnhancementStudio(void) {
+    if(!g_videoEnhancementWindow){
+        INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_BAR_CLASSES};InitCommonControlsEx(&icc);
+        static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
+        if(!registered){
+            WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;
+            wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+            wc.hbrBackground=(HBRUSH)(COLOR_BTNFACE+1);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
+            if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
+            registered=TRUE;
+        }
+        g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_TOPMOST,
+            L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",
+            WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,0,0,470,540,g_main,NULL,inst,NULL);
+        if(!g_videoEnhancementWindow)return;
+        BOOL dark=TRUE;DwmSetWindowAttribute(g_videoEnhancementWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
+        int corners=2;DwmSetWindowAttribute(g_videoEnhancementWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+    }
+    RECT owner={0};if(g_main&&IsWindow(g_main))GetWindowRect(g_main,&owner);
+    else SystemParametersInfoW(SPI_GETWORKAREA,0,&owner,0);
+    int x=owner.left+(owner.right-owner.left-470)/2;
+    int y=owner.top+(owner.bottom-owner.top-540)/2;
+    SetWindowPos(g_videoEnhancementWindow,HWND_TOPMOST,x,y,470,540,SWP_SHOWWINDOW);
+    ShowWindow(g_videoEnhancementWindow,SW_SHOWNORMAL);SetForegroundWindow(g_videoEnhancementWindow);
+    for(int i=0;i<5;i++){
+        if(g_videoEnhancementSliders[i])SendMessageW(g_videoEnhancementSliders[i],TBM_SETPOS,TRUE,g_videoEnhancementValues[i]);
+        wchar_t valueText[32];
+        if(i==4)StringCchPrintfW(valueText,_countof(valueText),L"%d°",g_videoEnhancementValues[i]);
+        else if(i==3)StringCchPrintfW(valueText,_countof(valueText),L"%.2f",(double)g_videoEnhancementValues[i]/100.0);
+        else StringCchPrintfW(valueText,_countof(valueText),L"%d%%",g_videoEnhancementValues[i]);
+        HWND value=GetDlgItem(g_videoEnhancementWindow,ID_VE_BRIGHTNESS+20+i);
+        if(value)SetWindowTextW(value,valueText);
+    }
+    ApplyVideoEnhancement();
+}
+
 static void ShowEqualizer(void) {
     if(!g_eqWindow){
         WNDCLASSEXW wc={sizeof(wc)};wc.lpfnWndProc=EqualizerWndProc;wc.hInstance=GetModuleHandleW(NULL);
@@ -8996,7 +9116,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 else if(mi==7){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
                 else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
                 else if(mi==9){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();}
-                else if(mi==10)ShowEqualizer();
+                else if(mi==10)ShowVideoEnhancementStudio();
                 else if(mi==11)ABM_Streaming_Show(hwnd);
                 else if(mi==12)ShowTorrentWindow(hwnd);
                 else if(mi==13)ShowHelpDialog(hwnd);
