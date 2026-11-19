@@ -1280,8 +1280,8 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.right>w-12)R_MENU_PANEL.right=w-12;
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
-    const int menuStarts[5]={0,1,3,11,14};
-    const int menuEnds[5]={1,3,11,14,20};
+    const int menuStarts[5]={0,1,3,12,14};
+    const int menuEnds[5]={1,3,12,14,20};
     int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
     int showSectionLabels=(R_MENU_PANEL.bottom-R_MENU_PANEL.top)>=620;
     int sectionHeaderH=showSectionLabels?16:0;
