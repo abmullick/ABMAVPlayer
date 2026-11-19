@@ -4913,7 +4913,13 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     case WM_PAINT:VideoEnhancementPaint(w);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_SIZE:VideoEnhancementLayout(w);InvalidateRect(w,NULL,FALSE);return 0;
-    case WM_GETMINMAXINFO:{MINMAXINFO *m=(MINMAXINFO *)lp;m->ptMinTrackSize.x=390;m->ptMinTrackSize.y=500;return 0;}
+    case WM_DPICHANGED:{
+        const RECT *suggested=(const RECT *)lp;
+        SetWindowPos(w,NULL,suggested->left,suggested->top,suggested->right-suggested->left,
+            suggested->bottom-suggested->top,SWP_NOZORDER|SWP_NOACTIVATE);
+        VideoEnhancementLayout(w);InvalidateRect(w,NULL,FALSE);return 0;}
+    case WM_GETMINMAXINFO:{MINMAXINFO *m=(MINMAXINFO *)lp;UINT dpi=GetDpiForWindow(w);if(!dpi)dpi=96;
+        m->ptMinTrackSize.x=MulDiv(390,(int)dpi,96);m->ptMinTrackSize.y=MulDiv(500,(int)dpi,96);return 0;}
     case WM_MOUSEMOVE:{
         TRACKMOUSEEVENT tm={sizeof(tm),TME_LEAVE,w,0};TrackMouseEvent(&tm);
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp),h=-1;for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){h=i;break;}
@@ -4925,10 +4931,12 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);SetFocus(w);
         if(PtInRect(&g_videoEnhancementResetRect,(POINT){x,y})){g_videoEnhancementFocus=5;g_videoEnhancementResetPressed=TRUE;SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}
         for(int i=0;i<5;i++)if(PtInRect(&g_videoEnhancementSliderRects[i],(POINT){x,y})){g_videoEnhancementFocus=i;g_videoEnhancementPressed=i;VideoEnhancementSetFromPoint(w,i,x);SetCapture(w);InvalidateRect(w,NULL,FALSE);return 0;}return 0;}
-    case WM_LBUTTONUP:
+    case WM_LBUTTONUP:{
+        BOOL resetClick=g_videoEnhancementResetPressed&&PtInRect(&g_videoEnhancementResetRect,(POINT){GET_X_LPARAM(lp),GET_Y_LPARAM(lp)});
         if(GetCapture()==w)ReleaseCapture();
-        if(g_videoEnhancementResetPressed&&PtInRect(&g_videoEnhancementResetRect,(POINT){GET_X_LPARAM(lp),GET_Y_LPARAM(lp)}))VideoEnhancementReset(w);
-        g_videoEnhancementPressed=-1;g_videoEnhancementResetPressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
+        g_videoEnhancementPressed=-1;g_videoEnhancementResetPressed=FALSE;
+        if(resetClick)VideoEnhancementReset(w);
+        InvalidateRect(w,NULL,FALSE);return 0;}
     case WM_CAPTURECHANGED:g_videoEnhancementPressed=-1;g_videoEnhancementResetPressed=FALSE;InvalidateRect(w,NULL,FALSE);return 0;
     case WM_KEYDOWN:
         if(wp==VK_ESCAPE){ShowWindow(w,SW_HIDE);return 0;}
