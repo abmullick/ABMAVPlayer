@@ -4878,12 +4878,12 @@ static void VideoEnhancementPaint(HWND w) {
         ABM_D2D_CanvasFill(c,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
         RECT t={22,18,rc.right-22,50},sub={22,53,rc.right-22,78};
         ABM_D2D_CanvasText(c,L"VIDEO ENHANCEMENT STUDIO",t,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_CanvasText(c,L"Fine-tune the picture while your video is playing",sub,ABM_UI_COLOR_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(c,L"Fine-tune the picture while your video is playing",sub,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasFill(c,22,91,(float)rc.right-22,92,ABM_UI_COLOR_BORDER);
         VideoEnhancementLayout(w);
         for(int i=0;i<5;i++){
             RECT r=g_videoEnhancementSliderRects[i];BOOL hot=g_videoEnhancementHover==i,down=g_videoEnhancementPressed==i,focus=g_videoEnhancementFocus==i;
-            ABM_D2D_CanvasFillRound(c,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_CARD,hot?ABM_UI_COLOR_SURFACE_HOVER:ABM_UI_COLOR_SURFACE);
+            ABM_D2D_CanvasFillRound(c,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_CARD,hot?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE);
             ABM_D2D_CanvasStrokeRound(c,(float)r.left+.5f,(float)r.top+.5f,(float)r.right-.5f,(float)r.bottom-.5f,ABM_UI_RADIUS_CARD,focus?ABM_UI_COLOR_ACCENT_BRIGHT:(hot?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER),focus?1.7f:.9f);
             RECT label={r.left+16,r.top+7,r.right-105,r.top+30},value={r.right-96,r.top+7,r.right-16,r.top+30};
             ABM_D2D_CanvasText(c,g_videoEnhancementNames[i],label,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -4898,11 +4898,11 @@ static void VideoEnhancementPaint(HWND w) {
         }
         RECT r=g_videoEnhancementResetRect;
         ABM_D2D_CanvasFillRound(c,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_BUTTON,
-            g_videoEnhancementResetPressed?ABM_UI_COLOR_ACCENT_PRESSED:(g_videoEnhancementResetHover?ABM_UI_COLOR_ACCENT_HOVER:ABM_UI_COLOR_SURFACE_RAISED));
+            g_videoEnhancementResetPressed?ABM_UI_COLOR_ACCENT_SOFT:(g_videoEnhancementResetHover?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED));
         ABM_D2D_CanvasStrokeRound(c,(float)r.left+.5f,(float)r.top+.5f,(float)r.right-.5f,(float)r.bottom-.5f,ABM_UI_RADIUS_BUTTON,g_videoEnhancementFocus==5?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER,g_videoEnhancementFocus==5?1.7f:.9f);
         ABM_D2D_CanvasText(c,L"RESET TO ORIGINAL",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT hint={r.right+16,r.top,rc.right-18,r.bottom};
-        ABM_D2D_CanvasText(c,L"Changes apply live through LibVLC",hint,ABM_UI_COLOR_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        ABM_D2D_CanvasText(c,L"Changes apply live through LibVLC",hint,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         ABM_D2D_CanvasEnd(c);
     }
     EndPaint(w,&ps);
