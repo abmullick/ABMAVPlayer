@@ -4106,7 +4106,7 @@ static void FindOnlineSubtitles(HWND owner){
         size_t used=0;
         for(wchar_t *p=filename;*p&&used+1<_countof(title);){
             if(*p==L'['||*p==L'(')break;
-            if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&(p[2]==L'E'||p[2]==L'e'))break;
+            if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&iswdigit(p[2])&&(p[3]==L'E'||p[3]==L'e'))break;
             if(iswdigit(p[0])&&p[1]==L'x'&&iswdigit(p[2]))break;
             if(iswdigit(p[0])&&iswdigit(p[1])&&iswdigit(p[2])&&iswdigit(p[3])&&
                (p[0]==L'1'||p[0]==L'2')&&p[4]&&(p[4]==L'.'||p[4]==L' '||p[4]==L'_'||p[4]==L'-')){
