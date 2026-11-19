@@ -4857,7 +4857,7 @@ static void VideoEnhancementFormatValue(int i,wchar_t *out,size_t n) {
 }
 static void VideoEnhancementLayout(HWND w) {
     RECT c={0};GetClientRect(w,&c);int left=22,right=c.right-22,top=108;
-    int avail=c.bottom-top-94,gap=9,row=(avail-gap*4)/5;if(row<58)row=58;
+    int avail=c.bottom-top-94,gap=9,row=(avail-gap*4)/5;if(row<42)row=42;
     for(int i=0;i<5;i++){int y=top+i*(row+gap);g_videoEnhancementSliderRects[i]=(RECT){left,y,right,y+row};}
     g_videoEnhancementResetRect=(RECT){left,c.bottom-62,left+190,c.bottom-22};
 }
