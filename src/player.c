@@ -4092,8 +4092,8 @@ static void FindOnlineSubtitles(HWND owner){
     /* Recognise common SxxEyy and NxNN episode notation before cleaning release tags. */
     for(wchar_t *p=filename;*p;p++){
         if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&
-           (p[2]==L'E'||p[2]==L'e')&&iswdigit(p[3])&&iswdigit(p[4])){
-            StringCchPrintfW(episode,_countof(episode),L"S%c%cE%c%c",p[1],p[1]?p[2]:p[2],p[3],p[4]);
+           (p[2]==L'E'||p[2]==L'e')&&iswdigit(p[3])&&iswdigit(p[4])&&iswdigit(p[5])){
+            StringCchPrintfW(episode,_countof(episode),L"S%c%cE%c%c",p[1],p[2],p[4],p[5]);
             break;
         }
         if(iswdigit(p[0])&&p[1]==L'x'&&iswdigit(p[2])&&iswdigit(p[3])){
@@ -4108,6 +4108,11 @@ static void FindOnlineSubtitles(HWND owner){
             if(*p==L'['||*p==L'(')break;
             if((p[0]==L'S'||p[0]==L's')&&iswdigit(p[1])&&(p[2]==L'E'||p[2]==L'e'))break;
             if(iswdigit(p[0])&&p[1]==L'x'&&iswdigit(p[2]))break;
+            if(iswdigit(p[0])&&iswdigit(p[1])&&iswdigit(p[2])&&iswdigit(p[3])&&
+               (p[0]==L'1'||p[0]==L'2')&&p[4]&&(p[4]==L'.'||p[4]==L' '||p[4]==L'_'||p[4]==L'-')){
+                if(!year[0]){year[0]=p[0];year[1]=p[1];year[2]=p[2];year[3]=p[3];year[4]=0;}
+                break;
+            }
             if((*p==L' '||*p==L'.'||*p==L'_')&&
                ((!_wcsnicmp(p,L"1080p",5))||(!_wcsnicmp(p,L"720p",4))||
                 (!_wcsnicmp(p,L"2160p",5))||(!_wcsnicmp(p,L"WEB-DL",6))||
