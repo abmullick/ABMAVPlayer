@@ -167,7 +167,7 @@ Choose **Original**, **16:9**, **4:3** or **21:9**. A selection applies immediat
 
 Open **Subtitle Manager** from the playback surface's right-click menu. The manager provides direct actions to choose an embedded subtitle track, disable subtitles or load an external subtitle file. Supported external formats are SRT, ASS, SSA, SUB and VTT. Track availability depends on the media and LibVLC.
 
-**Automatic local sidecar matching (Phase 1):** During ordinary local-file playback, ABM checks for a subtitle file in the media file's folder with the same filename stem. It checks SRT, ASS, SSA, VTT and SUB in that order, and attaches the first match only when the media has no embedded text-subtitle stream. This initial phase is offline and deterministic; it does not search online, guess a language, or match alternate release names.
+**Automatic local sidecar matching:** During ordinary local-file playback, ABM checks for a subtitle file in the media file's folder. It checks SRT, ASS, SSA, VTT and SUB. A preferred language can be selected using the **Language** control beside Subtitle timing; the preference is saved in settings. With a language selected, matching language-tagged sidecars (for example `.en.srt`, `.eng.srt` or `.english.srt`) are tried before an untagged same-basename sidecar. **Any** preserves the original same-basename behaviour. Automatic matching only attaches a sidecar when the media has no embedded text-subtitle stream. This is offline matching; it does not search online or match alternate release names.
 
 - **Timing:** use −50 ms or +50 ms for 50 ms steps; Reset returns to zero. The supported range is ±10,000 ms.
 - **Font size:** choose 10, 13, 16 or 19 (LibVLC relative-size values).
