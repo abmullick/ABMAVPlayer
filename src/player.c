@@ -4737,8 +4737,12 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
            input over the drawer to the owner so its header/chevron and controls
            receive the click instead of VLC's video surface. */
         if ((g_drawerOpen && !g_fullscreen && PtInRect(&R_SIDEBAR,pt)) ||
+            (g_menuOpen && !g_fullscreen && PtInRect(&R_MENU_PANEL,pt)) ||
             (g_fullscreen && msg == WM_MOUSEMOVE)) {
-            /* WM_MOUSEWHEEL carries screen coordinates; preserve LPARAM so
+            /* The LibVLC child can extend underneath foreground UI. Forward
+               pointer input over both the media drawer and Command Centre so
+               the owner performs hit-testing against the visible overlay.
+               WM_MOUSEWHEEL carries screen coordinates; preserve LPARAM so
                the owner can apply the standard ScreenToClient conversion. */
             SendMessageW(owner,msg,wp,msg==WM_MOUSEWHEEL?lp:MAKELPARAM(pt.x,pt.y));
             return 0;
