@@ -1202,7 +1202,16 @@ static void PositionVideoWindow(void) {
         int availableW = menuSafeRight - R_VIDEO.left;
         if (availableW < areaW) areaW = availableW;
     }
-    if (areaW <= 0 || areaH <= 0) return;
+    if (areaW <= 0 || areaH <= 0) {
+        /* At compact window widths the Command Centre can cover the entire
+           video viewport. The LibVLC child HWND is above the parent's painted
+           menu, so leaving its previous bounds visible lets it intercept
+           clicks on the menu's left side. Hide it until the menu closes and
+           the normal video viewport is available again. */
+        ShowWindow(g_video,SW_HIDE);
+        g_videoBoundsValid=FALSE;
+        return;
+    }
 
     /* Always fit the complete video frame inside the available area.
        This preserves the source aspect ratio in both windowed and fullscreen
