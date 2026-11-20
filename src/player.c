@@ -5104,6 +5104,10 @@ static void VideoEnhancementPaint(HWND w) {
 }
 static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg){
+    case WM_ACTIVATE:
+        /* Match Advanced Equalizer: dismiss this floating tool as soon as it loses focus. */
+        if(LOWORD(wp)==WA_INACTIVE)ShowWindow(w,SW_HIDE);
+        return 0;
     case WM_CREATE:g_videoEnhancementCanvasReady=ABM_D2D_CanvasInit(&g_videoEnhancementCanvas);VideoEnhancementLayout(w);return 0;
     case WM_PAINT:VideoEnhancementPaint(w);return 0;
     case WM_ERASEBKGND:return 1;
