@@ -43,6 +43,7 @@
 #include <dwmapi.h>
 
 static void ApplyAdvancedAspectRatio(void);
+static BOOL AutoLoadLocalSidecarSubtitle(const wchar_t *mediaPath);
 static void VlcCodecVerificationReset(void);
 static void AddAdvancedCachingOptions(libvlc_media_t *media);
 static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
@@ -4217,7 +4218,8 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
 #define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
     ABM_ADD(23009,L"Home Theatre...",TRUE);
-    ABM_ADD(23007,L"Subtitle Manager...",TRUE);\n    ABM_ADD(23010,L"Find subtitles online...",TRUE);
+    ABM_ADD(23007,L"Subtitle Manager...",TRUE);
+    ABM_ADD(23010,L"Find subtitles online...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
     ABM_HEAD(L"VIDEO PICTURE");
     ABM_ADD(24000,L"Aspect ratio: Automatic",TRUE);
@@ -4281,7 +4283,8 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
 #undef ABM_ADD
 #undef ABM_HEAD
     if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
-    else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);\n    else if(cmd==23010)FindOnlineSubtitles(hwnd);
+    else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
+    else if(cmd==23010)FindOnlineSubtitles(hwnd);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
     else if(cmd==24000)libvlc_video_set_aspect_ratio(g_player,NULL);
     else if(cmd==24001)libvlc_video_set_aspect_ratio(g_player,"16:9");
