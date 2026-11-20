@@ -9279,6 +9279,47 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }return 0;
     case WM_LBUTTONDOWN: {
         int x=GET_X_LPARAM(lp),y=GET_Y_LPARAM(lp);
+
+        /* Command Centre is a foreground modal surface for pointer hit-testing.
+           Resolve its rows BEFORE any playback controls beneath it. The visual
+           row spans the menu panel; do not restrict activation to the inset
+           rectangle used to draw the rounded row background. */
+        if(g_menuOpen && !g_fullscreen && Inside(R_MENU_PANEL,x,y)) {
+            if(g_menuProgress<80)return 0;
+            for(int mi=0;mi<20;mi++) {
+                if(y>=R_MENU_ITEMS[mi].top && y<R_MENU_ITEMS[mi].bottom) {
+                    g_menuOpen=FALSE;
+                    PositionVideoWindow();
+                    SyncRendererComboVisibility();
+                    if(mi==0)AddFiles();
+                    else if(mi==1)StartDiscovery();
+                    else if(mi==2){StartDiscovery();ABM_MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);}
+                    else if(mi==3){if(g_hasMedia)PlaybackTogglePause();}
+                    else if(mi==4)ToggleFullscreen(hwnd);
+                    else if(mi==5)LoadPlaylist();
+                    else if(mi==6)SavePlaylist();
+                    else if(mi==7){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
+                    else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
+                    else if(mi==9){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();}
+                    else if(mi==10)ShowVideoEnhancementStudio();
+                    else if(mi==11)ShowEqualizer();
+                    else if(mi==12)ABM_Streaming_Show(hwnd);
+                    else if(mi==13)ShowTorrentWindow(hwnd);
+                    else if(mi==14)ShowHelpDialog(hwnd);
+                    else if(mi==15)ABM_CheckForUpdates(hwnd,APP_VERSION);
+                    else if(mi==16){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);}
+                    else if(mi==17)ShowSettingsDialog(hwnd);
+                    else if(mi==18)ShowAboutDialog(hwnd);
+                    else if(mi==19)PostMessageW(hwnd,WM_CLOSE,0,0);
+                    InvalidateRect(hwnd,NULL,FALSE);
+                    return 0;
+                }
+            }
+            /* A click in the panel's header, section label or row gap belongs
+               to the menu surface too; never activate a control behind it. */
+            return 0;
+        }
+
         /* A click delivered to the main window is outside the separate Recent
            popup. Dismiss it here, while allowing the clicked main-window
            control to continue processing normally. */
@@ -9357,47 +9398,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             g_drawerOpen=FALSE;g_drawerSettingsOpen=FALSE;g_receiverPopup=FALSE;g_audioPopupOpen=FALSE;g_searchFocused=FALSE;
             SyncRendererComboVisibility();InvalidateRect(hwnd,NULL,FALSE);
         }
-        if(g_menuOpen && !Inside(R_MENU_PANEL,x,y)) {
-            g_menuOpen=FALSE;
-            PositionVideoWindow();
-            SyncRendererComboVisibility();
-            RECT dirty=R_MENU_PANEL;
-            InvalidateRect(hwnd,&dirty,FALSE);
-        }
         if(!g_fullscreen&&Inside(R_FULLSCREEN,x,y)){ToggleFullscreen(hwnd);ReleaseCapture();return 0;}
         if(!g_fullscreen&&!g_hasMedia&&!g_drawerOpen) {
             if(Inside(R_HOME_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
             if(Inside(R_HOME_STREAM,x,y)){ABM_Streaming_Show(hwnd);ReleaseCapture();return 0;}
             if(Inside(R_HOME_TORRENT,x,y)){ShowTorrentWindow(hwnd);ReleaseCapture();return 0;}
             if(Inside(R_HOME_RECENT,x,y)){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);ReleaseCapture();return 0;}
-        }
-        if(g_menuOpen&&g_menuProgress>=80) {
-            for(int mi=0;mi<20;mi++)if(Inside(R_MENU_ITEMS[mi],x,y)) {
-                g_menuOpen=FALSE;
-                PositionVideoWindow();
-                SyncRendererComboVisibility();
-                if(mi==0)AddFiles();
-                else if(mi==1)StartDiscovery();
-                else if(mi==2){StartDiscovery();ABM_MessageBoxW(hwnd,L"Choose your TV in the Playback Output selector. If media is already playing, the player will restart it on the selected receiver.",L"Cast to TV",MB_OK|MB_ICONINFORMATION);}
-                else if(mi==3){if(g_hasMedia)PlaybackTogglePause();}
-                else if(mi==4)ToggleFullscreen(hwnd);
-                else if(mi==5)LoadPlaylist();
-                else if(mi==6)SavePlaylist();
-                else if(mi==7){POINT rp={x,y};ShowRecentMenu(hwnd,rp.x,rp.y);}
-                else if(mi==8){g_shuffle=!g_shuffle;SavePersistentState();}
-                else if(mi==9){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();}
-                else if(mi==10)ShowVideoEnhancementStudio();
-                else if(mi==11)ShowEqualizer();
-                else if(mi==12)ABM_Streaming_Show(hwnd);
-                else if(mi==13)ShowTorrentWindow(hwnd);
-                else if(mi==14)ShowHelpDialog(hwnd);
-                else if(mi==15)ABM_CheckForUpdates(hwnd,APP_VERSION);
-                else if(mi==16){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);}
-                else if(mi==17)ShowSettingsDialog(hwnd);
-                else if(mi==18)ShowAboutDialog(hwnd);
-                else if(mi==19)PostMessageW(hwnd,WM_CLOSE,0,0);
-                InvalidateRect(hwnd,NULL,FALSE);return 0;
-            }
         }
         SetCapture(hwnd);
         if(Inside(R_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
