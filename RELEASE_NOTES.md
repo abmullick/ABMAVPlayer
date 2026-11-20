@@ -1,3 +1,20 @@
+# ABM AV Player v1.1.5 — Command Centre interaction fix
+
+## What's new
+
+- Fixed Command Centre menu hit-testing so clicking anywhere across a menu row activates that row's intended action, including the left side before the item label.
+- Menu clicks are now resolved before underlying playback controls, preventing clicks from passing through to controls behind the menu.
+- Clicks on the menu header, section labels and row gaps are consumed by the menu surface and cannot trigger background player actions.
+- Preserved the existing menu appearance, translucency and layout; this is an input-routing correction, not an opacity change.
+
+## Validation
+
+- Maintainer confirmed that the full-width menu click behaviour is fixed in the Windows application.
+- The source changes are committed on main. Rebuild the installer from this version and verify its executable and installer version metadata before publishing.
+- This note records the reported menu interaction test only; unrelated playback, casting, torrent, Home Theatre, visualizer, clean-install and in-place-upgrade checks are not newly certified by this fix.
+
+---
+
 # ABM AV Player v1.1.4 — Home Theatre metadata and library refinements
 
 ## What's new
