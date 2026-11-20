@@ -13,7 +13,7 @@ A native Windows desktop audio/video player written in C, with a custom Direct2D
 
 The source version can be ahead of the latest published installer while a release is being prepared. The download link above always serves the latest **published** GitHub Release; the version in `VERSION` becomes available there only after its Windows build and validation are complete.
 
-### Current release highlights — v1.1.4
+### Current source release highlights — v1.1.5
 
 - Home Theatre now uses keyless providers: Wikidata for movies and related-movie discovery, and TVmaze for television search, details and season/episode browsing. It retains local-library identification, editable local matches and cached artwork; no API key or account is required. Provider coverage varies and cinematic backdrops are not guaranteed.
 - Now Playing artwork resolution prefers embedded artwork, then standard images beside the media file, then a keyless Wikidata/Wikimedia Commons album lookup using artist and album metadata. Lookups and downloads run asynchronously and are cached locally.
