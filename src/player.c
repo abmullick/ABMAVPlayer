@@ -6887,7 +6887,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
-    case WM_DESTROY: if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} if(g_aboutCanvasReady){g_aboutCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_aboutCanvas);} return 0;
+    case WM_DESTROY: ABM_SkinUnregisterWindow(hwnd);if(g_aboutPortrait){DeleteObject(g_aboutPortrait);g_aboutPortrait=NULL;} if(g_aboutCanvasReady){g_aboutCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_aboutCanvas);} return 0;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
@@ -7071,7 +7071,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_helpEdit)SendMessageW(g_helpEdit,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
         InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_CREATE: {
-        g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
+        ABM_SkinRegisterWindow(hwnd);g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
         const wchar_t *help=
             L"ABM AV PLAYER  |  COMPLETE USER GUIDE\r\n"
             L"\r\n"
@@ -8112,6 +8112,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
       Partial dirty-rectangle clipping left stale horizontal strips visible
       across controls after invalidation/resizing on some DPI scales. */
    ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
+   {RECT skinBounds={0,0,1060,760};ABM_SkinRenderD2D(&g_advancedSettingsUi,&skinBounds);}
    ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
        ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
@@ -8388,7 +8389,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_CLOSE:DestroyWindow(w);return 0;
   case WM_CTLCOLOREDIT:{HDC dc=(HDC)wp;if((HWND)lp==g_advancedVlcReportEdit){SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);SetBkColor(dc,ABM_UI_COLOR_SURFACE_RAISED);SetBkMode(dc,OPAQUE);if(!g_advancedVlcReportBrush)g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);return (LRESULT)g_advancedVlcReportBrush;}SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);SetBkMode(dc,OPAQUE);if(!g_advancedDiagnosticBrush)g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);return (LRESULT)g_advancedDiagnosticBrush;}
  case WM_DESTROY:
-  g_advancedSettingsWindow=NULL;
+  ABM_SkinUnregisterWindow(w);g_advancedSettingsWindow=NULL;
    if(g_advancedVlcReportEdit){DestroyWindow(g_advancedVlcReportEdit);g_advancedVlcReportEdit=NULL;}if(g_advancedVlcReportBrush){DeleteObject(g_advancedVlcReportBrush);g_advancedVlcReportBrush=NULL;}
   if(g_advancedDiagnosticEdit){DestroyWindow(g_advancedDiagnosticEdit);g_advancedDiagnosticEdit=NULL;}
    if(g_advancedDiagnosticFont){DeleteObject(g_advancedDiagnosticFont);g_advancedDiagnosticFont=NULL;}
@@ -8670,7 +8671,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    /* Match the Main Player's invalid-region rendering: preserve the rest of
       the window and repaint only what Windows invalidated. */
    ABM_D2D_BeginClip(&g_settingsUi,SETTINGS_BG,&ps.rcPaint);
-   {RECT skinBounds={0,0,ps.rcPaint.right,ps.rcPaint.bottom};ABM_SkinRenderD2D(&g_settingsUi,&skinBounds);}
+   {RECT skinBounds={0};GetClientRect(w,&skinBounds);ABM_SkinRenderD2D(&g_settingsUi,&skinBounds);}
    ABM_D2D_SetOffset(&g_settingsUi,(float)-g_settingsScrollX,(float)-g_settingsScrollY);
    ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
@@ -9215,7 +9216,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
-        if(g_backgroundSkin>0&&!g_fullscreen&&!g_drawerOpen&&!g_menuOpen)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+        if(g_backgroundSkin>0&&!g_fullscreen&&!g_drawerOpen&&!g_menuOpen)InvalidateRect(hwnd,NULL,FALSE);
         if(g_backgroundSkin>0)ABM_SkinInvalidateRegisteredWindows();
         if(g_visualizerActive&&!g_visualizerTimerRunning)++g_visualizerFrame;
         if (g_artworkLoaded && g_artworkFade < 100) {
