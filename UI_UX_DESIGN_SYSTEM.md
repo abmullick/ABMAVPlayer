@@ -719,3 +719,7 @@ The Media Collection drawer now supports a persistent personal-favourites layer 
 - All added card colours use existing `ABM_THEME_COLOR_*` definitions from `src/ui_theme.h`. No local palette, font or radius system is introduced.
 
 This is a source-level feature pass. The Windows build, font glyph fallback for the heart, card hit-target precision, file-dialog behaviour, persistence across restarts, and collection load/save regression checks remain mandatory before release sign-off.
+
+### Main Player Background Skins
+
+The Main Player includes eight selectable background skins in Settings: Classic Music Player, Ocean Flow, Aurora, Golden Waves, Liquid Chrome, Neon Pulse, Deep Ocean and Holographic. Classic Music Player is the default and preserves the original appearance. Ambient skins use restrained, animated Direct2D shapes and wave lines behind the player interface; they do not cover active video or alter playback, audio, casting, torrent or Streaming Centre behaviour. The selection is stored in `%APPDATA%\\ABMAVPlayer\\theme.ini` under `[Appearance] BackgroundSkin` and is independent of the seven Color Theme presets.
