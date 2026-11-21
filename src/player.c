@@ -710,6 +710,7 @@ static void GradientRound(HDC dc,RECT r,COLORREF a,COLORREF b,int radius) { (voi
 static void Panel(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius) {
     (void)dc;
     ABM_D2D_Round(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,fill);
+    if(g_backgroundSkin>0&&(r.right-r.left)>=220&&(r.bottom-r.top)>=100)ABM_SkinRenderD2D(&g_ui,&r);
     COLORREF hairline=Blend(fill,edge,22);
     ABM_D2D_StrokeRound(&g_ui,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)radius,hairline,0.75f);
 }
