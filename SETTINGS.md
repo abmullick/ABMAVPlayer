@@ -263,3 +263,7 @@ The VLC report lists elementary streams returned by LibVLC and independently que
 Home Theatre does not require or store an API key, account credential or TMDB token. Movie lookup uses Wikidata; television lookup, seasons and episodes use TVmaze. There is intentionally no metadata credential field in Settings and no metadata token in the application settings files. Provider requests are rate-spaced by the metadata engine. An internet connection is needed only for online discovery; local playback remains available when providers are offline.
 
 Provider attribution and licensing details are shown in About and F1 Help. See the Home Theatre section in USER_GUIDE.md for the Wikidata CC0 / TVmaze CC BY-SA 4.0 data terms and the separate rights that apply to individual artwork files.
+
+### Main Player Background Skins
+
+The Main Player includes eight selectable background skins in Settings: Classic Music Player, Ocean Flow, Aurora, Golden Waves, Liquid Chrome, Neon Pulse, Deep Ocean and Holographic. Classic Music Player is the default and preserves the original appearance. Ambient skins use restrained, animated Direct2D shapes and wave lines behind the player interface; they do not cover active video or alter playback, audio, casting, torrent or Streaming Centre behaviour. The selection is stored in `%APPDATA%\\ABMAVPlayer\\theme.ini` under `[Appearance] BackgroundSkin` and is independent of the seven Color Theme presets.
