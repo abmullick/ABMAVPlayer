@@ -7461,6 +7461,7 @@ static void SettingsSection(int top,const wchar_t *title,const wchar_t *descript
     header rule keep long settings pages visually grouped. */
  ABM_D2D_GradientRound(&g_settingsUi,20.0f,(float)top,800.0f,(float)bottom,
                (float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE_RAISED,SETTINGS_PANEL);
+ {RECT skinPanel={20,top,800,bottom};if(g_backgroundSkin>0)ABM_SkinRenderD2D(&g_settingsUi,&skinPanel);}
  ABM_D2D_StrokeRound(&g_settingsUi,20.5f,(float)top+0.5f,799.5f,(float)bottom-0.5f,
                      (float)ABM_UI_RADIUS_CARD,SETTINGS_BORDER,0.9f);
  ABM_D2D_Round(&g_settingsUi,30.0f,(float)top+12.0f,33.5f,(float)top+35.0f,
