@@ -300,7 +300,7 @@ static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
 static int g_backgroundSkin=0;
-static const wchar_t *g_backgroundSkinNames[8]={L"Classic Music Player",L"Ocean Flow",L"Aurora",L"Golden Waves",L"Liquid Chrome",L"Neon Pulse",L"Deep Ocean",L"Holographic"};
+static const wchar_t *g_backgroundSkinNames[ABM_SKIN_COUNT]={L"Classic Music Player",L"Aurora Flow",L"Liquid Glass",L"Cosmic Drift",L"Prism Wave",L"Glass Facets",L"Carbon Weave",L"Gold Geometry",L"Minimal Horizon"};
 static unsigned int g_visualizerFrame=0;
 static HHOOK g_videoMouseHook=NULL;
 static BOOL g_visualizerTimerRunning=FALSE;
@@ -7546,7 +7546,7 @@ static void LoadThemePreference(void) {
  if(!EnsureDataDirectory())return;
  wchar_t path[PATH_CAP];
  swprintf_s(path,_countof(path),L"%s\\theme.ini",g_dataDir);
- int skin=GetPrivateProfileIntW(L"Appearance",L"BackgroundSkin",0,path);if(skin<0||skin>=8)skin=0;g_backgroundSkin=skin;ABM_SkinSet(skin);
+ int skin=GetPrivateProfileIntW(L"Appearance",L"BackgroundSkin",0,path);if(skin<0||skin>=ABM_SKIN_COUNT)skin=0;g_backgroundSkin=skin;ABM_SkinSet(skin);
  int preset=GetPrivateProfileIntW(L"Appearance",L"ColorPreset",ABM_THEME_PRESET_MIDNIGHT_TEAL,path);
  if(preset<0||preset>=ABM_THEME_PRESET_COUNT)preset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
  ABMThemeApplyPreset((ABMThemePreset)preset);
@@ -8447,7 +8447,7 @@ static void ShowAdvancedSettingsAtPage(HWND owner,int page){
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static int g_settingsScrollX=0,g_settingsScrollY=0;
 #define SETTINGS_CONTENT_WIDTH 804
-#define SETTINGS_CONTENT_HEIGHT 1360
+#define SETTINGS_CONTENT_HEIGHT 1410
 static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
 static void SettingsMoveChildControls(HWND w){
  /* Move every native EDIT as one layout transaction. Moving them one at a
@@ -8629,7 +8629,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     return 0;
    }
   }
-  for(int skin=0;skin<8;skin++){
+  for(int skin=0;skin<ABM_SKIN_COUNT;skin++){
    int col=skin%4,row=skin/4,left=40+col*185,top=1172+row*50;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
     g_backgroundSkin=skin;ABM_SkinSet(skin);ABM_SkinInvalidateRegisteredWindows();
@@ -8723,18 +8723,18 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(L"MAIN PLAYER BACKGROUND SKIN",40,1112,780,1140,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"Animated ambient treatments · Classic Music Player keeps the original look",40,1140,780,1164,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"MAIN PLAYER BACKGROUND SKINS",40,1112,780,1140,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"4 animated ambient skins · 4 static artwork skins · Classic keeps the original look",40,1140,780,1164,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    for(int skin=0;skin<8;skin++){
     int col=skin%4,row=skin/4;float left=(float)(40+col*185),top=(float)(1172+row*50);
-    COLORREF swatchA[8]={ABM_THEME_COLOR_0D1E2F,RGB(25,137,174),RGB(72,93,190),RGB(191,126,39),RGB(139,160,181),RGB(160,55,191),RGB(15,82,111),RGB(124,76,183)};
-    COLORREF swatchB[8]={ABM_THEME_COLOR_192737,RGB(57,190,197),RGB(76,180,151),RGB(239,184,76),RGB(198,213,226),RGB(42,194,181),RGB(22,133,151),RGB(184,90,157)};
+    COLORREF swatchA[ABM_SKIN_COUNT]={ABM_THEME_COLOR_0D1E2F,RGB(7,24,39),RGB(11,24,42),RGB(6,11,29),RGB(12,17,41),RGB(12,28,43),RGB(12,16,23),RGB(23,20,21),RGB(14,22,33)};
+    COLORREF swatchB[ABM_SKIN_COUNT]={ABM_THEME_COLOR_192737,RGB(13,40,49),RGB(17,42,58),RGB(19,24,57),RGB(27,25,58),RGB(18,43,57),RGB(24,32,41),RGB(40,32,26),RGB(23,36,50)};
     BOOL selected=(skin==g_backgroundSkin);
     ABM_D2D_GradientRound(&g_settingsUi,left,top,left+177.0f,top+44.0f,8.0f,swatchA[skin],swatchB[skin]);
-    SettingsText(g_backgroundSkinNames[skin],(int)left+7,(int)top+5,(int)left+170,(int)top+39,RGB(255,255,255),1,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    SettingsText(ABM_SkinName(skin),(int)left+7,(int)top+5,(int)left+170,(int)top+39,RGB(255,255,255),1,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?2.0f:0.8f);
    }
-   SettingsText(g_settingsMessage,40,1282,780,1300,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   SettingsText(g_settingsMessage,40,1330,780,1352,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    SettingsButtonDraw(610,1040,735,1078,L"Save settings",TRUE);
    SettingsButtonDraw(744,1040,800,1078,L"Close",FALSE);
    if(g_settingsRateOpen){
