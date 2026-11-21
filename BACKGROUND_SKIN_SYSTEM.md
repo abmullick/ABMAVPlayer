@@ -29,14 +29,14 @@ The two drawing entry points, `ABM_SkinRenderD2D` and `ABM_SkinRenderCanvas`, dr
 
 ## Integrated surfaces
 
-- Main Player workspace and its built-in playlist/library panels.
+- Main Player workspace and its built-in playlist/library panels; large player panels use the same renderer within their own bounds.
 - Settings and Advanced Settings.
 - Torrent Stream.
 - Advanced Equalizer.
 - Video Enhancement Studio.
 - Home Theatre.
 - Streaming Centre main chrome and its About/Help information surface.
-- ABM-owned modal dialogs, action menu, recent-played popup, About and Help surfaces.
+- ABM-owned licensing and modal dialogs, action menu, recent-played popup, About and Help surfaces.
 
 The active LibVLC video child and WebView2 provider content are deliberately not painted over. Native child controls retain their existing editing, keyboard, accessibility and hit-testing behaviour.
 
