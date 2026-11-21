@@ -57,7 +57,6 @@ extern "C" void ABM_SkinUnregisterWindow(HWND hwnd) {
     for(HWND &item:g_registered)if(item==hwnd)item=nullptr;
 }
 extern "C" void ABM_SkinInvalidateRegisteredWindows(void) {
-    if(!ABM_SkinIsAnimated())return;
     for(HWND &hwnd:g_registered) {
         if(hwnd&&!IsWindow(hwnd)){hwnd=nullptr;continue;}
         if(hwnd&&IsWindowVisible(hwnd))InvalidateRect(hwnd,nullptr,FALSE);
