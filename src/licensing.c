@@ -15,6 +15,7 @@
 #include "licensing.h"
 #include "ui_theme.h"
 #include "ui_d2d.h"
+#include "ui_skin.h"
 
 #define ABM_TRIAL_DAYS 10ULL
 #define ABM_TICKS_PER_DAY 864000000000ULL
@@ -202,6 +203,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_NCCREATE:
         d=(ABMLicenseDialog*)((CREATESTRUCTW*)lp)->lpCreateParams;d->window=w;SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)d);return TRUE;
     case WM_CREATE: {
+        ABM_SkinRegisterWindow(w);
         g_licenseCanvasReady=ABM_D2D_CanvasInit(&g_licenseCanvas);
         d->edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL|ES_UPPERCASE|ES_NOHIDESEL,
             38,222,544,38,w,(HMENU)ID_LICENSE_KEY,d->instance,NULL);
@@ -258,6 +260,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
         if(g_licenseCanvasReady&&ABM_D2D_CanvasBegin(&g_licenseCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_licenseCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_060A12);
+            ABM_SkinRenderCanvas(&g_licenseCanvas,&rc);
             RECT hero={18,16,rc.right-18,160};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)hero.left,(float)hero.top,(float)hero.right,(float)hero.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_0E2231);
             ABM_D2D_CanvasLine(&g_licenseCanvas,(float)hero.left+14,(float)hero.top+1,(float)hero.right-14,(float)hero.top+1,ABM_THEME_COLOR_36B1A8,2.0f);
             RECT logoRc={34,36,88,90};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)logoRc.left,(float)logoRc.top,(float)logoRc.right,(float)logoRc.bottom,(float)ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_1C7D77);
@@ -282,7 +285,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         }
         EndPaint(w,&ps);return 0;
     }
-    case WM_DESTROY:if(g_licenseCanvasReady){g_licenseCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_licenseCanvas);}return 0;
+    case WM_DESTROY:ABM_SkinUnregisterWindow(w);if(g_licenseCanvasReady){g_licenseCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_licenseCanvas);}return 0;
     case WM_CLOSE:d->done=TRUE;d->allowed=FALSE;DestroyWindow(w);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
