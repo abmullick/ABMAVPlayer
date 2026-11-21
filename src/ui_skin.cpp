@@ -68,12 +68,15 @@ extern "C" void ABM_SkinRenderD2D(ABM_D2D *renderer,const RECT *bounds) {
     float w=(float)(bounds->right-bounds->left),h=(float)(bounds->bottom-bounds->top);
     if(w<=1.0f||h<=1.0f)return;
     SkinPalette p=Palette(g_skin);float phase=Phase(),drift=sinf(phase)*w*0.018f;
-    ABM_D2D_Round(renderer,w*0.04f+drift,h*0.20f,w*0.43f+drift,h*0.70f,110.0f,p.a);
-    ABM_D2D_Round(renderer,w*0.57f-drift,h*0.14f,w*0.96f-drift,h*0.61f,120.0f,p.b);
-    ABM_D2D_Round(renderer,w*0.29f,h*0.64f,w*0.73f,h*0.98f,100.0f,p.c);
+    float ox=(float)bounds->left,oy=(float)bounds->top;
+    ABM_D2D_Round(renderer,ox+w*0.04f+drift,oy+h*0.20f,ox+w*0.43f+drift,oy+h*0.70f,110.0f,p.a);
+    ABM_D2D_Round(renderer,ox+w*0.57f-drift,oy+h*0.14f,ox+w*0.96f-drift,oy+h*0.61f,120.0f,p.b);
+    ABM_D2D_Round(renderer,ox+w*0.29f,oy+h*0.64f,ox+w*0.73f,oy+h*0.98f,100.0f,p.c);
     float points[64];BuildWave(points,32,w,h,phase,0.49f,0.055f,1.0f);
+    for(int i=0;i<32;i++){points[i*2]+=ox;points[i*2+1]+=oy;}
     ABM_D2D_Polyline(renderer,points,32,p.lineA,2.0f);
     BuildWave(points,32,w,h,phase,0.56f,0.041f,0.72f);
+    for(int i=0;i<32;i++){points[i*2]+=ox;points[i*2+1]+=oy;}
     ABM_D2D_Polyline(renderer,points,32,p.lineB,1.2f);
 }
 extern "C" void ABM_SkinRenderCanvas(ABM_D2D_CANVAS *canvas,const RECT *bounds) {
@@ -81,11 +84,14 @@ extern "C" void ABM_SkinRenderCanvas(ABM_D2D_CANVAS *canvas,const RECT *bounds) 
     float w=(float)(bounds->right-bounds->left),h=(float)(bounds->bottom-bounds->top);
     if(w<=1.0f||h<=1.0f)return;
     SkinPalette p=Palette(g_skin);float phase=Phase(),drift=sinf(phase)*w*0.018f;
-    ABM_D2D_CanvasFillRound(canvas,w*0.04f+drift,h*0.20f,w*0.43f+drift,h*0.70f,110.0f,p.a);
-    ABM_D2D_CanvasFillRound(canvas,w*0.57f-drift,h*0.14f,w*0.96f-drift,h*0.61f,120.0f,p.b);
-    ABM_D2D_CanvasFillRound(canvas,w*0.29f,h*0.64f,w*0.73f,h*0.98f,100.0f,p.c);
+    float ox=(float)bounds->left,oy=(float)bounds->top;
+    ABM_D2D_CanvasFillRound(canvas,ox+w*0.04f+drift,oy+h*0.20f,ox+w*0.43f+drift,oy+h*0.70f,110.0f,p.a);
+    ABM_D2D_CanvasFillRound(canvas,ox+w*0.57f-drift,oy+h*0.14f,ox+w*0.96f-drift,oy+h*0.61f,120.0f,p.b);
+    ABM_D2D_CanvasFillRound(canvas,ox+w*0.29f,oy+h*0.64f,ox+w*0.73f,oy+h*0.98f,100.0f,p.c);
     float points[64];BuildWave(points,32,w,h,phase,0.49f,0.055f,1.0f);
+    for(int i=0;i<32;i++){points[i*2]+=ox;points[i*2+1]+=oy;}
     for(int i=1;i<32;i++)ABM_D2D_CanvasLine(canvas,points[(i-1)*2],points[(i-1)*2+1],points[i*2],points[i*2+1],p.lineA,2.0f);
     BuildWave(points,32,w,h,phase,0.56f,0.041f,0.72f);
+    for(int i=0;i<32;i++){points[i*2]+=ox;points[i*2+1]+=oy;}
     for(int i=1;i<32;i++)ABM_D2D_CanvasLine(canvas,points[(i-1)*2],points[(i-1)*2+1],points[i*2],points[i*2+1],p.lineB,1.2f);
 }
