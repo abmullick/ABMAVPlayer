@@ -44,7 +44,7 @@ template<class T>static void Draw(T*r,const RECT*b,int skin){
  case ABM_SKIN_LIQUID_GLASS:
   Grad(r,x,y,x+w,y+h,C(11,24,42),C(17,42,58),TRUE);
   for(int i=0;i<4;i++){float ww=w*(.34f+i*.09f),hh=h*(.27f+i*.12f),cx=x+w*.53f+sinf(p*.34f+i*1.5f)*w*.08f,cy=y+h*.51f+cosf(p*.29f+i)*h*.06f,l=cx-ww*.5f,t=cy-hh*.5f;
-   R(r,l,t,l+ww,t+hh,28+i*5,Mix(C(17,48,67),C(31,76,94),i*.13f));
+   R(r,l,t,l+ww,t+hh,28.0f+(float)i*5.0f,Mix(C(17,48,67),C(31,76,94),(float)i*0.13f));
    L(r,l+24,t+5,l+ww-25,t+5,C(91,161,183),1.1f);L(r,l+20,t+hh-7,l+ww-35,t+hh-7,C(36,103,127),.8f);
    Arc(r,cx,cy,ww*.46f,hh*.43f,-2.5f,-.25f,C(79,150,174),1.0f);
   }break;
