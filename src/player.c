@@ -298,6 +298,8 @@ static int g_torrentDownloadLimitKiB=0,g_torrentUploadLimitKiB=0;
 
 static BOOL g_libraryReady=FALSE;
 static unsigned int g_visualPulse=0;
+static int g_backgroundSkin=0;
+static const wchar_t *g_backgroundSkinNames[8]={L"Classic Music Player",L"Ocean Flow",L"Aurora",L"Golden Waves",L"Liquid Chrome",L"Neon Pulse",L"Deep Ocean",L"Holographic"};
 static unsigned int g_visualizerFrame=0;
 static HHOOK g_videoMouseHook=NULL;
 static BOOL g_visualizerTimerRunning=FALSE;
@@ -1800,6 +1802,30 @@ static void DrawVisualizer(HDC dc,RECT area) {
         }
     }
 }
+static void DrawAmbientSkin(RECT client) {
+    if(g_backgroundSkin<=0 || g_backgroundSkin>=8 || g_hasMedia || g_fullscreen)return;
+    const float phase=(float)(g_visualPulse%360u)*0.0174532925f;
+    const float w=(float)(client.right-client.left),h=(float)(client.bottom-client.top);
+    COLORREF a=ABM_THEME_COLOR_1C9D9D,b=ABM_THEME_COLOR_2E4668,c=ABM_THEME_COLOR_68BB97;
+    switch(g_backgroundSkin){
+    case 1:a=RGB(25,137,174);b=RGB(17,76,124);c=RGB(57,190,197);break;
+    case 2:a=RGB(72,93,190);b=RGB(28,105,132);c=RGB(76,180,151);break;
+    case 3:a=RGB(191,126,39);b=RGB(105,62,30);c=RGB(239,184,76);break;
+    case 4:a=RGB(139,160,181);b=RGB(61,82,108);c=RGB(198,213,226);break;
+    case 5:a=RGB(160,55,191);b=RGB(28,115,183);c=RGB(42,194,181);break;
+    case 6:a=RGB(15,82,111);b=RGB(7,34,64);c=RGB(22,133,151);break;
+    case 7:a=RGB(124,76,183);b=RGB(30,111,145);c=RGB(184,90,157);break;
+    }
+    float drift=(float)(sin(phase)*24.0f);
+    ABM_D2D_Round(&g_ui,w*0.05f+drift,h*0.22f,w*0.43f+drift,h*0.70f,110.0f,a);
+    ABM_D2D_Round(&g_ui,w*0.55f-drift,h*0.18f,w*0.94f-drift,h*0.62f,120.0f,b);
+    ABM_D2D_Round(&g_ui,w*0.31f,h*0.62f,w*0.72f,h*0.96f,100.0f,c);
+    float points[48];int i;
+    for(i=0;i<24;i++){float x=w*(float)i/23.0f;float y=h*(0.48f+0.055f*sinf((float)i*0.34f+phase)+0.018f*sinf((float)i*0.78f-phase));points[i*2]=x;points[i*2+1]=y;}
+    ABM_D2D_Polyline(&g_ui,points,24,c,2.0f);
+    for(i=0;i<24;i++){float x=w*(float)i/23.0f;float y=h*(0.54f+0.045f*sinf((float)i*0.31f-phase*0.7f));points[i*2]=x;points[i*2+1]=y;}
+    ABM_D2D_Polyline(&g_ui,points,24,a,1.2f);
+}
 static void DrawUI(HDC dc,RECT client) {
     /* ProjectM frames are copied into the owner window; no child surface to position. */
     if(g_fullscreen) {
@@ -1898,6 +1924,7 @@ static void DrawUI(HDC dc,RECT client) {
         return;
     }
     Fill(dc,client,C_BG);
+    DrawAmbientSkin(client);
     RECT header={0,0,client.right,96};
     GradientRect(dc,header,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
     RECT headerShade={0,82,client.right,96};
@@ -7527,6 +7554,7 @@ static void LoadThemePreference(void) {
  if(!EnsureDataDirectory())return;
  wchar_t path[PATH_CAP];
  swprintf_s(path,_countof(path),L"%s\\theme.ini",g_dataDir);
+ int skin=GetPrivateProfileIntW(L"Appearance",L"BackgroundSkin",0,path);if(skin<0||skin>=8)skin=0;g_backgroundSkin=skin;
  int preset=GetPrivateProfileIntW(L"Appearance",L"ColorPreset",ABM_THEME_PRESET_MIDNIGHT_TEAL,path);
  if(preset<0||preset>=ABM_THEME_PRESET_COUNT)preset=ABM_THEME_PRESET_MIDNIGHT_TEAL;
  ABMThemeApplyPreset((ABMThemePreset)preset);
@@ -8425,7 +8453,7 @@ static void ShowAdvancedSettingsAtPage(HWND owner,int page){
 static BOOL SettingsPoint(int x,int y,int l,int t,int r,int b){return x>=l&&x<=r&&y>=t&&y<=b;}
 static int g_settingsScrollX=0,g_settingsScrollY=0;
 #define SETTINGS_CONTENT_WIDTH 804
-#define SETTINGS_CONTENT_HEIGHT 1120
+#define SETTINGS_CONTENT_HEIGHT 1360
 static int SettingsClampInt(int v,int lo,int hi){return v<lo?lo:(v>hi?hi:v);}
 static void SettingsMoveChildControls(HWND w){
  /* Move every native EDIT as one layout transaction. Moving them one at a
@@ -8561,6 +8589,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
   g_settingsShuffle=g_shuffle;g_settingsRepeat=g_repeat;g_settingsReplayGain=g_replayGain;g_settingsCompressor=g_compressor;
   g_settingsThemePreset=(int)ABMThemeCurrentPreset();
+  {wchar_t skinPath[PATH_CAP]={0};StringCchPrintfW(skinPath,_countof(skinPath),L"%s\\theme.ini",g_dataDir);g_backgroundSkin=GetPrivateProfileIntW(L"Appearance",L"BackgroundSkin",0,skinPath);if(g_backgroundSkin<0||g_backgroundSkin>=8)g_backgroundSkin=0;}
   g_settingsRateIndex=2;for(int i=0;i<7;i++)if(fabsf(g_playbackRate-g_settingsRates[i])<0.01f)g_settingsRateIndex=i;
   wchar_t n[32];
   StringCchPrintfW(n,_countof(n),L"%d",g_volume);
@@ -8604,6 +8633,16 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     RefreshThemeWindows();
     InvalidateRect(w,NULL,FALSE);
     return 0;
+   }
+  }
+  for(int skin=0;skin<8;skin++){
+   int col=skin%4,row=skin/4,left=40+col*185,top=1172+row*50;
+   if(SettingsPoint(x,y,left,top,left+177,top+44)){
+    g_backgroundSkin=skin;
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\theme.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",skin);WritePrivateProfileStringW(L"Appearance",L"BackgroundSkin",v,p);}
+    StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Background skin applied and saved.");
+    if(g_main)InvalidateRect(g_main,NULL,FALSE);
+    InvalidateRect(w,NULL,FALSE);return 0;
    }
   }
   if(SettingsPoint(x,y,565,155,704,190)){g_settingsRateOpen=!g_settingsRateOpen;InvalidateRect(w,NULL,FALSE);return 0;}
@@ -8689,7 +8728,18 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(g_settingsMessage,40,1016,780,1034,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+   SettingsText(L"MAIN PLAYER BACKGROUND SKIN",40,1112,780,1140,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"Animated ambient treatments · Classic Music Player keeps the original look",40,1140,780,1164,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   for(int skin=0;skin<8;skin++){
+    int col=skin%4,row=skin/4;float left=(float)(40+col*185),top=(float)(1172+row*50);
+    COLORREF swatchA[8]={ABM_THEME_COLOR_0D1E2F,RGB(25,137,174),RGB(72,93,190),RGB(191,126,39),RGB(139,160,181),RGB(160,55,191),RGB(15,82,111),RGB(124,76,183)};
+    COLORREF swatchB[8]={ABM_THEME_COLOR_192737,RGB(57,190,197),RGB(76,180,151),RGB(239,184,76),RGB(198,213,226),RGB(42,194,181),RGB(22,133,151),RGB(184,90,157)};
+    BOOL selected=(skin==g_backgroundSkin);
+    ABM_D2D_GradientRound(&g_settingsUi,left,top,left+177.0f,top+44.0f,8.0f,swatchA[skin],swatchB[skin]);
+    SettingsText(g_backgroundSkinNames[skin],(int)left+7,(int)top+5,(int)left+170,(int)top+39,RGB(255,255,255),1,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?2.0f:0.8f);
+   }
+   SettingsText(g_settingsMessage,40,1282,780,1300,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    SettingsButtonDraw(610,1040,735,1078,L"Save settings",TRUE);
    SettingsButtonDraw(744,1040,800,1078,L"Close",FALSE);
    if(g_settingsRateOpen){
@@ -9173,6 +9223,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
+        if(g_backgroundSkin>0&&!g_hasMedia&&!g_fullscreen&&!g_drawerOpen&&!g_menuOpen)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         if(g_visualizerActive&&!g_visualizerTimerRunning)++g_visualizerFrame;
         if (g_artworkLoaded && g_artworkFade < 100) {
             g_artworkFade += 5;
