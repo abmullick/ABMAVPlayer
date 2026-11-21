@@ -19,6 +19,7 @@
 #include "home_theatre.h"
 #include "metadata_engine.h"
 #include "ui_d2d.h"
+#include "ui_skin.h"
 #include "ui_theme.h"
 #include "resource.h"
 
@@ -645,6 +646,7 @@ static void Draw(HWND w) {
     PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT c;GetClientRect(w,&c);
     if(!g_canvasReady){FillRect(dc,&c,(HBRUSH)GetStockObject(BLACK_BRUSH));EndPaint(w,&ps);return;}
     ABM_D2D_Begin(&g_canvas,BG);
+    ABM_SkinRenderD2D(&g_canvas,&c);
     /* Use the exact main-player brand geometry and monogram. Keep the
        product wordmark, accent rule and subtitle on separate baselines. */
     ABM_D2D_Fill(&g_canvas,0,0,(float)c.right,96,ABM_THEME_COLOR_0D1B2D);
@@ -711,7 +713,7 @@ static void SearchNow() {
 static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:
-        g_window=w;g_darkBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+        g_window=w;ABM_SkinRegisterWindow(w);g_darkBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
         g_controlCanvasReady=ABM_D2D_CanvasInit(&g_controlCanvas);
         g_controlFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g_edit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,28,83,700,36,w,(HMENU)HT_EDIT,GetModuleHandleW(nullptr),nullptr);
@@ -894,6 +896,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_PAINT:Draw(w);return 0;
     case WM_CLOSE:DestroyWindow(w);return 0;
     case WM_DESTROY:
+        ABM_SkinUnregisterWindow(w);
         if(g_canvasReady){ABM_D2D_Destroy(&g_canvas);g_canvasReady=FALSE;}
         if(g_controlCanvasReady){ABM_D2D_CanvasDestroy(&g_controlCanvas);g_controlCanvasReady=FALSE;}
         if(g_controlFont){DeleteObject(g_controlFont);g_controlFont=nullptr;}
