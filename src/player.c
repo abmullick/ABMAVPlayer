@@ -3607,7 +3607,7 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         }
         EndPaint(hwnd,&ps);return 0;
     }
-    case WM_NCDESTROY:if(g_recentPopupCanvasReady){g_recentPopupCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_recentPopupCanvas);}g_recentPopupWindow=NULL;g_recentPopupHover=-1;break;
+    case WM_NCDESTROY:ABM_SkinUnregisterWindow(hwnd);if(g_recentPopupCanvasReady){g_recentPopupCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_recentPopupCanvas);}g_recentPopupWindow=NULL;g_recentPopupHover=-1;break;
     }
     return DefWindowProcW(hwnd,msg,wp,lp);
 }
