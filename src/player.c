@@ -8632,7 +8632,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
   for(int skin=0;skin<8;skin++){
    int col=skin%4,row=skin/4,left=40+col*185,top=1172+row*50;
    if(SettingsPoint(x,y,left,top,left+177,top+44)){
-    g_backgroundSkin=skin;ABM_SkinSet(skin);
+    g_backgroundSkin=skin;ABM_SkinSet(skin);ABM_SkinInvalidateRegisteredWindows();
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP],v[16];StringCchPrintfW(p,_countof(p),L"%s\\theme.ini",g_dataDir);StringCchPrintfW(v,_countof(v),L"%d",skin);WritePrivateProfileStringW(L"Appearance",L"BackgroundSkin",v,p);}
     StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Background skin applied and saved.");
     if(g_main)InvalidateRect(g_main,NULL,FALSE);
