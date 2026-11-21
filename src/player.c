@@ -4749,13 +4749,15 @@ static LRESULT CALLBACK VideoKeyboardSubclass(HWND video, UINT msg,
            input over the drawer to the owner so its header/chevron and controls
            receive the click instead of VLC's video surface. */
         if ((g_drawerOpen && !g_fullscreen && PtInRect(&R_SIDEBAR,pt)) ||
-            (g_menuOpen && !g_fullscreen && PtInRect(&R_MENU_PANEL,pt)) ||
+            (g_menuOpen && !g_fullscreen &&
+                (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP ||
+                 PtInRect(&R_MENU_PANEL,pt))) ||
             (g_fullscreen && msg == WM_MOUSEMOVE)) {
-            /* The LibVLC child can extend underneath foreground UI. Forward
-               pointer input over both the media drawer and Command Centre so
-               the owner performs hit-testing against the visible overlay.
-               WM_MOUSEWHEEL carries screen coordinates; preserve LPARAM so
-               the owner can apply the standard ScreenToClient conversion. */
+            /* The LibVLC child can extend underneath foreground UI. While the
+               Command Centre is open, forward clicks even outside its bounds
+               so the owner can dismiss the menu and still process the click
+               against the intended underlying control. WM_MOUSEWHEEL carries
+               screen coordinates; preserve LPARAM for owner-side conversion. */
             SendMessageW(owner,msg,wp,msg==WM_MOUSEWHEEL?lp:MAKELPARAM(pt.x,pt.y));
             return 0;
         }
@@ -9365,6 +9367,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             /* A click in the panel's header, section label or row gap belongs
                to the menu surface too; never activate a control behind it. */
             return 0;
+        }
+
+        /* Dismiss the Command Centre on an outside click, but leave a click
+           on its own MENU toggle to the handler below so it can toggle normally.
+           Continue processing the outside click so the underlying control works. */
+        if(g_menuOpen && !g_fullscreen &&
+           !Inside(R_MENU_PANEL,x,y) && !Inside(R_MENU_BUTTON,x,y)) {
+            g_menuOpen=FALSE;
+            g_hoverMenuItem=-1;
+            PositionVideoWindow();
+            SyncRendererComboVisibility();
+            RECT dirty=R_MENU_PANEL;
+            UnionRect(&dirty,&dirty,&R_MENU_BUTTON);
+            InvalidateRect(hwnd,&dirty,FALSE);
         }
 
         /* A click delivered to the main window is outside the separate Recent
