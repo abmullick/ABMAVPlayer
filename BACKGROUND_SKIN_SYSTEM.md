@@ -9,13 +9,13 @@ The existing seven colour-theme presets remain separate. Background skins change
 ## Available skins
 
 1. Classic Music Player — default; preserves the original, non-animated background.
-2. Ocean Flow
-3. Aurora
-4. Golden Waves
-5. Liquid Chrome
-6. Neon Pulse
-7. Deep Ocean
-8. Holographic
+2. Ocean Flow — layered tidal-current curves and drifting surface particles.
+3. Aurora — tall, independently moving luminous curtains with fine vertical folds.
+4. Golden Waves — metallic orbital arcs and drifting gold glints.
+5. Liquid Chrome — reflective slanted ribbons with narrow specular highlights.
+6. Neon Pulse — perspective wire grid, animated signal traces and pulse nodes.
+7. Deep Ocean — submerged light shafts and rising bubbles/particulate.
+8. Holographic — interlaced spectral curves and a shifting vertical interference mesh.
 
 ## Shared implementation
 
