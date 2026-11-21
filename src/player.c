@@ -1803,7 +1803,7 @@ static void DrawVisualizer(HDC dc,RECT area) {
     }
 }
 static void DrawAmbientSkin(RECT client) {
-    if(g_backgroundSkin<=0 || g_backgroundSkin>=8 || g_hasMedia || g_fullscreen)return;
+    if(g_backgroundSkin<=0 || g_backgroundSkin>=8 || g_fullscreen)return;
     const float phase=(float)(g_visualPulse%360u)*0.0174532925f;
     const float w=(float)(client.right-client.left),h=(float)(client.bottom-client.top);
     COLORREF a=ABM_THEME_COLOR_1C9D9D,b=ABM_THEME_COLOR_2E4668,c=ABM_THEME_COLOR_68BB97;
@@ -9223,7 +9223,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
-        if(g_backgroundSkin>0&&!g_hasMedia&&!g_fullscreen&&!g_drawerOpen&&!g_menuOpen)InvalidateRect(hwnd,&R_VIDEO,FALSE);
+        if(g_backgroundSkin>0&&!g_fullscreen&&!g_drawerOpen&&!g_menuOpen)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         if(g_visualizerActive&&!g_visualizerTimerRunning)++g_visualizerFrame;
         if (g_artworkLoaded && g_artworkFade < 100) {
             g_artworkFade += 5;
