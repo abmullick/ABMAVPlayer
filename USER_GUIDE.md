@@ -581,3 +581,7 @@ Home Theatre is keyless and has no TMDB token, API-key or account setting. Movie
 TVmaze documents a public rate limit of at least 20 requests per 10 seconds per IP address. ABM spaces provider requests below that ceiling. Wikidata Query Service requests are also deliberately spaced. Provider outages, network failures and rate limits affect online discovery only, never local playback.
 
 Artwork is not covered by a blanket metadata licence. TVmaze image assets and Wikimedia Commons files can have rights that differ from the associated metadata. Each Commons file page identifies its author and licence; review the individual file terms before redistribution or commercial use. ABM caches artwork locally for performance, which does not change the licence or grant additional rights. Some titles have no artwork, and cinematic backdrops are not guaranteed.
+
+### Main Player Background Skins
+
+The Main Player includes eight selectable background skins in Settings: Classic Music Player, Ocean Flow, Aurora, Golden Waves, Liquid Chrome, Neon Pulse, Deep Ocean and Holographic. Classic Music Player is the default and preserves the original appearance. Ambient skins use restrained, animated Direct2D shapes and wave lines behind the player interface; they do not cover active video or alter playback, audio, casting, torrent or Streaming Centre behaviour. The selection is stored in `%APPDATA%\\ABMAVPlayer\\theme.ini` under `[Appearance] BackgroundSkin` and is independent of the seven Color Theme presets.
