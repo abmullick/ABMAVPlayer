@@ -3542,7 +3542,7 @@ static ABM_D2D_CANVAS g_recentPopupCanvas;
 static BOOL g_recentPopupCanvasReady=FALSE;
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_CREATE:g_recentPopupCanvasReady=ABM_D2D_CanvasInit(&g_recentPopupCanvas);return 0;
+    case WM_CREATE:ABM_SkinRegisterWindow(hwnd);g_recentPopupCanvasReady=ABM_D2D_CanvasInit(&g_recentPopupCanvas);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
@@ -3581,6 +3581,7 @@ static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM l
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
         if(g_recentPopupCanvasReady&&ABM_D2D_CanvasBegin(&g_recentPopupCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_recentPopupCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_0A111C);
+            ABM_SkinRenderCanvas(&g_recentPopupCanvas,&rc);
             ABM_D2D_CanvasFillRound(&g_recentPopupCanvas,1,1,(float)rc.right-1,(float)rc.bottom-1,(float)ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_0A111C);
             ABM_D2D_CanvasStrokeRound(&g_recentPopupCanvas,0.5f,0.5f,(float)rc.right-0.5f,(float)rc.bottom-0.5f,(float)ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_365B70,1.0f);
             ABM_D2D_CanvasFill(&g_recentPopupCanvas,1,1,(float)rc.right-1,62,ABM_THEME_COLOR_102736);
@@ -7226,6 +7227,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         PAINTSTRUCT ps;HDC dc=BeginPaint(hwnd,&ps);RECT rc;GetClientRect(hwnd,&rc);
         if(g_helpCanvasReady&&ABM_D2D_CanvasBegin(&g_helpCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_SkinRenderCanvas(&g_helpCanvas,&rc);
             /* The window now uses the same native dark DWM caption as the
                Main Player. Keep only the compact branded context strip here. */
             ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)rc.right,62,ABM_UI_COLOR_SURFACE_BLUE);
@@ -7344,7 +7346,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_KEYDOWN: if(wp==VK_ESCAPE){DestroyWindow(hwnd);return 0;} break;
     case WM_DESTROY:
-        if(g_helpCanvasReady){g_helpCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_helpCanvas);}
+        ABM_SkinUnregisterWindow(hwnd);if(g_helpCanvasReady){g_helpCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_helpCanvas);}
         UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
         if(g_helpSearch)RemoveWindowSubclass(g_helpSearch,HelpSearchSubclass,1);
         if(g_helpBrush){DeleteObject(g_helpBrush);g_helpBrush=NULL;}
@@ -7862,6 +7864,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
   if(g_advancedVlcReportBrush){DeleteObject(g_advancedVlcReportBrush);g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
   InvalidateRect(w,NULL,FALSE);return 0;
  case WM_CREATE:
+  ABM_SkinRegisterWindow(w);
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
   g_advancedSettingsUiReady=TRUE;
   g_advancedSettingsPage=g_advancedSettingsStartPage;
@@ -8744,7 +8747,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_CLOSE:DestroyWindow(w);return 0;
  case WM_DESTROY:
-  g_settingsWindow=NULL;
+  ABM_SkinUnregisterWindow(w);g_settingsWindow=NULL;
   if(g_settingsUiReady){ABM_D2D_Destroy(&g_settingsUi);g_settingsUiReady=FALSE;}
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=NULL;}
   return 0;
