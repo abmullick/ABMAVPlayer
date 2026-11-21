@@ -8725,7 +8725,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    }
    SettingsText(L"MAIN PLAYER BACKGROUND SKINS",40,1112,780,1140,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsText(L"4 animated ambient skins · 4 static artwork skins · Classic keeps the original look",40,1140,780,1164,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   for(int skin=0;skin<8;skin++){
+   for(int skin=0;skin<ABM_SKIN_COUNT;skin++){
     int col=skin%4,row=skin/4;float left=(float)(40+col*185),top=(float)(1172+row*50);
     COLORREF swatchA[ABM_SKIN_COUNT]={ABM_THEME_COLOR_0D1E2F,RGB(7,24,39),RGB(11,24,42),RGB(6,11,29),RGB(12,17,41),RGB(12,28,43),RGB(12,16,23),RGB(23,20,21),RGB(14,22,33)};
     COLORREF swatchB[ABM_SKIN_COUNT]={ABM_THEME_COLOR_192737,RGB(13,40,49),RGB(17,42,58),RGB(19,24,57),RGB(27,25,58),RGB(18,43,57),RGB(24,32,41),RGB(40,32,26),RGB(23,36,50)};
