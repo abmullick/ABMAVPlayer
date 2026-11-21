@@ -28,6 +28,7 @@
 #include <gdiplus.h>
 #include "../ui_theme.h"
 #include "../ui_d2d.h"
+#include "../ui_skin.h"
 #include "version.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
@@ -58,6 +59,8 @@ using Microsoft::WRL::ComPtr;
 namespace {
 ABM_D2D_CANVAS g_streamButtonCanvas{};
 bool g_streamButtonCanvasReady=false;
+ABM_D2D_CANVAS g_streamBackgroundCanvas{};
+bool g_streamBackgroundCanvasReady=false;
 struct ManagedWorker {
     std::thread thread;
     std::shared_ptr<std::atomic<bool>> finished;
@@ -860,6 +863,7 @@ LRESULT CALLBACK StreamingHelpSearchSubclass(HWND edit,UINT msg,WPARAM wp,LPARAM
 LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_CREATE:
+        ABM_SkinRegisterWindow(hwnd);
         if(g_infoAbout)LoadInfoPortrait();
         g_infoCanvasReady=ABM_D2D_CanvasInit(&g_infoCanvas)!=FALSE;
         if(!g_infoAbout){
@@ -954,6 +958,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
         if(g_infoCanvasReady&&ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_SkinRenderCanvas(&g_infoCanvas,&rc);
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,6,ABM_UI_COLOR_ACCENT);
             if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}
             ABM_D2D_CanvasEnd(&g_infoCanvas);
@@ -1743,7 +1748,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         break;
     }
     case WM_CREATE:{
-        g_window=hwnd;
+        g_window=hwnd;ABM_SkinRegisterWindow(hwnd);
+        g_streamBackgroundCanvasReady=ABM_D2D_CanvasInit(&g_streamBackgroundCanvas)!=FALSE;
         g_streamButtonCanvasReady=ABM_D2D_CanvasInit(&g_streamButtonCanvas)!=FALSE;
         CreateDevicePanel(hwnd);
         SetTimer(hwnd,ID_STREAM_DEVICE_TIMER,400,nullptr);
@@ -2205,8 +2211,18 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }
         break;
     }
+    case WM_PAINT:{
+        PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
+        if(g_streamBackgroundCanvasReady&&ABM_D2D_CanvasBegin(&g_streamBackgroundCanvas,dc,&rc)){
+            ABM_D2D_CanvasFill(&g_streamBackgroundCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
+            ABM_SkinRenderCanvas(&g_streamBackgroundCanvas,&rc);
+            ABM_D2D_CanvasEnd(&g_streamBackgroundCanvas);
+        }else FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
+        EndPaint(hwnd,&ps);return 0;
+    }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
+        ABM_SkinUnregisterWindow(hwnd);
         g_appProbeRunning.store(false);
         StopManagedWorkers();
         DrainPendingWorkerMessages(hwnd);
@@ -2226,6 +2242,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         ReleaseServiceLogos();
         g_streamButtonCanvasReady=false;
         ABM_D2D_CanvasDestroy(&g_streamButtonCanvas);
+        g_streamBackgroundCanvasReady=false;
+        ABM_D2D_CanvasDestroy(&g_streamBackgroundCanvas);
         ReleaseCachedTextFonts();
         if(g_comInitialized){CoUninitialize();g_comInitialized=false;}
         if(g_mainWindow&&IsWindow(g_mainWindow)){ShowWindow(g_mainWindow,SW_SHOW);SetForegroundWindow(g_mainWindow);}
