@@ -1333,6 +1333,10 @@ void PaintChrome(HWND hwnd){
         dc=paintDc;buffer=nullptr;previousBitmap=nullptr;
     }
     FillRectColor(dc,rc,ABM_THEME_COLOR_070C15);
+    if(g_streamBackgroundCanvasReady&&ABM_D2D_CanvasBegin(&g_streamBackgroundCanvas,dc,&rc)){
+        ABM_SkinRenderCanvas(&g_streamBackgroundCanvas,&rc);
+        ABM_D2D_CanvasEnd(&g_streamBackgroundCanvas);
+    }
 
     /* A taller, clearly separated native chrome keeps the service selector prominent. */
     RECT header={0,0,rc.right,260};FillRectColor(dc,header,ABM_THEME_COLOR_0B1827);
@@ -2212,15 +2216,6 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             return 0;
         }
         break;
-    }
-    case WM_PAINT:{
-        PAINTSTRUCT ps{};HDC dc=BeginPaint(hwnd,&ps);RECT rc{};GetClientRect(hwnd,&rc);
-        if(g_streamBackgroundCanvasReady&&ABM_D2D_CanvasBegin(&g_streamBackgroundCanvas,dc,&rc)){
-            ABM_D2D_CanvasFill(&g_streamBackgroundCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
-            ABM_SkinRenderCanvas(&g_streamBackgroundCanvas,&rc);
-            ABM_D2D_CanvasEnd(&g_streamBackgroundCanvas);
-        }else FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
-        EndPaint(hwnd,&ps);return 0;
     }
     case WM_CLOSE:DestroyWindow(hwnd);return 0;
     case WM_DESTROY:
