@@ -1028,6 +1028,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         EndPaint(hwnd,&ps);return 0;
     }
     case WM_NCDESTROY:
+        ABM_SkinUnregisterWindow(hwnd);
         if(g_infoSearch)RemoveWindowSubclass(g_infoSearch,StreamingHelpSearchSubclass,1);
         UnregisterHotKey(hwnd,1);UnregisterHotKey(hwnd,2);
         if(g_infoCanvasReady){g_infoCanvasReady=false;ABM_D2D_CanvasDestroy(&g_infoCanvas);}
