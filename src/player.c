@@ -1808,13 +1808,13 @@ static void DrawAmbientSkin(RECT client) {
     const float w=(float)(client.right-client.left),h=(float)(client.bottom-client.top);
     COLORREF a=ABM_THEME_COLOR_1C9D9D,b=ABM_THEME_COLOR_2E4668,c=ABM_THEME_COLOR_68BB97;
     switch(g_backgroundSkin){
-    case 1:a=RGB(25,137,174);b=RGB(17,76,124);c=RGB(57,190,197);break;
-    case 2:a=RGB(72,93,190);b=RGB(28,105,132);c=RGB(76,180,151);break;
-    case 3:a=RGB(191,126,39);b=RGB(105,62,30);c=RGB(239,184,76);break;
-    case 4:a=RGB(139,160,181);b=RGB(61,82,108);c=RGB(198,213,226);break;
-    case 5:a=RGB(160,55,191);b=RGB(28,115,183);c=RGB(42,194,181);break;
-    case 6:a=RGB(15,82,111);b=RGB(7,34,64);c=RGB(22,133,151);break;
-    case 7:a=RGB(124,76,183);b=RGB(30,111,145);c=RGB(184,90,157);break;
+    case 1:a=RGB(8,38,55);b=RGB(7,26,46);c=RGB(8,48,58);break;
+    case 2:a=RGB(28,34,76);b=RGB(12,48,64);c=RGB(20,66,59);break;
+    case 3:a=RGB(66,43,18);b=RGB(48,27,16);c=RGB(77,54,20);break;
+    case 4:a=RGB(38,51,66);b=RGB(25,34,48);c=RGB(51,62,75);break;
+    case 5:a=RGB(48,18,63);b=RGB(12,39,69);c=RGB(13,56,55);break;
+    case 6:a=RGB(7,33,48);b=RGB(4,17,36);c=RGB(7,43,51);break;
+    case 7:a=RGB(42,25,62);b=RGB(12,39,56);c=RGB(55,25,52);break;
     }
     float drift=(float)(sin(phase)*24.0f);
     ABM_D2D_Round(&g_ui,w*0.05f+drift,h*0.22f,w*0.43f+drift,h*0.70f,110.0f,a);
