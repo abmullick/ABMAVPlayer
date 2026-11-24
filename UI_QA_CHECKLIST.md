@@ -358,3 +358,23 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Match files named S01E02, S1E2, 1x02, 1x2 and Season 1 Episode 2; confirm neighbouring episode numbers are not incorrectly selected.
 - [ ] Confirm missing artwork, missing metadata, offline mode and provider rate limits are non-fatal and do not change playback state.
 - [ ] For any artwork intended for redistribution, inspect the individual source file page and record creator, source and licence; do not treat local caching as a licence grant.
+
+## Media Library — v1.1.6 source candidate
+
+- [ ] The idle dashboard shows the fifth **Media Library** shortcut without overlapping the four existing shortcuts at the supported window sizes.
+- [ ] Opening Media Library displays saved scan locations and the previously indexed media list.
+- [ ] Add folder uses the Windows folder picker and persists a selected folder.
+- [ ] A folder scan discovers supported audio/video files in nested subfolders and does not move, rename or modify source files.
+- [ ] Scan computer adds available fixed drives; Add drives adds available fixed/removable drives; Remove deletes only the selected scan root.
+- [ ] Windows/program/system folders are skipped during whole-computer scans; directory junctions and symbolic-link folders are not followed.
+- [ ] Inaccessible folders are counted and skipped without aborting the scan. Long paths and Unicode file/folder names are handled.
+- [ ] Scanning runs below normal priority, shows progress, supports Stop, and does not freeze the UI or interrupt active playback.
+- [ ] Repeated scans do not add duplicate paths. Scan roots and media paths survive closing/reopening the manager and restarting the application.
+- [ ] Selecting a file displays its full path. Double-click and Play selected both add the file to the existing playlist and use the normal LibVLC playback engine.
+- [ ] Existing playlist entries are reused rather than duplicated; a full playlist reports a clear message.
+- [ ] The installer registers the ABM media ProgID, RegisteredApplications capabilities and OpenWithProgids entries without overwriting existing Windows defaults.
+- [ ] Set default player opens Windows Default apps. The user can select ABM AV Player for the desired extensions; no silent default override occurs.
+- [ ] Explorer double-click on a registered media type launches ABM AV Player and starts the supplied file. Test one audio file, one video file and multiple file arguments.
+- [ ] Upgrade and uninstall tests confirm the user's Media Library index under %LOCALAPPDATA% is preserved; uninstall removes ABM registration cleanly.
+- [ ] Network locations are scanned only when explicitly selected; they are not included in Scan computer.
+
