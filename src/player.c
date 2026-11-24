@@ -2125,8 +2125,8 @@ static void DrawUI(HDC dc,RECT client) {
                 Txt(dc,titles[i],title,ABM_THEME_COLOR_F4F9FF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,subs[i],cardSubtitle,ABM_THEME_COLOR_9EB5C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
-            int footGap=12, footHeight=20;
-            /* The fifth shortcut occupies the third grid row. Anchor the feature tagline below that row. */
+            int footGap=28, footHeight=22;
+            /* Keep the feature signature visually distinct from the shortcut cards, with generous breathing room. */
             RECT foot={R_HOME_OPEN.left,R_HOME_LIBRARY.bottom+footGap,R_HOME_RECENT.right,R_HOME_LIBRARY.bottom+footGap+footHeight};
             Txt(dc,L"LOCAL MEDIA   •   KEYLESS METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
