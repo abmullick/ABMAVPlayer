@@ -27,7 +27,7 @@
 
 namespace {
 enum { ML_ADD_FOLDER=7101, ML_ADD_DRIVES=7102, ML_SCAN_ALL=7103, ML_SCAN=7104,
-       ML_STOP=7105, ML_REMOVE=7106, ML_PLAY=7107, ML_CLOSE=7108,
+       ML_STOP=7105, ML_PLAY=7107, ML_CLOSE=7108,
        ML_ROOTS=7110, ML_FILES=7111, ML_PROGRESS=7112,
        ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116 };
 enum { ML_PROGRESS_MSG=WM_APP+0x6B1, ML_DONE_MSG=WM_APP+0x6B2 };
@@ -40,7 +40,7 @@ struct PathLess {
 struct LibraryState {
     HWND window=nullptr,owner=nullptr,rootsList=nullptr,filesList=nullptr,status=nullptr,progress=nullptr,searchEdit=nullptr;
     HWND sortButtons[3]={};
-    HWND buttons[8]={};
+    HWND buttons[7]={};
     HFONT font=nullptr,smallFont=nullptr;
     ABM_D2D_CANVAS canvas={};
     BOOL canvasReady=FALSE,closePending=FALSE;
@@ -295,7 +295,6 @@ static void StartScan() {
     SendMessageW(g.progress,PBM_SETMARQUEE,TRUE,0);
     EnableWindow(g.filesList,FALSE);EnableWindow(g.searchEdit,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],FALSE);
-    EnableWindow(g.buttons[6],FALSE);
     SetStatusText(L"Scanning selected locations in the background…");
 }
 static void FinishScan() {
@@ -311,7 +310,6 @@ static void FinishScan() {
     EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);
     EnableWindow(g.filesList,TRUE);EnableWindow(g.searchEdit,TRUE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],TRUE);
-    EnableWindow(g.buttons[6],TRUE);
     if(g.closePending&&g.window)DestroyWindow(g.window);
 }
 static void Layout(HWND w) {
@@ -329,8 +327,8 @@ static void Layout(HWND w) {
     if(g.status)SetWindowPos(g.status,nullptr,margin,height-70,width-2*margin,24,SWP_NOZORDER);
     if(g.progress)SetWindowPos(g.progress,nullptr,margin,height-40,width-2*margin,10,SWP_NOZORDER);
     int x=margin,y=112;
-    const int widths[8]={112,112,150,104,90,122,120,90};
-    for(int i=0;i<8;i++){if(g.buttons[i]){SetWindowPos(g.buttons[i],nullptr,x,y,widths[i],34,SWP_NOZORDER);x+=widths[i]+8;}}
+    const int widths[7]={112,112,150,104,90,120,90};
+    for(int i=0;i<7;i++){if(g.buttons[i]){SetWindowPos(g.buttons[i],nullptr,x,y,widths[i],34,SWP_NOZORDER);x+=widths[i]+8;}}
 }
 static void DrawButton(LPDRAWITEMSTRUCT d) {
     if(!d||!g.canvasReady)return;
@@ -375,9 +373,9 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SendMessageW(g.rootsList,LB_SETITEMHEIGHT,0,44);SendMessageW(g.filesList,LB_SETITEMHEIGHT,0,44);
         SendMessageW(g.rootsList,WM_SETFONT,(WPARAM)g.font,TRUE);SendMessageW(g.filesList,WM_SETFONT,(WPARAM)g.font,TRUE);
         SetWindowTheme(g.rootsList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.filesList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.searchEdit,L"DarkMode_Explorer",nullptr);
-        const int ids[8]={ML_ADD_FOLDER,ML_ADD_DRIVES,ML_SCAN_ALL,ML_SCAN,ML_STOP,ML_REMOVE,ML_PLAY,ML_CLOSE};
-        const wchar_t *labels[8]={L"Add folder",L"Add drives",L"Scan computer",L"Scan now",L"Stop",L"Remove",L"Play selected",L"Close"};
-        for(int i=0;i<8;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
+        const int ids[7]={ML_ADD_FOLDER,ML_ADD_DRIVES,ML_SCAN_ALL,ML_SCAN,ML_STOP,ML_PLAY,ML_CLOSE};
+        const wchar_t *labels[7]={L"Add folder",L"Add drives",L"Scan computer",L"Scan now",L"Stop",L"Play selected",L"Close"};
+        for(int i=0;i<7;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
         g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g.progress=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g.progress,PBM_SETRANGE32,0,100);SendMessageW(g.progress,PBM_SETBKCOLOR,0,ABM_THEME_COLOR_141D2A);SendMessageW(g.progress,PBM_SETBARCOLOR,0,ABM_THEME_COLOR_187E74);SendMessageW(g.progress,PBM_SETMARQUEE,FALSE,0);
@@ -440,12 +438,6 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         case ML_SCAN_ALL:AddAvailableDrives(true);StartScan();return 0;
         case ML_SCAN:StartScan();return 0;
         case ML_STOP:InterlockedExchange(&g.cancel,1);SetStatusText(L"Stopping after the current directory…");return 0;
-        case ML_REMOVE: {
-            int selected=(int)SendMessageW(g.rootsList,LB_GETCURSEL,0,0);
-            if(selected>=0&&selected<(int)g.roots.size()&&!InterlockedCompareExchange(&g.scanning,0,0)) {
-                g.roots.erase(g.roots.begin()+selected);RefreshRoots();SavePaths(L"folders.tsv",g.roots);
-            }return 0;
-        }
         case ML_PLAY: {
             int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
             if(selected>=0&&selected<(int)g.visibleFiles.size()&&g.play)g.play(g.files[g.visibleFiles[(size_t)selected]].c_str());
