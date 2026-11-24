@@ -11,6 +11,7 @@
 #include <cwctype>
 #include <cstdio>
 #include <new>
+#include <utility>
 #include "media_library.h"
 #include "ui_d2d.h"
 #include "ui_theme.h"
@@ -67,7 +68,7 @@ static bool ContainsPath(const std::vector<std::wstring> &items,const std::wstri
 static bool IsSkippedSystemFolder(const wchar_t *name) {
     static const wchar_t *skip[]={L"Windows",L"Program Files",L"Program Files (x86)",
         L"ProgramData",L"$Recycle.Bin",L"System Volume Information",L"PerfLogs",
-        L"Recovery",L"$WinREAgent"};
+        L"Recovery",L"$WinREAgent",L"AppData",L"WindowsApps"};
     for(const wchar_t *s:skip)if(!_wcsicmp(name,s))return true;
     return false;
 }
@@ -140,7 +141,7 @@ static void AddRoot(const wchar_t *path) {
     std::wstring value=TrimRoot(path);
     if(value.empty()||ContainsPath(g.roots,value))return;
     DWORD attr=GetFileAttributesW(value.c_str());
-    if(attr==INVALID_FILE_ATTRIBUTES||!(attr&FILE_ATTRIBUTE_DIRECTORY))return;
+    if(attr==INVALID_FILE_ATTRIBUTES||!(attr&FILE_ATTRIBUTE_DIRECTORY)||(attr&FILE_ATTRIBUTE_REPARSE_POINT))return;
     g.roots.push_back(value);RefreshRoots();SavePaths(L"folders.tsv",g.roots);
 }
 static bool ChooseFolder(std::wstring &path) {
@@ -228,7 +229,7 @@ static void FinishScan() {
     if(g.thread){WaitForSingleObject(g.thread,INFINITE);CloseHandle(g.thread);g.thread=nullptr;}
     RefreshFiles();
     wchar_t status[256];
-    StringCchPrintfW(status,_countof(status),L"Scan complete · %ld media files · %ld folders visited · %ld inaccessible folders",
+    StringCchPrintfW(status,_countof(status),L"Scan complete · %ld new media files found · %ld folders visited · %ld inaccessible folders",
         InterlockedCompareExchange(&g.foundFiles,0,0),(long)InterlockedCompareExchange(&g.scannedDirectories,0,0),
         (long)InterlockedCompareExchange(&g.scanErrors,0,0));
     if(InterlockedCompareExchange(&g.cancel,0,0))StringCchCatW(status,_countof(status),L" · cancelled");
@@ -311,6 +312,11 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             return 0;
         }
         case ML_CLOSE:SendMessageW(w,WM_CLOSE,0,0);return 0;
+        }
+        if(LOWORD(wp)==ML_FILES&&HIWORD(wp)==LBN_SELCHANGE) {
+            int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
+            if(selected>=0&&selected<(int)g.files.size())SetStatusText(g.files[(size_t)selected].c_str());
+            return 0;
         }
         if(LOWORD(wp)==ML_FILES&&HIWORD(wp)==LBN_DBLCLK) {
             int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
