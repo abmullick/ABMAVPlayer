@@ -44,6 +44,44 @@ Source: "..\release\ABM AV Player\*"; DestDir: "{app}"; Flags: ignoreversion rec
 Name: "{autoprograms}\ABM AV Player"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 Name: "{autodesktop}\ABM AV Player"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
+[Registry]
+; Register a single ProgID for the supported media formats. Windows 10/11 still
+; requires the user to choose ABM AV Player in Default apps; the installer
+; deliberately does not overwrite existing per-extension defaults.
+Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile"; ValueType: string; ValueName: ""; ValueData: "ABM AV Player Media File"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\Application"; ValueType: string; ValueName: "ApplicationName"; ValueData: "ABM AV Player"
+Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\Application"; ValueType: string; ValueName: "ApplicationCompany"; ValueData: "{#MyAppPublisher}"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "ABM AV Player"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Play audio and video files with ABM AV Player"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mp4"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mkv"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".avi"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mov"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".wmv"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".m4v"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".webm"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mpg"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mpeg"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mp3"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".wav"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".flac"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".m4a"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".aac"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ogg"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".opus"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".wma"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".aiff"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ape"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".alac"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ac3"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".dts"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".amr"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mid"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".midi"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "ABM AV Player"; ValueData: "Software\ABMAssets\ABM AV Player\Capabilities"; Flags: uninsdeletevalue
+
 [Run]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""ABM AV Player mDNS"" dir=in action=allow protocol=UDP localport=5353 remoteip=LocalSubnet profile=private"; Tasks: castfirewall; Flags: runhidden waituntilterminated
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""ABM AV Player SSDP"" dir=in action=allow protocol=UDP localport=1900 remoteip=LocalSubnet profile=private"; Tasks: castfirewall; Flags: runhidden waituntilterminated
