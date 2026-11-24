@@ -224,6 +224,40 @@ static void OpenContainingFolder(const std::wstring &path) {
     std::wstring args=L"/select,\""+path+L"\"";
     ShellExecuteW(nullptr,L"open",L"explorer.exe",args.c_str(),nullptr,SW_SHOWNORMAL);
 }
+struct LibraryMenuItem { UINT command; const wchar_t *label; bool separator; };
+static const LibraryMenuItem kMenuOpenFolder={ML_CTX_OPEN,L"Open folder",false};
+static const LibraryMenuItem kMenuRemoveLocation={ML_CTX_REMOVE_ROOT,L"Remove location",false};
+static const LibraryMenuItem kMenuPlay={ML_CTX_PLAY,L"Play",false};
+static const LibraryMenuItem kMenuOpenContaining={ML_CTX_OPEN,L"Open containing folder",false};
+static const LibraryMenuItem kMenuCopyPath={ML_CTX_COPY_PATH,L"Copy full path",false};
+static const LibraryMenuItem kMenuRemoveFile={ML_CTX_REMOVE_FILE,L"Remove from library",false};
+static const LibraryMenuItem kMenuSeparator={0,L"",true};
+static void AppendLibraryMenuItem(HMENU menu,const LibraryMenuItem *item) {
+    MENUITEMINFOW info={};info.cbSize=sizeof(info);info.fMask=MIIM_FTYPE|MIIM_ID|MIIM_DATA;
+    info.fType=MFT_OWNERDRAW;info.wID=item->command;info.dwItemData=(ULONG_PTR)item;
+    InsertMenuItemW(menu,(UINT)-1,TRUE,&info);
+}
+static void DrawLibraryMenuItem(const DRAWITEMSTRUCT *d) {
+    if(!d||!g.canvasReady||!d->itemData)return;
+    const LibraryMenuItem *item=(const LibraryMenuItem*)d->itemData;
+    RECT r=d->rcItem;
+    if(!ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&r))return;
+    float w=(float)(r.right-r.left),h=(float)(r.bottom-r.top);
+    ABM_D2D_CanvasFill(&g.canvas,0,0,w,h,ABM_THEME_COLOR_101A28);
+    if(item->separator) {
+        ABM_D2D_CanvasFill(&g.canvas,12.0f,h*0.5f,w-12.0f,h*0.5f+1.0f,ABM_THEME_COLOR_334F65);
+    } else {
+        bool hot=(d->itemState&ODS_SELECTED)!=0;
+        if(hot)ABM_D2D_CanvasFillRound(&g.canvas,4.0f,2.0f,w-4.0f,h-2.0f,6.0f,ABM_THEME_COLOR_163B48);
+        if(hot)ABM_D2D_CanvasFillRound(&g.canvas,4.0f,8.0f,7.0f,h-8.0f,2.0f,ABM_THEME_COLOR_36B1A8);
+        COLORREF color=(item->command==ML_CTX_REMOVE_ROOT||item->command==ML_CTX_REMOVE_FILE)
+            ?(hot?ABM_THEME_COLOR_F2F8FF:ABM_THEME_COLOR_E3A6A6)
+            :(hot?ABM_THEME_COLOR_F2F8FF:ABM_THEME_COLOR_D7E4F1);
+        RECT text={18,0,(LONG)w-14,(LONG)h};
+        ABM_D2D_CanvasText(&g.canvas,item->label,text,color,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    }
+    ABM_D2D_CanvasEnd(&g.canvas);
+}
 static void ShowLibraryContextMenu(HWND child,int screenX,int screenY) {
     if(!child||!IsWindow(child))return;
     bool roots=(child==g.rootsList),files=(child==g.filesList);
@@ -251,16 +285,23 @@ static void ShowLibraryContextMenu(HWND child,int screenX,int screenY) {
     SendMessageW(child,LB_SETCURSEL,(WPARAM)selected,0);
     HMENU menu=CreatePopupMenu();if(!menu)return;
     if(roots) {
-        AppendMenuW(menu,MF_STRING,ML_CTX_OPEN,L"Open folder");
-        AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
-        AppendMenuW(menu,MF_STRING,ML_CTX_REMOVE_ROOT,L"Remove location");
+        AppendLibraryMenuItem(menu,&kMenuOpenFolder);
+        AppendLibraryMenuItem(menu,&kMenuSeparator);
+        AppendLibraryMenuItem(menu,&kMenuRemoveLocation);
     } else {
-        AppendMenuW(menu,MF_STRING,ML_CTX_PLAY,L"Play");
-        AppendMenuW(menu,MF_STRING,ML_CTX_OPEN,L"Open containing folder");
-        AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
-        AppendMenuW(menu,MF_STRING,ML_CTX_COPY_PATH,L"Copy full path");
-        AppendMenuW(menu,MF_STRING,ML_CTX_REMOVE_FILE,L"Remove from library");
+        AppendLibraryMenuItem(menu,&kMenuPlay);
+        AppendLibraryMenuItem(menu,&kMenuOpenContaining);
+        AppendLibraryMenuItem(menu,&kMenuSeparator);
+        AppendLibraryMenuItem(menu,&kMenuCopyPath);
+        AppendLibraryMenuItem(menu,&kMenuRemoveFile);
     }
+    /* Owner-drawn menu items use ABM colours and typography; the menu surface
+       itself also receives the shared dark palette instead of Explorer defaults. */
+    static HBRUSH menuBrush=nullptr;
+    if(!menuBrush)menuBrush=CreateSolidBrush(ABM_THEME_COLOR_101A28);
+    MENUINFO menuInfo={};menuInfo.cbSize=sizeof(menuInfo);menuInfo.fMask=MIM_BACKGROUND|MIM_STYLE;
+    menuInfo.hbrBack=menuBrush;menuInfo.dwStyle=MNS_NOCHECK;
+    SetMenuInfo(menu,&menuInfo);
     int command=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON|TPM_NONOTIFY,pt.x,pt.y,0,g.window,nullptr);
     DestroyMenu(menu);
     if(!command)return;
@@ -489,13 +530,18 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_MEASUREITEM: {
         MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp;
-        if(mi&&(mi->CtlID==ML_ROOTS||mi->CtlID==ML_FILES)){mi->itemHeight=mi->CtlID==ML_ROOTS?44:52;return TRUE;}
+        if(mi&&mi->CtlID==ML_ROOTS||mi&&mi->CtlID==ML_FILES){mi->itemHeight=mi->CtlID==ML_ROOTS?44:52;return TRUE;}
+        if(mi&&mi->CtlType==ODT_MENU&&mi->itemData){
+            const LibraryMenuItem *item=(const LibraryMenuItem*)mi->itemData;
+            mi->itemWidth=232;mi->itemHeight=item->separator?9:36;return TRUE;
+        }
         break;
     }
     case WM_DRAWITEM: {
         LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;
         if(!d)return TRUE;
         if(d->CtlType==ODT_BUTTON){DrawButton(d);return TRUE;}
+        if(d->CtlType==ODT_MENU){DrawLibraryMenuItem(d);return TRUE;}
         if(d->CtlType==ODT_STATIC&&d->CtlID==ML_STATUS){
             RECT r=d->rcItem;
             if(ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&r)){
