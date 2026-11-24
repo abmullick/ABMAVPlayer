@@ -316,7 +316,7 @@ static void FinishScan() {
     for(int i=0;i<4;i++)EnableWindow(g.buttons[i],TRUE);
     EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);
     EnableWindow(g.filesList,TRUE);EnableWindow(g.searchEdit,TRUE);
-    InvalidateRect(g.progress,nullptr,FALSE);
+    if(g.window)InvalidateRect(g.window,nullptr,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],TRUE);
     if(g.closePending&&g.window)DestroyWindow(g.window);
 }
