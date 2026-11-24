@@ -29,6 +29,7 @@ CloseApplications=yes
 RestartApplications=no
 LicenseFile=..\release\ABM AV Player\LICENSE
 Uninstallable=yes
+ChangesAssociations=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -87,6 +88,38 @@ Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociati
 Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".amr"; ValueData: "ABMAVPlayer.MediaFile"
 Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".mid"; ValueData: "ABMAVPlayer.MediaFile"
 Root: HKLM; Subkey: "Software\ABMAssets\ABM AV Player\Capabilities\FileAssociations"; ValueType: string; ValueName: ".midi"; ValueData: "ABMAVPlayer.MediaFile"
+Root: HKLM; Subkey: "Software\Classes\.mp4\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mkv\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.avi\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mov\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.wmv\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.m4v\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.webm\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mpg\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mpeg\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.ts\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.m2ts\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mts\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.flv\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.ogv\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.3gp\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.vob\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mp3\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.wav\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.flac\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.m4a\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.aac\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.ogg\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.opus\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.wma\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.aiff\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.ape\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.alac\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.ac3\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.dts\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.amr\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.mid\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\Classes\.midi\OpenWithProgids"; ValueType: string; ValueName: "ABMAVPlayer.MediaFile"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty
 Root: HKLM; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "ABM AV Player"; ValueData: "Software\ABMAssets\ABM AV Player\Capabilities"; Flags: uninsdeletevalue
 
 [Run]
