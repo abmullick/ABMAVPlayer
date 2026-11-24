@@ -404,10 +404,10 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",RECT{24,164,340,184},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasText(&g.canvas,L"DISCOVERED MEDIA",RECT{368,164,rc.right-24,184},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             int panelTop=190,panelBottom=rc.bottom-88,leftWidth=rc.right<900?280:330;
-            ABM_D2D_CanvasFillRound(&g.canvas,24,panelTop,24+leftWidth,panelBottom,12,ABM_THEME_COLOR_141D2A);
+            ABM_D2D_CanvasFillRound(&g.canvas,24.0f,(float)panelTop,(float)(24+leftWidth),(float)panelBottom,12.0f,ABM_THEME_COLOR_141D2A);
             ABM_D2D_CanvasStrokeRound(&g.canvas,24.5f,(float)panelTop+0.5f,(float)(24+leftWidth)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
             int rightLeft=24+leftWidth+12;
-            ABM_D2D_CanvasFillRound(&g.canvas,(float)rightLeft,panelTop,(float)(rc.right-24),panelBottom,12,ABM_THEME_COLOR_141D2A);
+            ABM_D2D_CanvasFillRound(&g.canvas,(float)rightLeft,(float)panelTop,(float)(rc.right-24),(float)panelBottom,12.0f,ABM_THEME_COLOR_141D2A);
             ABM_D2D_CanvasStrokeRound(&g.canvas,(float)rightLeft+0.5f,(float)panelTop+0.5f,(float)(rc.right-24)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
             ABM_D2D_CanvasEnd(&g.canvas);
         }
