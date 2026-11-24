@@ -5,6 +5,7 @@
 #include <commctrl.h>
 #include <shobjidl.h>
 #include <shlobj.h>
+#include <shellapi.h>
 #include <strsafe.h>
 #include <string>
 #include <vector>
@@ -29,7 +30,8 @@ namespace {
 enum { ML_ADD_FOLDER=7101, ML_ADD_DRIVES=7102, ML_SCAN_ALL=7103, ML_SCAN=7104,
        ML_STOP=7105, ML_PLAY=7107, ML_CLOSE=7108,
        ML_ROOTS=7110, ML_FILES=7111, ML_PROGRESS=7112,
-       ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116, ML_STATUS=7117 };
+       ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116, ML_STATUS=7117,
+       ML_CTX_OPEN=7121, ML_CTX_PLAY=7122, ML_CTX_REMOVE_ROOT=7123, ML_CTX_REMOVE_FILE=7124, ML_CTX_COPY_PATH=7125 };
 enum { ML_PROGRESS_MSG=WM_APP+0x6B1, ML_DONE_MSG=WM_APP+0x6B2 };
 static const size_t ML_PATH_CAP=32768;
 struct PathLess {
@@ -215,6 +217,85 @@ static void SortFiles(int column) {
     else {g.sortColumn=column;g.sortDescending=false;}
     RefreshFiles();
 }
+static void OpenContainingFolder(const std::wstring &path) {
+    if(path.empty())return;
+    std::wstring args=L"/select,\""+path+L"\"";
+    ShellExecuteW(nullptr,L"open",L"explorer.exe",args.c_str(),nullptr,SW_SHOWNORMAL);
+}
+static void ShowLibraryContextMenu(HWND child,int screenX,int screenY) {
+    if(!child||!IsWindow(child))return;
+    bool roots=(child==g.rootsList),files=(child==g.filesList);
+    if(!roots&&!files)return;
+    if(InterlockedCompareExchange(&g.scanning,0,0)!=0)return;
+    POINT pt={screenX,screenY};
+    int selected=-1;
+    if(screenX==-1&&screenY==-1) {
+        selected=(int)SendMessageW(child,LB_GETCURSEL,0,0);
+        RECT item={};
+        if(selected>=0&&SendMessageW(child,LB_GETITEMRECT,(WPARAM)selected,(LPARAM)&item)!=LB_ERR) {
+            pt.x=item.left+16;pt.y=item.top+(item.bottom-item.top)/2;
+            ClientToScreen(child,&pt);
+        } else {
+            RECT wr={};GetWindowRect(child,&wr);pt.x=wr.left+24;pt.y=wr.top+24;
+        }
+    } else {
+        POINT client=pt;ScreenToClient(child,&client);
+        DWORD hit=(DWORD)SendMessageW(child,LB_ITEMFROMPOINT,0,MAKELPARAM(client.x,client.y));
+        if(HIWORD(hit)!=0)return;
+        selected=(int)LOWORD(hit);
+    }
+    int count=(int)SendMessageW(child,LB_GETCOUNT,0,0);
+    if(selected<0||selected>=count)return;
+    SendMessageW(child,LB_SETCURSEL,(WPARAM)selected,0);
+    HMENU menu=CreatePopupMenu();if(!menu)return;
+    if(roots) {
+        AppendMenuW(menu,MF_STRING,ML_CTX_OPEN,L"Open folder");
+        AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+        AppendMenuW(menu,MF_STRING,ML_CTX_REMOVE_ROOT,L"Remove location");
+    } else {
+        AppendMenuW(menu,MF_STRING,ML_CTX_PLAY,L"Play");
+        AppendMenuW(menu,MF_STRING,ML_CTX_OPEN,L"Open containing folder");
+        AppendMenuW(menu,MF_SEPARATOR,0,nullptr);
+        AppendMenuW(menu,MF_STRING,ML_CTX_COPY_PATH,L"Copy full path");
+        AppendMenuW(menu,MF_STRING,ML_CTX_REMOVE_FILE,L"Remove from library");
+    }
+    int command=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON|TPM_NONOTIFY,pt.x,pt.y,0,g.window,nullptr);
+    DestroyMenu(menu);
+    if(!command)return;
+    if(roots&&selected<(int)g.roots.size()) {
+        const std::wstring path=g.roots[(size_t)selected];
+        if(command==ML_CTX_OPEN)ShellExecuteW(nullptr,L"open",path.c_str(),nullptr,nullptr,SW_SHOWNORMAL);
+        else if(command==ML_CTX_REMOVE_ROOT) {
+            g.roots.erase(g.roots.begin()+selected);
+            RefreshRoots();SavePaths(L"folders.tsv",g.roots);
+            SetStatusText(L"Scan location removed. Files already indexed remain in the library.");
+        }
+    } else if(files&&selected<(int)g.visibleFiles.size()) {
+        size_t fileIndex=g.visibleFiles[(size_t)selected];
+        if(fileIndex>=g.files.size())return;
+        const std::wstring path=g.files[fileIndex];
+        if(command==ML_CTX_PLAY) {
+            if(g.play)g.play(path.c_str());
+        } else if(command==ML_CTX_OPEN)OpenContainingFolder(path);
+        else if(command==ML_CTX_REMOVE_FILE) {
+            g.files.erase(g.files.begin()+(ptrdiff_t)fileIndex);
+            SavePaths(L"media.tsv",g.files);RefreshFiles();
+            SetStatusText(L"Media entry removed from the library. The file on disk was not deleted.");
+        } else if(command==ML_CTX_COPY_PATH) {
+            if(OpenClipboard(g.window)) {
+                EmptyClipboard();
+                size_t bytes=(path.size()+1)*sizeof(wchar_t);
+                HGLOBAL memory=GlobalAlloc(GMEM_MOVEABLE,bytes);
+                if(memory) {
+                    void *dest=GlobalLock(memory);
+                    if(dest){memcpy(dest,path.c_str(),bytes);GlobalUnlock(memory);SetClipboardData(CF_UNICODETEXT,memory);}
+                    else GlobalFree(memory);
+                }
+                CloseClipboard();
+            }
+        }
+    }
+}
 static void AddRoot(const wchar_t *path) {
     std::wstring value=TrimRoot(path);
     if(value.empty()||ContainsPath(g.roots,value))return;
@@ -391,6 +472,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
     }
     case WM_SIZE:Layout(w);return 0;
+    case WM_CONTEXTMENU:ShowLibraryContextMenu((HWND)wp,GET_X_LPARAM(lp),GET_Y_LPARAM(lp));return 0;
     case WM_CTLCOLOREDIT: {
         HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);SetBkColor(dc,ABM_THEME_COLOR_141D2A);
         static HBRUSH editBrush=nullptr;if(!editBrush)editBrush=CreateSolidBrush(ABM_THEME_COLOR_141D2A);return (LRESULT)editBrush;
