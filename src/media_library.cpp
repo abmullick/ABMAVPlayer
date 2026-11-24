@@ -265,8 +265,8 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
     if(!ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&d->rcItem))return;
     bool primary=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL||d->CtlID==ML_PLAY;
     COLORREF fill=primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737;
-    ABM_D2D_CanvasFillRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),8,fill);
-    ABM_D2D_CanvasStrokeRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),8,
+    ABM_D2D_CanvasFillRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),11,fill);
+    ABM_D2D_CanvasStrokeRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),11,
         (d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63,(d->itemState&ODS_FOCUS)?2.0f:1.0f);
     RECT text={0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
     ABM_D2D_CanvasText(&g.canvas,label,text,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -279,7 +279,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g.canvasReady=ABM_D2D_CanvasInit(&g.canvas);
         g.font=CreateFontW(-15,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g.smallFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
-        g.rootsList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_ROOTS,GetModuleHandleW(nullptr),nullptr);
+        g.rootsList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_ROOTS,GetModuleHandleW(nullptr),nullptr);
         g.filesList=CreateWindowExW(WS_EX_CLIENTEDGE,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_FILES,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g.rootsList,WM_SETFONT,(WPARAM)g.font,TRUE);SendMessageW(g.filesList,WM_SETFONT,(WPARAM)g.font,TRUE);
         const int ids[8]={ML_ADD_FOLDER,ML_ADD_DRIVES,ML_SCAN_ALL,ML_SCAN,ML_STOP,ML_REMOVE,ML_PLAY,ML_CLOSE};
@@ -287,7 +287,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         for(int i=0;i<8;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
         g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,w,nullptr,GetModuleHandleW(nullptr),nullptr);
         g.progress=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
-        SendMessageW(g.progress,PBM_SETRANGE32,0,100);SendMessageW(g.progress,PBM_SETMARQUEE,FALSE,0);
+        SendMessageW(g.progress,PBM_SETRANGE32,0,100);SendMessageW(g.progress,PBM_SETBKCOLOR,0,ABM_THEME_COLOR_141D2A);SendMessageW(g.progress,PBM_SETBARCOLOR,0,ABM_THEME_COLOR_187E74);SendMessageW(g.progress,PBM_SETMARQUEE,FALSE,0);
         LoadPaths(L"folders.tsv",g.roots);LoadPaths(L"media.tsv",g.files);RefreshRoots();RefreshFiles();
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
     }
@@ -357,6 +357,13 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasText(&g.canvas,L"Discover and index local audio and video files",RECT{24,42,720,62},ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",RECT{24,108,340,130},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasText(&g.canvas,L"DISCOVERED MEDIA",RECT{366,108,rc.right-24,130},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            /* Rounded panel frames match the main dashboard surfaces. */
+            int panelTop=136,panelBottom=rc.bottom-86,leftWidth=rc.right<900?280:330;
+            ABM_D2D_CanvasFillRound(&g.canvas,24,panelTop,24+leftWidth,panelBottom,12,ABM_THEME_COLOR_141D2A);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,24.5f,(float)panelTop+0.5f,(float)(24+leftWidth)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
+            int rightLeft=24+leftWidth+12;
+            ABM_D2D_CanvasFillRound(&g.canvas,(float)rightLeft,panelTop,(float)(rc.right-24),panelBottom,12,ABM_THEME_COLOR_141D2A);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,(float)rightLeft+0.5f,(float)panelTop+0.5f,(float)(rc.right-24)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
             ABM_D2D_CanvasEnd(&g.canvas);
         }
         EndPaint(w,&ps);return 0;
