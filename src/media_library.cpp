@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cwctype>
 #include <cstdio>
+#include <new>
 #include "media_library.h"
 #include "ui_d2d.h"
 #include "ui_theme.h"
