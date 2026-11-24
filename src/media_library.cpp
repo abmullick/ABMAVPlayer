@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <windowsx.h>
 #include <dwmapi.h>
 #include <uxtheme.h>
 #include <commctrl.h>
@@ -13,6 +14,7 @@
 #include <algorithm>
 #include <cwctype>
 #include <cwchar>
+#include <cstring>
 #include <cstdio>
 #include <new>
 #include <utility>
