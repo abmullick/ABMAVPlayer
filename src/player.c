@@ -716,7 +716,7 @@ static void Panel(HDC dc,RECT r,COLORREF fill,COLORREF edge,int radius) {
     COLORREF hairline=Blend(fill,edge,22);
     ABM_D2D_StrokeRound(&g_ui,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)radius,hairline,0.75f);
 }
-static void DrawLine(HDC dc,int x1,int y1,int x2,int y2,COLORREF color,int width) { (void)dc;ABM_D2D_Line(&g_ui,(float)x1,(float)y1,(float)x2,(float)y2,color,(float)width); }
+static void DrawLine(HDC dc,int x1,int y1,int x2,int y2,COLORREF color,float width) { (void)dc;ABM_D2D_Line(&g_ui,(float)x1,(float)y1,(float)x2,(float)y2,color,width); }
 static void Txt(HDC dc, const wchar_t *s, RECT r, COLORREF c, HFONT f, UINT flags) { (void)dc;int style=(f==g_smallFont)?1:((f==g_headingFont)?2:0);ABM_D2D_Text(&g_ui,s,r,c,style,flags); }
 static BOOL Inside(RECT r,int x,int y) { return x>=r.left && x<r.right && y>=r.top && y<r.bottom; }
 static BOOL ContainsTextI(const wchar_t *text,const wchar_t *query) { if(!query||!query[0])return TRUE;if(!text)return FALSE;size_t n=wcslen(query);for(const wchar_t *s=text;*s;s++)if(!_wcsnicmp(s,query,n))return TRUE;return FALSE; }
@@ -2082,7 +2082,7 @@ static void DrawUI(HDC dc,RECT client) {
                 int cardW=card.right-card.left, cardH=card.bottom-card.top;
                 /* Premium desktop treatment: small unboxed line icons, not app-tile glyphs. */
                 int iconX=card.left+18, iconY=card.top+cardH/2;
-                COLORREF iconColor=Blend(ABM_THEME_COLOR_9EB5C9,ABM_THEME_COLOR_8CE0D2,motion);
+                COLORREF iconColor=Blend(ABM_THEME_COLOR_9EB5C9,ABM_THEME_COLOR_7EC7B5,motion);
                 if(i==0) { /* open folder */
                     ABM_D2D_StrokeRound(&g_ui,(float)iconX,(float)(iconY-5),(float)(iconX+20),(float)(iconY+8),2.5f,iconColor,1.35f);
                     DrawLine(dc,iconX,iconY-2,iconX+8,iconY-2,iconColor,1);
