@@ -2071,7 +2071,6 @@ static void DrawUI(HDC dc,RECT client) {
             RECT cards[5]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT,R_HOME_LIBRARY};
             const wchar_t *titles[5]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Home Theatre",L"Media Library"};
             const wchar_t *subs[5]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Movies, shows and artwork",L"Scan drives and folders"};
-            const wchar_t *glyphs[5]={L"+",L"TV",L"↗",L"▶",L"▦"};
             for(int i=0;i<5;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
@@ -2081,11 +2080,44 @@ static void DrawUI(HDC dc,RECT client) {
                 else GradientRound(dc,card,Blend(ABM_THEME_COLOR_142535,ABM_THEME_COLOR_1D3A4C,motion),ABM_THEME_COLOR_0D1927,13);
                 ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,cardEdge,0.85f+(float)motion*0.005f);
                 int cardW=card.right-card.left, cardH=card.bottom-card.top;
-                int iconSize=cardW<180?30:36, iconLeft=card.left+(cardW<180?10:12);
-                RECT icon={iconLeft,card.top+(cardH-iconSize)/2,iconLeft+iconSize,card.top+(cardH+iconSize)/2};
-                RoundBox(dc,icon,Blend((i==0)?ABM_THEME_COLOR_279D8F:ABM_THEME_COLOR_1D3847,ABM_THEME_COLOR_2CAB9A,motion),9);
-                Txt(dc,glyphs[i],icon,ABM_THEME_COLOR_E2F7F5,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-                int textLeft=icon.right+10;
+                /* Premium desktop treatment: small unboxed line icons, not app-tile glyphs. */
+                int iconX=card.left+18, iconY=card.top+cardH/2;
+                COLORREF iconColor=Blend(ABM_THEME_COLOR_9EB5C9,ABM_THEME_COLOR_8CE0D2,motion);
+                if(i==0) { /* open folder */
+                    ABM_D2D_StrokeRound(&g_ui,(float)iconX,(float)(iconY-5),(float)(iconX+20),(float)(iconY+8),2.5f,iconColor,1.35f);
+                    DrawLine(dc,iconX,iconY-2,iconX+8,iconY-2,iconColor,1);
+                    DrawLine(dc,iconX+1,iconY-5,iconX+7,iconY-9,iconColor,1);
+                    DrawLine(dc,iconX+7,iconY-9,iconX+13,iconY-9,iconColor,1);
+                } else if(i==1) { /* display */
+                    ABM_D2D_StrokeRound(&g_ui,(float)iconX,(float)(iconY-8),(float)(iconX+21),(float)(iconY+5),2.5f,iconColor,1.35f);
+                    DrawLine(dc,iconX+10,iconY+5,iconX+10,iconY+9,iconColor,1);
+                    DrawLine(dc,iconX+5,iconY+9,iconX+16,iconY+9,iconColor,1);
+                } else if(i==2) { /* download / torrent */
+                    DrawLine(dc,iconX+10,iconY-9,iconX+10,iconY+3,iconColor,1.6f);
+                    DrawLine(dc,iconX+5,iconY-2,iconX+10,iconY+3,iconColor,1.6f);
+                    DrawLine(dc,iconX+15,iconY-2,iconX+10,iconY+3,iconColor,1.6f);
+                    DrawLine(dc,iconX+3,iconY+8,iconX+17,iconY+8,iconColor,1.4f);
+                    DrawLine(dc,iconX+3,iconY+8,iconX+3,iconY+5,iconColor,1.4f);
+                    DrawLine(dc,iconX+17,iconY+8,iconX+17,iconY+5,iconColor,1.4f);
+                } else if(i==3) { /* cinema slate with play mark */
+                    DrawLine(dc,iconX,iconY-7,iconX+20,iconY-7,iconColor,1.4f);
+                    DrawLine(dc,iconX,iconY-7,iconX+2,iconY+8,iconColor,1.4f);
+                    DrawLine(dc,iconX+20,iconY-7,iconX+18,iconY+8,iconColor,1.4f);
+                    DrawLine(dc,iconX+2,iconY+8,iconX+18,iconY+8,iconColor,1.4f);
+                    DrawLine(dc,iconX+2,iconY-3,iconX+18,iconY-3,iconColor,1.1f);
+                    DrawLine(dc,iconX+4,iconY-7,iconX+8,iconY-3,iconColor,1.1f);
+                    DrawLine(dc,iconX+11,iconY-7,iconX+15,iconY-3,iconColor,1.1f);
+                    DrawLine(dc,iconX+8,iconY,iconX+13,iconY+2,iconColor,1.2f);
+                    DrawLine(dc,iconX+13,iconY+2,iconX+8,iconY+5,iconColor,1.2f);
+                    DrawLine(dc,iconX+8,iconY+5,iconX+8,iconY,iconColor,1.2f);
+                } else { /* media library rows */
+                    for(int row=0;row<3;row++) {
+                        int yy=iconY-7+row*6;
+                        ABM_D2D_StrokeRound(&g_ui,(float)iconX,(float)yy,(float)(iconX+3),(float)(yy+3),1.0f,iconColor,1.0f);
+                        DrawLine(dc,iconX+7,yy+1,iconX+20,yy+1,iconColor,1.2f);
+                    }
+                }
+                int textLeft=iconX+30;
                 int titleTop=cardH>=70?10:6, titleBottom=cardH>=70?39:cardH/2+2;
                 int subTop=cardH>=70?38:cardH/2, subBottom=cardH>=70?cardH-8:cardH-5;
                 RECT title={textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
