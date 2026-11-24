@@ -9871,7 +9871,7 @@ static void EnableDpiAwareness(void) {
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     EnableDpiAwareness();
-    (void)prev;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
+    (void)prev;(void)cmd;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
     /* Load the user's palette before the activation UI is shown. */
     LoadThemePreference();
     /* Licensing is an independent gate; no playback, torrent or casting state is initialized before access is granted. */
