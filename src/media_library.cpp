@@ -411,9 +411,9 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 if(d->CtlID==ML_STATUS){
                     wchar_t text[512]={};GetWindowTextW(d->hwndItem,text,_countof(text));
                     ABM_D2D_CanvasFill(&g.canvas,0,0,width,height,ABM_THEME_COLOR_090F19);
-                    ABM_D2D_CanvasText(&g.canvas,text,RECT{0,0,(LONG)width,(LONG)height},ABM_THEME_COLOR_B8C9D9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    ABM_D2D_CanvasText(&g.canvas,text,RECT{0,0,(LONG)width,(LONG)height},ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 } else {
-                    ABM_D2D_CanvasFillRound(&g.canvas,0,2,width,height-2,4,ABM_THEME_COLOR_273747);
+                    ABM_D2D_CanvasFillRound(&g.canvas,0,2,width,height-2,4,ABM_UI_COLOR_BORDER);
                     if(InterlockedCompareExchange(&g.scanning,0,0))
                         ABM_D2D_CanvasFillRound(&g.canvas,0,2,width*0.24f,height-2,4,ABM_THEME_COLOR_36B1A8);
                 }
@@ -524,8 +524,8 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasFillRound(&g.canvas,(float)rightLeft,(float)panelTop,(float)(rc.right-24),(float)panelBottom,12.0f,ABM_THEME_COLOR_141D2A);
             ABM_D2D_CanvasStrokeRound(&g.canvas,(float)rightLeft+0.5f,(float)panelTop+0.5f,(float)(rc.right-24)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
             /* Shared Direct2D search surface; native EDIT is borderless and inset. */
-            ABM_D2D_CanvasFillRound(&g.canvas,(float)(rightLeft+12),(float)(panelTop+12),(float)(rc.right-36),(float)(panelTop+48),7.0f,ABM_THEME_COLOR_101A28);
-            ABM_D2D_CanvasStrokeRound(&g.canvas,(float)(rightLeft+12.5f),(float)(panelTop+12.5f),(float)(rc.right-36.5f),(float)(panelTop+47.5f),7.0f,ABM_THEME_COLOR_3B596B,1.0f);
+            ABM_D2D_CanvasFillRound(&g.canvas,(float)(rightLeft+12),(float)(panelTop+12),(float)(rc.right-36),(float)(panelTop+48),7.0f,ABM_UI_COLOR_INPUT);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,(float)(rightLeft+12.5f),(float)(panelTop+12.5f),(float)(rc.right-36.5f),(float)(panelTop+47.5f),7.0f,ABM_UI_COLOR_BORDER_STRONG,1.0f);
             ABM_D2D_CanvasEnd(&g.canvas);
         }
         EndPaint(w,&ps);return 0;
