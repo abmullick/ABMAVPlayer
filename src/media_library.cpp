@@ -439,7 +439,7 @@ extern "C" void ABM_MediaLibrary_Show(HWND owner,ABM_MediaLibraryPlayFn playCall
     HWND window=CreateWindowExW(WS_EX_APPWINDOW,L"ABMAVPlayer.MediaLibrary",L"ABM AV Player — Media Library",
         WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,width,height,owner,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!window)return;
-    HICON appIcon=LoadIconW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(1));
+    HICON appIcon=LoadIconW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(101));
     if(appIcon){SendMessageW(window,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(window,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
     /* Use the same Windows 11 dark caption and rounded frame policy as Home Theatre. */
     { BOOL dark=TRUE; DwmSetWindowAttribute(window,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark)); DWM_WINDOW_CORNER_PREFERENCE corners=DWMWCP_ROUND; DwmSetWindowAttribute(window,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners)); }
