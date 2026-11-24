@@ -93,7 +93,7 @@ static std::wstring EnumeratePath(const std::wstring &path) {
     return L"\\\\?\\"+path;
 }
 static void SetStatusText(const wchar_t *text) {
-    if(g.status&&IsWindow(g.status))SetWindowTextW(g.status,text?text:L"");
+    if(g.status&&IsWindow(g.status)){SetWindowTextW(g.status,text?text:L"");InvalidateRect(g.status,nullptr,FALSE);}
 }
 static std::wstring DataFolder() {
     wchar_t local[ML_PATH_CAP]={};
