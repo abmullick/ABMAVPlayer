@@ -103,7 +103,7 @@ static void SavePaths(const wchar_t *name,const std::vector<std::wstring> &items
     FILE *fp=nullptr;if(_wfopen_s(&fp,temp.c_str(),L"wt, ccs=UTF-8")!=0||!fp)return;
     for(const auto &item:items) {
         if(item.find_first_of(L"\r\n\t")!=std::wstring::npos)continue;
-        fwprintf(fp,L"%s\n",item.c_str());
+        fwprintf(fp,L"%ls\n",item.c_str());
     }
     bool ok=ferror(fp)==0;fclose(fp);
     if(!ok||!MoveFileExW(temp.c_str(),target.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))
@@ -132,6 +132,11 @@ static void RefreshRoots() {
 static void RefreshFiles() {
     if(!g.filesList)return;
     SendMessageW(g.filesList,LB_RESETCONTENT,0,0);
+    if(!g.files.empty()) {
+        size_t reserveBytes=g.files.size()*96;
+        if(reserveBytes>0x7fffffff)reserveBytes=0x7fffffff;
+        SendMessageW(g.filesList,LB_INITSTORAGE,(WPARAM)g.files.size(),(LPARAM)reserveBytes);
+    }
     for(const auto &path:g.files) {
         const wchar_t *leaf=wcsrchr(path.c_str(),L'\\');
         std::wstring label=(leaf&&leaf[1])?leaf+1:path;
