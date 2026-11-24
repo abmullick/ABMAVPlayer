@@ -29,7 +29,7 @@ namespace {
 enum { ML_ADD_FOLDER=7101, ML_ADD_DRIVES=7102, ML_SCAN_ALL=7103, ML_SCAN=7104,
        ML_STOP=7105, ML_PLAY=7107, ML_CLOSE=7108,
        ML_ROOTS=7110, ML_FILES=7111, ML_PROGRESS=7112,
-       ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116 };
+       ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116, ML_STATUS=7117 };
 enum { ML_PROGRESS_MSG=WM_APP+0x6B1, ML_DONE_MSG=WM_APP+0x6B2 };
 static const size_t ML_PATH_CAP=32768;
 struct PathLess {
@@ -292,7 +292,7 @@ static void StartScan() {
     EnableWindow(g.buttons[0],FALSE);EnableWindow(g.buttons[1],FALSE);
     EnableWindow(g.buttons[2],FALSE);EnableWindow(g.buttons[3],FALSE);
     EnableWindow(g.buttons[4],TRUE);EnableWindow(g.buttons[5],FALSE);
-    SendMessageW(g.progress,PBM_SETMARQUEE,TRUE,0);
+    InvalidateRect(g.progress,nullptr,FALSE);
     EnableWindow(g.filesList,FALSE);EnableWindow(g.searchEdit,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],FALSE);
     SetStatusText(L"Scanning selected locations in the background…");
@@ -309,6 +309,7 @@ static void FinishScan() {
     for(int i=0;i<4;i++)EnableWindow(g.buttons[i],TRUE);
     EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);
     EnableWindow(g.filesList,TRUE);EnableWindow(g.searchEdit,TRUE);
+    InvalidateRect(g.progress,nullptr,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],TRUE);
     if(g.closePending&&g.window)DestroyWindow(g.window);
 }
@@ -318,7 +319,7 @@ static void Layout(HWND w) {
     int leftWidth=width<900?280:330;
     int rightLeft=margin+leftWidth+gap,rightWidth=width-margin-rightLeft;
     if(g.rootsList)SetWindowPos(g.rootsList,nullptr,margin,top,leftWidth,height-top-footer,SWP_NOZORDER);
-    if(g.searchEdit)SetWindowPos(g.searchEdit,nullptr,rightLeft+12,top+12,rightWidth-24,34,SWP_NOZORDER);
+    if(g.searchEdit)SetWindowPos(g.searchEdit,nullptr,rightLeft+17,top+17,rightWidth-34,24,SWP_NOZORDER);
     int colY=top+54,nameW=(rightWidth-24)*48/100,typeW=(rightWidth-24)*20/100;
     if(g.sortButtons[0])SetWindowPos(g.sortButtons[0],nullptr,rightLeft+12,colY,nameW,28,SWP_NOZORDER);
     if(g.sortButtons[1])SetWindowPos(g.sortButtons[1],nullptr,rightLeft+12+nameW,colY,typeW,28,SWP_NOZORDER);
@@ -364,7 +365,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g.smallFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g.rootsList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_ROOTS,GetModuleHandleW(nullptr),nullptr);
         g.filesList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_FILES,GetModuleHandleW(nullptr),nullptr);
-        g.searchEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,0,0,10,10,w,(HMENU)ML_SEARCH,GetModuleHandleW(nullptr),nullptr);
+        g.searchEdit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,0,0,10,10,w,(HMENU)ML_SEARCH,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g.searchEdit,WM_SETFONT,(WPARAM)g.font,TRUE);
         SendMessageW(g.searchEdit,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search by file name, type or folder...");
         const int sortIds[3]={ML_SORT_NAME,ML_SORT_TYPE,ML_SORT_LOCATION};
@@ -376,9 +377,8 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         const int ids[7]={ML_ADD_FOLDER,ML_ADD_DRIVES,ML_SCAN_ALL,ML_SCAN,ML_STOP,ML_PLAY,ML_CLOSE};
         const wchar_t *labels[7]={L"Add folder",L"Add drives",L"Scan computer",L"Scan now",L"Stop",L"Play selected",L"Close"};
         for(int i=0;i<7;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
-        g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,w,nullptr,GetModuleHandleW(nullptr),nullptr);
-        g.progress=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
-        SendMessageW(g.progress,PBM_SETRANGE32,0,100);SendMessageW(g.progress,PBM_SETBKCOLOR,0,ABM_THEME_COLOR_141D2A);SendMessageW(g.progress,PBM_SETBARCOLOR,0,ABM_THEME_COLOR_187E74);SendMessageW(g.progress,PBM_SETMARQUEE,FALSE,0);
+        g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,w,(HMENU)ML_STATUS,GetModuleHandleW(nullptr),nullptr);
+        g.progress=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
         LoadPaths(L"folders.tsv",g.roots);LoadPaths(L"media.tsv",g.files);RefreshRoots();RefreshFiles();
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
     }
@@ -404,6 +404,23 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;
         if(!d)return TRUE;
         if(d->CtlType==ODT_BUTTON){DrawButton(d);return TRUE;}
+        if(d->CtlType==ODT_STATIC&&(d->CtlID==ML_STATUS||d->CtlID==ML_PROGRESS)){
+            RECT r=d->rcItem;
+            if(ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&r)){
+                float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
+                if(d->CtlID==ML_STATUS){
+                    wchar_t text[512]={};GetWindowTextW(d->hwndItem,text,_countof(text));
+                    ABM_D2D_CanvasFill(&g.canvas,0,0,width,height,ABM_THEME_COLOR_090F19);
+                    ABM_D2D_CanvasText(&g.canvas,text,RECT{0,0,(LONG)width,(LONG)height},ABM_THEME_COLOR_B8C9D9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                } else {
+                    ABM_D2D_CanvasFillRound(&g.canvas,0,2,width,height-2,4,ABM_THEME_COLOR_273747);
+                    if(InterlockedCompareExchange(&g.scanning,0,0))
+                        ABM_D2D_CanvasFillRound(&g.canvas,0,2,width*0.24f,height-2,4,ABM_THEME_COLOR_36B1A8);
+                }
+                ABM_D2D_CanvasEnd(&g.canvas);
+            }
+            return TRUE;
+        }
         if(d->CtlType==ODT_LISTBOX&&(d->CtlID==ML_ROOTS||d->CtlID==ML_FILES)){
             if(d->itemID==(UINT)-1)return TRUE;
             wchar_t label[ML_PATH_CAP]={};
@@ -456,7 +473,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(LOWORD(wp)==ML_FILES&&HIWORD(wp)==LBN_DBLCLK) {
             int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
-            if(selected>=0&&selected<(int)g.files.size()&&g.play)g.play(g.files[(size_t)selected].c_str());
+            if(selected>=0&&selected<(int)g.visibleFiles.size()&&g.play)g.play(g.files[g.visibleFiles[(size_t)selected]].c_str());
             return 0;
         }
         return 0;
@@ -506,6 +523,9 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             int rightLeft=24+leftWidth+12;
             ABM_D2D_CanvasFillRound(&g.canvas,(float)rightLeft,(float)panelTop,(float)(rc.right-24),(float)panelBottom,12.0f,ABM_THEME_COLOR_141D2A);
             ABM_D2D_CanvasStrokeRound(&g.canvas,(float)rightLeft+0.5f,(float)panelTop+0.5f,(float)(rc.right-24)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
+            /* Shared Direct2D search surface; native EDIT is borderless and inset. */
+            ABM_D2D_CanvasFillRound(&g.canvas,(float)(rightLeft+12),(float)(panelTop+12),(float)(rc.right-36),(float)(panelTop+48),7.0f,ABM_THEME_COLOR_101A28);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,(float)(rightLeft+12.5f),(float)(panelTop+12.5f),(float)(rc.right-36.5f),(float)(panelTop+47.5f),7.0f,ABM_THEME_COLOR_3B596B,1.0f);
             ABM_D2D_CanvasEnd(&g.canvas);
         }
         EndPaint(w,&ps);return 0;
