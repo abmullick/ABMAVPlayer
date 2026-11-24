@@ -1,3 +1,23 @@
+# ABM AV Player v1.1.6 — Media Library and Windows file associations
+
+## What's new
+
+- Added a dedicated **Media Library** manager to the idle dashboard. Users can add folders, add available fixed/removable drives, or scan the computer's fixed drives.
+- Added recursive discovery of supported local audio and video extensions. The scanner runs on a below-normal-priority worker, supports cancellation, skips common Windows/system directories and does not follow directory junctions or symbolic-link folders.
+- Persisted configured scan locations and the discovered media-path index under `%LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary`. The first scan is intentionally user-initiated; network drives are not included in Scan computer.
+- Added selection and double-click playback from the Media Library. Selected files are appended to the existing playlist and opened through the existing LibVLC playback path; no separate playback engine or media-file copying is introduced.
+- Registered supported audio/video extensions and a ProgID through the installer so ABM AV Player appears as a Windows default-app candidate. Added a **Set default player** action that opens Windows Default apps. Windows still requires the user to approve file-type associations.
+- Added command-line media-path handling so files opened through Windows file associations are appended to the saved playlist and played through the normal engine.
+
+## Validation
+
+- Source changes are committed on `main`; the Windows build and runtime acceptance tests for this source candidate have not yet been run.
+- On Windows, rebuild with `build.bat`, then validate folder and drive selection, recursive scanning, cancellation, persistence across restarts, duplicate suppression, long/unavailable paths, removable-drive behaviour, file-association selection and Explorer double-click launch.
+- Test that scanning never blocks or interrupts active playback, and run playback, Home Theatre, Streaming Centre, Torrent Stream, casting and installer-upgrade regression checks before publishing.
+- This source candidate is versioned as 1.1.6. Do not publish an installer until the Windows build and acceptance checks pass.
+
+---
+
 # ABM AV Player v1.1.5 — Command Centre interaction fix
 
 ## What's new
