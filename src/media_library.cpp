@@ -264,9 +264,15 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
     if(!d||!g.canvasReady)return;
     wchar_t label[96]={};GetWindowTextW(d->hwndItem,label,_countof(label));
     if(!ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&d->rcItem))return;
+    const float buttonWidth=(float)(d->rcItem.right-d->rcItem.left);
+    const float buttonHeight=(float)(d->rcItem.bottom-d->rcItem.top);
+    /* Owner-drawn buttons must paint the entire item rectangle. Without this,
+       the native BUTTON class leaves its default white background visible in
+       the four square corners outside the rounded ABM surface. */
+    ABM_D2D_CanvasFill(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,ABM_THEME_COLOR_090F19);
     bool primary=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL||d->CtlID==ML_PLAY;
     COLORREF fill=primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737;
-    ABM_D2D_CanvasFillRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),11,fill);
+    ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
     ABM_D2D_CanvasStrokeRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),11,
         (d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63,(d->itemState&ODS_FOCUS)?2.0f:1.0f);
     RECT text={0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
