@@ -391,8 +391,8 @@ static BOOL g_overlayPlaying = FALSE;
 static RECT R_VIDEO, R_SIDEBAR, R_LIST, R_SEEK, R_PLAY, R_PREV, R_NEXT, R_STOP, R_OPEN, R_SCAN, R_VOLUME, R_RECEIVER, R_RECEIVER_LIST, R_AUDIO_BUTTON, R_AUDIO_PANEL, R_AUDIO_ITEMS[12];
 static RECT R_ROW[MAX_PLAYLIST],R_FAVORITE[MAX_PLAYLIST];
 static RECT R_SHUFFLE, R_REPEAT, R_SPEED, R_RECENT, R_CLEAR_PLAYLIST;
-static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT;
-static int g_homeCardMotion[4]={0,0,0,0};
+static RECT R_HOME_OPEN, R_HOME_STREAM, R_HOME_TORRENT, R_HOME_RECENT, R_HOME_LIBRARY;
+static int g_homeCardMotion[5]={0,0,0,0,0};
 static RECT R_SEARCH, R_TAB_QUEUE, R_TAB_LIBRARY, R_FILTER_ALL, R_FILTER_AUDIO, R_FILTER_VIDEO, R_GROUP;
 static wchar_t g_searchText[128]=L"";
 static BOOL g_searchFocused=FALSE;
@@ -1354,19 +1354,19 @@ static void UpdateLayout(HWND hwnd) {
         int panelW=hero.right-hero.left, panelH=hero.bottom-hero.top;
         /* Balanced 2 x 2 shortcut grid, right-aligned within the hero panel
            with a deliberate inset so it does not touch the panel edge. */
-        int cardGap=12, rowGap=12, footGap=12, footH=20;
-        int cardH=66, x, y, cardW;
+        int cardGap=12, rowGap=10, footGap=10, footH=18;
+        int cardH=58, x, y, cardW;
         int gridW=panelW*78/100;
         if(gridW>456)gridW=456;
         if(gridW>panelW-48)gridW=panelW-48;
         if(gridW<260)gridW=panelW-24;
         cardW=(gridW-cardGap)/2;
-        int totalH=2*cardH+rowGap+footGap+footH;
+        int totalH=3*cardH+2*rowGap+footGap+footH;
         if(totalH>panelH-20) {
-            cardH=(panelH-20-rowGap-footGap-footH)/2;
-            if(cardH>66)cardH=66;
-            if(cardH<44)cardH=44;
-            totalH=2*cardH+rowGap+footGap+footH;
+            cardH=(panelH-20-2*rowGap-footGap-footH)/3;
+            if(cardH>58)cardH=58;
+            if(cardH<38)cardH=38;
+            totalH=3*cardH+2*rowGap+footGap+footH;
         }
         x=hero.right-28-gridW;
         y=hero.top+(panelH-totalH)/2;
@@ -1376,6 +1376,7 @@ static void UpdateLayout(HWND hwnd) {
         R_HOME_STREAM=(RECT){rightX,y,rightX+cardW,y+cardH};
         R_HOME_TORRENT=(RECT){x,y+cardH+rowGap,x+cardW,y+2*cardH+rowGap};
         R_HOME_RECENT=(RECT){rightX,y+cardH+rowGap,rightX+cardW,y+2*cardH+rowGap};
+        R_HOME_LIBRARY=(RECT){x,y+2*(cardH+rowGap),x+cardW,y+3*cardH+2*rowGap};
     }
     if(g_fullscreen) {
         R_VIDEO=(RECT){0,0,w,h};
@@ -2067,11 +2068,11 @@ static void DrawUI(HDC dc,RECT client) {
            decorative album stack. Each card has a generous hit target and
            remains visible only while the player is idle. */
         {
-            RECT cards[4]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT};
-            const wchar_t *titles[4]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Home Theatre"};
-            const wchar_t *subs[4]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Movies, shows and artwork"};
-            const wchar_t *glyphs[4]={L"+",L"TV",L"↗",L"▶"};
-            for(int i=0;i<4;i++) {
+            RECT cards[5]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT,R_HOME_LIBRARY};
+            const wchar_t *titles[5]={L"Open media",L"Streaming Centre",L"Torrent Stream",L"Home Theatre",L"Media Library"};
+            const wchar_t *subs[5]={L"Browse files and folders",L"Your streaming services",L"Play from a torrent",L"Movies, shows and artwork",L"Scan drives and folders"};
+            const wchar_t *glyphs[5]={L"+",L"TV",L"↗",L"▶",L"▦"};
+            for(int i=0;i<5;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
                 COLORREF cardEdge=Blend((i==0)?ABM_THEME_COLOR_449A8F:ABM_THEME_COLOR_334F65,ABM_THEME_COLOR_68C9B8,motion);
@@ -9220,9 +9221,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            This is paint-only: no video child movement, decoding or I/O. */
         if(!g_hasMedia&&!g_drawerOpen&&!g_menuOpen&&!g_fullscreen) {
             POINT homeMouse={-1,-1};BOOL haveHomeMouse=GetCursorPos(&homeMouse)&&ScreenToClient(hwnd,&homeMouse);
-            RECT homeCards[4]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT};
+            RECT homeCards[5]={R_HOME_OPEN,R_HOME_STREAM,R_HOME_TORRENT,R_HOME_RECENT,R_HOME_LIBRARY};
             BOOL changed=FALSE;
-            for(int ci=0;ci<4;ci++) {
+            for(int ci=0;ci<5;ci++) {
                 int target=haveHomeMouse&&Inside(homeCards[ci],homeMouse.x,homeMouse.y)?100:0;
                 int before=g_homeCardMotion[ci];
                 g_homeCardMotion[ci]=EaseToward(before,target,34);
@@ -9230,7 +9231,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             }
             if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         } else {
-            BOOL changed=FALSE;for(int ci=0;ci<4;ci++){int before=g_homeCardMotion[ci];g_homeCardMotion[ci]=EaseToward(before,0,40);if(before!=g_homeCardMotion[ci])changed=TRUE;}
+            BOOL changed=FALSE;for(int ci=0;ci<5;ci++){int before=g_homeCardMotion[ci];g_homeCardMotion[ci]=EaseToward(before,0,40);if(before!=g_homeCardMotion[ci])changed=TRUE;}
             if(changed)InvalidateRect(hwnd,&R_VIDEO,FALSE);
         }
         g_visualPulse=(g_visualPulse+1)%10000;
@@ -9481,6 +9482,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(Inside(R_HOME_STREAM,x,y)){ABM_Streaming_Show(hwnd);ReleaseCapture();return 0;}
             if(Inside(R_HOME_TORRENT,x,y)){ShowTorrentWindow(hwnd);ReleaseCapture();return 0;}
             if(Inside(R_HOME_RECENT,x,y)){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);ReleaseCapture();return 0;}
+            if(Inside(R_HOME_LIBRARY,x,y)){ABM_MediaLibrary_Show(hwnd,MediaLibraryPlay);ReleaseCapture();return 0;}
         }
         SetCapture(hwnd);
         if(Inside(R_OPEN,x,y)){AddFiles();ReleaseCapture();return 0;}
