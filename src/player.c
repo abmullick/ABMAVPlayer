@@ -10016,13 +10016,15 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
        line. Preserve the saved playlist, append only existing non-directory
        files, and route the first supplied item through the ordinary player. */
     int commandArgCount=0,firstCommandMedia=-1;
+    BOOL commandMediaSkipped=FALSE;
     LPWSTR *commandArgs=CommandLineToArgvW(GetCommandLineW(),&commandArgCount);
-    for(int ai=1;commandArgs&&ai<commandArgCount&&g_playlistCount<MAX_PLAYLIST;ai++) {
+    for(int ai=1;commandArgs&&ai<commandArgCount;ai++) {
         DWORD attributes=GetFileAttributesW(commandArgs[ai]);
         if(attributes==INVALID_FILE_ATTRIBUTES||(attributes&FILE_ATTRIBUTE_DIRECTORY))continue;
         int existing=-1;
         for(int pi=0;pi<g_playlistCount;pi++)if(!_wcsicmp(g_playlist[pi],commandArgs[ai])){existing=pi;break;}
         if(existing>=0){if(firstCommandMedia<0)firstCommandMedia=existing;continue;}
+        if(g_playlistCount>=MAX_PLAYLIST){commandMediaSkipped=TRUE;continue;}
         int added=g_playlistCount++;
         wcsncpy_s(g_playlist[added],PATH_CAP,commandArgs[ai],_TRUNCATE);
         if(firstCommandMedia<0)firstCommandMedia=added;
@@ -10032,6 +10034,8 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
         g_selected=firstCommandMedia;
         RefreshMissingMediaFlags();SavePersistentState();
         PlayIndex(firstCommandMedia);
+    } else if(commandMediaSkipped) {
+        ABM_MessageBoxW(hwnd,L"The playlist is full. Remove an item before opening another file.",APP_NAME,MB_ICONINFORMATION);
     }
     MSG m;while(GetMessageW(&m,NULL,0,0)>0){TranslateMessage(&m);DispatchMessageW(&m);}
     if(g_headingFont)DeleteObject(g_headingFont);if(g_smallFont)DeleteObject(g_smallFont);if(g_font)DeleteObject(g_font);if(g_videoBrush)DeleteObject(g_videoBrush);if(g_comboBrush)DeleteObject(g_comboBrush);DeleteCriticalSection(&g_rendererLock);
