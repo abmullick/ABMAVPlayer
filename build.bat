@@ -161,6 +161,10 @@ echo [12.5/14] Compiling Home Theatre...
 cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\home_theatre.cpp /Fo:build\home_theatre.obj
 if errorlevel 1 goto build_failed
 
+echo [12.6/14] Compiling local Media Library...
+cl /nologo /W4 /O2 /utf-8 /std:c++17 /EHsc /TP /DUNICODE /D_UNICODE /c src\media_library.cpp /Fo:build\media_library.obj
+if errorlevel 1 goto build_failed
+
 echo [13/14] Compiling application icon resource...
 where rc >nul 2>nul
 if errorlevel 1 (
@@ -173,7 +177,7 @@ rc /nologo /fo build\player.res src\player.rc
 if errorlevel 1 goto build_failed
 
 echo [14/14] Linking ABM AV Player...
-cl /nologo build\player.obj build\ui_theme.obj build\ui_skin.obj build\licensing.obj build\torrent_dlna_cast.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\youtube_dial.obj build\cast_v2.obj build\updater.obj build\metadata_engine.obj build\home_theatre.obj build\player.res build\version.res build\projectm-bridge\lib\Release\abm_projectm_bridge.lib /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
+cl /nologo build\player.obj build\ui_theme.obj build\ui_skin.obj build\licensing.obj build\torrent_dlna_cast.obj build\ui_d2d.obj build\audio_visualizer.obj build\streaming_host.obj build\dlna_cast.obj build\youtube_dial.obj build\cast_v2.obj build\updater.obj build\metadata_engine.obj build\home_theatre.obj build\media_library.obj build\player.res build\version.res build\projectm-bridge\lib\Release\abm_projectm_bridge.lib /link /LIBPATH:"%VLC_SDK%\lib" /LIBPATH:"%WEBVIEW2_SDK%\build\native\x64" libvlc.lib WebView2LoaderStatic.lib ^
   wininet.lib oleaut32.lib wintrust.lib crypt32.lib bcrypt.lib ole32.lib comctl32.lib comdlg32.lib shell32.lib shlwapi.lib advapi32.lib uxtheme.lib dwmapi.lib user32.lib gdi32.lib d2d1.lib dwrite.lib dxguid.lib ole32.lib uuid.lib windowscodecs.lib urlmon.lib winhttp.lib ws2_32.lib secur32.lib dnsapi.lib windowscodecs.lib version.lib ^
   /SUBSYSTEM:WINDOWS /OUT:build\ABMAVPlayer.exe
 if errorlevel 1 goto build_failed
