@@ -9,6 +9,7 @@
 #include <set>
 #include <algorithm>
 #include <cwctype>
+#include <cwchar>
 #include <cstdio>
 #include <new>
 #include <utility>
@@ -331,7 +332,14 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case ML_DONE_MSG:FinishScan();return 0;
     case WM_CLOSE:
-        if(InterlockedCompareExchange(&g.scanning,0,0)){g.closePending=TRUE;InterlockedExchange(&g.cancel,1);SetStatusText(L"Stopping scan before closing…");return 0;}
+        /* Keep the window alive until the worker has posted its completion
+           message and its handle can be joined/closed on the UI thread. */
+        if(g.thread){
+            g.closePending=TRUE;
+            if(InterlockedCompareExchange(&g.scanning,0,0))InterlockedExchange(&g.cancel,1);
+            SetStatusText(L"Stopping scan before closing…");
+            return 0;
+        }
         DestroyWindow(w);return 0;
     case WM_PAINT: {
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
