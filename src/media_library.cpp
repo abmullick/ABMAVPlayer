@@ -243,7 +243,7 @@ static void DrawLibraryMenuItem(const DRAWITEMSTRUCT *d) {
     RECT r=d->rcItem;
     if(!ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&r))return;
     float w=(float)(r.right-r.left),h=(float)(r.bottom-r.top);
-    ABM_D2D_CanvasFill(&g.canvas,0,0,w,h,ABM_THEME_COLOR_101A28);
+    ABM_D2D_CanvasFill(&g.canvas,0,0,w,h,ABM_UI_COLOR_INPUT);
     if(item->separator) {
         ABM_D2D_CanvasFill(&g.canvas,12.0f,h*0.5f,w-12.0f,h*0.5f+1.0f,ABM_THEME_COLOR_334F65);
     } else {
@@ -251,7 +251,7 @@ static void DrawLibraryMenuItem(const DRAWITEMSTRUCT *d) {
         if(hot)ABM_D2D_CanvasFillRound(&g.canvas,4.0f,2.0f,w-4.0f,h-2.0f,6.0f,ABM_THEME_COLOR_163B48);
         if(hot)ABM_D2D_CanvasFillRound(&g.canvas,4.0f,8.0f,7.0f,h-8.0f,2.0f,ABM_THEME_COLOR_36B1A8);
         COLORREF color=(item->command==ML_CTX_REMOVE_ROOT||item->command==ML_CTX_REMOVE_FILE)
-            ?(hot?ABM_THEME_COLOR_F2F8FF:ABM_THEME_COLOR_E3A6A6)
+            ?(hot?ABM_THEME_COLOR_F2F8FF:ABM_UI_COLOR_DANGER)
             :(hot?ABM_THEME_COLOR_F2F8FF:ABM_THEME_COLOR_D7E4F1);
         RECT text={18,0,(LONG)w-14,(LONG)h};
         ABM_D2D_CanvasText(&g.canvas,item->label,text,color,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -298,7 +298,7 @@ static void ShowLibraryContextMenu(HWND child,int screenX,int screenY) {
     /* Owner-drawn menu items use ABM colours and typography; the menu surface
        itself also receives the shared dark palette instead of Explorer defaults. */
     static HBRUSH menuBrush=nullptr;
-    if(!menuBrush)menuBrush=CreateSolidBrush(ABM_THEME_COLOR_101A28);
+    if(!menuBrush)menuBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
     MENUINFO menuInfo={};menuInfo.cbSize=sizeof(menuInfo);menuInfo.fMask=MIM_BACKGROUND|MIM_STYLE;
     menuInfo.hbrBack=menuBrush;menuInfo.dwStyle=MNS_NOCHECK;
     SetMenuInfo(menu,&menuInfo);
