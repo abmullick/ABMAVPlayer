@@ -293,7 +293,9 @@ static void StartScan() {
     EnableWindow(g.buttons[2],FALSE);EnableWindow(g.buttons[3],FALSE);
     EnableWindow(g.buttons[4],TRUE);EnableWindow(g.buttons[5],FALSE);
     SendMessageW(g.progress,PBM_SETMARQUEE,TRUE,0);
-    EnableWindow(g.filesList,FALSE);EnableWindow(g.buttons[6],FALSE);
+    EnableWindow(g.filesList,FALSE);EnableWindow(g.searchEdit,FALSE);
+    for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],FALSE);
+    EnableWindow(g.buttons[6],FALSE);
     SetStatusText(L"Scanning selected locations in the background…");
 }
 static void FinishScan() {
@@ -307,7 +309,9 @@ static void FinishScan() {
     SetStatusText(status);
     for(int i=0;i<4;i++)EnableWindow(g.buttons[i],TRUE);
     EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);
-    EnableWindow(g.filesList,TRUE);EnableWindow(g.buttons[6],TRUE);
+    EnableWindow(g.filesList,TRUE);EnableWindow(g.searchEdit,TRUE);
+    for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],TRUE);
+    EnableWindow(g.buttons[6],TRUE);
     if(g.closePending&&g.window)DestroyWindow(g.window);
 }
 static void Layout(HWND w) {
