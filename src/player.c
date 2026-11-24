@@ -2094,7 +2094,8 @@ static void DrawUI(HDC dc,RECT client) {
                 Txt(dc,subs[i],cardSubtitle,ABM_THEME_COLOR_9EB5C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             int footGap=12, footHeight=20;
-            RECT foot={R_HOME_OPEN.left,R_HOME_RECENT.bottom+footGap,R_HOME_RECENT.right,R_HOME_RECENT.bottom+footGap+footHeight};
+            /* The fifth shortcut occupies the third grid row. Anchor the feature tagline below that row. */
+            RECT foot={R_HOME_OPEN.left,R_HOME_LIBRARY.bottom+footGap,R_HOME_RECENT.right,R_HOME_LIBRARY.bottom+footGap+footHeight};
             Txt(dc,L"LOCAL MEDIA   •   KEYLESS METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
     }
