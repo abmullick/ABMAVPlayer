@@ -99,7 +99,7 @@ Torrent Stream is a separate peer-to-peer workflow. Real-world peer availability
 - Recent-media list, shuffle and three repeat modes: Off, Repeat all and Repeat current.
 - Playback speed presets from 0.5x to 2.0x.
 - Fullscreen playback and keyboard controls.
-- **Media Library:** open from the idle dashboard to add individual folders, add available fixed/removable drives, or scan the computer's fixed drives. Recursively discovers supported local audio/video formats on a background worker, skips common Windows/system directories and reparse-point folders, stores scan locations and the discovered file index under `%LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary`, and plays a selected item through the normal playlist/playback engine. Scanning is manual; network drives are not included in Scan computer.
+- **Media Library:** open from the idle dashboard to add individual folders, add available fixed/removable drives, or scan the computer's fixed drives. Recursively discovers supported local audio/video formats on a background worker, skips common Windows/system directories and reparse-point folders, stores scan locations and the discovered file index under `%LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary`, and plays a selected item through the normal playlist/playback engine. Scanning is manual; network drives are not included in Scan computer. The installer also registers supported extensions as an ABM AV Player default-app candidate; **Set default player** opens Windows Default apps, where the user must approve the association.
 - Read-only Media Information view from the playback context menu: available metadata tags, file path/size, duration/position, decoded video dimensions and LibVLC-reported stream codecs/active tracks.
 - Home Theatre: keyless Wikidata movie discovery and related-movie suggestions, TVmaze television discovery, active-playlist and favourites identification, All / Movies / TV Shows filters, editable/persisted local-file matches, per-title watched status, cached available artwork, TV season/episode browsing and local episode filename matching. The identification scan uses the active playlist/favourites snapshot; it is not a recursive disk scan or a separate filesystem-wide media importer.
 - Music artwork fallback: embedded artwork, local folder covers and keyless Wikidata/Wikimedia Commons album-image lookup, with asynchronous retrieval and local caching.
@@ -206,7 +206,7 @@ User preferences and recent/playlist state are stored under %APPDATA%\\ABMAVPlay
 ## Known limitations
 
 - Playlist capacity is limited to 256 entries.
-- Media Library scanning is user-initiated; automatic background folder watching, rich metadata extraction/categorisation and Windows default-app association setup are not implemented yet.
+- Media Library scanning is user-initiated; automatic background folder watching and rich metadata extraction/categorisation are not implemented yet. Windows requires the user to approve ABM AV Player as the default app for each supported file type.
 - There is no exclusive-mode / bit-perfect audio path or dedicated audio-device selector.
 - The ABM EQ profiles are fixed-band graphic EQ curves, not a parametric EQ with adjustable centre frequency/Q.
 - ReplayGain requires usable track metadata. The compressor is a dynamic-range effect, not a guaranteed true-peak brickwall limiter; plugin availability depends on VLC.
