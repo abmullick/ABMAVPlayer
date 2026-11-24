@@ -4253,6 +4253,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
     ABM_ADD(23009,L"Home Theatre...",TRUE);
     ABM_ADD(23011,L"Media Library...",TRUE);
+    ABM_ADD(23012,L"Set default player...",TRUE);
     ABM_ADD(23007,L"Subtitle Manager...",TRUE);
     ABM_ADD(23010,L"Find subtitles online...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
@@ -4318,6 +4319,7 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
 #undef ABM_ADD
 #undef ABM_HEAD
     if(cmd==23011)ABM_MediaLibrary_Show(hwnd,MediaLibraryPlay);
+    else if(cmd==23012)ShellExecuteW(hwnd,L"open",L"ms-settings:defaultapps",NULL,NULL,SW_SHOWNORMAL);
     else if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
     else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23010)FindOnlineSubtitles(hwnd);
@@ -9869,7 +9871,7 @@ static void EnableDpiAwareness(void) {
 }
 int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     EnableDpiAwareness();
-    (void)prev;(void)cmd;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
+    (void)prev;HRESULT comInit=CoInitializeEx(NULL,COINIT_APARTMENTTHREADED);srand((unsigned int)GetTickCount());INITCOMMONCONTROLSEX icc={sizeof(icc),ICC_STANDARD_CLASSES};InitCommonControlsEx(&icc);
     /* Load the user's palette before the activation UI is shown. */
     LoadThemePreference();
     /* Licensing is an independent gate; no playback, torrent or casting state is initialized before access is granted. */
@@ -10010,6 +10012,27 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_SYSTEMBACKDROP_TYPE,&backdrop,sizeof(backdrop)); }
     ShowWindow(hwnd,show);UpdateWindow(hwnd);
+    /* File-association launches pass one or more media paths on the command
+       line. Preserve the saved playlist, append only existing non-directory
+       files, and route the first supplied item through the ordinary player. */
+    int commandArgCount=0,firstCommandMedia=-1;
+    LPWSTR *commandArgs=CommandLineToArgvW(GetCommandLineW(),&commandArgCount);
+    for(int ai=1;commandArgs&&ai<commandArgCount&&g_playlistCount<MAX_PLAYLIST;ai++) {
+        DWORD attributes=GetFileAttributesW(commandArgs[ai]);
+        if(attributes==INVALID_FILE_ATTRIBUTES||(attributes&FILE_ATTRIBUTE_DIRECTORY))continue;
+        int existing=-1;
+        for(int pi=0;pi<g_playlistCount;pi++)if(!_wcsicmp(g_playlist[pi],commandArgs[ai])){existing=pi;break;}
+        if(existing>=0){if(firstCommandMedia<0)firstCommandMedia=existing;continue;}
+        int added=g_playlistCount++;
+        wcsncpy_s(g_playlist[added],PATH_CAP,commandArgs[ai],_TRUNCATE);
+        if(firstCommandMedia<0)firstCommandMedia=added;
+    }
+    if(commandArgs)LocalFree(commandArgs);
+    if(firstCommandMedia>=0) {
+        g_selected=firstCommandMedia;
+        RefreshMissingMediaFlags();SavePersistentState();
+        PlayIndex(firstCommandMedia);
+    }
     MSG m;while(GetMessageW(&m,NULL,0,0)>0){TranslateMessage(&m);DispatchMessageW(&m);}
     if(g_headingFont)DeleteObject(g_headingFont);if(g_smallFont)DeleteObject(g_smallFont);if(g_font)DeleteObject(g_font);if(g_videoBrush)DeleteObject(g_videoBrush);if(g_comboBrush)DeleteObject(g_comboBrush);DeleteCriticalSection(&g_rendererLock);
     if(SUCCEEDED(comInit))CoUninitialize();
