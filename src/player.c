@@ -17,7 +17,8 @@
 #include "ui_theme.h"
 #include "projectm_visualizer.h"
 #include "projectm_ipc.h"
-#include "home_theatre.h"\n#include "media_library.h"
+#include "home_theatre.h"
+#include "media_library.h"
 #include "metadata_engine.h"
 #include "streaming/streaming_host.h"
 #include "updater.h"
@@ -673,7 +674,8 @@ static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int coun
 
 int ABM_ShowMessageBox(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) { return ABM_MessageBoxW(owner,message,caption,flags); }
 
-static void PlayIndex(int index);\nstatic void MediaLibraryPlay(const wchar_t *path);
+static void PlayIndex(int index);
+static void MediaLibraryPlay(const wchar_t *path);
 static void ResumeCaptureCurrent(void);
 static int64_t ResumePositionForPath(const wchar_t *path);
 static void RefreshMissingMediaFlags(void);
@@ -3928,7 +3930,17 @@ static void PlayIndex(int index) {
     libvlc_media_player_set_rate(g_player,g_playbackRate);
     InvalidateRect(g_main,NULL,FALSE);
 }
-static void MediaLibraryPlay(const wchar_t *path) {\n    if(!path||!path[0])return;\n    for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],path)){g_selected=i;PlayIndex(i);return;}\n    if(g_playlistCount>=MAX_PLAYLIST){ABM_MessageBoxW(g_main,L"The playlist is full. Remove an item before playing another file from the Media Library.",APP_NAME,MB_ICONINFORMATION);return;}\n    wcsncpy_s(g_playlist[g_playlistCount],PATH_CAP,path,_TRUNCATE);\n    g_selected=g_playlistCount++;\n    RefreshMissingMediaFlags();SavePersistentState();\n    SetStatus(L"Added from Media Library");\n    PlayIndex(g_selected);\n}\nstatic int GetNextPlaylistIndex(void) {
+static void MediaLibraryPlay(const wchar_t *path) {
+    if(!path||!path[0])return;
+    for(int i=0;i<g_playlistCount;i++)if(!_wcsicmp(g_playlist[i],path)){g_selected=i;PlayIndex(i);return;}
+    if(g_playlistCount>=MAX_PLAYLIST){ABM_MessageBoxW(g_main,L"The playlist is full. Remove an item before playing another file from the Media Library.",APP_NAME,MB_ICONINFORMATION);return;}
+    wcsncpy_s(g_playlist[g_playlistCount],PATH_CAP,path,_TRUNCATE);
+    g_selected=g_playlistCount++;
+    RefreshMissingMediaFlags();SavePersistentState();
+    SetStatus(L"Added from Media Library");
+    PlayIndex(g_selected);
+}
+static int GetNextPlaylistIndex(void) {
     if(g_playlistCount<=0)return -1;
     if(g_shuffle&&g_playlistCount>1) {
         int next=g_current;
@@ -4238,7 +4250,8 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     ABMMenuItem items[160];wchar_t trackLabels[64][256];int count=0,trackCount=0;
 #define ABM_ADD(cmd,text,active) do{items[count++]=(ABMMenuItem){cmd,text,active,FALSE};}while(0)
 #define ABM_HEAD(text) do{items[count++]=(ABMMenuItem){0,text,FALSE,TRUE};}while(0)
-    ABM_ADD(23009,L"Home Theatre...",TRUE);\n    ABM_ADD(23011,L"Media Library...",TRUE);
+    ABM_ADD(23009,L"Home Theatre...",TRUE);
+    ABM_ADD(23011,L"Media Library...",TRUE);
     ABM_ADD(23007,L"Subtitle Manager...",TRUE);
     ABM_ADD(23010,L"Find subtitles online...",TRUE);
     ABM_ADD(23008,L"Advanced Audio Centre...",TRUE);
@@ -4303,7 +4316,8 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
     int cmd=ABM_ShowMenu(hwnd,x,y,items,count);
 #undef ABM_ADD
 #undef ABM_HEAD
-    if(cmd==23011)ABM_MediaLibrary_Show(hwnd,MediaLibraryPlay);\n    else if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
+    if(cmd==23011)ABM_MediaLibrary_Show(hwnd,MediaLibraryPlay);
+    else if(cmd==23009){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);}
     else if(cmd==23007)ShowAdvancedSettingsAtPage(hwnd,4);
     else if(cmd==23010)FindOnlineSubtitles(hwnd);
     else if(cmd==23008)ShowAdvancedSettingsAtPage(hwnd,10);
