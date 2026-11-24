@@ -35,7 +35,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <shlobj.h>
-#include <shellapi.h>
 #include <shobjidl.h>
 #include <shlwapi.h>
 #include <KnownFolders.h>
