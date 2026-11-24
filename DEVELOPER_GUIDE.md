@@ -37,6 +37,7 @@ Missing-media detection checks stored paths and updates per-row flags. Missing e
 
 Keep path existence checks out of the paint/scroll hot path. Refresh availability at explicit library/drawer or mutation points. Preserve the ownership boundaries: resume and relink operations must not stop, replace or mutate the Streaming Centre browser player, local receiver discovery state, or Torrent Stream task/transport lifecycle.
 - Main Settings and Advanced Settings windows, custom painting and hit testing.
+- **Media Library** — `src/media_library.cpp` / `src/media_library.h` own configured scan roots, recursive local media discovery, persistent path indexing and the dedicated manager window. Scans run on a below-normal-priority worker; the main player receives only a selected path through a callback and adds it to its ordinary playlist before playback. The scanner skips Windows/program/system folders and does not recurse into directory reparse points. Scan locations and indexed paths are stored as UTF-8 TSV files under `%LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary`.
 - Independent local and Streaming Centre renderer registries.
 - Advanced settings persistence and helpers that attach options to new media.
 - Diagnostic report generation and the read-only preview.
