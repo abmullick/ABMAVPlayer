@@ -1340,7 +1340,7 @@ static void UpdateLayout(HWND hwnd) {
         menuY+=sectionGap;
     }
     R_FULLSCREEN=(RECT){R_VIDEO.right-50,R_VIDEO.top+16,R_VIDEO.right-14,R_VIDEO.top+52};
-    /* Keep the four dashboard actions strictly inside the green hero panel.
+    /* Keep the five dashboard actions strictly inside the green hero panel.
        The panel, not the full video stage, is the source of truth for their
        available width and height. Switch to one column only when two columns
        would make the cards too narrow to read. */
@@ -1353,7 +1353,7 @@ static void UpdateLayout(HWND hwnd) {
             R_VIDEO.bottom-hh/7
         };
         int panelW=hero.right-hero.left, panelH=hero.bottom-hero.top;
-        /* Balanced 2 x 2 shortcut grid, right-aligned within the hero panel
+        /* Balanced two-column shortcut grid, right-aligned within the hero panel
            with a deliberate inset so it does not touch the panel edge. */
         int cardGap=12, rowGap=10, footGap=10, footH=18;
         int cardH=58, x, y, cardW;
