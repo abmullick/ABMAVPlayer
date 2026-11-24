@@ -278,7 +278,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         const wchar_t *labels[8]={L"Add folder",L"Add drives",L"Scan computer",L"Scan now",L"Stop",L"Remove",L"Play selected",L"Close"};
         for(int i=0;i<8;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
         g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_LEFT,0,0,10,10,w,nullptr,GetModuleHandleW(nullptr),nullptr);
-        g.progress=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
+        g.progress=CreateWindowExW(0,PROGRESS_CLASSW,L"",WS_CHILD|WS_VISIBLE|PBS_SMOOTH|PBS_MARQUEE,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g.progress,PBM_SETRANGE32,0,100);SendMessageW(g.progress,PBM_SETMARQUEE,FALSE,0);
         LoadPaths(L"folders.tsv",g.roots);LoadPaths(L"media.tsv",g.files);RefreshRoots();RefreshFiles();
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
