@@ -219,7 +219,7 @@ static void StartScan() {
     EnableWindow(g.buttons[0],FALSE);EnableWindow(g.buttons[1],FALSE);
     EnableWindow(g.buttons[2],FALSE);EnableWindow(g.buttons[3],FALSE);
     EnableWindow(g.buttons[4],TRUE);EnableWindow(g.buttons[5],FALSE);
-    SetStatusText(L"Scanning selected locations in the background…");
+    SendMessageW(g.progress,PBM_SETMARQUEE,TRUE,0);\n    SetStatusText(L"Scanning selected locations in the background…");
 }
 static void FinishScan() {
     if(g.thread){WaitForSingleObject(g.thread,INFINITE);CloseHandle(g.thread);g.thread=nullptr;}
@@ -328,10 +328,10 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         if(g.canvasReady&&ABM_D2D_CanvasBegin(&g.canvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g.canvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_090F19);
             ABM_SkinRenderCanvas(&g.canvas,&rc);
-            ABM_D2D_CanvasText(&g.canvas,L"MEDIA LIBRARY",24, (RECT){24,16,600,50},ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasText(&g.canvas,L"Discover and index local audio and video files",24,(RECT){24,42,720,62},ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",24,(RECT){24,88,340,108},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasText(&g.canvas,L"DISCOVERED MEDIA",24,(RECT){366,88,rc.right-24,108},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"MEDIA LIBRARY",RECT{24,16,600,50},ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"Discover and index local audio and video files",RECT{24,42,720,62},ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",RECT{24,88,340,108},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"DISCOVERED MEDIA",RECT{366,88,rc.right-24,108},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasEnd(&g.canvas);
         }
         EndPaint(w,&ps);return 0;
@@ -359,7 +359,7 @@ extern "C" void ABM_MediaLibrary_Show(HWND owner,ABM_MediaLibraryPlayFn playCall
     }
     RECT ownerRect={};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
     int width=1120,height=720,x=ownerRect.left+(ownerRect.right-ownerRect.left-width)/2,y=ownerRect.top+(ownerRect.bottom-ownerRect.top-height)/2;
-    HWND window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_APPWINDOW,L"ABMAVPlayer.MediaLibrary",L"ABM AV Player — Media Library",
+    HWND window=CreateWindowExW(WS_EX_APPWINDOW,L"ABMAVPlayer.MediaLibrary",L"ABM AV Player — Media Library",
         WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,width,height,owner,nullptr,GetModuleHandleW(nullptr),nullptr);
     if(!window)return;
     ShowWindow(window,SW_SHOWNORMAL);UpdateWindow(window);SetForegroundWindow(window);
