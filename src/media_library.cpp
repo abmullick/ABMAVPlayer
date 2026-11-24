@@ -55,7 +55,14 @@ struct LibraryState {
 } g;
 
 static bool IsMediaExtension(const wchar_t *path) {
-    const wchar_t *dot=path?wcsrchr(path,L'.'):nullptr;if(!dot)return false;
+    if(!path)return false;
+    /* .d.ts is a TypeScript declaration file, not an MPEG transport stream. */
+    const wchar_t *leaf=path;
+    if(const wchar_t *slash=wcsrchr(path,L'\\'))leaf=slash+1;
+    if(const wchar_t *slash=wcsrchr(leaf,L'/'))leaf=slash+1;
+    size_t leafLength=wcslen(leaf);
+    if(leafLength>=5&&!_wcsicmp(leaf+leafLength-5,L".d.ts"))return false;
+    const wchar_t *dot=wcsrchr(path,L'.');if(!dot)return false;
     static const wchar_t *extensions[]={
         L".mp4",L".mkv",L".avi",L".mov",L".wmv",L".m4v",L".webm",L".mpg",L".mpeg",
         L".ts",L".m2ts",L".mts",L".flv",L".ogv",L".3gp",L".vob",L".mp3",L".wav",
@@ -292,7 +299,7 @@ static void StartScan() {
     EnableWindow(g.buttons[0],FALSE);EnableWindow(g.buttons[1],FALSE);
     EnableWindow(g.buttons[2],FALSE);EnableWindow(g.buttons[3],FALSE);
     EnableWindow(g.buttons[4],TRUE);EnableWindow(g.buttons[5],FALSE);
-    InvalidateRect(g.progress,nullptr,FALSE);
+    InvalidateRect(g.window,nullptr,FALSE);
     EnableWindow(g.filesList,FALSE);EnableWindow(g.searchEdit,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],FALSE);
     SetStatusText(L"Scanning selected locations in the background…");
@@ -326,7 +333,6 @@ static void Layout(HWND w) {
     if(g.sortButtons[2])SetWindowPos(g.sortButtons[2],nullptr,rightLeft+12+nameW+typeW,colY,(rightWidth-24)-nameW-typeW,28,SWP_NOZORDER);
     if(g.filesList)SetWindowPos(g.filesList,nullptr,rightLeft+12,top+84,rightWidth-24,height-(top+84)-footer,SWP_NOZORDER);
     if(g.status)SetWindowPos(g.status,nullptr,margin,height-70,width-2*margin,24,SWP_NOZORDER);
-    if(g.progress)SetWindowPos(g.progress,nullptr,margin,height-40,width-2*margin,10,SWP_NOZORDER);
     int x=margin,y=112;
     const int widths[7]={112,112,150,104,90,120,90};
     for(int i=0;i<7;i++){if(g.buttons[i]){SetWindowPos(g.buttons[i],nullptr,x,y,widths[i],34,SWP_NOZORDER);x+=widths[i]+8;}}
@@ -378,8 +384,10 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         const wchar_t *labels[7]={L"Add folder",L"Add drives",L"Scan computer",L"Scan now",L"Stop",L"Play selected",L"Close"};
         for(int i=0;i<7;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
         g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,w,(HMENU)ML_STATUS,GetModuleHandleW(nullptr),nullptr);
-        g.progress=CreateWindowExW(0,L"STATIC",L"",WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,w,(HMENU)ML_PROGRESS,GetModuleHandleW(nullptr),nullptr);
-        LoadPaths(L"folders.tsv",g.roots);LoadPaths(L"media.tsv",g.files);RefreshRoots();RefreshFiles();
+        LoadPaths(L"folders.tsv",g.roots);LoadPaths(L"media.tsv",g.files);
+        /* Purge stale non-media entries from indexes created by earlier scans. */
+        g.files.erase(std::remove_if(g.files.begin(),g.files.end(),[](const std::wstring &p){return !IsMediaExtension(p.c_str());}),g.files.end());
+        RefreshRoots();RefreshFiles();
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
     }
     case WM_SIZE:Layout(w);return 0;
@@ -404,7 +412,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         LPDRAWITEMSTRUCT d=(LPDRAWITEMSTRUCT)lp;
         if(!d)return TRUE;
         if(d->CtlType==ODT_BUTTON){DrawButton(d);return TRUE;}
-        if(d->CtlType==ODT_STATIC&&(d->CtlID==ML_STATUS||d->CtlID==ML_PROGRESS)){
+        if(d->CtlType==ODT_STATIC&&d->CtlID==ML_STATUS){
             RECT r=d->rcItem;
             if(ABM_D2D_CanvasBegin(&g.canvas,d->hDC,&r)){
                 float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
@@ -412,10 +420,6 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                     wchar_t text[512]={};GetWindowTextW(d->hwndItem,text,_countof(text));
                     ABM_D2D_CanvasFill(&g.canvas,0,0,width,height,ABM_THEME_COLOR_090F19);
                     ABM_D2D_CanvasText(&g.canvas,text,RECT{0,0,(LONG)width,(LONG)height},ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                } else {
-                    ABM_D2D_CanvasFillRound(&g.canvas,0,2,width,height-2,4,ABM_UI_COLOR_BORDER);
-                    if(InterlockedCompareExchange(&g.scanning,0,0))
-                        ABM_D2D_CanvasFillRound(&g.canvas,0,2,width*0.24f,height-2,4,ABM_THEME_COLOR_36B1A8);
                 }
                 ABM_D2D_CanvasEnd(&g.canvas);
             }
@@ -526,6 +530,12 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             /* Shared Direct2D search surface; native EDIT is borderless and inset. */
             ABM_D2D_CanvasFillRound(&g.canvas,(float)(rightLeft+12),(float)(panelTop+12),(float)(rc.right-36),(float)(panelTop+48),7.0f,ABM_UI_COLOR_INPUT);
             ABM_D2D_CanvasStrokeRound(&g.canvas,(float)(rightLeft+12.5f),(float)(panelTop+12.5f),(float)(rc.right-36.5f),(float)(panelTop+47.5f),7.0f,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+            /* Footer progress track is painted directly on the parent canvas;
+               no native STATIC/PROGRESS control or default white frame remains. */
+            float trackLeft=24.0f,trackRight=(float)rc.right-24.0f,trackY=(float)rc.bottom-40.0f;
+            ABM_D2D_CanvasFillRound(&g.canvas,trackLeft,trackY,trackRight,trackY+5.0f,2.5f,ABM_UI_COLOR_BORDER);
+            if(InterlockedCompareExchange(&g.scanning,0,0))
+                ABM_D2D_CanvasFillRound(&g.canvas,trackLeft,trackY,trackLeft+(trackRight-trackLeft)*0.24f,trackY+5.0f,2.5f,ABM_UI_COLOR_ACCENT);
             ABM_D2D_CanvasEnd(&g.canvas);
         }
         EndPaint(w,&ps);return 0;
