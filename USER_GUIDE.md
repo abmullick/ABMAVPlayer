@@ -2,6 +2,21 @@
 
 This guide covers the Windows desktop player and its separate Streaming Centre. Some playback, discovery and casting features depend on the installed 64-bit VLC runtime/plugins, receiver capabilities, WebView2 and provider policies.
 
+## Media Library
+
+Open **Media Library** from the idle home dashboard. It maintains a separate index of local media files; it does not move, rename or modify the original files.
+
+### Add locations and scan
+
+- **Add folder** opens the Windows folder picker. ABM recursively scans that folder and its subfolders when you choose **Scan now**.
+- **Add drives** adds currently available fixed and removable drives to the scan-location list. Use **Remove** to remove a selected location.
+- **Scan computer** adds the computer's fixed drives and starts a scan. Common Windows and system folders are excluded to avoid spending time indexing application and operating-system files.
+- **Scan now** rescans all configured locations. **Stop** requests cancellation after the current directory finishes.
+- Scanning runs in the background at below-normal thread priority. It does not stop or interrupt current playback.
+- The discovered list includes supported audio and video extensions. Select an item to see its full path in the status line; double-click it or choose **Play selected** to add it to the normal playlist and start playback.
+- Scan locations and the discovered path index are stored locally in `%LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary`. The index is restored the next time the window opens.
+
+The first scan is not started automatically. Network drives are not included in **Scan computer**; choose a network folder explicitly if you want to scan it. Directory junctions and symbolic-link folders are not followed. This first version performs manual scans and does not yet monitor folders for changes, extract rich media metadata, or register ABM AV Player as the Windows default application for file types.
 ## Home Theatre
 
 Open **Home Theatre** from the idle home dashboard or playback context menu. Online discovery requires an internet connection but **does not require an API key, token or account**.
