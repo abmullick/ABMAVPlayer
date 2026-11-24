@@ -28,7 +28,8 @@
 namespace {
 enum { ML_ADD_FOLDER=7101, ML_ADD_DRIVES=7102, ML_SCAN_ALL=7103, ML_SCAN=7104,
        ML_STOP=7105, ML_REMOVE=7106, ML_PLAY=7107, ML_CLOSE=7108,
-       ML_ROOTS=7110, ML_FILES=7111, ML_PROGRESS=7112 };
+       ML_ROOTS=7110, ML_FILES=7111, ML_PROGRESS=7112,
+       ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116 };
 enum { ML_PROGRESS_MSG=WM_APP+0x6B1, ML_DONE_MSG=WM_APP+0x6B2 };
 static const size_t ML_PATH_CAP=32768;
 struct PathLess {
@@ -37,7 +38,8 @@ struct PathLess {
     }
 };
 struct LibraryState {
-    HWND window=nullptr,owner=nullptr,rootsList=nullptr,filesList=nullptr,status=nullptr,progress=nullptr;
+    HWND window=nullptr,owner=nullptr,rootsList=nullptr,filesList=nullptr,status=nullptr,progress=nullptr,searchEdit=nullptr;
+    HWND sortButtons[3]={};
     HWND buttons[8]={};
     HFONT font=nullptr,smallFont=nullptr;
     ABM_D2D_CANVAS canvas={};
@@ -46,6 +48,9 @@ struct LibraryState {
     volatile LONG cancel=0,scanning=0;
     LONG scannedDirectories=0,foundFiles=0,scanErrors=0;
     std::vector<std::wstring> roots,files;
+    std::vector<size_t> visibleFiles;
+    int sortColumn=0;
+    bool sortDescending=false;
     ABM_MediaLibraryPlayFn play=nullptr;
 } g;
 
@@ -132,19 +137,76 @@ static void RefreshRoots() {
     SendMessageW(g.rootsList,LB_RESETCONTENT,0,0);
     for(const auto &root:g.roots)SendMessageW(g.rootsList,LB_ADDSTRING,0,(LPARAM)root.c_str());
 }
+static std::wstring FileLeaf(const std::wstring &path) {
+    size_t slash=path.find_last_of(L"\\/");
+    return slash==std::wstring::npos?path:path.substr(slash+1);
+}
+static std::wstring FileType(const std::wstring &path) {
+    std::wstring leaf=FileLeaf(path);size_t dot=leaf.find_last_of(L'.');
+    if(dot==std::wstring::npos||dot==0)return L"File";
+    std::wstring ext=leaf.substr(dot+1);
+    for(auto &ch:ext)ch=(wchar_t)towupper(ch);
+    return ext+L" file";
+}
+static std::wstring FileLocation(const std::wstring &path) {
+    size_t slash=path.find_last_of(L"\\/");
+    return slash==std::wstring::npos?L"":path.substr(0,slash);
+}
+static std::wstring LowerText(std::wstring value) {
+    for(auto &ch:value)ch=(wchar_t)towlower(ch);
+    return value;
+}
+static bool ContainsInsensitive(const std::wstring &value,const std::wstring &needle) {
+    return needle.empty()||LowerText(value).find(LowerText(needle))!=std::wstring::npos;
+}
+static void UpdateSortLabels() {
+    const wchar_t *labels[3]={L"NAME",L"TYPE",L"LOCATION"};
+    for(int i=0;i<3;i++)if(g.sortButtons[i]) {
+        wchar_t text[64];StringCchPrintfW(text,_countof(text),L"%ls%ls",labels[i],
+            g.sortColumn==i?(g.sortDescending?L"  ▼":L"  ▲"):L"");
+        SetWindowTextW(g.sortButtons[i],text);InvalidateRect(g.sortButtons[i],nullptr,FALSE);
+    }
+}
 static void RefreshFiles() {
     if(!g.filesList)return;
+    std::wstring filter;
+    if(g.searchEdit&&IsWindow(g.searchEdit)) {
+        int length=GetWindowTextLengthW(g.searchEdit);
+        if(length>0&&length<4096){std::vector<wchar_t> text((size_t)length+1);GetWindowTextW(g.searchEdit,text.data(),length+1);filter=text.data();}
+    }
+    g.visibleFiles.clear();
+    for(size_t i=0;i<g.files.size();i++) {
+        const std::wstring &path=g.files[i];
+        if(ContainsInsensitive(FileLeaf(path),filter)||ContainsInsensitive(FileType(path),filter)||
+           ContainsInsensitive(FileLocation(path),filter))g.visibleFiles.push_back(i);
+    }
+    auto key=[&](size_t i)->std::wstring {
+        if(g.sortColumn==1)return FileType(g.files[i]);
+        if(g.sortColumn==2)return FileLocation(g.files[i]);
+        return FileLeaf(g.files[i]);
+    };
+    std::sort(g.visibleFiles.begin(),g.visibleFiles.end(),[&](size_t x,size_t y){
+        int cmp=_wcsicmp(key(x).c_str(),key(y).c_str());
+        if(cmp==0)cmp=_wcsicmp(FileLeaf(g.files[x]).c_str(),FileLeaf(g.files[y]).c_str());
+        return g.sortDescending?cmp>0:cmp<0;
+    });
     SendMessageW(g.filesList,LB_RESETCONTENT,0,0);
-    if(!g.files.empty()) {
-        size_t reserveBytes=g.files.size()*96;
+    if(!g.visibleFiles.empty()) {
+        size_t reserveBytes=g.visibleFiles.size()*128;
         if(reserveBytes>0x7fffffff)reserveBytes=0x7fffffff;
-        SendMessageW(g.filesList,LB_INITSTORAGE,(WPARAM)g.files.size(),(LPARAM)reserveBytes);
+        SendMessageW(g.filesList,LB_INITSTORAGE,(WPARAM)g.visibleFiles.size(),(LPARAM)reserveBytes);
     }
-    for(const auto &path:g.files) {
-        const wchar_t *leaf=wcsrchr(path.c_str(),L'\\');
-        std::wstring label=(leaf&&leaf[1])?leaf+1:path;
-        SendMessageW(g.filesList,LB_ADDSTRING,0,(LPARAM)label.c_str());
+    for(size_t index:g.visibleFiles)SendMessageW(g.filesList,LB_ADDSTRING,0,(LPARAM)g.files[index].c_str());
+    UpdateSortLabels();
+    if(g.status) {
+        wchar_t status[160];StringCchPrintfW(status,_countof(status),L"%zu media files  ·  %zu shown",g.files.size(),g.visibleFiles.size());
+        SetStatusText(status);
     }
+}
+static void SortFiles(int column) {
+    if(g.sortColumn==column)g.sortDescending=!g.sortDescending;
+    else {g.sortColumn=column;g.sortDescending=false;}
+    RefreshFiles();
 }
 static void AddRoot(const wchar_t *path) {
     std::wstring value=TrimRoot(path);
@@ -252,8 +314,14 @@ static void Layout(HWND w) {
     RECT c;GetClientRect(w,&c);int width=c.right,height=c.bottom;
     int margin=24,gap=14,top=190,footer=88;
     int leftWidth=width<900?280:330;
+    int rightLeft=margin+leftWidth+gap,rightWidth=width-margin-rightLeft;
     if(g.rootsList)SetWindowPos(g.rootsList,nullptr,margin,top,leftWidth,height-top-footer,SWP_NOZORDER);
-    if(g.filesList)SetWindowPos(g.filesList,nullptr,margin+leftWidth+gap,top,width-margin-(margin+leftWidth+gap),height-top-footer,SWP_NOZORDER);
+    if(g.searchEdit)SetWindowPos(g.searchEdit,nullptr,rightLeft+12,top+12,rightWidth-24,34,SWP_NOZORDER);
+    int colY=top+54,nameW=(rightWidth-24)*48/100,typeW=(rightWidth-24)*20/100;
+    if(g.sortButtons[0])SetWindowPos(g.sortButtons[0],nullptr,rightLeft+12,colY,nameW,28,SWP_NOZORDER);
+    if(g.sortButtons[1])SetWindowPos(g.sortButtons[1],nullptr,rightLeft+12+nameW,colY,typeW,28,SWP_NOZORDER);
+    if(g.sortButtons[2])SetWindowPos(g.sortButtons[2],nullptr,rightLeft+12+nameW+typeW,colY,(rightWidth-24)-nameW-typeW,28,SWP_NOZORDER);
+    if(g.filesList)SetWindowPos(g.filesList,nullptr,rightLeft+12,top+84,rightWidth-24,height-(top+84)-footer,SWP_NOZORDER);
     if(g.status)SetWindowPos(g.status,nullptr,margin,height-70,width-2*margin,24,SWP_NOZORDER);
     if(g.progress)SetWindowPos(g.progress,nullptr,margin,height-40,width-2*margin,10,SWP_NOZORDER);
     int x=margin,y=112;
@@ -270,6 +338,12 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
        the native BUTTON class leaves its default white background visible in
        the four square corners outside the rounded ABM surface. */
     ABM_D2D_CanvasFill(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,ABM_THEME_COLOR_090F19);
+    if(d->CtlID==ML_SORT_NAME||d->CtlID==ML_SORT_TYPE||d->CtlID==ML_SORT_LOCATION) {
+        bool active=(d->CtlID==ML_SORT_NAME&&g.sortColumn==0)||(d->CtlID==ML_SORT_TYPE&&g.sortColumn==1)||(d->CtlID==ML_SORT_LOCATION&&g.sortColumn==2);
+        ABM_D2D_CanvasFillRound(&g.canvas,1,1,buttonWidth-1,buttonHeight-1,6,active?ABM_THEME_COLOR_163B48:ABM_THEME_COLOR_141D2A);
+        ABM_D2D_CanvasText(&g.canvas,label,RECT{10,0,(LONG)buttonWidth-8,(LONG)buttonHeight},active?ABM_THEME_COLOR_84CDC2:ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasEnd(&g.canvas);return;
+    }
     bool primary=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL||d->CtlID==ML_PLAY;
     COLORREF fill=primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737;
     ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
@@ -288,9 +362,15 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g.smallFont=CreateFontW(-13,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g.rootsList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_ROOTS,GetModuleHandleW(nullptr),nullptr);
         g.filesList=CreateWindowExW(0,L"LISTBOX",L"",WS_CHILD|WS_VISIBLE|WS_VSCROLL|LBS_NOTIFY|LBS_OWNERDRAWFIXED|LBS_HASSTRINGS|LBS_NOINTEGRALHEIGHT,0,0,10,10,w,(HMENU)ML_FILES,GetModuleHandleW(nullptr),nullptr);
-        SendMessageW(g.rootsList,LB_SETITEMHEIGHT,0,44);SendMessageW(g.filesList,LB_SETITEMHEIGHT,0,52);
+        g.searchEdit=CreateWindowExW(WS_EX_CLIENTEDGE,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,0,0,10,10,w,(HMENU)ML_SEARCH,GetModuleHandleW(nullptr),nullptr);
+        SendMessageW(g.searchEdit,WM_SETFONT,(WPARAM)g.font,TRUE);
+        SendMessageW(g.searchEdit,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search by file name, type or folder...");
+        const int sortIds[3]={ML_SORT_NAME,ML_SORT_TYPE,ML_SORT_LOCATION};
+        const wchar_t *sortText[3]={L"NAME",L"TYPE",L"LOCATION"};
+        for(int i=0;i<3;i++){g.sortButtons[i]=CreateWindowExW(0,L"BUTTON",sortText[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)sortIds[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.sortButtons[i],WM_SETFONT,(WPARAM)g.smallFont,TRUE);}
+        SendMessageW(g.rootsList,LB_SETITEMHEIGHT,0,44);SendMessageW(g.filesList,LB_SETITEMHEIGHT,0,44);
         SendMessageW(g.rootsList,WM_SETFONT,(WPARAM)g.font,TRUE);SendMessageW(g.filesList,WM_SETFONT,(WPARAM)g.font,TRUE);
-        SetWindowTheme(g.rootsList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.filesList,L"DarkMode_Explorer",nullptr);
+        SetWindowTheme(g.rootsList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.filesList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.searchEdit,L"DarkMode_Explorer",nullptr);
         const int ids[8]={ML_ADD_FOLDER,ML_ADD_DRIVES,ML_SCAN_ALL,ML_SCAN,ML_STOP,ML_REMOVE,ML_PLAY,ML_CLOSE};
         const wchar_t *labels[8]={L"Add folder",L"Add drives",L"Scan computer",L"Scan now",L"Stop",L"Remove",L"Play selected",L"Close"};
         for(int i=0;i<8;i++){g.buttons[i]=CreateWindowExW(0,L"BUTTON",labels[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)ids[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.buttons[i],WM_SETFONT,(WPARAM)g.font,TRUE);}
@@ -301,6 +381,10 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
     }
     case WM_SIZE:Layout(w);return 0;
+    case WM_CTLCOLOREDIT: {
+        HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);SetBkColor(dc,ABM_THEME_COLOR_141D2A);
+        static HBRUSH editBrush=nullptr;if(!editBrush)editBrush=CreateSolidBrush(ABM_THEME_COLOR_141D2A);return (LRESULT)editBrush;
+    }
     case WM_CTLCOLORLISTBOX: {
         HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_E2EEF9);SetBkColor(dc,ABM_THEME_COLOR_141D2A);
         static HBRUSH brush=nullptr;if(!brush)brush=CreateSolidBrush(ABM_THEME_COLOR_141D2A);return (LRESULT)brush;
@@ -327,11 +411,18 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                 COLORREF bg=selected?ABM_THEME_COLOR_163B48:ABM_THEME_COLOR_141D2A;
                 ABM_D2D_CanvasFillRound(&g.canvas,3,2,(float)(r.right-r.left-3),(float)(r.bottom-r.top-2),8,bg);
                 if(selected)ABM_D2D_CanvasFillRound(&g.canvas,3,8,6,(float)(r.bottom-r.top-8),3,ABM_THEME_COLOR_36B1A8);
-                RECT title={selected?18:14,3,r.right-r.left-12,26};
-                RECT sub={selected?18:14,25,r.right-r.left-12,r.bottom-r.top-3};
-                ABM_D2D_CanvasText(&g.canvas,label,title,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-                const wchar_t *secondary=d->CtlID==ML_ROOTS?L"SCAN LOCATION":L"LOCAL MEDIA";
-                ABM_D2D_CanvasText(&g.canvas,secondary,sub,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                if(d->CtlID==ML_ROOTS) {
+                    RECT title={14,3,r.right-r.left-12,26},sub={14,25,r.right-r.left-12,r.bottom-r.top-3};
+                    ABM_D2D_CanvasText(&g.canvas,label,title,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATION",sub,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                } else {
+                    std::wstring path=label,leaf=FileLeaf(path),type=FileType(path),location=FileLocation(path);
+                    int total=r.right-r.left,nameW=total*48/100,typeW=total*20/100;
+                    RECT nr={14,0,nameW-8,r.bottom-r.top},tr={nameW+4,0,nameW+typeW-8,r.bottom-r.top},lr={nameW+typeW+4,0,total-12,r.bottom-r.top};
+                    ABM_D2D_CanvasText(&g.canvas,leaf.c_str(),nr,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    ABM_D2D_CanvasText(&g.canvas,type.c_str(),tr,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    ABM_D2D_CanvasText(&g.canvas,location.c_str(),lr,ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                }
                 ABM_D2D_CanvasEnd(&g.canvas);
             }
             return TRUE;
@@ -353,14 +444,18 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         }
         case ML_PLAY: {
             int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
-            if(selected>=0&&selected<(int)g.files.size()&&g.play)g.play(g.files[(size_t)selected].c_str());
+            if(selected>=0&&selected<(int)g.visibleFiles.size()&&g.play)g.play(g.files[g.visibleFiles[(size_t)selected]].c_str());
             return 0;
         }
         case ML_CLOSE:SendMessageW(w,WM_CLOSE,0,0);return 0;
+        case ML_SORT_NAME:SortFiles(0);return 0;
+        case ML_SORT_TYPE:SortFiles(1);return 0;
+        case ML_SORT_LOCATION:SortFiles(2);return 0;
         }
+        if(LOWORD(wp)==ML_SEARCH&&HIWORD(wp)==EN_CHANGE){RefreshFiles();return 0;}
         if(LOWORD(wp)==ML_FILES&&HIWORD(wp)==LBN_SELCHANGE) {
             int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
-            if(selected>=0&&selected<(int)g.files.size())SetStatusText(g.files[(size_t)selected].c_str());
+            if(selected>=0&&selected<(int)g.visibleFiles.size())SetStatusText(g.files[g.visibleFiles[(size_t)selected]].c_str());
             return 0;
         }
         if(LOWORD(wp)==ML_FILES&&HIWORD(wp)==LBN_DBLCLK) {
