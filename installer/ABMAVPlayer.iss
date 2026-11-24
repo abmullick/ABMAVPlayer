@@ -49,7 +49,7 @@ Name: "{autodesktop}\ABM AV Player"; Filename: "{app}\{#MyAppExeName}"; WorkingD
 ; requires the user to choose ABM AV Player in Default apps; the installer
 ; deliberately does not overwrite existing per-extension defaults.
 Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile"; ValueType: string; ValueName: ""; ValueData: "ABM AV Player Media File"; Flags: uninsdeletekey
-Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"",0"
 Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\Application"; ValueType: string; ValueName: "ApplicationName"; ValueData: "ABM AV Player"
 Root: HKLM; Subkey: "Software\Classes\ABMAVPlayer.MediaFile\Application"; ValueType: string; ValueName: "ApplicationCompany"; ValueData: "{#MyAppPublisher}"
