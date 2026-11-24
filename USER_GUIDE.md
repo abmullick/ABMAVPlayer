@@ -14,7 +14,7 @@ Open **Media Library** from the idle home dashboard. It maintains a separate ind
 - **Scan now** rescans all configured locations. **Stop** requests cancellation after the current directory finishes.
 - Scanning runs in the background at below-normal thread priority. It does not stop or interrupt current playback.
 - The discovered list includes supported audio and video extensions. Select an item to see its full path in the status line; double-click it or choose **Play selected** to add it to the normal playlist and start playback.
-- Scan locations and the discovered path index are stored locally in `%LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary`. The index is restored the next time the window opens.
+- Scan locations and the discovered path index are stored locally in `%LOCALAPPDATA%\ABMAVPlayer\MediaLibrary`. The index is restored the next time the window opens.
 
 The first scan is not started automatically. Network drives are not included in **Scan computer**; choose a network folder explicitly if you want to scan it. Directory junctions and symbolic-link folders are not followed. This first version performs manual scans and does not yet monitor folders for changes or extract rich media metadata. The installer registers ABM AV Player as a candidate for its supported audio/video extensions, but Windows does not allow the installer to silently replace your defaults. Choose **Set default player** from the playback context menu (or open Windows Settings → Apps → Default apps), select **ABM AV Player**, and approve the file types you want it to open.
 ## Home Theatre
