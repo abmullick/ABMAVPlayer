@@ -220,7 +220,9 @@ static void StartScan() {
     EnableWindow(g.buttons[0],FALSE);EnableWindow(g.buttons[1],FALSE);
     EnableWindow(g.buttons[2],FALSE);EnableWindow(g.buttons[3],FALSE);
     EnableWindow(g.buttons[4],TRUE);EnableWindow(g.buttons[5],FALSE);
-    SendMessageW(g.progress,PBM_SETMARQUEE,TRUE,0);\n    SetStatusText(L"Scanning selected locations in the background…");
+    SendMessageW(g.progress,PBM_SETMARQUEE,TRUE,0);
+    EnableWindow(g.filesList,FALSE);EnableWindow(g.buttons[6],FALSE);
+    SetStatusText(L"Scanning selected locations in the background…");
 }
 static void FinishScan() {
     if(g.thread){WaitForSingleObject(g.thread,INFINITE);CloseHandle(g.thread);g.thread=nullptr;}
@@ -232,7 +234,7 @@ static void FinishScan() {
     if(InterlockedCompareExchange(&g.cancel,0,0))StringCchCatW(status,_countof(status),L" · cancelled");
     SetStatusText(status);
     for(int i=0;i<4;i++)EnableWindow(g.buttons[i],TRUE);
-    EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);
+    EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);\n    EnableWindow(g.filesList,TRUE);EnableWindow(g.buttons[6],TRUE);
     if(g.closePending&&g.window)DestroyWindow(g.window);
 }
 static void Layout(HWND w) {
