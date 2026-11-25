@@ -1316,13 +1316,13 @@ static void UpdateLayout(HWND hwnd) {
     if(R_MENU_PANEL.left<12)R_MENU_PANEL.left=12;
     if(R_MENU_PANEL.bottom>h-12)R_MENU_PANEL.bottom=h-12;
     const int menuStarts[5]={0,1,3,12,14};
-    const int menuEnds[5]={1,3,12,14,20};
+    const int menuEnds[5]={1,3,12,14,21};
     int menuUsable=R_MENU_PANEL.bottom-R_MENU_PANEL.top-60;
     int showSectionLabels=(R_MENU_PANEL.bottom-R_MENU_PANEL.top)>=620;
     int sectionHeaderH=showSectionLabels?16:0;
     int sectionGap=showSectionLabels?5:3;
     int sectionSpace=5*sectionHeaderH+5*sectionGap;
-    int menuUnit=(menuUsable-sectionSpace)/22;
+    int menuUnit=(menuUsable-sectionSpace)/23;
     if(menuUnit<15)menuUnit=15;
     int menuY=R_MENU_PANEL.top+54;
     for(int group=0;group<5;group++){
@@ -2697,22 +2697,24 @@ static void DrawUI(HDC dc,RECT client) {
                 if(lineX<section.right)DrawLine(dc,lineX,(section.top+section.bottom)/2,section.right,(section.top+section.bottom)/2,ABM_THEME_COLOR_1C3445,1);
             }
         }
-        const wchar_t *labels[20]={
+        const wchar_t *labels[21]={
             L"Open media",L"Find network devices",L"Cast to TV",L"Play / Pause",
             L"Fullscreen",L"Load playlist",L"Save playlist",L"Recent media",
             L"Shuffle: Off",L"Repeat current: Off",L"Video Enhancement Studio",
             L"Advanced Equalizer",L"Streaming services",L"Torrent Stream",L"Help & User Guide",
-            L"Check for updates",L"License & Activation",L"Settings",L"About ABM AV Player",L"Exit player"
+            L"Check for updates",L"License & Activation",L"Settings",L"About ABM AV Player",
+            L"Media Library",L"Exit player"
         };
-        const wchar_t *shortcuts[20]={
+        const wchar_t *shortcuts[21]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
             L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+Shift+V",
             L"Ctrl+E",L"Ctrl+Shift+S",L"Ctrl+Shift+T",L"F1",
-            L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",L"Alt+F4"
+            L"Ctrl+Shift+U",L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",
+            L"Ctrl+Shift+M",L"Alt+F4"
         };
-        const wchar_t *icons[20]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
-        for(int i=0;i<20;i++) {
+        const wchar_t *icons[21]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"EQ",L"WEB",L"TOR",L"?",L"↻",L"KEY",L"⚙",L"i",L"LIB",L"×"};
+        for(int i=0;i<21;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
             if(i==9)labels[9]=g_repeat==2?L"Repeat all: On":(g_repeat==1?L"Repeat current: On":L"Repeat: Off");
@@ -7138,6 +7140,9 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"PLAYLISTS AND RECENT MEDIA\r\n"
             L"Add multiple files, double-click an item to play, and right-click a playlist row for item actions. Load Playlist and Save Playlist use M3U files. Recent media opens the recent-items list. Shuffle changes next-item order. Repeat cycles through Off, Repeat all and Repeat current; the active mode is visibly indicated. Ctrl+R cycles the repeat mode. The playlist supports up to 256 entries. Shuffle, repeat, playback speed and recent/playlist state are saved for your Windows user.\r\n"
             L"\r\n"
+            L"MEDIA LIBRARY — DISCOVERY\r\n"
+            L"Open Media Library from the idle dashboard, choose it in the Command Centre, or press Ctrl+Shift+M. Add folders or drives, then use Scan now or Scan computer to index accessible files. Discovery retains unverified candidates as well as recognised media so unfamiliar extensions and formats are not silently missed; playback determines whether an unverified candidate is playable. Scanning runs in the background and the index is stored locally under %LOCALAPPDATA%\\ABMAVPlayer\\MediaLibrary.\r\n"
+            L"\r\n"
             L"LIBRARY, CONTINUE WATCHING AND RESUME\r\n"
             L"Use the Library view selector to cycle All tracks, Favourites and Continue Watching. Continue Watching lists items with a saved playback position and shows an approximate progress percentage and remaining time. Resume is automatic: when you play an item with a saved checkpoint, ABM AV Player seeks after LibVLC reports that playback has started. Right-click a media row to choose Continue from checkpoint or Start from beginning. Starting from the beginning clears the old checkpoint only after playback successfully starts.\r\n"
             L"Playback position is checkpointed periodically and around pause, stop, media changes and application shutdown. Very early positions are ignored; an item at approximately 95 percent completion is treated as finished and removed from Continue Watching. Checkpoints are stored locally for the current Windows user in %APPDATA%\\\\ABMAVPlayer\\\\resume.tsv; they are not written into the media file.\r\n"
@@ -7207,6 +7212,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Ctrl+L  Load playlist     |     Ctrl+S  Save playlist     |     Ctrl+J  Recent media\r\n"
             L"Ctrl+E  Advanced equalizer     |     Ctrl+Shift+H  Shuffle     |     Ctrl+R  Cycle repeat mode\r\n"
             L"Ctrl+Shift+T  Torrent Stream     |     Ctrl+Shift+S  Streaming Centre\r\n"
+            L"Ctrl+Shift+M  Open Media Library\r\n"
             L"F1  This help     |     Ctrl+I  About     |     Alt+F4  Exit     |     Esc  Close menu/leave fullscreen\r\n"
             L"\r\n"
             L"TROUBLESHOOTING\r\n"
@@ -9386,7 +9392,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
            rectangle used to draw the rounded row background. */
         if(g_menuOpen && !g_fullscreen && Inside(R_MENU_PANEL,x,y)) {
             if(g_menuProgress<80)return 0;
-            for(int mi=0;mi<20;mi++) {
+            for(int mi=0;mi<21;mi++) {
                 if(y>=R_MENU_ITEMS[mi].top && y<R_MENU_ITEMS[mi].bottom) {
                     g_menuOpen=FALSE;
                     PositionVideoWindow();
@@ -9410,7 +9416,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                     else if(mi==16){if(ABM_LicenseShowActivation(GetModuleHandleW(NULL),hwnd))ABM_MessageBoxW(hwnd,L"ABM AV Player is now activated. All features are unlocked.",L"Activation successful",MB_OK|MB_ICONINFORMATION);}
                     else if(mi==17)ShowSettingsDialog(hwnd);
                     else if(mi==18)ShowAboutDialog(hwnd);
-                    else if(mi==19)PostMessageW(hwnd,WM_CLOSE,0,0);
+                    else if(mi==19)ABM_MediaLibrary_Show(hwnd,MediaLibraryPlay);
+                    else if(mi==20)PostMessageW(hwnd,WM_CLOSE,0,0);
                     InvalidateRect(hwnd,NULL,FALSE);
                     return 0;
                 }
@@ -9594,13 +9601,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         BOOL shift=(GetKeyState(VK_SHIFT)&0x8000)!=0;
         if(g_menuOpen){
             if(wp==VK_ESCAPE){g_menuOpen=FALSE;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%20;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_UP){g_menuSelection=(g_menuSelection+19)%20;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_DOWN||wp==VK_TAB){g_menuSelection=(g_menuSelection+1)%21;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_UP){g_menuSelection=(g_menuSelection+20)%21;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_HOME){g_menuSelection=0;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
-            if(wp==VK_END){g_menuSelection=19;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+            if(wp==VK_END){g_menuSelection=20;g_hoverMenuItem=-1;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
             if(wp==VK_RETURN){if(g_menuProgress<80)return 0;int chosen=g_menuSelection;POINT p={R_MENU_ITEMS[chosen].left+12,R_MENU_ITEMS[chosen].top+12};SendMessageW(hwnd,WM_LBUTTONDOWN,MK_LBUTTON,MAKELPARAM(p.x,p.y));SendMessageW(hwnd,WM_LBUTTONUP,0,MAKELPARAM(p.x,p.y));return 0;}
         }
         if(wp==VK_F10&&!shift){g_menuOpen=!g_menuOpen;if(g_menuOpen)g_menuSelection=0;g_hoverMenuItem=-1;PositionVideoWindow();SyncRendererComboVisibility();InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);return 0;}
+        if(ctrl && shift && wp=='M'){ABM_MediaLibrary_Show(hwnd,MediaLibraryPlay);return 0;}
         if(ctrl && !shift && wp=='O'){AddFiles();return 0;}
         if(ctrl && !shift && wp=='D'){StartDiscovery();return 0;}
         if(ctrl && !shift && wp=='E'){ShowEqualizer();return 0;}
