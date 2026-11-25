@@ -505,13 +505,27 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
         ABM_D2D_CanvasText(&g.canvas,label,RECT{10,0,(LONG)buttonWidth-8,(LONG)buttonHeight},active?ABM_THEME_COLOR_84CDC2:ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasEnd(&g.canvas);return;
     }
-    bool primary=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL||d->CtlID==ML_PLAY;
-    COLORREF fill=primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737;
+    bool scanning=InterlockedCompareExchange(&g.scanning,0,0)!=0;
+    bool scanButton=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL;
+    bool activeSpinner=scanning&&d->CtlID==g.activeScanButton;
+    bool glowing=!scanning&&scanButton&&d->CtlID==g.activeScanButton&&g.scanGlowUntil&&(LONG)(g.scanGlowUntil-GetTickCount())>0;
+    bool primary=scanButton||d->CtlID==ML_PLAY;
+    COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:(primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737);
     ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
-    ABM_D2D_CanvasStrokeRound(&g.canvas,1,1,(float)(d->rcItem.right-d->rcItem.left-1),(float)(d->rcItem.bottom-d->rcItem.top-1),11,
-        (d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63,(d->itemState&ODS_FOCUS)?2.0f:1.0f);
-    RECT text={0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
-    ABM_D2D_CanvasText(&g.canvas,label,text,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    COLORREF edge=glowing?ABM_THEME_COLOR_DC414C:((d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63);
+    if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0,0,buttonWidth,buttonHeight,12,ABM_THEME_COLOR_844C51,3);
+    ABM_D2D_CanvasStrokeRound(&g.canvas,1,1,buttonWidth-1,buttonHeight-1,11,edge,(glowing||(d->itemState&ODS_FOCUS))?2:1);
+    if(activeSpinner) {
+        float cx=17.0f,cy=buttonHeight*0.5f,radius=7.0f;
+        ABM_D2D_CanvasStrokeRound(&g.canvas,cx-radius,cy-radius,cx+radius,cy+radius,radius,ABM_THEME_COLOR_84CDC2,1.3f);
+        float angle=g.spinnerAngle;
+        ABM_D2D_CanvasLine(&g.canvas,cx,cy,cx+cosf(angle)*radius*0.72f,cy+sinf(angle)*radius*0.72f,ABM_THEME_COLOR_F2F8FF,1.8f);
+        ABM_D2D_CanvasLine(&g.canvas,cx,cy,cx+cosf(angle+1.57f)*radius*0.48f,cy+sinf(angle+1.57f)*radius*0.48f,ABM_THEME_COLOR_84CDC2,1.2f);
+    }
+    RECT text=activeSpinner?RECT{30,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top}:RECT{0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
+    const wchar_t *display=activeSpinner?L"Scanning…":label;
+    COLORREF textColor=(scanning&&scanButton&&!activeSpinner)?ABM_THEME_COLOR_9DB1C9:ABM_THEME_COLOR_F2F8FF;
+    ABM_D2D_CanvasText(&g.canvas,display,text,textColor,ABM_D2D_TEXT_SMALL,activeSpinner?(DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS):(DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS));
     ABM_D2D_CanvasEnd(&g.canvas);
 }
 static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
@@ -526,9 +540,9 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g.searchEdit=CreateWindowExW(0,L"EDIT",L"",WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,0,0,10,10,w,(HMENU)ML_SEARCH,GetModuleHandleW(nullptr),nullptr);
         SendMessageW(g.searchEdit,WM_SETFONT,(WPARAM)g.font,TRUE);
         SendMessageW(g.searchEdit,EM_SETCUEBANNER,TRUE,(LPARAM)L"Search by file name, type or folder...");
-        const int sortIds[3]={ML_SORT_NAME,ML_SORT_TYPE,ML_SORT_LOCATION};
-        const wchar_t *sortText[3]={L"NAME",L"TYPE",L"LOCATION"};
-        for(int i=0;i<3;i++){g.sortButtons[i]=CreateWindowExW(0,L"BUTTON",sortText[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)sortIds[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.sortButtons[i],WM_SETFONT,(WPARAM)g.smallFont,TRUE);}
+        const int sortIds[4]={ML_SORT_NAME,ML_SORT_TYPE,ML_SORT_SIZE,ML_SORT_LOCATION};
+        const wchar_t *sortText[4]={L"NAME",L"TYPE",L"SIZE",L"LOCATION"};
+        for(int i=0;i<4;i++){g.sortButtons[i]=CreateWindowExW(0,L"BUTTON",sortText[i],WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,0,0,10,10,w,(HMENU)(INT_PTR)sortIds[i],GetModuleHandleW(nullptr),nullptr);SendMessageW(g.sortButtons[i],WM_SETFONT,(WPARAM)g.smallFont,TRUE);}
         SendMessageW(g.rootsList,LB_SETITEMHEIGHT,0,44);SendMessageW(g.filesList,LB_SETITEMHEIGHT,0,44);
         SendMessageW(g.rootsList,WM_SETFONT,(WPARAM)g.font,TRUE);SendMessageW(g.filesList,WM_SETFONT,(WPARAM)g.font,TRUE);
         SetWindowTheme(g.rootsList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.filesList,L"DarkMode_Explorer",nullptr);SetWindowTheme(g.searchEdit,L"DarkMode_Explorer",nullptr);
@@ -598,10 +612,12 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
                     ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATION",sub,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 } else {
                     std::wstring path=label,leaf=FileLeaf(path),type=FileType(path),location=FileLocation(path);
-                    int total=r.right-r.left,nameW=total*48/100,typeW=total*20/100;
-                    RECT nr={14,0,nameW-8,r.bottom-r.top},tr={nameW+4,0,nameW+typeW-8,r.bottom-r.top},lr={nameW+typeW+4,0,total-12,r.bottom-r.top};
+                    int total=r.right-r.left,available=total-24,nameW=available*40/100,typeW=available*16/100,sizeW=available*14/100;
+                    std::wstring size=FileSizeText(path);
+                    RECT nr={14,0,nameW-8,r.bottom-r.top},tr={nameW+4,0,nameW+typeW-8,r.bottom-r.top},sr={nameW+typeW+4,0,nameW+typeW+sizeW-8,r.bottom-r.top},lr={nameW+typeW+sizeW+4,0,total-12,r.bottom-r.top};
                     ABM_D2D_CanvasText(&g.canvas,leaf.c_str(),nr,ABM_THEME_COLOR_F2F8FF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                     ABM_D2D_CanvasText(&g.canvas,type.c_str(),tr,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                    ABM_D2D_CanvasText(&g.canvas,size.c_str(),sr,ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                     ABM_D2D_CanvasText(&g.canvas,location.c_str(),lr,ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 }
                 ABM_D2D_CanvasEnd(&g.canvas);
@@ -614,8 +630,8 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         switch(LOWORD(wp)) {
         case ML_ADD_FOLDER: {std::wstring path;if(ChooseFolder(path)){AddRoot(path.c_str());SetStatusText(L"Folder added. Select Scan now to index its media.");}return 0;}
         case ML_ADD_DRIVES:AddAvailableDrives(false);SetStatusText(L"Available fixed and removable drives added.");return 0;
-        case ML_SCAN_ALL:AddAvailableDrives(true);StartScan();return 0;
-        case ML_SCAN:StartScan();return 0;
+        case ML_SCAN_ALL:AddAvailableDrives(true);StartScan(ML_SCAN_ALL);return 0;
+        case ML_SCAN:StartScan(ML_SCAN);return 0;
         case ML_STOP:InterlockedExchange(&g.cancel,1);SetStatusText(L"Stopping after the current directory…");return 0;
         case ML_PLAY: {
             int selected=(int)SendMessageW(g.filesList,LB_GETCURSEL,0,0);
@@ -625,7 +641,8 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         case ML_CLOSE:SendMessageW(w,WM_CLOSE,0,0);return 0;
         case ML_SORT_NAME:SortFiles(0);return 0;
         case ML_SORT_TYPE:SortFiles(1);return 0;
-        case ML_SORT_LOCATION:SortFiles(2);return 0;
+        case ML_SORT_SIZE:SortFiles(2);return 0;
+        case ML_SORT_LOCATION:SortFiles(3);return 0;
         }
         if(LOWORD(wp)==ML_SEARCH&&HIWORD(wp)==EN_CHANGE){RefreshFiles();return 0;}
         if(LOWORD(wp)==ML_FILES&&HIWORD(wp)==LBN_SELCHANGE) {
@@ -645,6 +662,20 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         SetStatusText(status);return 0;
     }
     case ML_DONE_MSG:FinishScan();return 0;
+    case WM_TIMER:
+        if(wp==ML_SCAN_ANIM_TIMER) {
+            if(InterlockedCompareExchange(&g.scanning,0,0)!=0) {
+                g.spinnerAngle+=0.32f;if(g.spinnerAngle>6.2831853f)g.spinnerAngle-=6.2831853f;
+                InvalidateRect(g.buttons[2],nullptr,FALSE);InvalidateRect(g.buttons[3],nullptr,FALSE);
+            } else if(g.scanGlowUntil&&(LONG)(g.scanGlowUntil-GetTickCount())>0) {
+                InvalidateRect(g.buttons[g.activeScanButton==ML_SCAN_ALL?2:3],nullptr,FALSE);
+            } else {
+                g.scanGlowUntil=0;KillTimer(w,ML_SCAN_ANIM_TIMER);
+                InvalidateRect(g.buttons[2],nullptr,FALSE);InvalidateRect(g.buttons[3],nullptr,FALSE);
+            }
+            return 0;
+        }
+        break;
     case WM_CLOSE:
         /* Keep the window alive until the worker has posted its completion
            message and its handle can be joined/closed on the UI thread. */
