@@ -514,7 +514,7 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
     bool activeSpinner=scanning&&d->CtlID==g.activeScanButton;
     bool glowing=!scanning&&scanButton&&d->CtlID==g.activeScanButton&&g.scanGlowUntil&&(LONG)(g.scanGlowUntil-GetTickCount())>0;
     bool primary=scanButton||d->CtlID==ML_PLAY;
-    COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:(primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737);
+    COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:((scanning&&scanButton&&!activeSpinner)?ABM_THEME_COLOR_192737:(primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737));
     ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
     COLORREF edge=glowing?ABM_THEME_COLOR_DC414C:((d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63);
     if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0,0,buttonWidth,buttonHeight,12,ABM_THEME_COLOR_844C51,3);
