@@ -15,6 +15,7 @@
 #include <cwctype>
 #include <cwchar>
 #include <cstring>
+#include <cmath>
 #include <cstdio>
 #include <new>
 #include <utility>
@@ -33,7 +34,8 @@ enum { ML_ADD_FOLDER=7101, ML_ADD_DRIVES=7102, ML_SCAN_ALL=7103, ML_SCAN=7104,
        ML_STOP=7105, ML_PLAY=7107, ML_CLOSE=7108,
        ML_ROOTS=7110, ML_FILES=7111, ML_PROGRESS=7112,
        ML_SORT_NAME=7113, ML_SORT_TYPE=7114, ML_SORT_LOCATION=7115, ML_SEARCH=7116, ML_STATUS=7117,
-       ML_CTX_OPEN=7121, ML_CTX_PLAY=7122, ML_CTX_REMOVE_ROOT=7123, ML_CTX_REMOVE_FILE=7124, ML_CTX_COPY_PATH=7125 };
+       ML_CTX_OPEN=7121, ML_CTX_PLAY=7122, ML_CTX_REMOVE_ROOT=7123, ML_CTX_REMOVE_FILE=7124, ML_CTX_COPY_PATH=7125,
+       ML_SORT_SIZE=7118, ML_SCAN_ANIM_TIMER=7130 };
 enum { ML_PROGRESS_MSG=WM_APP+0x6B1, ML_DONE_MSG=WM_APP+0x6B2 };
 static const size_t ML_PATH_CAP=32768;
 struct PathLess {
@@ -43,7 +45,7 @@ struct PathLess {
 };
 struct LibraryState {
     HWND window=nullptr,owner=nullptr,rootsList=nullptr,filesList=nullptr,status=nullptr,progress=nullptr,searchEdit=nullptr;
-    HWND sortButtons[3]={};
+    HWND sortButtons[4]={};
     HWND buttons[7]={};
     HFONT font=nullptr,smallFont=nullptr;
     ABM_D2D_CANVAS canvas={};
@@ -55,6 +57,9 @@ struct LibraryState {
     std::vector<size_t> visibleFiles;
     int sortColumn=0;
     bool sortDescending=false;
+    int activeScanButton=ML_SCAN;
+    DWORD scanGlowUntil=0;
+    float spinnerAngle=0.0f;
     ABM_MediaLibraryPlayFn play=nullptr;
 } g;
 
@@ -159,6 +164,22 @@ static std::wstring FileType(const std::wstring &path) {
     for(auto &ch:ext)ch=(wchar_t)towupper(ch);
     return ext+L" file";
 }
+static ULONGLONG FileSizeBytes(const std::wstring &path) {
+    WIN32_FILE_ATTRIBUTE_DATA data={};
+    if(!GetFileAttributesExW(path.c_str(),GetFileExInfoStandard,&data))return 0;
+    ULARGE_INTEGER size;size.HighPart=data.nFileSizeHigh;size.LowPart=data.nFileSizeLow;return size.QuadPart;
+}
+static std::wstring FileSizeText(const std::wstring &path) {
+    ULONGLONG bytes=FileSizeBytes(path);
+    if(!bytes)return L"—";
+    const wchar_t *units[]={L"B",L"KB",L"MB",L"GB",L"TB"};
+    double value=(double)bytes;int unit=0;
+    while(value>=1024.0&&unit<4){value/=1024.0;++unit;}
+    wchar_t text[48];
+    if(unit==0)StringCchPrintfW(text,_countof(text),L"%llu B",(unsigned long long)bytes);
+    else StringCchPrintfW(text,_countof(text),L"%.1f %ls",value,units[unit]);
+    return text;
+}
 static std::wstring FileLocation(const std::wstring &path) {
     size_t slash=path.find_last_of(L"\\/");
     return slash==std::wstring::npos?L"":path.substr(0,slash);
@@ -171,8 +192,8 @@ static bool ContainsInsensitive(const std::wstring &value,const std::wstring &ne
     return needle.empty()||LowerText(value).find(LowerText(needle))!=std::wstring::npos;
 }
 static void UpdateSortLabels() {
-    const wchar_t *labels[3]={L"NAME",L"TYPE",L"LOCATION"};
-    for(int i=0;i<3;i++)if(g.sortButtons[i]) {
+    const wchar_t *labels[4]={L"NAME",L"TYPE",L"SIZE",L"LOCATION"};
+    for(int i=0;i<4;i++)if(g.sortButtons[i]) {
         wchar_t text[64];StringCchPrintfW(text,_countof(text),L"%ls%ls",labels[i],
             g.sortColumn==i?(g.sortDescending?L"  ▼":L"  ▲"):L"");
         SetWindowTextW(g.sortButtons[i],text);InvalidateRect(g.sortButtons[i],nullptr,FALSE);
@@ -193,11 +214,13 @@ static void RefreshFiles() {
     }
     auto key=[&](size_t i)->std::wstring {
         if(g.sortColumn==1)return FileType(g.files[i]);
-        if(g.sortColumn==2)return FileLocation(g.files[i]);
+        if(g.sortColumn==3)return FileLocation(g.files[i]);
         return FileLeaf(g.files[i]);
     };
     std::sort(g.visibleFiles.begin(),g.visibleFiles.end(),[&](size_t x,size_t y){
-        int cmp=_wcsicmp(key(x).c_str(),key(y).c_str());
+        int cmp=0;
+        if(g.sortColumn==2){ULONGLONG sx=FileSizeBytes(g.files[x]),sy=FileSizeBytes(g.files[y]);cmp=sx<sy?-1:(sx>sy?1:0);}
+        else cmp=_wcsicmp(key(x).c_str(),key(y).c_str());
         if(cmp==0)cmp=_wcsicmp(FileLeaf(g.files[x]).c_str(),FileLeaf(g.files[y]).c_str());
         return g.sortDescending?cmp>0:cmp<0;
     });
@@ -413,8 +436,9 @@ static DWORD WINAPI ScanWorker(LPVOID) {
     PostMessageW(g.window,ML_DONE_MSG,0,0);
     return 0;
 }
-static void StartScan() {
+static void StartScan(int initiatingButton) {
     if(InterlockedCompareExchange(&g.scanning,1,0)!=0)return;
+    g.activeScanButton=initiatingButton;g.scanGlowUntil=0;g.spinnerAngle=0.0f;
     if(g.roots.empty()){InterlockedExchange(&g.scanning,0);SetStatusText(L"Add a folder or drive before scanning.");return;}
     InterlockedExchange(&g.cancel,0);
     g.thread=CreateThread(nullptr,0,ScanWorker,nullptr,0,nullptr);
@@ -423,6 +447,7 @@ static void StartScan() {
     EnableWindow(g.buttons[0],FALSE);EnableWindow(g.buttons[1],FALSE);
     EnableWindow(g.buttons[2],FALSE);EnableWindow(g.buttons[3],FALSE);
     EnableWindow(g.buttons[4],TRUE);EnableWindow(g.buttons[5],FALSE);
+    if(g.window)SetTimer(g.window,ML_SCAN_ANIM_TIMER,55,nullptr);
     InvalidateRect(g.window,nullptr,FALSE);
     EnableWindow(g.filesList,FALSE);EnableWindow(g.searchEdit,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],FALSE);
@@ -439,6 +464,8 @@ static void FinishScan() {
     SetStatusText(status);
     for(int i=0;i<4;i++)EnableWindow(g.buttons[i],TRUE);
     EnableWindow(g.buttons[4],FALSE);EnableWindow(g.buttons[5],TRUE);
+    g.scanGlowUntil=GetTickCount()+3200;
+    if(g.window)SetTimer(g.window,ML_SCAN_ANIM_TIMER,55,nullptr);
     EnableWindow(g.filesList,TRUE);EnableWindow(g.searchEdit,TRUE);
     if(g.window)InvalidateRect(g.window,nullptr,FALSE);
     for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],TRUE);
@@ -451,10 +478,11 @@ static void Layout(HWND w) {
     int rightLeft=margin+leftWidth+gap,rightWidth=width-margin-rightLeft;
     if(g.rootsList)SetWindowPos(g.rootsList,nullptr,margin,top,leftWidth,height-top-footer,SWP_NOZORDER);
     if(g.searchEdit)SetWindowPos(g.searchEdit,nullptr,rightLeft+17,top+17,rightWidth-34,24,SWP_NOZORDER);
-    int colY=top+54,nameW=(rightWidth-24)*48/100,typeW=(rightWidth-24)*20/100;
+    int colY=top+54,available=rightWidth-24,nameW=available*40/100,typeW=available*16/100,sizeW=available*14/100;
     if(g.sortButtons[0])SetWindowPos(g.sortButtons[0],nullptr,rightLeft+12,colY,nameW,28,SWP_NOZORDER);
     if(g.sortButtons[1])SetWindowPos(g.sortButtons[1],nullptr,rightLeft+12+nameW,colY,typeW,28,SWP_NOZORDER);
-    if(g.sortButtons[2])SetWindowPos(g.sortButtons[2],nullptr,rightLeft+12+nameW+typeW,colY,(rightWidth-24)-nameW-typeW,28,SWP_NOZORDER);
+    if(g.sortButtons[2])SetWindowPos(g.sortButtons[2],nullptr,rightLeft+12+nameW+typeW,colY,sizeW,28,SWP_NOZORDER);
+    if(g.sortButtons[3])SetWindowPos(g.sortButtons[3],nullptr,rightLeft+12+nameW+typeW+sizeW,colY,available-nameW-typeW-sizeW,28,SWP_NOZORDER);
     if(g.filesList)SetWindowPos(g.filesList,nullptr,rightLeft+12,top+84,rightWidth-24,height-(top+84)-footer,SWP_NOZORDER);
     if(g.status)SetWindowPos(g.status,nullptr,margin,height-70,width-2*margin,24,SWP_NOZORDER);
     int x=margin,y=112;
@@ -471,8 +499,8 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
        the native BUTTON class leaves its default white background visible in
        the four square corners outside the rounded ABM surface. */
     ABM_D2D_CanvasFill(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,ABM_THEME_COLOR_090F19);
-    if(d->CtlID==ML_SORT_NAME||d->CtlID==ML_SORT_TYPE||d->CtlID==ML_SORT_LOCATION) {
-        bool active=(d->CtlID==ML_SORT_NAME&&g.sortColumn==0)||(d->CtlID==ML_SORT_TYPE&&g.sortColumn==1)||(d->CtlID==ML_SORT_LOCATION&&g.sortColumn==2);
+    if(d->CtlID==ML_SORT_NAME||d->CtlID==ML_SORT_TYPE||d->CtlID==ML_SORT_SIZE||d->CtlID==ML_SORT_LOCATION) {
+        bool active=(d->CtlID==ML_SORT_NAME&&g.sortColumn==0)||(d->CtlID==ML_SORT_TYPE&&g.sortColumn==1)||(d->CtlID==ML_SORT_SIZE&&g.sortColumn==2)||(d->CtlID==ML_SORT_LOCATION&&g.sortColumn==3);
         ABM_D2D_CanvasFillRound(&g.canvas,1,1,buttonWidth-1,buttonHeight-1,6,active?ABM_THEME_COLOR_163B48:ABM_THEME_COLOR_141D2A);
         ABM_D2D_CanvasText(&g.canvas,label,RECT{10,0,(LONG)buttonWidth-8,(LONG)buttonHeight},active?ABM_THEME_COLOR_84CDC2:ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasEnd(&g.canvas);return;
