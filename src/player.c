@@ -486,7 +486,7 @@ static WINDOWPLACEMENT g_savedPlacement = { sizeof(WINDOWPLACEMENT) };
 static int g_menuProgress = 0;
 static int g_hoverMenuItem = -1;
 static int g_menuSelection = 0;
-static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[20], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
+static RECT R_MENU_BUTTON, R_DRAWER_BUTTON, R_SETTINGS_BUTTON, R_MENU_PANEL, R_MENU_ITEMS[21], R_MENU_SECTION_LABELS[5], R_MENU_GROUPS[5], R_FULLSCREEN;
 static RECT R_ADVANCED_SETTINGS_BUTTON;
 static HWND g_eqWindow=NULL;
 static float g_eqBandGain[10]={0,0,0,0,0,0,0,0,0,0};
