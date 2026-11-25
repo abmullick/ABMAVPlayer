@@ -71,7 +71,7 @@ static bool IsMediaExtension(const wchar_t *path) {
     if(const wchar_t *slash=wcsrchr(leaf,L'/'))leaf=slash+1;
     size_t leafLength=wcslen(leaf);
     if(leafLength>=5&&!_wcsicmp(leaf+leafLength-5,L".d.ts"))return false;
-    const wchar_t *dot=wcsrchr(path,L'.');if(!dot)return false;
+    const wchar_t *dot=wcsrchr(leaf,L'.');if(!dot)return false;
     static const wchar_t *extensions[]={
         L".mp4",L".mkv",L".avi",L".mov",L".wmv",L".m4v",L".webm",L".mpg",L".mpeg",
         L".ts",L".m2ts",L".mts",L".flv",L".ogv",L".3gp",L".vob",L".mp3",L".wav",
@@ -80,6 +80,41 @@ static bool IsMediaExtension(const wchar_t *path) {
     };
     for(const wchar_t *ext:extensions)if(!_wcsicmp(dot,ext))return true;
     return false;
+}
+/* Fast signature-only fallback for media files with missing or misleading extensions.
+   We intentionally do not invoke a decoder here: scanning should remain lightweight. */
+static bool HasMediaSignature(const std::wstring &path) {
+    std::wstring query=path;
+    if(query.size()>=248&&query.rfind(L"\\\\?\\",0)!=0) {
+        if(query.rfind(L"\\\\",0)==0)query=L"\\\\?\\UNC\\"+query.substr(2);
+        else query=L"\\\\?\\"+query;
+    }
+    HANDLE file=CreateFileW(query.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                            nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr);
+    if(file==INVALID_HANDLE_VALUE)return false;
+    BYTE h[64]={};DWORD got=0;
+    BOOL ok=ReadFile(file,h,sizeof(h),&got,nullptr);CloseHandle(file);
+    if(!ok||got<4)return false;
+    /* ISO base media (MP4/M4A/3GP/MOV): size followed by ftyp/styp. */
+    if(got>=8&&(!memcmp(h+4,"ftyp",4)||!memcmp(h+4,"styp",4)))return true;
+    /* Matroska/WebM EBML, AVI/WAVE/AIFF, Ogg, FLAC, MIDI, MPEG program stream. */
+    if(got>=4&&(!memcmp(h,"\x1A\x45\xDF\xA3",4)||!memcmp(h,"OggS",4)||
+                !memcmp(h,"fLaC",4)||!memcmp(h,"MThd",4)||!memcmp(h,"FORM",4)||
+                !memcmp(h,"OggS",4)||!memcmp(h,"\x00\x00\x01\xBA",4)))return true;
+    if(got>=12&&!memcmp(h,"RIFF",4)&&
+       (!memcmp(h+8,"AVI ",4)||!memcmp(h+8,"WAVE",4)))return true;
+    /* ASF/WMV header GUID. */
+    static const BYTE asf[]={0x30,0x26,0xB2,0x75,0x8E,0x66,0xCF,0x11,0xA6,0xD9,0x00,0xAA,0x00,0x62,0xCE,0x6C};
+    if(got>=sizeof(asf)&&!memcmp(h,asf,sizeof(asf)))return true;
+    /* ID3-tagged MP3 and common MPEG audio frame sync. */
+    if(!memcmp(h,"ID3",3))return true;
+    if(h[0]==0xFF&&(h[1]&0xE0)==0xE0&&(h[1]&0x18)!=0x08)return true;
+    /* MPEG transport stream: sync byte at the start and one 188-byte packet later. */
+    if(got>=189&&h[0]==0x47&&h[188]==0x47)return true;
+    return false;
+}
+static bool IsMediaFile(const std::wstring &path,const wchar_t *leaf) {
+    return IsMediaExtension(leaf)||HasMediaSignature(path);
 }
 static std::wstring TrimRoot(const wchar_t *path) {
     std::wstring value=path?path:L"";
@@ -414,7 +449,7 @@ static void ScanDirectory(const std::wstring &root,std::set<std::wstring,PathLes
             if(data.dwFileAttributes&FILE_ATTRIBUTE_DIRECTORY) {
                 if((data.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT)||IsSkippedSystemFolder(data.cFileName))continue;
                 pending.push_back(std::move(full));
-            } else if(IsMediaExtension(data.cFileName)) {
+            } else if(IsMediaFile(full,data.cFileName)) {
                 if(seen.insert(full).second)InterlockedIncrement(&g.foundFiles);
             }
         } while(FindNextFileW(find,&data));
@@ -556,7 +591,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         g.status=CreateWindowExW(0,L"STATIC",L"Add folders or drives, then scan. Scanning never interrupts playback.",WS_CHILD|WS_VISIBLE|SS_OWNERDRAW,0,0,10,10,w,(HMENU)ML_STATUS,GetModuleHandleW(nullptr),nullptr);
         LoadPaths(L"folders.tsv",g.roots);LoadPaths(L"media.tsv",g.files);
         /* Purge stale non-media entries from indexes created by earlier scans. */
-        g.files.erase(std::remove_if(g.files.begin(),g.files.end(),[](const std::wstring &p){return !IsMediaExtension(p.c_str());}),g.files.end());
+        g.files.erase(std::remove_if(g.files.begin(),g.files.end(),[](const std::wstring &p){return !IsMediaFile(p,FileLeaf(p).c_str());}),g.files.end());
         RefreshRoots();RefreshFiles();
         EnableWindow(g.buttons[4],FALSE);Layout(w);return 0;
     }
