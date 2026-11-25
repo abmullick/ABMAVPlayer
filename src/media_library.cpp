@@ -92,7 +92,7 @@ static bool HasMediaSignature(const std::wstring &path) {
     HANDLE file=CreateFileW(query.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
                             nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr);
     if(file==INVALID_HANDLE_VALUE)return false;
-    BYTE h[64]={};DWORD got=0;
+    BYTE h[376]={};DWORD got=0;
     BOOL ok=ReadFile(file,h,sizeof(h),&got,nullptr);CloseHandle(file);
     if(!ok||got<4)return false;
     /* ISO base media (MP4/M4A/3GP/MOV): size followed by ftyp/styp. */
