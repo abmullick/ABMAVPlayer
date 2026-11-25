@@ -6958,7 +6958,7 @@ static const wchar_t *g_helpDocument=NULL;
 static int g_helpArticleStart=0,g_helpArticleLength=0,g_helpSearchCursor=0;
 static const wchar_t *g_helpTopicNames[]={
  L"GETTING STARTED",L"PLAYBACK AND FULLSCREEN",L"PLAYLISTS AND RECENT MEDIA",
- L"LIBRARY, CONTINUE WATCHING AND RESUME",L"MISSING MEDIA AND RELINKING",L"HOME THEATRE — KEYLESS METADATA",
+ L"MEDIA LIBRARY — DISCOVERY",L"LIBRARY, CONTINUE WATCHING AND RESUME",L"MISSING MEDIA AND RELINKING",L"HOME THEATRE — KEYLESS METADATA",
  L"LICENSE & ACTIVATION",L"APPLICATION SETTINGS",L"AUDIO, VIDEO AND SUBTITLES",
  L"ADVANCED EQUALIZER AND AUDIO PROCESSING",L"NOW PLAYING AND VISUALIZER",
  L"LOCAL PLAYBACK OUTPUT",L"STREAMING CENTRE",L"STREAMING BROWSER CONTROLS",
@@ -9735,7 +9735,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_drawerProgress>=90&&Inside(R_LIST,mx,my)){for(int ri=0;ri<g_visibleRowCount;ri++)if(Inside(R_ROW[ri],mx,my)){playlistHot=g_visibleRows[ri];break;}}
         if(playlistHot!=g_hoverPlaylistIndex){g_hoverPlaylistIndex=playlistHot;InvalidateRect(hwnd,&R_SIDEBAR,FALSE);}
         int menuHot=-1;
-        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<19;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
+        if(g_menuOpen&&g_menuProgress>=35){for(int mi=0;mi<21;mi++)if(Inside(R_MENU_ITEMS[mi],mx,my)){menuHot=mi;break;}}
         if(menuHot!=g_hoverMenuItem){g_hoverMenuItem=menuHot;if(menuHot>=0)g_menuSelection=menuHot;InvalidateRect(hwnd,&R_MENU_PANEL,FALSE);}
         if (g_fullscreen) {
             g_fullscreenLastInputTick=GetTickCount();
