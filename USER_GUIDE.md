@@ -4,7 +4,7 @@ This guide covers the Windows desktop player and its separate Streaming Centre. 
 
 ## Media Library
 
-Open **Media Library** from the idle home dashboard. It maintains a separate index of local media files; it does not move, rename or modify the original files.
+Open **Media Library** from the idle home dashboard, choose **Media Library** in the Command Centre, or press **Ctrl+Shift+M**. It maintains a separate index of local file candidates; it does not move, rename or modify the original files.
 
 ### Add locations and scan
 
@@ -13,10 +13,10 @@ Open **Media Library** from the idle home dashboard. It maintains a separate ind
 - **Scan computer** adds the computer's fixed drives and starts a scan. Common Windows and system folders are excluded to avoid spending time indexing application and operating-system files.
 - **Scan now** rescans all configured locations. **Stop** requests cancellation after the current directory finishes.
 - Scanning runs in the background at below-normal thread priority. It does not stop or interrupt current playback.
-- The discovered list includes supported audio and video extensions. Select an item to see its full path in the status line; double-click it or choose **Play selected** to add it to the normal playlist and start playback.
+- Discovery deliberately retains all accessible files as candidates, including files with unfamiliar or missing extensions. Known extensions are labelled by format; other entries are labelled **Unverified candidate**. This favours avoiding false negatives, so non-media files can also appear. Select an item to see its full path; double-click it or choose **Play selected** to test it through the normal playback engine.
 - Scan locations and the discovered path index are stored locally in `%LOCALAPPDATA%\ABMAVPlayer\MediaLibrary`. The index is restored the next time the window opens.
 
-The first scan is not started automatically. Network drives are not included in **Scan computer**; choose a network folder explicitly if you want to scan it. Directory junctions and symbolic-link folders are not followed. This first version performs manual scans and does not yet monitor folders for changes or extract rich media metadata. The installer registers ABM AV Player as a candidate for its supported audio/video extensions, but Windows does not allow the installer to silently replace your defaults. Choose **Set default player** from the playback context menu (or open Windows Settings → Apps → Default apps), select **ABM AV Player**, and approve the file types you want it to open.
+The first scan is not started automatically. Network drives are not included in **Scan computer**; choose a network folder explicitly if you want to scan it. Discovery is intentionally inclusive and does not guarantee that every candidate is playable. Directory junctions and symbolic-link folders are not followed. This first version performs manual scans and does not yet monitor folders for changes or extract rich media metadata. The installer registers ABM AV Player as a candidate for its supported audio/video extensions, but Windows does not allow the installer to silently replace your defaults. Choose **Set default player** from the playback context menu (or open Windows Settings → Apps → Default apps), select **ABM AV Player**, and approve the file types you want it to open.
 ## Home Theatre
 
 Open **Home Theatre** from the idle home dashboard or playback context menu. Online discovery requires an internet connection but **does not require an API key, token or account**.
@@ -464,7 +464,7 @@ Users can also download the installer manually from [GitHub Releases](https://gi
 | Ctrl+Shift+H | Toggle shuffle |
 | Ctrl+R | Toggle repeat-current-track |
 | Ctrl+Shift+S | Open Streaming Centre |
-| F1 | Open main-player Help |
+| Ctrl+Shift+M | Open Media Library |\n| F1 | Open main-player Help |
 | Ctrl+I | Open About |
 | Esc | Close the menu or leave fullscreen |
 | Alt+F4 | Exit the application |
