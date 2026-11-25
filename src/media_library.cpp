@@ -165,13 +165,15 @@ static std::wstring FileType(const std::wstring &path) {
     return ext+L" file";
 }
 static ULONGLONG FileSizeBytes(const std::wstring &path) {
-    WIN32_FILE_ATTRIBUTE_DATA data={};
-    if(!GetFileAttributesExW(path.c_str(),GetFileExInfoStandard,&data))return 0;
+    WIN32_FILE_ATTRIBUTE_DATA data={};std::wstring query=EnumeratePath(path);
+    if(!GetFileAttributesExW(query.c_str(),GetFileExInfoStandard,&data))return 0;
     ULARGE_INTEGER size;size.HighPart=data.nFileSizeHigh;size.LowPart=data.nFileSizeLow;return size.QuadPart;
 }
 static std::wstring FileSizeText(const std::wstring &path) {
-    ULONGLONG bytes=FileSizeBytes(path);
-    if(!bytes)return L"—";
+    WIN32_FILE_ATTRIBUTE_DATA data={};std::wstring query=EnumeratePath(path);
+    if(!GetFileAttributesExW(query.c_str(),GetFileExInfoStandard,&data))return L"—";
+    ULARGE_INTEGER value;value.HighPart=data.nFileSizeHigh;value.LowPart=data.nFileSizeLow;
+    ULONGLONG bytes=value.QuadPart;
     const wchar_t *units[]={L"B",L"KB",L"MB",L"GB",L"TB"};
     double value=(double)bytes;int unit=0;
     while(value>=1024.0&&unit<4){value/=1024.0;++unit;}
@@ -217,9 +219,11 @@ static void RefreshFiles() {
         if(g.sortColumn==3)return FileLocation(g.files[i]);
         return FileLeaf(g.files[i]);
     };
+    std::vector<ULONGLONG> sizes;
+    if(g.sortColumn==2){sizes.resize(g.files.size());for(size_t i=0;i<g.files.size();++i)sizes[i]=FileSizeBytes(g.files[i]);}
     std::sort(g.visibleFiles.begin(),g.visibleFiles.end(),[&](size_t x,size_t y){
         int cmp=0;
-        if(g.sortColumn==2){ULONGLONG sx=FileSizeBytes(g.files[x]),sy=FileSizeBytes(g.files[y]);cmp=sx<sy?-1:(sx>sy?1:0);}
+        if(g.sortColumn==2){ULONGLONG sx=sizes[x],sy=sizes[y];cmp=sx<sy?-1:(sx>sy?1:0);}
         else cmp=_wcsicmp(key(x).c_str(),key(y).c_str());
         if(cmp==0)cmp=_wcsicmp(FileLeaf(g.files[x]).c_str(),FileLeaf(g.files[y]).c_str());
         return g.sortDescending?cmp>0:cmp<0;
@@ -450,7 +454,7 @@ static void StartScan(int initiatingButton) {
     if(g.window)SetTimer(g.window,ML_SCAN_ANIM_TIMER,55,nullptr);
     InvalidateRect(g.window,nullptr,FALSE);
     EnableWindow(g.filesList,FALSE);EnableWindow(g.searchEdit,FALSE);
-    for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],FALSE);
+    for(int i=0;i<4;i++)EnableWindow(g.sortButtons[i],FALSE);
     SetStatusText(L"Scanning selected locations in the background…");
 }
 static void FinishScan() {
@@ -468,7 +472,7 @@ static void FinishScan() {
     if(g.window)SetTimer(g.window,ML_SCAN_ANIM_TIMER,55,nullptr);
     EnableWindow(g.filesList,TRUE);EnableWindow(g.searchEdit,TRUE);
     if(g.window)InvalidateRect(g.window,nullptr,FALSE);
-    for(int i=0;i<3;i++)EnableWindow(g.sortButtons[i],TRUE);
+    for(int i=0;i<4;i++)EnableWindow(g.sortButtons[i],TRUE);
     if(g.closePending&&g.window)DestroyWindow(g.window);
 }
 static void Layout(HWND w) {
@@ -730,6 +734,7 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         EndPaint(w,&ps);return 0;
     }
     case WM_DESTROY:
+        KillTimer(w,ML_SCAN_ANIM_TIMER);
         ABM_SkinUnregisterWindow(w);
         if(g.canvasReady){ABM_D2D_CanvasDestroy(&g.canvas);g.canvasReady=FALSE;}
         if(g.font){DeleteObject(g.font);g.font=nullptr;}if(g.smallFont){DeleteObject(g.smallFont);g.smallFont=nullptr;}
