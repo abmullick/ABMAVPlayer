@@ -19,7 +19,7 @@ Open **Media Library** from the idle home dashboard, choose **Media Library** in
 The first scan is not started automatically. Network drives are not included in **Scan computer**; choose a network folder explicitly if you want to scan it. Discovery is intentionally inclusive and does not guarantee that every candidate is playable. Directory junctions and symbolic-link folders are not followed. This first version performs manual scans and does not yet monitor folders for changes or extract rich media metadata. The installer registers ABM AV Player as a candidate for its supported audio/video extensions, but Windows does not allow the installer to silently replace your defaults. Choose **Set default player** from the playback context menu (or open Windows Settings → Apps → Default apps), select **ABM AV Player**, and approve the file types you want it to open.
 ## Home Theatre
 
-Open **Home Theatre** from the idle home dashboard or playback context menu. Online discovery requires an internet connection but **does not require an API key, token or account**.
+Open **Home Theatre** from the idle home dashboard or playback context menu, or press **Ctrl+Shift+H**. Online discovery requires an internet connection but **does not require an API key, token or account**.
 
 ### Metadata providers
 
