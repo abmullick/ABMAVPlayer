@@ -2709,9 +2709,9 @@ static void DrawUI(HDC dc,RECT client) {
         const wchar_t *shortcuts[22]={
             L"Ctrl+O",L"Ctrl+D",L"Ctrl+Shift+C",L"Space",
             L"F11",L"Ctrl+L",L"Ctrl+S",L"Ctrl+J",
-            L"Ctrl+Shift+H",L"Ctrl+R",L"Ctrl+Shift+V",
+            L"",L"Ctrl+R",L"Ctrl+Shift+V",
             L"Ctrl+E",L"Ctrl+Shift+S",L"Ctrl+Shift+T",
-            L"",L"Ctrl+Shift+M",L"F1",L"Ctrl+Shift+U",
+            L"Ctrl+Shift+H",L"Ctrl+Shift+M",L"F1",L"Ctrl+Shift+U",
             L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",L"Alt+F4"
         };
         const wchar_t *icons[22]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"EQ",L"WEB",L"TOR",L"HT",L"LIB",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
@@ -7211,7 +7211,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             L"Space  Play/Pause     |     Left/Right  Seek 10 seconds     |     Home  Seek to beginning\r\n"
             L"N / P  Next/Previous item     |     + / -  Change playback speed     |     F11  Fullscreen\r\n"
             L"Ctrl+L  Load playlist     |     Ctrl+S  Save playlist     |     Ctrl+J  Recent media\r\n"
-            L"Ctrl+E  Advanced equalizer     |     Ctrl+Shift+H  Shuffle     |     Ctrl+R  Cycle repeat mode\r\n"
+            L"Ctrl+E  Advanced equalizer     |     Ctrl+Shift+H  Home Theatre     |     Ctrl+R  Cycle repeat mode\r\n"
             L"Ctrl+Shift+T  Torrent Stream     |     Ctrl+Shift+S  Streaming Centre\r\n"
             L"Ctrl+Shift+M  Open Media Library\r\n"
             L"F1  This help     |     Ctrl+I  About     |     Alt+F4  Exit     |     Esc  Close menu/leave fullscreen\r\n"
@@ -9624,7 +9624,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(ctrl && shift && wp=='S'){ABM_Streaming_Show(hwnd);return 0;}
         if(ctrl && shift && wp=='T'){ShowTorrentWindow(hwnd);return 0;}
         if(ctrl && shift && wp=='V'){ShowVideoEnhancementStudio();return 0;}
-        if(ctrl && shift && wp=='H'){g_shuffle=!g_shuffle;SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
+        if(ctrl && shift && wp=='H'){EnsureFavoritesInPlaylist();const wchar_t *paths[MAX_PLAYLIST];for(int i=0;i<g_playlistCount;i++)paths[i]=g_playlist[i];ABM_HomeTheatre_Show(hwnd,paths,g_playlistCount,PlayIndex);return 0;}
         if(ctrl && !shift && wp=='R'){g_repeat=(g_repeat==0)?2:(g_repeat==2?1:0);SavePersistentState();InvalidateRect(hwnd,NULL,FALSE);return 0;}
         if(ctrl && !shift && wp=='J'){POINT p;GetCursorPos(&p);ScreenToClient(hwnd,&p);ShowRecentMenu(hwnd,p.x,p.y);return 0;}
         if(wp==VK_F1){ShowHelpDialog(hwnd);return 0;}
