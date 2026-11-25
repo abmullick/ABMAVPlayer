@@ -172,14 +172,14 @@ static ULONGLONG FileSizeBytes(const std::wstring &path) {
 static std::wstring FileSizeText(const std::wstring &path) {
     WIN32_FILE_ATTRIBUTE_DATA data={};std::wstring query=EnumeratePath(path);
     if(!GetFileAttributesExW(query.c_str(),GetFileExInfoStandard,&data))return L"—";
-    ULARGE_INTEGER value;value.HighPart=data.nFileSizeHigh;value.LowPart=data.nFileSizeLow;
-    ULONGLONG bytes=value.QuadPart;
+    ULARGE_INTEGER fileSize;fileSize.HighPart=data.nFileSizeHigh;fileSize.LowPart=data.nFileSizeLow;
+    ULONGLONG bytes=fileSize.QuadPart;
     const wchar_t *units[]={L"B",L"KB",L"MB",L"GB",L"TB"};
-    double value=(double)bytes;int unit=0;
-    while(value>=1024.0&&unit<4){value/=1024.0;++unit;}
+    double displayValue=(double)bytes;int unit=0;
+    while(displayValue>=1024.0&&unit<4){displayValue/=1024.0;++unit;}
     wchar_t text[48];
     if(unit==0)StringCchPrintfW(text,_countof(text),L"%llu B",(unsigned long long)bytes);
-    else StringCchPrintfW(text,_countof(text),L"%.1f %ls",value,units[unit]);
+    else StringCchPrintfW(text,_countof(text),L"%.1f %ls",displayValue,units[unit]);
     return text;
 }
 static std::wstring FileLocation(const std::wstring &path) {
@@ -511,14 +511,14 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
     }
     bool scanning=InterlockedCompareExchange(&g.scanning,0,0)!=0;
     bool scanButton=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL;
-    bool activeSpinner=scanning&&d->CtlID==g.activeScanButton;
+    bool activeSpinner=scanning&&(int)d->CtlID==g.activeScanButton;
     bool glowing=!scanning&&scanButton&&d->CtlID==g.activeScanButton&&g.scanGlowUntil&&(LONG)(g.scanGlowUntil-GetTickCount())>0;
     bool primary=scanButton||d->CtlID==ML_PLAY;
     COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:((scanning&&scanButton&&!activeSpinner)?ABM_THEME_COLOR_192737:(primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737));
     ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
     COLORREF edge=glowing?ABM_THEME_COLOR_DC414C:((d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63);
-    if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0,0,buttonWidth,buttonHeight,12,ABM_THEME_COLOR_844C51,3);
-    ABM_D2D_CanvasStrokeRound(&g.canvas,1,1,buttonWidth-1,buttonHeight-1,11,edge,(glowing||(d->itemState&ODS_FOCUS))?2:1);
+    if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,12.0f,ABM_THEME_COLOR_844C51,3.0f);
+    ABM_D2D_CanvasStrokeRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,edge,(glowing||(d->itemState&ODS_FOCUS))?2.0f:1.0f);
     if(activeSpinner) {
         float cx=17.0f,cy=buttonHeight*0.5f,radius=7.0f;
         ABM_D2D_CanvasStrokeRound(&g.canvas,cx-radius,cy-radius,cx+radius,cy+radius,radius,ABM_THEME_COLOR_84CDC2,1.3f);
