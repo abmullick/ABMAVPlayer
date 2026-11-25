@@ -2,6 +2,7 @@
 
 ## What's new
 
+- Added the missing **Ctrl+Shift+H** Home Theatre shortcut and displayed it beside Home Theatre in the Command Centre; the key now opens Home Theatre instead of toggling Shuffle.
 - Added a dedicated **Media Library** manager to the idle dashboard. Users can add folders, add available fixed/removable drives, or scan the computer's fixed drives.
 - Added recursive discovery of supported local audio and video extensions. The scanner runs on a below-normal-priority worker, supports cancellation, skips common Windows/system directories and does not follow directory junctions or symbolic-link folders.
 - Persisted configured scan locations and the discovered media-path index under `%LOCALAPPDATA%\ABMAVPlayer\MediaLibrary`. The first scan is intentionally user-initiated; network drives are not included in Scan computer.
