@@ -563,7 +563,12 @@ RGB(82, 107, 154),
 RGB(138, 120, 59),
 RGB(52, 74, 112),
 RGB(85, 73, 31),
-RGB(102, 85, 31)
+RGB(102, 85, 31),
+RGB(21, 24, 32),
+RGB(29, 34, 45),
+RGB(39, 46, 58),
+RGB(52, 61, 76),
+RGB(233, 185, 73)
 };
 static volatile LONG g_themeColors[ABM_THEME_COLOR_COUNT] = {
 RGB(0, 0, 0),
@@ -1119,7 +1124,12 @@ RGB(255, 190, 205),
 RGB(255, 210, 196),
 RGB(255, 231, 229),
 RGB(255, 239, 232),
-RGB(255, 255, 255)
+RGB(255, 255, 255),
+RGB(21, 24, 32),
+RGB(29, 34, 45),
+RGB(39, 46, 58),
+RGB(52, 61, 76),
+RGB(233, 185, 73)
 };
 static volatile LONG g_activePreset = ABM_THEME_PRESET_MIDNIGHT_TEAL;
 static const wchar_t *g_presetNames[ABM_THEME_PRESET_COUNT] = {
@@ -1175,7 +1185,8 @@ BOOL ABMThemeApplyPreset(ABMThemePreset preset) {
         COLORREF color=g_defaultColors[i];
         if(preset!=ABM_THEME_PRESET_MIDNIGHT_TEAL &&
            i!=(unsigned)ABM_THEME_ID_4DC499 && i!=(unsigned)ABM_THEME_ID_F2B14F &&
-           i!=(unsigned)ABM_THEME_ID_DC4B55 && i!=(unsigned)ABM_THEME_ID_FF911C)
+           i!=(unsigned)ABM_THEME_ID_DC4B55 && i!=(unsigned)ABM_THEME_ID_FF911C &&
+           i<(unsigned)ABM_THEME_ID_151820)
             color=ABMThemeTransformColor(color,g_presetAccentHue[preset]);
         InterlockedExchange((volatile LONG *)&g_themeColors[i],(LONG)color);
     }
