@@ -513,12 +513,13 @@ static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
     const BOOL pressed=(d->itemState&ODS_SELECTED)!=0;
     const BOOL hot=(d->itemState&ODS_HOTLIGHT)!=0;
     const BOOL focused=(d->itemState&ODS_FOCUS)!=0;
-    const BOOL primary=(id==HT_SEARCH||id==HT_PLAY||id==HT_SCAN);
+    const BOOL primary=(id==HT_SEARCH||id==HT_PLAY);
+    const BOOL secondary=(id==HT_SCAN);
     COLORREF fill=disabled?ABM_UI_COLOR_SURFACE_RAISED:
-        (primary?(pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT):
+        (primary?ABM_UI_COLOR_ACCENT:
         (pressed?ABM_UI_COLOR_SURFACE_INTERACTIVE:(hot?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_RAISED)));
     COLORREF text=disabled?ABM_UI_COLOR_TEXT_DISABLED:(primary?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY);
-    COLORREF edge=focused?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
+    COLORREF edge=focused?ABM_UI_COLOR_FOCUS:((primary||secondary)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
     wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
     if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,d->hDC,&r)){
         ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,ABM_UI_COLOR_SURFACE_NAVIGATION);
