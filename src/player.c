@@ -2262,7 +2262,7 @@ static void DrawUI(HDC dc,RECT client) {
 
     /* Fully custom Direct2D output selector. */
     COLORREF receiverFill=g_receiverPopup?ABM_THEME_COLOR_2A2D32:ABM_THEME_COLOR_1E2024; (void)receiverFill;
-    Panel(dc,receiver,g_receiverPopup?ABM_THEME_COLOR_55491F:ABM_THEME_COLOR_55491F,g_receiverPopup?ABM_THEME_COLOR_8A783B:ABM_THEME_COLOR_39685B,12);
+    Panel(dc,receiver,g_receiverPopup?ABM_THEME_COLOR_55491F:ABM_UI_COLOR_SURFACE_RAISED,g_receiverPopup?ABM_THEME_COLOR_8A783B:ABM_UI_COLOR_BORDER,12);
     RECT deviceIcon={receiver.left+12,receiver.top+7,receiver.left+34,receiver.bottom-7};
     GradientRound(dc,deviceIcon,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,6);
     DrawLine(dc,deviceIcon.left+4,deviceIcon.top+5,deviceIcon.right-4,deviceIcon.top+5,ABM_THEME_COLOR_C5CDD6,2);
@@ -2308,7 +2308,7 @@ static void DrawUI(HDC dc,RECT client) {
     }
     
     }
-    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_1B433E:ABM_THEME_COLOR_17202C,g_drawerSettingsOpen?ABM_THEME_COLOR_8A783B:ABM_THEME_COLOR_344556,13);
+    Panel(dc,R_SETTINGS_BUTTON,g_drawerSettingsOpen?ABM_THEME_COLOR_55491F:ABM_UI_COLOR_SURFACE_RAISED,g_drawerSettingsOpen?ABM_THEME_COLOR_8A783B:ABM_UI_COLOR_BORDER,13);
     RECT headerIcon={R_SETTINGS_BUTTON.left+12,R_SETTINGS_BUTTON.top+11,R_SETTINGS_BUTTON.left+42,R_SETTINGS_BUTTON.bottom-11};
     GradientRound(dc,headerIcon,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,8);
     DrawLine(dc,headerIcon.left+6,headerIcon.top+8,headerIcon.left+6,headerIcon.bottom-8,ABM_UI_COLOR_ACCENT_BRIGHT,2);
