@@ -900,7 +900,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         g_infoSurfaceBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_NAVIGATION);
         g_infoInputBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
         g_infoArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
-        InvalidateRect(hwnd,nullptr,TRUE);
+        RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
     case WM_SIZE:
         if(!g_infoAbout)StreamingHelpLayout(hwnd);
@@ -1656,7 +1656,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
     case WM_THEMECHANGED:
         if(g_devicePanelBrush){DeleteObject(g_devicePanelBrush);g_devicePanelBrush=nullptr;}
-        InvalidateRect(hwnd,nullptr,FALSE);
+        RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
     case WM_APP_DIAL_APPS_READY:{
         std::unique_ptr<DialAppProbePayload> report((DialAppProbePayload*)lp);
