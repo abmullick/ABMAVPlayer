@@ -8579,6 +8579,7 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   L"ABMAVPlayerAdvancedSettings",L"ABM AV Player — Advanced Settings",
   WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_advancedSettingsWindow)return;
+ ABM_ApplyTitleBarIcon(g_advancedSettingsWindow);
  BOOL dark=TRUE;DwmSetWindowAttribute(g_advancedSettingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
@@ -8939,6 +8940,7 @@ static void ShowSettingsDialog(HWND owner) {
  if(ww>workW)ww=workW;if(hh>workH)hh=workH;int x=o.left+(o.right-o.left-ww)/2,y=o.top+(o.bottom-o.top-hh)/2;if(x<workL)x=workL;if(y<workT)y=workT;if(x+ww>workL+workW)x=workL+workW-ww;if(y+hh>workT+workH)y=workT+workH-hh;g_settingsScrollX=0;g_settingsScrollY=0;
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",style,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
+ ABM_ApplyTitleBarIcon(g_settingsWindow);
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
  {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
  EnableWindow(owner,FALSE);ShowWindow(g_settingsWindow,SW_SHOW);UpdateWindow(g_settingsWindow);
