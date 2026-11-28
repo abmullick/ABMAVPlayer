@@ -963,3 +963,12 @@ Featured destination rows now receive three vertical layout units instead of two
 The Settings Background Skins selector now uses the same shared SettingsSection card, header marker, divider, surface, border and background-skin rendering treatment as the other Settings sections. Existing theme/skin choices, selection state, save controls and scroll geometry are retained.
 
 Windows build, DPI and visual acceptance remain pending.
+
+
+## Command Centre — menu readability correction
+
+The Command Centre's five grouped command areas now use a quieter deep-navy group surface instead of the brighter raised card fill, so the non-featured command rows no longer read as a stack of grey pills. The four featured destinations retain their separate blue, violet, rose and emerald card treatments.
+
+For compact one-line command rows, labels now use the shared small-text format and occupy the full row height. Shortcut pills and glyph tiles use near-full-height bounds rather than narrow inset rectangles that clipped text at compact row heights. Featured destination title/subtitle typography remains unchanged.
+
+This is a source-level layout correction. Verify on Windows at narrow widths and short heights; no runtime build or visual acceptance is claimed here.
