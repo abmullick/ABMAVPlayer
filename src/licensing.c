@@ -285,7 +285,16 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         }
         EndPaint(w,&ps);return 0;
     }
-    case WM_DESTROY:ABM_SkinUnregisterWindow(w);if(g_licenseCanvasReady){g_licenseCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_licenseCanvas);}return 0;
+    case WM_THEMECHANGED:
+        if(g_licenseEditBrush)DeleteObject(g_licenseEditBrush);
+        g_licenseEditBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
+        InvalidateRect(w,NULL,TRUE);
+        return 0;
+    case WM_DESTROY:
+        ABM_SkinUnregisterWindow(w);
+        if(g_licenseCanvasReady){g_licenseCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_licenseCanvas);}
+        if(g_licenseEditBrush){DeleteObject(g_licenseEditBrush);g_licenseEditBrush=NULL;}
+        return 0;
     case WM_CLOSE:d->done=TRUE;d->allowed=FALSE;DestroyWindow(w);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
