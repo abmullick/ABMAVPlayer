@@ -8205,7 +8205,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    /* Gold-gradient settings mark; use the Segoe MDL2 Settings cog rather
       than the emoji gear, whose platform rendering resembles a flower. */
    ABM_D2D_GradientRound(&g_advancedSettingsUi,34,29,78,73,12,
-       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_80652A);
+       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_66551F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,
        ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
    {RECT gear={39,31,73,70};ABM_D2D_Text(&g_advancedSettingsUi,L"\xE713",gear,
@@ -8784,7 +8784,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
    /* Match Advanced Settings: gold gradient tile and a true Segoe MDL2 cog. */
    ABM_D2D_GradientRound(&g_settingsUi,34,27,76,69,12,
-       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_80652A);
+       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_66551F);
    ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,
        ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
    {RECT gear={39,29,72,66};ABM_D2D_Text(&g_settingsUi,L"\xE713",gear,
@@ -10081,9 +10081,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     /* Failure of the optional streaming cast player must not affect local playback. */
     g_streamCastPlayer=libvlc_media_player_new(g_vlc);
-    WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
+    WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
     if(!RegisterClassW(&wc))return 1;
-    WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
+    WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
     if(!RegisterClassW(&owc))return 1;
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1440,900,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
