@@ -952,3 +952,14 @@ The shared `ABM_ApplyTitleBarIcon(HWND)` helper is now explicitly applied immedi
 The Media Library is the Media Discovery manager window; its recursive scan runs in a worker and does not create a separate discovery top-level window. Streaming Centre's TV/device selector is a child panel, not a separate captioned window. Borderless popups and fullscreen overlays have no title bar to display an icon.
 
 This is a source-level correction. A Windows build and visual check of every listed window, including both icon sizes and multiple DPI scales, are still required before declaring runtime acceptance.
+
+
+## Command Centre destination cards and Settings lower sections
+
+The four featured Command Centre destinations now have dedicated, restrained colour identities: Streaming Centre uses a deep sapphire/cyan treatment, Torrent Stream uses muted violet, Home Theatre uses a subdued rose/wine treatment, and Media Library uses a forest/emerald treatment. Each card has a low-contrast gradient surface, a narrow matching edge marker and a coordinated icon tint. Hover and keyboard selection still use the shared interactive/focus accent. Titles and subtitles have been shortened to fit the available text column without ellipsis truncating the key destination names.
+
+Featured destination rows now receive three vertical layout units instead of two, with the menu's row-height calculation rebalanced to preserve the existing panel height and all other menu items. This creates sufficient separation for both text lines without changing action indices or hit-test routing.
+
+The Settings Background Skins selector now uses the same shared SettingsSection card, header marker, divider, surface, border and background-skin rendering treatment as the other Settings sections. Existing theme/skin choices, selection state, save controls and scroll geometry are retained.
+
+Windows build, DPI and visual acceptance remain pending.
