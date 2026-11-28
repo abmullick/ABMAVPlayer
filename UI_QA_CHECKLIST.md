@@ -395,3 +395,19 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Build with the documented MSVC toolchain and inspect the Torrent Stream window on Windows before marking this pass complete.
 
 Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
+
+
+## Settings and Advanced Settings — visual regression
+
+- [ ] Inspect both mastheads: neutral raised/background surfaces, neutral border, restrained theme-accent cog; no large gold gradient tile or hard-coded teal header.
+- [ ] Verify Main Settings section headings and Advanced Settings page/subsection headings use neutral text; selected navigation/options and primary actions retain the active theme accent.
+- [ ] Verify primary buttons, secondary buttons, hover, pressed, focus and disabled states across all seven colour presets.
+- [ ] Open the playback-rate selector; verify popup surface, border, selected row, keyboard selection and dismissal.
+- [ ] Drag vertical and horizontal Settings scrollbars; click their tracks; test wheel, Page Up/Down, Ctrl+Home/End, resize and focus-driven edit visibility. Confirm no stale paint or native scrollbar appears.
+- [ ] Test all Main Settings fields, folder pickers, validation messages, Save settings, theme changes and background-skin selection.
+- [ ] Visit all eleven Advanced Settings pages; test selected navigation, option cards, immediate-save controls, restart-required output settings, diagnostic report generation/preview, VLC runtime scan and report copy.
+- [ ] Switch theme while each window remains open; verify controls, native edit brushes, diagnostic previews and title-bar chrome refresh correctly.
+- [ ] Check 100%, 125%, 150% and 200% display scaling, compact work areas, resize, clipping, long paths, keyboard navigation and focus visibility.
+- [ ] Build with the documented MSVC toolchain and visually inspect both windows on Windows before marking this pass complete.
+
+Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
