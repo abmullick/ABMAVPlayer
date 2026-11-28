@@ -1430,7 +1430,7 @@ static void DrawDefaultMediaArtwork(HDC dc,RECT r,BOOL video,int variant) {
             RECT sun={cx-rad,cy-rad,cx+rad,cy+rad};
             RoundBox(dc,sun,ABM_THEME_COLOR_A4C1EF,rad);
             int px=inner.left+w/2,py=inner.top+h/2,sz=w/10;
-            DrawLine(dc,px-sz,py-sz,px+sz,py,ABM_THEME_COLOR_FFFFFF,2);
+            DrawLine(dc,px-sz,py-sz,px+sz,py,ABM_UI_COLOR_TEXT,2);
             DrawLine(dc,px+sz,py,px-sz,py+sz,ABM_THEME_COLOR_FFFFFF,2);
             DrawLine(dc,px-sz,py+sz,px-sz,py-sz,ABM_THEME_COLOR_FFFFFF,2);
         } else {
@@ -1487,7 +1487,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
         }
         ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,
             hot?ABM_THEME_COLOR_69BEB1:ABM_THEME_COLOR_394E63,hot?1.15f:0.8f);
-        glyph=hot?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_BED5E3;
+        glyph=hot?ABM_UI_COLOR_TEXT:ABM_THEME_COLOR_BED5E3;
     }
     if(kind==1) {
         DrawLine(NULL,cx-6,cy-11,cx+10,cy,glyph,2);DrawLine(NULL,cx+10,cy,cx-6,cy+11,glyph,2);DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,2);
@@ -2125,7 +2125,7 @@ static void DrawUI(HDC dc,RECT client) {
                 int subTop=cardH>=70?38:cardH/2, subBottom=cardH>=70?cardH-8:cardH-5;
                 RECT title={textLeft,card.top+titleTop,card.right-8,card.top+titleBottom};
                 RECT cardSubtitle={textLeft,card.top+subTop,card.right-8,card.top+subBottom};
-                Txt(dc,titles[i],title,ABM_THEME_COLOR_F4F9FF,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,titles[i],title,ABM_UI_COLOR_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,subs[i],cardSubtitle,ABM_THEME_COLOR_9EB5C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             int footGap=28, footHeight=22;
@@ -2176,7 +2176,7 @@ static void DrawUI(HDC dc,RECT client) {
     RoundBox(dc,halo,ABM_THEME_COLOR_1B4C48,10);
     RECT dot={seekThumb-5,R_SEEK.top-6,seekThumb+5,R_SEEK.bottom+6};
     GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D3F4EE,6);
-    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_THEME_COLOR_70D3CA,1.0f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
 
     /* Control dock */
     int dockLeft=R_VIDEO.left+((R_VIDEO.right-R_VIDEO.left)-720)/2;
@@ -7435,7 +7435,7 @@ static void ShowHelpDialog(HWND owner) {
     if(!registered) {
         WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HelpWndProc;
         wc.hInstance=inst;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
-        wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_070C15);wc.lpszClassName=L"ABMAVPlayerHelp";
+        wc.hbrBackground=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);wc.lpszClassName=L"ABMAVPlayerHelp";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
     }
