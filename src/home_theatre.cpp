@@ -30,8 +30,13 @@
 namespace {
 enum { HT_EDIT=5101, HT_SEARCH=5102, HT_RESULTS=5103, HT_PLAY=5104, HT_SCAN=5105, HT_MATCH=5106, HT_ARTWORK=5107, HT_RECOMMEND=5108, HT_SEASONS=5109, HT_PICKER=5110, HT_WATCHED=5111, HT_FILTER_ALL=5112, HT_FILTER_MOVIES=5113, HT_FILTER_TV=5114 };
 enum { HT_SEARCH_DONE=WM_APP+0x5A1, HT_DETAILS_DONE=WM_APP+0x5A2, HT_SCAN_DONE=WM_APP+0x5A3, HT_SEASON_DONE=WM_APP+0x5A4, HT_RECOMMEND_DONE=WM_APP+0x5A5 };
-static const COLORREF BG=ABM_UI_COLOR_BACKGROUND, PANEL=ABM_UI_COLOR_SURFACE, PANEL2=ABM_UI_COLOR_INPUT;
-static const COLORREF TEXT=ABM_UI_COLOR_TEXT, MUTED=ABM_UI_COLOR_TEXT_MUTED, ACCENT=ABM_UI_COLOR_ACCENT_BRIGHT;
+/* Resolve semantic theme roles at paint time so preset changes propagate. */
+#define BG ABM_UI_COLOR_BACKGROUND
+#define PANEL ABM_UI_COLOR_SURFACE_NAVIGATION
+#define PANEL2 ABM_UI_COLOR_SURFACE_CARD
+#define TEXT ABM_UI_COLOR_TEXT
+#define MUTED ABM_UI_COLOR_TEXT_MUTED
+#define ACCENT ABM_UI_COLOR_ACCENT
 static HWND g_window=nullptr, g_edit=nullptr, g_results=nullptr, g_play=nullptr, g_status=nullptr, g_localPicker=nullptr, g_scanButton=nullptr, g_matchButton=nullptr, g_artButton=nullptr, g_recommendButton=nullptr, g_seasonButton=nullptr, g_watchedButton=nullptr, g_filterAll=nullptr, g_filterMovies=nullptr, g_filterTv=nullptr;
 static ABM_D2D g_canvas={};
 static BOOL g_canvasReady=FALSE;
@@ -689,7 +694,7 @@ static void Draw(HWND w) {
             ABM_D2D_Round(&g_canvas,380,244,590,550,12,ABM_UI_COLOR_BACKGROUND);
             if(g_showBackdrop)ABM_D2D_DrawImageCover(&g_canvas,386,250,584,544,0.92f);else ABM_D2D_DrawImage(&g_canvas,386,250,584,544);
         } else {
-            ABM_D2D_GradientRound(&g_canvas,380,244,590,550,12,RGB(24,59,69),RGB(12,26,40));
+            ABM_D2D_GradientRound(&g_canvas,380,244,590,550,12,ABM_UI_COLOR_SURFACE_CARD,ABM_UI_COLOR_SURFACE_NAVIGATION);
             ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(390,330,580,410),MUTED,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         }
         int tx=612,tw=c.right-tx-42;
