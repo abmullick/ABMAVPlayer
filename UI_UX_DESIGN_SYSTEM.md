@@ -839,3 +839,8 @@ The Main Player, Torrent Stream, Home Theatre, Streaming Centre and Media Librar
 - **Disabled:** muted surface, text and border; no primary gold fill.
 
 Do not change existing button dimensions, placement, spacing, corner radius or the established dark surface ladder while applying this hierarchy. The gold fill is reserved for the single most important action in the current workflow; it is not a general button colour. Distinct state indicators (such as an active receiver pulse) may retain their status colours.
+
+
+### Main Player transport dock identity
+
+The floating Now Playing dock follows the ABM signature gold identity used by the masthead and secondary windows. Its mini-art fallback tile uses the gold-to-antique-gold gradient; the dock rim, top-edge highlight, divider, seek progress/playhead halo and Add Media action use gold semantic accents. Keep the dock's dark layered surface, geometry and transport-button sizing unchanged. Track artwork remains untouched when available.
