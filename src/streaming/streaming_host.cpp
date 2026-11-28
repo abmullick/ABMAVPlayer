@@ -1409,29 +1409,29 @@ void PaintChrome(HWND hwnd){
     const bool receiverReady=IsStreamReceiverReady();
     const bool pulseOn=receiverReady && ((GetTickCount64()/400)%2==0);
     const COLORREF castFill=receiverReady?(pulseOn?ABM_THEME_COLOR_BE2330:ABM_THEME_COLOR_701622):
-        (g_hoverControl==8?ABM_THEME_COLOR_227070:ABM_THEME_COLOR_184B53);
+        (g_hoverControl==8?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_RAISED);
     const COLORREF castEdge=receiverReady?(pulseOn?ABM_THEME_COLOR_FF6970:ABM_THEME_COLOR_DC414C):
-        (g_hoverControl==8?ABM_THEME_COLOR_5DE1CF:ABM_THEME_COLOR_308989);
+        (g_hoverControl==8?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT);
     Rounded(dc,g_castRect,castFill,10);
     HPEN castPen=CreatePen(PS_SOLID,(receiverReady||g_hoverControl==8)?2:1,castEdge);
     HGDIOBJ oldCastPen=SelectObject(dc,castPen);
     HGDIOBJ oldCastBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castRect.left,g_castRect.top,g_castRect.right,g_castRect.bottom,10,10);
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
-    DrawFluentGlyph(dc,RECT{g_castRect.left+3,g_castRect.top+2,g_castRect.left+31,g_castRect.bottom-2},0xE721,ABM_THEME_COLOR_8EE2D3,17);
+    DrawFluentGlyph(dc,RECT{g_castRect.left+3,g_castRect.top+2,g_castRect.left+31,g_castRect.bottom-2},0xE721,receiverReady?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_ACCENT_BRIGHT,17);
     RECT findTvLabel={g_castRect.left+29,g_castRect.top,g_castRect.right-5,g_castRect.bottom};
-    Text(dc,L"Find TVs",findTvLabel,receiverReady?ABM_UI_COLOR_TEXT:ABM_THEME_COLOR_E0FAF5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Find TVs",findTvLabel,receiverReady?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castVideoRect=RECT{620,15,730,55};
-    Rounded(dc,g_castVideoRect,g_hoverControl==9?ABM_THEME_COLOR_237E6F:ABM_THEME_COLOR_195B50,10);
-    HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,g_hoverControl==9?ABM_THEME_COLOR_71EDC6:ABM_THEME_COLOR_39A484);
+    Rounded(dc,g_castVideoRect,g_hoverControl==9?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT,10);
+    HPEN videoPen=CreatePen(PS_SOLID,g_hoverControl==9?2:1,ABM_UI_COLOR_ACCENT_BRIGHT);
     HGDIOBJ oldVideoPen=SelectObject(dc,videoPen);
     HGDIOBJ oldVideoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,g_castVideoRect.left,g_castVideoRect.top,g_castVideoRect.right,g_castVideoRect.bottom,10,10);
     SelectObject(dc,oldVideoBrush);SelectObject(dc,oldVideoPen);DeleteObject(videoPen);
-    DrawFluentGlyph(dc,RECT{g_castVideoRect.left+3,g_castVideoRect.top+2,g_castVideoRect.left+31,g_castVideoRect.bottom-2},0xE768,ABM_THEME_COLOR_8EE2D3,17);
+    DrawFluentGlyph(dc,RECT{g_castVideoRect.left+3,g_castVideoRect.top+2,g_castVideoRect.left+31,g_castVideoRect.bottom-2},0xE768,ABM_UI_COLOR_TEXT,17);
     RECT castVideoLabel={g_castVideoRect.left+29,g_castVideoRect.top,g_castVideoRect.right-5,g_castVideoRect.bottom};
-    Text(dc,L"Cast video",castVideoLabel,ABM_THEME_COLOR_E2FFF1,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Cast video",castVideoLabel,ABM_UI_COLOR_TEXT,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_stopTvRect=RECT{740,15,850,55};
     Rounded(dc,g_stopTvRect,g_hoverControl==10?ABM_THEME_COLOR_963722:ABM_THEME_COLOR_642B20,10);
@@ -1462,20 +1462,20 @@ void PaintChrome(HWND hwnd){
     const wchar_t glyphs[5]={0xE72B,0xE72A,0xE72C,0xE80F,0xE740};
     const wchar_t *labels[5]={L"Back",L"Forward",L"Reload",L"Home",L"Fullscreen"};
     for(int i=0;i<5;i++){
-        COLORREF fill=(g_hoverControl==i)?ABM_THEME_COLOR_2B5B71:(i==4?ABM_THEME_COLOR_1F676F:ABM_THEME_COLOR_183449);
+        COLORREF fill=(g_hoverControl==i)?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_RAISED;
         Rounded(dc,navButtons[i],fill,12);
         HPEN navPen=CreatePen(PS_SOLID,g_hoverControl==i?2:1,
-            g_hoverControl==i?ABM_THEME_COLOR_53D3C7:(i==4?ABM_THEME_COLOR_3E9799:ABM_THEME_COLOR_2B4C63));
+            g_hoverControl==i?ABM_UI_COLOR_ACCENT_BRIGHT:(i==4?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER_STRONG));
         HGDIOBJ oldNavPen=SelectObject(dc,navPen);
         HGDIOBJ oldNavBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
         RoundRect(dc,navButtons[i].left,navButtons[i].top,navButtons[i].right,navButtons[i].bottom,12,12);
         SelectObject(dc,oldNavBrush);SelectObject(dc,oldNavPen);DeleteObject(navPen);
         RECT glyph=navButtons[i];glyph.top+=1;glyph.bottom-=19;
-        DrawFluentGlyph(dc,glyph,glyphs[i],ABM_THEME_COLOR_EFF8FF,22);
+        DrawFluentGlyph(dc,glyph,glyphs[i],ABM_UI_COLOR_TEXT,22);
         RECT label=navButtons[i];label.top=navButtons[i].bottom-21;label.bottom-=3;
-        Text(dc,labels[i],label,ABM_THEME_COLOR_CCE2EE,10,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        Text(dc,labels[i],label,ABM_UI_COLOR_TEXT_SECONDARY,10,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT underline={navButtons[i].left+18,navButtons[i].bottom-2,navButtons[i].right-18,navButtons[i].bottom};
-        if(g_hoverControl==i)FillRectColor(dc,underline,ABM_THEME_COLOR_48D2C7);
+        if(g_hoverControl==i)FillRectColor(dc,underline,ABM_UI_COLOR_ACCENT_BRIGHT);
     }
 
     /* Give the provider row a named section and a consistent card baseline. */
