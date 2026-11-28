@@ -164,6 +164,7 @@ ComPtr<ICoreWebView2Controller> g_controller;
 ComPtr<ICoreWebView2> g_webView;
 RECT g_serviceRects[kServiceCount]{};
 HWND g_devicePanel=nullptr,g_deviceList=nullptr,g_deviceTitle=nullptr,g_deviceHint=nullptr;
+HBRUSH g_devicePanelBrush=nullptr;
 HWND g_deviceRefresh=nullptr,g_deviceSelect=nullptr,g_deviceClose=nullptr,g_deviceApps=nullptr,g_deviceAppCombo=nullptr,g_deviceLaunch=nullptr,g_deviceAppStatus=nullptr,g_deviceAppStop=nullptr;
 bool g_devicePanelVisible=false;
 bool g_deviceSelectPulse=false,g_deviceLaunchPulse=false,g_devicePulsePhase=false;
@@ -1653,6 +1654,10 @@ void OnWebViewReady(HRESULT result,ICoreWebView2Controller *controller){
 }
 LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
     switch(msg){
+    case WM_THEMECHANGED:
+        if(g_devicePanelBrush){DeleteObject(g_devicePanelBrush);g_devicePanelBrush=nullptr;}
+        InvalidateRect(hwnd,nullptr,FALSE);
+        return 0;
     case WM_APP_DIAL_APPS_READY:{
         std::unique_ptr<DialAppProbePayload> report((DialAppProbePayload*)lp);
         if(report&&g_devicePanelVisible){
@@ -1756,8 +1761,8 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(control==g_deviceTitle||control==g_deviceHint){
             SetBkMode(dc,TRANSPARENT);
             SetTextColor(dc,control==g_deviceTitle?ABM_THEME_COLOR_F2F9FF:ABM_THEME_COLOR_96BECF);
-            static HBRUSH panelBrush=CreateSolidBrush(ABM_THEME_COLOR_0C1D2D);
-            return (LRESULT)panelBrush;
+            if(!g_devicePanelBrush)g_devicePanelBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_NAVIGATION);
+            return (LRESULT)g_devicePanelBrush;
         }
         break;
     }
@@ -2234,6 +2239,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         ABM_Cast_StreamDiscoveryStop();ABM_Dlna_StopDiscovery();ABM_Dial_StopDiscovery();
         KillTimer(hwnd,ID_STREAM_DEVICE_TIMER);
         HideDevicePanel();
+        if(g_devicePanelBrush){DeleteObject(g_devicePanelBrush);g_devicePanelBrush=nullptr;}
         g_window=nullptr;
         if(g_infoWindow&&IsWindow(g_infoWindow))DestroyWindow(g_infoWindow);
         if(g_controller)g_controller->Close();
