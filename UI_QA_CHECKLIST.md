@@ -381,3 +381,17 @@ Do not mark Continue Watching or missing-media recovery runtime-validated until 
 - [ ] Upgrade and uninstall tests confirm the user's Media Library index under %LOCALAPPDATA% is preserved; uninstall removes ABM registration cleanly.
 - [ ] Network locations are scanned only when explicitly selected; they are not included in Scan computer.
 
+
+
+## Torrent Stream — shared surface alignment regression
+
+- [ ] Verify the TV selector arrow uses the shared raised surface, neutral chevron and standard border/focus treatment in every theme; no legacy teal arrow chrome remains.
+- [ ] Verify the TV selector popup, keyboard navigation, selection and receiver discovery still work.
+- [ ] Verify file-list alternating rows, selected row, keyboard focus, long filenames, Unicode names and ellipsis in both the Direct2D canvas and fallback GDI renderer.
+- [ ] Verify secondary actions use neutral borders/text while Stream remains the single gold primary action; destructive actions retain danger semantics.
+- [ ] Verify section headings and cache/network labels remain readable without gold being used as their default text colour.
+- [ ] Re-test add magnet, open torrent, metadata loading, file selection, download, pause/resume download, remove, refresh, stream playback, stop playback, cache quota, clear inactive cache, open downloads folder, find TVs, cast and stop TV.
+- [ ] Check focus and disabled states, mouse hover/press, keyboard Tab/Enter/Space, resizing and 100%, 125%, 150% and 200% scaling.
+- [ ] Build with the documented MSVC toolchain and inspect the Torrent Stream window on Windows before marking this pass complete.
+
+Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
