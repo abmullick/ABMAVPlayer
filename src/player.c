@@ -6262,22 +6262,22 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     /* Cinematic branded masthead */
     ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
     ABM_D2D_Fill(&g_torrentUi,0,0,w,2,ABM_UI_COLOR_ACCENT);
-    /* Match the main player's signature ABM identity: luminous A/play
-       monogram, split ABM + AV PLAYER wordmark, gradient rule and tagline. */
-    ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
-    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
-    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
-    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,ABM_UI_COLOR_ACCENT_BRIGHT,0.8f);
-    ABM_D2D_Line(&g_torrentUi,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3.0f);
-    ABM_D2D_Line(&g_torrentUi,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3.0f);
-    ABM_D2D_Line(&g_torrentUi,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2.0f);
+    /* Canonical Main Player signature: dark tile, champagne A and white play glyph.
+
+    ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_272E3A);
+    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_343D4C,1.0f);
+    ABM_D2D_Round(&g_torrentUi,28,14,94,80,17,ABM_THEME_COLOR_1D222D);
+    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,ABM_UI_COLOR_ACCENT,0.9f);
+    ABM_D2D_Line(&g_torrentUi,42,63,59,30,ABM_UI_COLOR_ACCENT_BRIGHT,3.0f);
+    ABM_D2D_Line(&g_torrentUi,59,30,76,63,ABM_UI_COLOR_ACCENT_BRIGHT,3.0f);
+    ABM_D2D_Line(&g_torrentUi,49,49,68,49,ABM_THEME_COLOR_F7FAFF,2.0f);
     ABM_D2D_Line(&g_torrentUi,62,40,75,48,ABM_THEME_COLOR_FFFFFF,2.0f);
     ABM_D2D_Line(&g_torrentUi,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2.0f);
     ABM_D2D_Line(&g_torrentUi,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2.0f);
 
     RECT r=TorrentMakeRect(116,8,420,49);ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Match the Main Player's exact brand suffix role and baseline. */
-    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_9EB5C9,ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
     r=TorrentMakeRect(116,60,510,83);ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Live task state is presented as a compact status chip. This is a
