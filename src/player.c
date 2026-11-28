@@ -1930,12 +1930,12 @@ static void DrawUI(HDC dc,RECT client) {
     int sweepWidth=112;
     int sweepX=(int)((g_visualPulse*3u)%(unsigned int)(client.right+sweepWidth))-sweepWidth;
     RECT sweep={sweepX,92,sweepX+sweepWidth,95};
-    GradientRect(dc,sweep,ABM_THEME_COLOR_2DA9A6,ABM_THEME_COLOR_69BEA4);
+    GradientRect(dc,sweep,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
     /* Signature mark: a luminous A-monogram fused with a play glyph. */
     RECT logoHalo={20,7,102,87};
-    Panel(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,ABM_THEME_COLOR_3F97B4,22);
+    Panel(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,ABM_UI_COLOR_ACCENT_BRIGHT,22);
     RECT logo={28,14,94,80};
-    GradientRound(dc,logo,ABM_THEME_COLOR_1C9D9D,ABM_THEME_COLOR_34777E,17);
+    GradientRound(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_9A7628,17);
     RECT logoInset={33,19,89,75};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
         (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_THEME_COLOR_BEE5FF,0.8f);
@@ -1951,9 +1951,9 @@ static void DrawUI(HDC dc,RECT client) {
     RECT brandMain={116,8,420,49};
     Txt(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandSuffix={188,20,390,48};
-    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_UI_COLOR_ACCENT_BRIGHT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,354,54};
-    GradientRect(dc,brandRule,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
+    GradientRect(dc,brandRule,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
     RECT brandSubtitle={116,60,510,83};
     Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",brandSubtitle,ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
@@ -2053,23 +2053,23 @@ static void DrawUI(HDC dc,RECT client) {
         RECT ambient={R_VIDEO.left+areaW*36/100,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
         GradientRound(dc,ambient,ABM_THEME_COLOR_0A2327,ABM_THEME_COLOR_111B22,34);
         RECT glowLine={ambient.left+26,ambient.top+1,ambient.right-26,ambient.top+3};
-        GradientRect(dc,glowLine,ABM_THEME_COLOR_2FAB9E,ABM_THEME_COLOR_70BB96);
+        GradientRect(dc,glowLine,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
         int leftX=R_VIDEO.left+areaW*7/100;
         int textW=areaW*27/100;
         int topY=cy-112;
         RECT eyebrowPill={leftX,topY+5,leftX+8,topY+13};
-        RoundBox(dc,eyebrowPill,ABM_THEME_COLOR_4BD3BE,4);
-        Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},ABM_THEME_COLOR_78BECE,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        RoundBox(dc,eyebrowPill,ABM_UI_COLOR_ACCENT_BRIGHT,4);
+        Txt(dc,L"THE ABM LISTENING EXPERIENCE",(RECT){leftX+18,topY,leftX+textW,topY+25},ABM_UI_COLOR_ACCENT_BRIGHT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT headline1={leftX,topY+42,leftX+textW,topY+91};
         RECT headline2={leftX,topY+88,leftX+textW,topY+137};
         Txt(dc,L"Capture the feeling.",headline1,ABM_THEME_COLOR_F7F9FF,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        Txt(dc,L"Relive every moment.",headline2,ABM_THEME_COLOR_7EC7B5,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"Relive every moment.",headline2,ABM_UI_COLOR_ACCENT_BRIGHT,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail={leftX,topY+151,leftX+textW,topY+194};
         Txt(dc,L"A refined home for music, movies and",detail,ABM_THEME_COLOR_B0C0D5,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT detail2={leftX,topY+177,leftX+textW,topY+218};
         Txt(dc,L"everything you love to watch and hear.",detail2,ABM_THEME_COLOR_B0C0D5,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT hint={leftX,topY+237,leftX+textW,topY+263};
-        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,ABM_THEME_COLOR_70C3B3,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        Txt(dc,L"ADD MEDIA TO BEGIN  →",hint,ABM_UI_COLOR_ACCENT_BRIGHT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
         /* Action-led home dashboard: four real destinations replace the
            decorative album stack. Each card has a generous hit target and
@@ -2081,9 +2081,9 @@ static void DrawUI(HDC dc,RECT client) {
             for(int i=0;i<5;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
-                COLORREF cardEdge=Blend((i==0)?ABM_THEME_COLOR_449A8F:ABM_THEME_COLOR_334F65,ABM_THEME_COLOR_68C9B8,motion);
+                COLORREF cardEdge=Blend((i==0)?ABM_UI_COLOR_ACCENT_SOFT:ABM_THEME_COLOR_334F65,ABM_UI_COLOR_ACCENT_BRIGHT,motion);
                 RECT shadow=card;OffsetRect(&shadow,0,5);RoundBox(dc,shadow,ABM_THEME_COLOR_03080E,13);
-                if(i==0)GradientRound(dc,card,Blend(ABM_THEME_COLOR_197770,ABM_THEME_COLOR_25998B,motion),ABM_THEME_COLOR_184B52,13);
+                if(i==0)GradientRound(dc,card,Blend(ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT,motion),ABM_THEME_COLOR_66551F,13);
                 else GradientRound(dc,card,Blend(ABM_THEME_COLOR_142535,ABM_THEME_COLOR_1D3A4C,motion),ABM_THEME_COLOR_0D1927,13);
                 ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,cardEdge,0.85f+(float)motion*0.005f);
                 int cardH=card.bottom-card.top;
