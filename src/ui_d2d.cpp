@@ -391,6 +391,27 @@ extern "C" void ABM_D2D_GradientRound(ABM_D2D *ui, float l, float t, float r, fl
     SafeRelease(&collection);
 }
 
+extern "C" void ABM_D2D_ShadowRound(ABM_D2D *ui,float l,float t,float r,float b,
+                                             float radius,COLORREF color,float opacity,float offsetY) {
+    if(!ui || !EnsureTarget(ui) || r<=l || b<=t || opacity<=0.0f)return;
+    if(opacity>1.0f)opacity=1.0f;
+    /* A small stack of translucent rounded silhouettes produces a soft,
+       GPU-rasterised falloff without a bitmap, extra HWND, or per-frame
+       allocation. Draw the broad, faint layers first and the tight layer last. */
+    for(int pass=6;pass>=0;--pass) {
+        float spread=(float)pass*2.15f;
+        float alpha=opacity*(0.018f+(float)(6-pass)*0.007f);
+        D2D1_COLOR_F tint=ToD2D(color);
+        tint.a=alpha;
+        Brush(ui)->SetColor(tint);
+        D2D1_ROUNDED_RECT shadow={
+            D2D1::RectF(l-spread,t+offsetY-spread,r+spread,b+offsetY+spread),
+            radius+spread,radius+spread
+        };
+        Target(ui)->FillRoundedRectangle(shadow,Brush(ui));
+    }
+}
+
 extern "C" void ABM_D2D_StrokeRound(ABM_D2D *ui, float l, float t, float r, float b,
                                      float radius, COLORREF color, float width) {
     if (!ui || !EnsureTarget(ui)) return;
