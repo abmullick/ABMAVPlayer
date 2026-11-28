@@ -1,3 +1,20 @@
+# ABM AV Player v1.1.7 — consistent application title-bar icons
+
+## What's new
+
+- Standardised the application icon across the main player and secondary windows using the shared runtime title-bar icon provider.
+- Applied the shared icon to Home Theatre, Media Library, Streaming Centre, its informational dialogs, and the licensing window.
+- This release carries forward the v1.1.6 Media Library, Windows file-association and Home Theatre shortcut changes described below.
+
+## Validation
+
+- Source changes and the v1.1.7 version bump are committed on `main`.
+- Windows compilation and runtime verification of the title-bar icons have not yet been independently confirmed. Check the main player, Home Theatre, Media Library, Streaming Centre, informational dialogs and licensing window on Windows.
+- Complete the existing playback, Home Theatre, Streaming Centre, Torrent Stream, casting, clean-install and in-place-upgrade regression checks before publishing. Record any checks not performed as unverified.
+- Rebuild the installer after pulling the latest `main`; confirm its embedded application and installer versions are 1.1.7.
+
+---
+
 # ABM AV Player v1.1.6 — Media Library and Windows file associations
 
 ## What's new
