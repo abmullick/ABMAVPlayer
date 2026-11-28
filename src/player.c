@@ -1935,7 +1935,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT logoHalo={20,7,102,87};
     Panel(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,ABM_UI_COLOR_ACCENT_BRIGHT,22);
     RECT logo={28,14,94,80};
-    GradientRound(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_9A7628,17);
+    GradientRound(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,17);
     RECT logoInset={33,19,89,75};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
         (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_THEME_COLOR_BEE5FF,0.8f);
