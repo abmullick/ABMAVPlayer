@@ -10094,12 +10094,6 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
         SendMessageW(hwnd,WM_SETICON,ICON_BIG,(LPARAM)wc.hIcon);
         SendMessageW(hwnd,WM_SETICON,ICON_SMALL,(LPARAM)wc.hIcon);
     }
-    if(owc.hIcon){
-        /* Fullscreen overlay is normally borderless, but retain the same
-           identity if it is ever shown with a caption during diagnostics. */
-        SendMessageW(g_fullscreenOverlay,WM_SETICON,ICON_BIG,(LPARAM)owc.hIcon);
-        SendMessageW(g_fullscreenOverlay,WM_SETICON,ICON_SMALL,(LPARAM)owc.hIcon);
-    }
     g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
         L"ABMFullscreenOverlay",L"",WS_POPUP,0,0,1,1,hwnd,NULL,inst,NULL);
     /* Per-pixel alpha is supplied by UpdateLayeredWindow; no colour-key
