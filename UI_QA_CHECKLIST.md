@@ -439,3 +439,16 @@ Do not mark this source pass runtime-validated until the Windows build and visua
 - [ ] Build with the documented MSVC toolchain and visually inspect all three windows on Windows before marking this pass complete.
 
 Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
+
+
+## Application-wide title-bar icon coverage
+
+- [ ] Main Player: verify the ABM application mark is visible in both large and small title-bar icon slots.
+- [ ] Streaming Centre: verify its main window and separate Help/About information window.
+- [ ] Media Library (media discovery): verify its main window after opening from the Command Centre and via Ctrl+Shift+M.
+- [ ] Home Theatre and License & Activation: verify both title-bar icon sizes.
+- [ ] Settings, Advanced Settings, Help Centre and About: verify the icon after each window is created, including repeated open/close cycles.
+- [ ] Torrent Stream, Advanced Equalizer and Video Enhancement Studio: verify the icon wherever the Windows style exposes a caption; do not mistake borderless tool surfaces for missing title bars.
+- [ ] Confirm the same ABM icon is used regardless of the window's owner, opening order, theme preset or background skin.
+- [ ] Test at 100%, 125%, 150% and 200% display scaling and on a secondary monitor.
+- [ ] Build and run on Windows; source-level WM_SETICON calls alone do not constitute visual acceptance.
