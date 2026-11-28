@@ -854,3 +854,36 @@ The Command Centre and the Main Player's Media Collection / Playback & Output dr
 ### Windows title-bar application icon
 
 All top-level ABM AV Player windows use the single shared `assets/abm_av_player.ico` resource: a deep navy circular field with the gold-gradient ABM media emblem. The resource is referenced by `IDI_APP_ICON` (resource ID 101) and is used for both large and small window icons. Secondary utility windows must set `WNDCLASSEXW::hIcon` and `hIconSm` from this resource, or explicitly send `WM_SETICON` after creation. Do not create teal or window-specific title-bar variants. This title-bar resource is independent of the larger in-window brand lockups and does not alter their size or layout.
+
+
+## 8. Main Player visual refresh — first implementation pass
+
+**Status:** Source pass committed on `main`; Windows build and visual acceptance pending.
+
+The Main Player is the reference surface for the next design-system adoption stage. This pass changes the visible visual hierarchy without changing window geometry, hit targets, playback controls, media rendering, or command routing.
+
+Implemented in `src/player.c`:
+
+- Reworked the application masthead to a matte navy / blue-grey navigation surface with a quiet separator. Removed the continuously moving accent sweep from the header.
+- Reframed the ABM monogram as a dark, outlined brand tile with a restrained champagne-gold mark; the AV PLAYER wordmark is now secondary text rather than a second gold headline.
+- Restyled Menu, Media and status surfaces with neutral slate fills and restrained active/focus accents.
+- Replaced the pulsing teal video-frame border with a stable blue-grey frame.
+- Reworked the idle hero panel and destination cards around layered slate surfaces. The Open Media card is distinguished by its accent outline rather than a large gold fill.
+- Simplified the transport dock to a raised slate surface with a single signature hairline; the no-artwork mini-mark now uses the gold accent on a dark tile.
+
+The existing playback layout, LibVLC child video window, queue, drawer, transport hit targets, fullscreen behaviour, and keyboard commands are intentionally unchanged.
+
+### Required Windows verification
+
+- Build with the documented x64 MSVC toolchain and confirm no compiler or linker regressions.
+- Inspect the idle dashboard at the default size and at compact window sizes; confirm all five destination cards remain legible and clickable.
+- Verify the main player while audio and video are playing, with the drawer open, with Command Centre open, and in fullscreen.
+- Check all seven theme presets. The ABM signature gold must remain restrained and status colours must retain their semantic meaning.
+- Capture screenshots at 100%, 125% and 150% display scaling. This source pass does not claim visual verification or DPI certification.
+
+### Next adoption stages
+
+1. Finish the Main Player component audit: transport controls, queue rows, drawer, Command Centre, popups, hover/focus/disabled states and compact layouts.
+2. Bring Settings and Advanced Settings onto the same surface and control treatment.
+3. Apply the same component language to Home Theatre, Media Library, Streaming Centre and Torrent Stream without forcing provider-owned WebView2 pages into ABM styling.
+4. Implement motion only after each surface has stable layout and component states; DirectComposition work remains a separate, explicitly verified engineering task.
