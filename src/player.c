@@ -514,7 +514,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_CREATE:ABM_SkinRegisterWindow(w);g_abmDialogCanvasReady=ABM_D2D_CanvasInit(&g_abmDialogCanvas);return 0;
-    case WM_THEMECHANGED:InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_THEMECHANGED:RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_DESTROY:ABM_SkinUnregisterWindow(w);if(g_abmDialogCanvasReady){g_abmDialogCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_abmDialogCanvas);}return 0;
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
@@ -596,7 +596,7 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_CREATE:ABM_SkinRegisterWindow(w);g_abmMenuCanvasReady=ABM_D2D_CanvasInit(&g_abmMenuCanvas);return 0;
-    case WM_THEMECHANGED:InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_THEMECHANGED:RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_DESTROY:ABM_SkinUnregisterWindow(w);if(g_abmMenuCanvasReady){g_abmMenuCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_abmMenuCanvas);}return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
@@ -3590,7 +3590,7 @@ static BOOL g_recentPopupCanvasReady=FALSE;
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:ABM_SkinRegisterWindow(hwnd);g_recentPopupCanvasReady=ABM_D2D_CanvasInit(&g_recentPopupCanvas);return 0;
-    case WM_THEMECHANGED:InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_THEMECHANGED:RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
@@ -5002,7 +5002,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
     case WM_CREATE:
         ABM_SkinRegisterWindow(hwnd);g_equalizerCanvasReady=ABM_D2D_CanvasInit(&g_equalizerCanvas);
         return 0;
-    case WM_THEMECHANGED:InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_THEMECHANGED:RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_DESTROY:
         ABM_SkinUnregisterWindow(hwnd);if(g_equalizerCanvasReady){g_equalizerCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_equalizerCanvas);}
         return 0;
@@ -5200,7 +5200,7 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         if(LOWORD(wp)==WA_INACTIVE)ShowWindow(w,SW_HIDE);
         return 0;
     case WM_CREATE:ABM_SkinRegisterWindow(w);g_videoEnhancementCanvasReady=ABM_D2D_CanvasInit(&g_videoEnhancementCanvas);VideoEnhancementLayout(w);return 0;
-    case WM_THEMECHANGED:InvalidateRect(w,NULL,FALSE);return 0;
+    case WM_THEMECHANGED:RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_PAINT:VideoEnhancementPaint(w);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_NCHITTEST:{
@@ -6573,7 +6573,7 @@ static LRESULT CALLBACK TorrentWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_torrentSurfaceBrush){DeleteObject(g_torrentSurfaceBrush);g_torrentSurfaceBrush=NULL;}
         if(g_torrentControlBrush){DeleteObject(g_torrentControlBrush);g_torrentControlBrush=NULL;}
         TorrentApplyWindowChrome(hwnd);
-        InvalidateRect(hwnd,NULL,TRUE);
+        RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
     
     case WM_DRAWITEM: { const DRAWITEMSTRUCT *dis=(const DRAWITEMSTRUCT*)lp; if(dis&&dis->CtlType==ODT_BUTTON){TorrentDrawButton(dis);return TRUE;} if(dis&&dis->CtlType==ODT_COMBOBOX){TorrentDrawTvCombo(dis);return TRUE;} if(dis&&dis->CtlType==ODT_LISTBOX&&dis->CtlID==ID_TORRENT_FILES){TorrentDrawFileListItem(dis);return TRUE;} break; }
@@ -6879,7 +6879,7 @@ static HBITMAP LoadAboutPortrait(void) {
 
 static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
-    case WM_THEMECHANGED:InvalidateRect(hwnd,NULL,FALSE);return 0;
+    case WM_THEMECHANGED:RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_CREATE: {
         ABM_SkinRegisterWindow(hwnd);g_aboutPortrait=LoadAboutPortrait();
         g_aboutCanvasReady=ABM_D2D_CanvasInit(&g_aboutCanvas);
@@ -7136,7 +7136,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_helpArticleBrush){DeleteObject(g_helpArticleBrush);g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
         if(g_helpNavBrush){DeleteObject(g_helpNavBrush);g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);}
         if(g_helpEdit)SendMessageW(g_helpEdit,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
-        InvalidateRect(hwnd,NULL,FALSE);return 0;
+        RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_CREATE: {
         ABM_SkinRegisterWindow(hwnd);g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
         const wchar_t *help=
@@ -7934,7 +7934,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_THEMECHANGED:
   if(g_advancedDiagnosticBrush){DeleteObject(g_advancedDiagnosticBrush);g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   if(g_advancedVlcReportBrush){DeleteObject(g_advancedVlcReportBrush);g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
-  InvalidateRect(w,NULL,FALSE);return 0;
+  RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
  case WM_CREATE:
   ABM_SkinRegisterWindow(w);
   if(!ABM_D2D_Init(&g_advancedSettingsUi,w))return -1;
@@ -8681,7 +8681,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_THEMECHANGED:
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
-  InvalidateRect(w,NULL,FALSE);return 0;
+  RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
  case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));SettingsUpdateScrollBars(w);InvalidateRect(w,NULL,FALSE);return 0;
  case WM_ERASEBKGND:return 1;
  case WM_CTLCOLOREDIT:{
@@ -8859,7 +8859,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_THEMECHANGED:
         if(g_comboBrush){DeleteObject(g_comboBrush);g_comboBrush=CreateSolidBrush(C_PANEL2);}
-        InvalidateRect(hwnd,NULL,FALSE);return 0;
+        RedrawWindow(hwnd,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_APP+0x351:
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
         return 0;
