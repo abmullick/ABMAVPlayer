@@ -10087,7 +10087,19 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     if(!RegisterClassW(&owc))return 1;
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1440,900,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
-    if(wc.hIcon)SendMessageW(hwnd,WM_SETICON,ICON_SMALL,(LPARAM)wc.hIcon);
+    /* Set both caption icon sizes explicitly. WNDCLASSW carries only
+       the class (large) icon; WM_SETICON supplies the actual small caption
+       icon as well, avoiding an empty title-bar slot on some Windows builds. */
+    if(wc.hIcon){
+        SendMessageW(hwnd,WM_SETICON,ICON_BIG,(LPARAM)wc.hIcon);
+        SendMessageW(hwnd,WM_SETICON,ICON_SMALL,(LPARAM)wc.hIcon);
+    }
+    if(owc.hIcon){
+        /* Fullscreen overlay is normally borderless, but retain the same
+           identity if it is ever shown with a caption during diagnostics. */
+        SendMessageW(g_fullscreenOverlay,WM_SETICON,ICON_BIG,(LPARAM)owc.hIcon);
+        SendMessageW(g_fullscreenOverlay,WM_SETICON,ICON_SMALL,(LPARAM)owc.hIcon);
+    }
     g_fullscreenOverlay=CreateWindowExW(WS_EX_LAYERED|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,
         L"ABMFullscreenOverlay",L"",WS_POPUP,0,0,1,1,hwnd,NULL,inst,NULL);
     /* Per-pixel alpha is supplied by UpdateLayeredWindow; no colour-key
