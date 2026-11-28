@@ -2179,7 +2179,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT halo={seekThumb-10,R_SEEK.top-10,seekThumb+10,R_SEEK.bottom+10};
     RoundBox(dc,halo,ABM_THEME_COLOR_66551F,10);
     RECT dot={seekThumb-5,R_SEEK.top-6,seekThumb+5,R_SEEK.bottom+6};
-    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_FFF0C2,6);
+    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_UI_COLOR_ACCENT_BRIGHT,6);
     ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
 
     /* Control dock */
@@ -2187,13 +2187,13 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dock={dockLeft,client.bottom-144,dockLeft+720,client.bottom-42};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,8);
     RoundBox(dc,dockShadow,ABM_THEME_COLOR_03070D,32);
-    GradientRound(dc,dock,ABM_THEME_COLOR_24232A,ABM_THEME_COLOR_121722,28);
+    GradientRound(dc,dock,ABM_THEME_COLOR_151820,ABM_THEME_COLOR_1D222D,28);
     /* Fine top-edge light gives the transport surface a clear visual boundary. */
     RECT dockTop={dock.left+30,dock.top+1,dock.right-30,dock.top+3};
     GradientRect(dc,dockTop,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_80652A,1.0f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_8A783B,1.0f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_443A28,0.65f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_55491F,0.65f);
     /* Dedicated Now Playing identity block makes the transport dock a real
        player surface rather than a floating row of generic buttons. */
     RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
@@ -2215,14 +2215,14 @@ static void DrawUI(HDC dc,RECT client) {
     RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-9};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,ABM_THEME_COLOR_97AEC7,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
-    Fill(dc,transportDivider,ABM_THEME_COLOR_51452E);
+    Fill(dc,transportDivider,ABM_THEME_COLOR_55491F);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     RECT open=R_OPEN;
-    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_80652A:ABM_THEME_COLOR_66551F,14);
-    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_80652A,1.0f);
+    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_8A783B:ABM_THEME_COLOR_66551F,14);
+    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_8A783B,1.0f);
     RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
     Txt(dc,L"+",plus,ABM_UI_COLOR_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
