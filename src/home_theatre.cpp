@@ -902,6 +902,11 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         delete r;InvalidateRect(w,nullptr,FALSE);return 0;
     }
     case WM_PAINT:Draw(w);return 0;
+    case WM_THEMECHANGED:
+        if(g_darkBrush)DeleteObject(g_darkBrush);
+        g_darkBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
+        InvalidateRect(w,nullptr,TRUE);
+        return 0;
     case WM_CLOSE:DestroyWindow(w);return 0;
     case WM_DESTROY:
         ABM_SkinUnregisterWindow(w);
