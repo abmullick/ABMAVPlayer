@@ -1390,7 +1390,7 @@ static void UpdateLayout(HWND hwnd) {
     int sectionSpace=5*sectionHeaderH+5*sectionGap;
     /* Reserve three height units for each featured row so its title and subtitle remain readable. */
     int menuUnit=(menuUsable-sectionSpace)/30;
-    if(menuUnit<15)menuUnit=15;
+    if(menuUnit<12)menuUnit=12;
     int menuY=R_MENU_PANEL.top+54;
     for(int group=0;group<5;group++){
         R_MENU_SECTION_LABELS[group]=(RECT){R_MENU_PANEL.left+16,menuY,R_MENU_PANEL.right-16,menuY+sectionHeaderH};
