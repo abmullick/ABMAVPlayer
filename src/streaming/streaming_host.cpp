@@ -410,9 +410,9 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
     const bool pulse=(item->hwndItem==g_deviceSelect&&g_deviceSelectPulse)||
                      (item->hwndItem==g_deviceLaunch&&g_deviceLaunchPulse);
     COLORREF fill=pulse?(g_devicePulsePhase?ABM_THEME_COLOR_FF911C:ABM_THEME_COLOR_C25310):
-        primary?(pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT):
+        primary?ABM_UI_COLOR_SURFACE_NAVIGATION:
         (pressed?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
-    COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
+    COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:ABM_UI_COLOR_ACCENT_BRIGHT;
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r)){
         const float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
         ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,ABM_UI_COLOR_BACKGROUND);
