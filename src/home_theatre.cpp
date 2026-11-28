@@ -515,13 +515,13 @@ static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
     const BOOL focused=(d->itemState&ODS_FOCUS)!=0;
     const BOOL primary=(id==HT_SEARCH||id==HT_PLAY||id==HT_SCAN);
     COLORREF fill=disabled?ABM_UI_COLOR_SURFACE_RAISED:
-        (primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_18706F):
-        (pressed?ABM_THEME_COLOR_305E6F:(hot?ABM_THEME_COLOR_1F3648:ABM_UI_COLOR_SURFACE_RAISED)));
+        (primary?(pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT):
+        (pressed?ABM_UI_COLOR_SURFACE_INTERACTIVE:(hot?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_RAISED)));
     COLORREF text=disabled?ABM_UI_COLOR_TEXT_DISABLED:(primary?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY);
     COLORREF edge=focused?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
     wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
     if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,d->hDC,&r)){
-        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,ABM_THEME_COLOR_0A1725);
+        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,ABM_UI_COLOR_SURFACE_NAVIGATION);
         ABM_D2D_CanvasFillRound(&g_controlCanvas,1,1,(float)width-1,(float)height-1,(float)ABM_UI_RADIUS_BUTTON,fill);
         ABM_D2D_CanvasStrokeRound(&g_controlCanvas,0.5f,0.5f,(float)width-0.5f,(float)height-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
         RECT label={5,1,width-5,height-1};
@@ -600,7 +600,7 @@ static LRESULT CALLBACK HomePremiumControlProc(HWND hwnd,UINT msg,WPARAM wp,LPAR
                 ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)r.right,(float)r.bottom,ABM_UI_COLOR_INPUT);
                 ABM_D2D_CanvasStrokeRound(&g_controlCanvas,0.5f,0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,GetFocus()==hwnd?ABM_UI_COLOR_FOCUS:ABM_UI_COLOR_BORDER_STRONG,GetFocus()==hwnd?2.0f:1.0f);
                 int arrowW=34;RECT ar={r.right-arrowW,1,r.right-1,r.bottom-1};
-                ABM_D2D_CanvasFillRound(&g_controlCanvas,(float)ar.left,(float)ar.top,(float)ar.right,(float)ar.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_113041);
+                ABM_D2D_CanvasFillRound(&g_controlCanvas,(float)ar.left,(float)ar.top,(float)ar.right,(float)ar.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_SURFACE_INTERACTIVE);
                 int selected=(int)SendMessageW(hwnd,CB_GETCURSEL,0,0);wchar_t label[512]={};
                 if(selected!=CB_ERR)SendMessageW(hwnd,CB_GETLBTEXT,(WPARAM)selected,(LPARAM)label);
                 RECT tr={12,0,r.right-arrowW-8,r.bottom};
@@ -654,20 +654,20 @@ static void Draw(HWND w) {
     ABM_SkinRenderD2D(&g_canvas,&c);
     /* Use the exact main-player brand geometry and monogram. Keep the
        product wordmark, accent rule and subtitle on separate baselines. */
-    ABM_D2D_Fill(&g_canvas,0,0,(float)c.right,96,ABM_THEME_COLOR_0D1B2D);
-    ABM_D2D_Fill(&g_canvas,0,82,(float)c.right,96,ABM_THEME_COLOR_08111D);
-    ABM_D2D_Fill(&g_canvas,0,95,(float)c.right,96,ABM_THEME_COLOR_273D53);
-    ABM_D2D_Fill(&g_canvas,0,92,(float)c.right,95,ABM_THEME_COLOR_0D1827);
-    ABM_D2D_Round(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
-    ABM_D2D_StrokeRound(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_3F97B4,1.0f);
-    ABM_D2D_GradientRound(&g_canvas,28,14,94,80,17,ABM_THEME_COLOR_1C9D9D,ABM_THEME_COLOR_34777E);
-    ABM_D2D_StrokeRound(&g_canvas,33,19,89,75,14,ABM_THEME_COLOR_BEE5FF,0.8f);
-    ABM_D2D_Line(&g_canvas,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3.0f);
-    ABM_D2D_Line(&g_canvas,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3.0f);
-    ABM_D2D_Line(&g_canvas,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2.0f);
-    ABM_D2D_Line(&g_canvas,62,40,75,48,ABM_THEME_COLOR_FFFFFF,2.0f);
-    ABM_D2D_Line(&g_canvas,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2.0f);
-    ABM_D2D_Line(&g_canvas,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2.0f);
+    ABM_D2D_Fill(&g_canvas,0,0,(float)c.right,96,ABM_UI_COLOR_SURFACE_NAVIGATION);
+    ABM_D2D_Fill(&g_canvas,0,82,(float)c.right,96,ABM_UI_COLOR_BACKGROUND);
+    ABM_D2D_Fill(&g_canvas,0,95,(float)c.right,96,ABM_UI_COLOR_BORDER_STRONG);
+    ABM_D2D_Fill(&g_canvas,0,92,(float)c.right,95,ABM_UI_COLOR_BACKGROUND);
+    ABM_D2D_Round(&g_canvas,20,7,102,87,22,ABM_UI_COLOR_SURFACE_CARD);
+    ABM_D2D_StrokeRound(&g_canvas,20,7,102,87,22,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+    ABM_D2D_GradientRound(&g_canvas,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
+    ABM_D2D_StrokeRound(&g_canvas,33,19,89,75,14,ABM_UI_COLOR_TEXT_SECONDARY,0.8f);
+    ABM_D2D_Line(&g_canvas,42,63,59,30,ABM_UI_COLOR_TEXT,3.0f);
+    ABM_D2D_Line(&g_canvas,59,30,76,63,ABM_UI_COLOR_TEXT,3.0f);
+    ABM_D2D_Line(&g_canvas,49,49,68,49,ABM_UI_COLOR_TEXT_SECONDARY,2.0f);
+    ABM_D2D_Line(&g_canvas,62,40,75,48,ABM_UI_COLOR_TEXT,2.0f);
+    ABM_D2D_Line(&g_canvas,75,48,62,56,ABM_UI_COLOR_TEXT,2.0f);
+    ABM_D2D_Line(&g_canvas,62,56,62,40,ABM_UI_COLOR_TEXT,2.0f);
     ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(116,8,420,49),ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Text(&g_canvas,L"AV  PLAYER",MakeRect(188,20,390,48),ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_GradientRound(&g_canvas,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
