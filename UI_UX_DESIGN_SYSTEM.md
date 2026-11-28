@@ -943,3 +943,12 @@ Source implementation committed on `main`:
 - Search, topic navigation, activation validation, trial state, saved key handling, modal behaviour and window geometry were not intentionally changed.
 
 This is a source-level refinement only. Windows build and visual/interaction acceptance remain pending.
+
+
+## Application-wide title-bar icon propagation
+
+The shared `ABM_ApplyTitleBarIcon(HWND)` helper is now explicitly applied immediately after creation of the captioned Settings, Advanced Settings, Help Centre, About, Streaming Centre information, Streaming Centre main, Media Library, Home Theatre and Licensing windows. The main player continues to set both `ICON_BIG` and `ICON_SMALL` explicitly. Equalizer and Video Enhancement Studio also receive the shared icon handle after creation, for Windows styles that expose a caption.
+
+The Media Library is the Media Discovery manager window; its recursive scan runs in a worker and does not create a separate discovery top-level window. Streaming Centre's TV/device selector is a child panel, not a separate captioned window. Borderless popups and fullscreen overlays have no title bar to display an icon.
+
+This is a source-level correction. A Windows build and visual check of every listed window, including both icon sizes and multiple DPI scales, are still required before declaring runtime acceptance.
