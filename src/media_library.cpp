@@ -731,8 +731,8 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasFill(&g.canvas,0,0,(float)rc.right,96,ABM_UI_COLOR_SURFACE_NAVIGATION);
             ABM_D2D_CanvasFill(&g.canvas,0,92,(float)rc.right,96,ABM_UI_COLOR_BORDER_STRONG);
             ABM_D2D_CanvasFillRound(&g.canvas,20,7,102,87,22,ABM_UI_COLOR_SURFACE_CARD);
-            ABM_D2D_CanvasStrokeRound(&g.canvas,20,7,102,87,22,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
-            ABM_D2D_CanvasGradientRound(&g.canvas,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,20,7,102,87,22,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+            ABM_D2D_CanvasFillRound(&g.canvas,28,14,94,80,17,ABM_UI_COLOR_SURFACE_NAVIGATION);
             ABM_D2D_CanvasStrokeRound(&g.canvas,33,19,89,75,14,ABM_UI_COLOR_TEXT_SECONDARY,0.8f);
             ABM_D2D_CanvasLine(&g.canvas,42,63,59,30,ABM_UI_COLOR_TEXT,3.0f);
             ABM_D2D_CanvasLine(&g.canvas,59,30,76,63,ABM_UI_COLOR_TEXT,3.0f);
