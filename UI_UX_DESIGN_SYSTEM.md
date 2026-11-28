@@ -932,3 +932,14 @@ Source implementation committed on `main`:
 - Equalizer profiles, band/preamp values, save semantics, LibVLC adjustment calls, video enhancement values, presets, compare-original, reset and keyboard/mouse interaction were not intentionally changed.
 
 This is a source-level surface refinement only. Windows build, runtime appearance, DPI and interaction verification remain pending.
+
+
+## Help Centre, About and License & Activation — surface refinement
+
+Source implementation committed on `main`:
+- Help Centre now uses the shared navigation surface and a quiet neutral divider in its header. The search action and selected topic use soft accent surfaces, with the shared accent reserved for labels, focus and the selected-row marker. The GDI fallback follows the same semantic tokens as the Direct2D path.
+- About replaces its full-width gold strip and repeated gold section labels with a quiet neutral top rule and secondary-text section labels. The existing portrait, creator details, tribute, version and metadata attribution remain in place.
+- License & Activation uses a neutral raised logo tile with an accent monogram and secondary-text context label. Activation/trial status colours remain semantic. The edit-control brush is refreshed with the input-surface token on theme changes, matching its initial creation.
+- Search, topic navigation, activation validation, trial state, saved key handling, modal behaviour and window geometry were not intentionally changed.
+
+This is a source-level refinement only. Windows build and visual/interaction acceptance remain pending.
