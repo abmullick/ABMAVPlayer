@@ -29,6 +29,7 @@
 #include "../ui_theme.h"
 #include "../ui_d2d.h"
 #include "../ui_skin.h"
+#include "../resource.h"
 #include "version.h"
 #include "streaming_host.h"
 #include "dlna_cast.h"
@@ -1088,7 +1089,7 @@ void ShowStreamingInfo(bool about){
     static bool registered=false;
     if(!registered){
         WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.lpfnWndProc=StreamingInfoProc;wc.hInstance=instance;
-        wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=(HICON)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,0,0,LR_DEFAULTSIZE);
+        wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;
         wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=kInfoClassName;
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
@@ -1101,6 +1102,7 @@ void ShowStreamingInfo(bool about){
     g_infoWindow=CreateWindowExW(WS_EX_DLGMODALFRAME,kInfoClassName,caption,
         WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|(about?0:WS_THICKFRAME),x,y,width,height,g_window,nullptr,instance,nullptr);
     if(!g_infoWindow)return;
+    ABM_ApplyTitleBarIcon(g_infoWindow);
     BOOL dark=TRUE;DwmSetWindowAttribute(g_infoWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     if(!about){int corners=2;DwmSetWindowAttribute(g_infoWindow,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));}
     COLORREF captionColor=ABM_UI_COLOR_SURFACE,borderColor=ABM_UI_COLOR_BORDER_STRONG;
@@ -2296,8 +2298,8 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
     if(!registered){
         WNDCLASSEXW wc{};wc.cbSize=sizeof(wc);wc.lpfnWndProc=StreamingProc;
         wc.hInstance=instance;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);
-        wc.hIcon=(HICON)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,0,0,LR_DEFAULTSIZE);
-        wc.hIconSm=(HICON)LoadImageW(instance,MAKEINTRESOURCEW(101),IMAGE_ICON,16,16,0);
+        wc.hIcon=ABM_GetTitleBarIcon();
+        wc.hIconSm=wc.hIcon;
         wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=kClassName;
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=true;
@@ -2308,6 +2310,7 @@ extern "C" void ABM_Streaming_Show(HWND mainWindow){
         WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1160,820,
         nullptr,nullptr,instance,nullptr);
     if(!window){SetStatus(L"Could not create the Streaming Centre window.");return;}
+    ABM_ApplyTitleBarIcon(window);
     BOOL dark=TRUE;DwmSetWindowAttribute(window,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_SURFACE;
     DwmSetWindowAttribute(window,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
