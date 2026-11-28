@@ -1473,7 +1473,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     if(active) {
         int pulse=(int)(2.0+2.0*(0.5+0.5*sin((double)g_visualPulse*0.07)));
         RECT halo=r; InflateRect(&halo,4,4);
-        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_3D321B,ABM_THEME_COLOR_66551F,pulse*2),radius+5);
+        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_66551F,ABM_UI_COLOR_ACCENT,pulse*2),radius+5);
         GradientRound(NULL,r,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,radius);
         ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_UI_COLOR_ACCENT_BRIGHT,1.25f);
         glyph=ABM_THEME_COLOR_FFFFFF;
