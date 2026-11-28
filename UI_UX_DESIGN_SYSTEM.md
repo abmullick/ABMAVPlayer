@@ -1,13 +1,13 @@
 # ABM AV Player — UI/UX Design System
 
-**Status:** Canonical typography foundation established; control migration in progress  
+**Status:** Canonical typography and five-level surface tokens established; full runtime visual verification pending  
 **Baseline branch:** `main`  
 **Baseline commit:** `eb8cd7415cb403c9bb05244ba67ed36efc8eda89`  
 **Scope:** Visual consistency and interaction conventions only. This step does not alter playback, casting, torrent, streaming, networking, or updater behaviour.
 
 ## 1. Audit summary
 
-The current application already has a recognisable dark navy identity, a split ABM / AV PLAYER wordmark, teal accents, rounded cards, and Segoe UI typography. The Direct2D renderer uses DirectWrite and a 96-DPI coordinate space so its layout coordinates align with Win32 client-area pixels.
+The current application already has a recognisable charcoal identity, a split ABM / AV PLAYER wordmark, golden-yellow signature accents, rounded cards, and Segoe UI typography. The Direct2D renderer uses DirectWrite and a 96-DPI coordinate space so its layout coordinates align with Win32 client-area pixels.
 
 The main issue is not a lack of styling. It is that visual decisions are duplicated across windows and rendered through different technologies.
 
@@ -32,7 +32,7 @@ The main issue is not a lack of styling. It is that visual decisions are duplica
 
 - **Video first:** The playback canvas remains the dominant visual surface. Controls must not obscure video unnecessarily.
 - **One product, multiple workspaces:** Main Player, Streaming Centre, Torrent, Settings and auxiliary windows share the same brand, typography, spacing and interaction vocabulary.
-- **Dark, restrained, legible:** Use layered charcoal/navy surfaces, clear text contrast and subtle borders. Avoid excessive gradients, glow and glass effects.
+- **Dark, restrained, legible:** Use the five fixed charcoal surface levels, ABM signature gold, clear text contrast and subtle borders. Avoid excessive gradients, glow and glass effects.
 - **Teal is the primary action colour:** Orange is reserved for meaningful attention or selected/active states; red is reserved for destructive or stop/error states.
 - **Clear action hierarchy:** Primary, secondary, quiet and destructive actions must be visually distinguishable.
 - **State is explicit:** Hover, pressed, keyboard focus, disabled, loading, success, warning and error states must be designed rather than improvised.
@@ -47,26 +47,25 @@ The shared runtime palette is implemented in `src/ui_theme.h` and `src/ui_theme.
 
 | Token | Value | Intended use |
 |---|---|---|
-| Background | `RGB(6, 9, 16)` | Main window background |
-| Surface | `RGB(12, 18, 29)` | Primary cards and panels |
-| Raised surface | `RGB(20, 29, 43)` | Nested panels, hover surfaces |
-| Blue surface | `RGB(15, 31, 48)` | Secondary workspace panels |
-| Input | `RGB(11, 25, 40)` | Editable fields and inset controls |
-| Primary text | `RGB(247, 250, 255)` | Titles and important values |
-| Secondary text | `RGB(226, 238, 250)` | Body copy |
-| Muted text | `RGB(145, 160, 181)` | Metadata and supporting labels |
-| Disabled text | `RGB(91, 108, 128)` | Disabled controls |
-| Teal accent | `RGB(54, 177, 168)` | Primary actions and selected navigation |
-| Bright teal | `RGB(82, 205, 190)` | Active indicators and highlights |
-| Orange accent | `RGB(255, 145, 28)` | Attention and selected task completion |
-| Success | `RGB(77, 196, 153)` | Completed/healthy state |
-| Warning | `RGB(242, 177, 79)` | Caution and recoverable issues |
-| Danger | `RGB(220, 75, 85)` | Destructive actions and errors |
-| Border | `RGB(39, 51, 70)` | Subtle card boundaries |
-| Strong border | `RGB(53, 111, 127)` | Emphasised boundaries |
-| Focus | `RGB(99, 225, 205)` | Keyboard focus ring |
+| Token | Value | Intended use |
+|---|---|---|
+| Level 1 — Background | `#151820` | Application and workspace background |
+| Level 2 — Navigation / panel | `#1D222D` | Navigation, sidebars and primary panels |
+| Level 3 — Card / container | `#272E3A` | Cards, inputs and nested containers |
+| Level 4 — Interactive | `#343D4C` | Hover, pressed and active surfaces |
+| Level 5 — ABM signature | `#E9B949` | Brand accent, active indicators and focus emphasis |
+| Primary text | `#F7FAFF` | Titles and important values |
+| Secondary text | `#E2EEFA` | Body copy |
+| Muted text | `#91A0B5` | Metadata and supporting labels |
+| Disabled text | `#5B6C80` | Disabled controls |
+| Theme secondary accent | Preset-derived | Decorative secondary accents only |
+| Success | `#4DC499` | Completed/healthy state |
+| Warning | `#F2B14F` | Caution and recoverable issues |
+| Danger | `#DC4B55` | Destructive actions and errors |
+| Border | Shared neutral border token | Subtle card boundaries |
+| Focus | Shared focus token | Keyboard focus ring |
 
-**Usage rules:** do not use accent colours for large blocks of text; maintain readable contrast; do not communicate status by colour alone; destructive actions must not use the primary teal treatment.
+**Usage rules:** do not use signature gold for large blocks of text or large low-contrast fills; maintain readable contrast; do not communicate status by colour alone; destructive actions must not use the primary teal treatment.
 
 ### Typography
 
@@ -765,3 +764,16 @@ The application-owned UI has one process-wide semantic surface ladder, declared 
 Legacy semantic aliases resolve to the corresponding new levels so existing modules can migrate without duplicating palette values. The shared colour resolver also normalizes legacy low-luminance neutral and blue/teal surface swatches into the same four levels, while preserving black video, vivid accents and semantic status colours. The signature gold and all four neutral surface levels are excluded from preset hue transforms. All seven existing selectable presets remain available and can continue to theme secondary decorative colours. Do not add window-local palette globals or hardcoded surface hex values. Every new or revised ABM-owned window must use these global semantic tokens for its surfaces, with the global typography, spacing and radius tokens already defined in the same header.
 
 This is the central token foundation. A repository-wide visual audit, remaining module migration, Windows MSVC build and runtime verification are still required before claiming every existing surface is fully unified.
+
+
+## 3.2 Five-level surface rollout and compatibility contract
+
+All five surface roles are declared globally in `src/ui_theme.h`, backed by the process-wide palette in `src/ui_theme.c`. Existing aliases map to those roles, and legacy low-luminance neutral/blue-teal palette constants are normalized by `ABMThemeColor` so old call sites converge on the same hierarchy rather than introducing another window-local palette.
+
+The fixed surface ladder and ABM signature gold are intentionally excluded from the seven existing preset hue transforms. Presets continue to recolour secondary decorative colours, while the global surfaces and brand accent remain stable. The Main Player, Home Theatre, Media Library, Licensing dialog and Streaming Centre now consume the shared semantic tokens or the compatibility resolver. Home Theatre's cached colour constants were converted to paint-time semantic macros; Media Library refreshes cached GDI brushes when their resolved colour changes; Home Theatre and Licensing refresh their brushes on `WM_THEMECHANGED`; Streaming Centre refreshes its information-window brushes on the same message.
+
+Optional user-selected background skins in `src/ui_skin.cpp` are an intentional artwork layer, not a competing application palette. They may supply the backdrop where the user explicitly selects a skin, but must not redefine navigation, cards, inputs, hover states, text, borders or other functional controls. Provider-owned WebView2 content also retains its provider styling.
+
+**Migration rule for all future code:** declare no window-local surface or accent colour variables. Use `ABM_UI_COLOR_BACKGROUND`, `ABM_UI_COLOR_SURFACE_NAVIGATION`, `ABM_UI_COLOR_SURFACE_CARD`, `ABM_UI_COLOR_SURFACE_INTERACTIVE` and `ABM_UI_COLOR_ACCENT`. Use `ABM_UI_COLOR_THEME_ACCENT` only for secondary preset decoration. Do not introduce raw RGB/hex literals for functional UI surfaces. Theme-sensitive GDI brushes must be recreated when the resolved token changes or when the window receives its theme-refresh message.
+
+The source migration is not a substitute for Windows validation: the full application still needs an MSVC build, live switching through every preset, and visual inspection of all windows, controls, hover/focus/disabled states, custom skins, high-DPI layouts and fullscreen playback.
