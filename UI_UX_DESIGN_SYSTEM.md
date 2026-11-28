@@ -826,3 +826,16 @@ Streaming Centre toolbar actions now follow the shared ABM button hierarchy: pri
 ### Shared logo gradient
 
 All native ABM window mastheads use the same signature mark treatment: a horizontal gold-to-deep-antique-gold gradient from `ABM_UI_COLOR_ACCENT` to `ABM_THEME_COLOR_66551F`, a consistent rounded-square radius, and a light inset monogram outline. Do not render the logo tile as a flat solid-gold fill in secondary windows. The Main Player, Home Theatre and Streaming Centre should read as the same brand at a glance.
+
+
+### Cross-window button hierarchy
+
+The Main Player, Torrent Stream, Home Theatre, Streaming Centre and Media Library use one button hierarchy without changing existing control geometry:
+
+- **Primary:** signature-gold filled surface with legible dark-surface contrast (for example Play/Stream, Search, Play local match, Cast video).
+- **Important secondary:** dark raised surface with a signature-gold outline or focus ring (for example Add magnet, Identify library, scan actions, Cast to TV, Apply limits/quota).
+- **Utility/navigation:** neutral dark raised surface with standard border; gold is reserved for hover/focus and icon emphasis.
+- **Destructive:** restrained dark red surface with danger-red outline and pale red icon/text (Remove task, Clear inactive cache, Stop TV).
+- **Disabled:** muted surface, text and border; no primary gold fill.
+
+Do not change existing button dimensions, placement, spacing, corner radius or the established dark surface ladder while applying this hierarchy. The gold fill is reserved for the single most important action in the current workflow; it is not a general button colour. Distinct state indicators (such as an active receiver pulse) may retain their status colours.
