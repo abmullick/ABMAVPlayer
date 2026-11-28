@@ -425,3 +425,17 @@ Do not mark this source pass runtime-validated until the Windows build and visua
 - [ ] Build with the documented MSVC toolchain and inspect both windows on Windows before marking this pass complete.
 
 Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
+
+
+## Help Centre, About and License & Activation — visual regression
+
+- [ ] Help Centre: F1 opens; all topics navigate; search via Ctrl+F, Enter, Find next and F3 wraps correctly; article formatting and scrolling remain intact.
+- [ ] Help Centre: verify neutral navigation header/divider, soft-accent selected topic and search action in Direct2D and GDI fallback; check hover, pressed and keyboard focus.
+- [ ] About: verify portrait loads from installed and build-directory layouts; creator/contact/tribute/build/version/metadata text remains readable and unclipped; no full-width gold strip or repeated gold section headings.
+- [ ] License & Activation: test first-launch trial, manual activation, invalid key, valid key, already-activated state, trial-expired state, close/Escape and focus restoration.
+- [ ] Change colour theme while License & Activation is open; verify the edit field background remains the shared input surface and text/caret stay legible.
+- [ ] Verify all three windows use the shared title-bar icon, dark caption/border, background skin and typography across all seven themes.
+- [ ] Check 100%, 125%, 150% and 200% display scaling, compact work areas, resize where supported, keyboard navigation, clipping and focus visibility.
+- [ ] Build with the documented MSVC toolchain and visually inspect all three windows on Windows before marking this pass complete.
+
+Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
