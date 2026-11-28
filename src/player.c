@@ -2366,7 +2366,7 @@ static void DrawUI(HDC dc,RECT client) {
     /* Search and filters are drawn in Direct2D; keyboard input is handled by
        the main window so no blurry native EDIT control is layered over it. */
     /* Search is a recessed tool surface with a quiet focus halo. */
-    GradientRound(dc,R_SEARCH,g_searchFocused?ABM_THEME_COLOR_29251B:ABM_THEME_COLOR_0B1727,
+    GradientRound(dc,R_SEARCH,g_searchFocused?ABM_UI_COLOR_SURFACE_CARD:ABM_THEME_COLOR_0B1727,
         ABM_THEME_COLOR_0D192A,12);
     ABM_D2D_StrokeRound(&g_ui,(float)R_SEARCH.left,(float)R_SEARCH.top,(float)R_SEARCH.right,
         (float)R_SEARCH.bottom,12.0f,g_searchFocused?ABM_UI_COLOR_FOCUS:ABM_THEME_COLOR_2B4865,
@@ -2734,7 +2734,7 @@ static void DrawUI(HDC dc,RECT client) {
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             BOOL featured=(i>=12&&i<=15);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=featured?(i==12?ABM_THEME_COLOR_29251B:(i==13?ABM_THEME_COLOR_29251B:(i==14?ABM_THEME_COLOR_29251B:ABM_THEME_COLOR_29251B))):ABM_THEME_COLOR_193041;
+            COLORREF fill=featured?(i==12?ABM_UI_COLOR_SURFACE_CARD:(i==13?ABM_UI_COLOR_SURFACE_CARD:(i==14?ABM_UI_COLOR_SURFACE_CARD:ABM_UI_COLOR_SURFACE_CARD))):ABM_THEME_COLOR_193041;
             COLORREF edge=featured?(i==12?ABM_THEME_COLOR_8A783B:(i==13?ABM_THEME_COLOR_8A783B:(i==14?ABM_THEME_COLOR_8A783B:ABM_THEME_COLOR_8A783B))):ABM_THEME_COLOR_1F3041;
             if(hot){fill=featured?(i==12?ABM_THEME_COLOR_55491F:(i==13?ABM_THEME_COLOR_55491F:(i==14?ABM_THEME_COLOR_55491F:ABM_THEME_COLOR_55491F))):ABM_THEME_COLOR_1C3445;edge=ABM_UI_COLOR_ACCENT_BRIGHT;}
             if(featured||hot){
