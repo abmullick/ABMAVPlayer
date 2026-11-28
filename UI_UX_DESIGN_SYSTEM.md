@@ -811,3 +811,8 @@ Optional user-selected background skins in `src/ui_skin.cpp` are an intentional 
 **Migration rule for all future code:** declare no window-local surface or accent colour variables. Use `ABM_UI_COLOR_BACKGROUND`, `ABM_UI_COLOR_SURFACE_NAVIGATION`, `ABM_UI_COLOR_SURFACE_CARD`, `ABM_UI_COLOR_SURFACE_INTERACTIVE` and `ABM_UI_COLOR_ACCENT`. Use `ABM_UI_COLOR_THEME_ACCENT` only for secondary preset decoration. Do not introduce raw RGB/hex literals for functional UI surfaces. Theme-sensitive GDI brushes must be recreated when the resolved token changes or when the window receives its theme-refresh message.
 
 The source migration is not a substitute for Windows validation: the full application still needs an MSVC build, live switching through every preset, and visual inspection of all windows, controls, hover/focus/disabled states, custom skins, high-DPI layouts and fullscreen playback.
+
+
+### Signature-accent alignment
+
+The Main Player's custom-rendered brand header and idle-state hero now use the same permanent ABM signature gold as Home Theatre: logo halo and mark, AV PLAYER wordmark, header rule, ambient highlight, hero eyebrow/headline and primary home-card emphasis resolve through `ABM_UI_COLOR_ACCENT`, `ABM_UI_COLOR_ACCENT_BRIGHT` and `ABM_UI_COLOR_ACCENT_SOFT`. The remaining teal/blue tones in the player are retained only as secondary ambient artwork or status/decorative colours; they must not recolour the ABM brand mark or primary action identity.
