@@ -1177,8 +1177,35 @@ static COLORREF ABMThemeTransformColor(COLORREF color, double targetHue) {
     }
 }
 COLORREF ABMThemeColor(ABMThemeColorId id) {
+    ABMThemeColorId surfaceId=id;
     if ((unsigned)id >= (unsigned)ABM_THEME_COLOR_COUNT) return RGB(0, 0, 0);
-    return (COLORREF)InterlockedCompareExchange((volatile LONG *)&g_themeColors[id], 0, 0);
+
+    /* Compatibility bridge: legacy modules historically selected slightly
+       different navy hex values for equivalent surfaces. Resolve those old
+       tokens here so every window converges on the same global hierarchy. */
+    switch(id) {
+    case ABM_THEME_ID_060910: case ABM_THEME_ID_090F19:
+    case ABM_THEME_ID_0A0F19: case ABM_THEME_ID_0C1419:
+    case ABM_THEME_ID_0D1420: case ABM_THEME_ID_0F1723:
+        surfaceId=ABM_THEME_ID_151820; break;
+    case ABM_THEME_ID_0C121D: case ABM_THEME_ID_0F1F30:
+    case ABM_THEME_ID_0D1B2D: case ABM_THEME_ID_0D1C2D:
+    case ABM_THEME_ID_0C1D2D: case ABM_THEME_ID_0F2230:
+    case ABM_THEME_ID_0D1825: case ABM_THEME_ID_0D1827:
+    case ABM_THEME_ID_0E1F31: case ABM_THEME_ID_111D2F:
+        surfaceId=ABM_THEME_ID_1D222D; break;
+    case ABM_THEME_ID_141D2A: case ABM_THEME_ID_141D2B:
+    case ABM_THEME_ID_162434: case ABM_THEME_ID_16202B:
+    case ABM_THEME_ID_17202C: case ABM_THEME_ID_1B2735:
+    case ABM_THEME_ID_192737: case ABM_THEME_ID_1F2D3B:
+    case ABM_THEME_ID_0B1928:
+        surfaceId=ABM_THEME_ID_272E3A; break;
+    case ABM_THEME_ID_1F3648: case ABM_THEME_ID_163B48:
+    case ABM_THEME_ID_234B5E: case ABM_THEME_ID_305E6F:
+        surfaceId=ABM_THEME_ID_343D4C; break;
+    default: break;
+    }
+    return (COLORREF)InterlockedCompareExchange((volatile LONG *)&g_themeColors[surfaceId], 0, 0);
 }
 BOOL ABMThemeSetColor(ABMThemeColorId id, COLORREF color) {
     if ((unsigned)id >= (unsigned)ABM_THEME_COLOR_COUNT) return FALSE;
