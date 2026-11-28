@@ -63,6 +63,16 @@ struct LibraryState {
     ABM_MediaLibraryPlayFn play=nullptr;
 } g;
 
+/* Rebuild cached GDI brushes when the selected global palette changes. */
+static HBRUSH ThemeBrush(HBRUSH &brush,COLORREF &cachedColor,COLORREF color) {
+    if(!brush || cachedColor!=color) {
+        if(brush)DeleteObject(brush);
+        brush=CreateSolidBrush(color);
+        cachedColor=color;
+    }
+    return brush;
+}
+
 static bool IsMediaExtension(const wchar_t *path) {
     if(!path)return false;
     /* .d.ts is a TypeScript declaration file, not an MPEG transport stream. */
@@ -334,12 +344,15 @@ static void ShowLibraryContextMenu(HWND child,int screenX,int screenY) {
     /* Owner-drawn menu items use ABM colours and typography; the menu surface
        itself also receives the shared dark palette instead of Explorer defaults. */
     static HBRUSH menuBrush=nullptr;
-    if(!menuBrush)menuBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
+    static COLORREF menuBrushColor=CLR_INVALID;
+    menuBrush=ThemeBrush(menuBrush,menuBrushColor,ABM_UI_COLOR_SURFACE_CARD);
+    if(!menuBrush){DestroyMenu(menu);return;}
     MENUINFO menuInfo={};menuInfo.cbSize=sizeof(menuInfo);menuInfo.fMask=MIM_BACKGROUND|MIM_STYLE;
     menuInfo.hbrBack=menuBrush;menuInfo.dwStyle=MNS_NOCHECK;
     SetMenuInfo(menu,&menuInfo);
     int command=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON|TPM_NONOTIFY,pt.x,pt.y,0,g.window,nullptr);
     DestroyMenu(menu);
+    if(menuBrush){DeleteObject(menuBrush);menuBrush=nullptr;menuBrushColor=CLR_INVALID;}
     if(!command)return;
     if(roots&&selected<(int)g.roots.size()) {
         const std::wstring path=g.roots[(size_t)selected];
@@ -573,15 +586,18 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_CONTEXTMENU:ShowLibraryContextMenu((HWND)wp,GET_X_LPARAM(lp),GET_Y_LPARAM(lp));return 0;
     case WM_CTLCOLOREDIT: {
         HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_F2F8FF);SetBkColor(dc,ABM_THEME_COLOR_141D2A);
-        static HBRUSH editBrush=nullptr;if(!editBrush)editBrush=CreateSolidBrush(ABM_THEME_COLOR_141D2A);return (LRESULT)editBrush;
+        static HBRUSH editBrush=nullptr;static COLORREF editBrushColor=CLR_INVALID;
+        return (LRESULT)ThemeBrush(editBrush,editBrushColor,ABM_UI_COLOR_SURFACE_CARD);
     }
     case WM_CTLCOLORLISTBOX: {
         HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_E2EEF9);SetBkColor(dc,ABM_THEME_COLOR_141D2A);
-        static HBRUSH brush=nullptr;if(!brush)brush=CreateSolidBrush(ABM_THEME_COLOR_141D2A);return (LRESULT)brush;
+        static HBRUSH brush=nullptr;static COLORREF brushColor=CLR_INVALID;
+        return (LRESULT)ThemeBrush(brush,brushColor,ABM_UI_COLOR_SURFACE_CARD);
     }
     case WM_CTLCOLORSTATIC: {
         HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_D7E4F1);SetBkColor(dc,ABM_THEME_COLOR_090F19);
-        static HBRUSH brush=nullptr;if(!brush)brush=CreateSolidBrush(ABM_THEME_COLOR_090F19);return (LRESULT)brush;
+        static HBRUSH brush=nullptr;static COLORREF brushColor=CLR_INVALID;
+        return (LRESULT)ThemeBrush(brush,brushColor,ABM_UI_COLOR_BACKGROUND);
     }
     case WM_MEASUREITEM: {
         MEASUREITEMSTRUCT *mi=(MEASUREITEMSTRUCT*)lp;
