@@ -723,3 +723,28 @@ This is a source-level feature pass. The Windows build, font glyph fallback for 
 ### Main Player Background Skins
 
 ABM AV Player provides eight application-wide background skins in Settings: Classic Music Player, Ocean Flow, Aurora, Golden Waves, Liquid Chrome, Neon Pulse, Deep Ocean and Holographic. Classic Music Player remains the default and preserves the original appearance. A shared renderer and one process-wide selection apply the same restrained ambient shapes and animated wave language to the Main Player, Settings, Advanced Settings, Torrent Stream, Advanced Equalizer, Video Enhancement Studio, Home Theatre, Streaming Centre, About/Help surfaces and ABM-owned menus and dialogs. The background is always painted before foreground panels, controls and text; it never overlays the active video or WebView2 provider content. Native child controls keep their existing interaction, accessibility and rendering behaviour. The selected skin is stored in `%APPDATA%\\ABMAVPlayer\\theme.ini` under `[Appearance] BackgroundSkin` and remains independent of the seven Color Theme presets.
+
+
+## Step 11 — GPU-rendered floating-surface shadows
+
+**Scope:** presentation-only polish for the existing media drawer and Command Centre.
+
+- Added `ABM_D2D_ShadowRound` to the shared Direct2D renderer. It paints a compact stack of translucent rounded silhouettes using the existing Direct2D render target and cached brush.
+- Replaced the two opaque, offset shadow blocks on the media drawer and Command Centre with the shared soft-shadow primitive.
+- Shadow opacity follows the existing drawer/menu animation progress, so the floating surfaces gain depth as they enter and lose it as they leave.
+- No new timer, thread, HWND, bitmap cache, DirectComposition dependency or external runtime was introduced.
+- The existing 30 Hz UI timer and integer easing remain the animation clock. The LibVLC video child geometry, playback state, decoding, casting and torrent operations are unchanged.
+
+**Windows validation checklist**
+
+1. Build with the supported x64 MSVC toolchain.
+2. Open and close the media drawer repeatedly; verify the shadow follows the slide and never remains after closing.
+3. Open and close the Command Centre; verify its shadow tracks the expanding/collapsing panel.
+4. Test rapid open/close reversals, resizing, fullscreen transitions and 100%, 125%, 150% and 200% scaling.
+5. Check that the shadow remains subtle on all six themes and does not create visible banding or excessive GPU/CPU use.
+6. Confirm playback, video sizing, audio visualisation, casting and torrent streaming remain unchanged.
+
+- [x] Add shared Direct2D floating-surface shadow primitive.
+- [x] Apply it to the media drawer and Command Centre.
+- [ ] Build with Windows MSVC and complete runtime/performance checks.
+
