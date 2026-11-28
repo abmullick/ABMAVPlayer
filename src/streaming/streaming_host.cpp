@@ -970,16 +970,16 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
             ABM_SkinRenderCanvas(&g_infoCanvas,&rc);
             ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)rc.right,6,ABM_UI_COLOR_ACCENT);
-            if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_122637);}
+            if(g_infoAbout){RECT frame={28,94,286,362};ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)frame.left,(float)frame.top,(float)frame.right,(float)frame.bottom,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE_CARD);}
             ABM_D2D_CanvasEnd(&g_infoCanvas);
         }else{FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);RECT accent={0,0,rc.right,6};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);}
         if(g_infoAbout&&g_infoPortrait){Gdiplus::Graphics graphics(dc);graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);graphics.DrawImage(g_infoPortrait,Gdiplus::Rect(36,102,242,242));}
         if(g_infoCanvasReady)ABM_D2D_CanvasBegin(&g_infoCanvas,dc,&rc);
         if(g_infoAbout){
             RECT brand={28,17,rc.right-28,48};
-            InfoText(dc,L"ABM AV PLAYER",brand,ABM_THEME_COLOR_F4F9FF,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"ABM AV PLAYER",brand,ABM_UI_COLOR_TEXT,21,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT subtitle={29,47,rc.right-28,70};
-            InfoText(dc,L"THE CREATOR",subtitle,ABM_THEME_COLOR_5BE0DA,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"THE CREATOR",subtitle,ABM_UI_COLOR_ACCENT,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }else{
             RECT kicker={34,7,rc.right-28,29};
             InfoText(dc,L"ABM AV PLAYER   /   STREAMING CENTRE HELP",kicker,ABM_UI_COLOR_ACCENT_BRIGHT,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -989,38 +989,38 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         }
         if(g_infoAbout){
             if(!g_infoPortrait){
-                RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_THEME_COLOR_1B8F91,ABM_UI_RADIUS_CARD);
+                RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_UI_COLOR_ACCENT,ABM_UI_RADIUS_CARD);
                 InfoText(dc,L"ABM",fallback,ABM_UI_COLOR_TEXT,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
             RECT product={322,98,rc.right-28,138};
-            InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"ABM AV Player",product,ABM_UI_COLOR_TEXT,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tagline={322,140,rc.right-28,163};
-            InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_THEME_COLOR_70D3CA,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"Capture the feeling. Relive every moment.",tagline,ABM_UI_COLOR_ACCENT_BRIGHT,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT creatorLabel={322,174,rc.right-28,197};
-            InfoText(dc,L"THE CREATOR",creatorLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"THE CREATOR",creatorLabel,ABM_UI_COLOR_ACCENT,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT creator={322,204,rc.right-28,237};
-            InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_THEME_COLOR_FFFFFF,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"Abhisek Basu Mullick",creator,ABM_UI_COLOR_TEXT,19,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT role={322,244,rc.right-28,271};
-            InfoText(dc,L"Founder & Developer",role,ABM_THEME_COLOR_E8F1FA,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            InfoText(dc,L"Founder & Developer",role,ABM_UI_COLOR_TEXT_SECONDARY,15,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
             RECT contactLabel={322,290,rc.right-28,313};
-            InfoText(dc,L"CONTACT",contactLabel,ABM_THEME_COLOR_44CCD1,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"CONTACT",contactLabel,ABM_UI_COLOR_ACCENT,11,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT email={322,321,rc.right-28,348};
-            InfoText(dc,L"abmullick@gmail.com",email,ABM_THEME_COLOR_F6FAFF,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"abmullick@gmail.com",email,ABM_UI_COLOR_TEXT,15,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT description={322,362,rc.right-28,412};
-            InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_THEME_COLOR_E2EEF9,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"A unified Windows media platform for local playback, online streaming and torrent streaming. Enjoy your media on your PC or cast it to your television.",description,ABM_UI_COLOR_TEXT_SECONDARY,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT version={322,420,rc.right-28,446};
-            InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_THEME_COLOR_AEC6DB,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT divider={28,455,rc.right-28,456};InfoFill(dc,divider,ABM_THEME_COLOR_233E52);
+            InfoText(dc,L"Version " ABM_VERSION_W L"   |   © 2026 Abhisek Basu Mullick",version,ABM_UI_COLOR_TEXT_MUTED,12,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT divider={28,455,rc.right-28,456};InfoFill(dc,divider,ABM_UI_COLOR_BORDER_STRONG);
             RECT featuresTitle={32,470,rc.right-32,495};
-            InfoText(dc,L"KEY FEATURES",featuresTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"KEY FEATURES",featuresTitle,ABM_UI_COLOR_ACCENT,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT features={32,500,rc.right-32,592};
             InfoText(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT tributeTitle={32,610,rc.right-32,635};
-            InfoText(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_UI_COLOR_ACCENT,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tribute={32,640,rc.right-32,700};
             InfoText(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT stackTitle={32,720,rc.right-32,745};
-            InfoText(dc,L"BUILT WITH",stackTitle,ABM_THEME_COLOR_44CCD1,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            InfoText(dc,L"BUILT WITH",stackTitle,ABM_UI_COLOR_ACCENT,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT stack={32,750,rc.right-32,790};
             InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }else{
@@ -1368,13 +1368,13 @@ void PaintChrome(HWND hwnd){
     oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoInset.left,logoInset.top,logoInset.right,logoInset.bottom,14,14);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(insetPen);
-    HPEN markPen=CreatePen(PS_SOLID,3,ABM_THEME_COLOR_FFFFFF);oldLogoPen=SelectObject(dc,markPen);
+    HPEN markPen=CreatePen(PS_SOLID,3,ABM_UI_COLOR_TEXT);oldLogoPen=SelectObject(dc,markPen);
     MoveToEx(dc,42,63,nullptr);LineTo(dc,59,30);LineTo(dc,76,63);
     SelectObject(dc,oldLogoPen);DeleteObject(markPen);
     HPEN crossPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_E2F5FF);oldLogoPen=SelectObject(dc,crossPen);
     MoveToEx(dc,49,49,nullptr);LineTo(dc,68,49);
     SelectObject(dc,oldLogoPen);DeleteObject(crossPen);
-    HPEN playPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_FFFFFF);oldLogoPen=SelectObject(dc,playPen);
+    HPEN playPen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT);oldLogoPen=SelectObject(dc,playPen);
     MoveToEx(dc,62,40,nullptr);LineTo(dc,75,48);LineTo(dc,62,56);LineTo(dc,62,40);
     SelectObject(dc,oldLogoPen);DeleteObject(playPen);
 
@@ -1388,11 +1388,11 @@ void PaintChrome(HWND hwnd){
        different font metrics already provide the intended size hierarchy;
        a second top offset incorrectly shifts the suffix down. */
     RECT brandSuffix={188,8,306,49};
-    BrandText(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_84CDC2,
+    BrandText(dc,L"AV  PLAYER",brandSuffix,ABM_UI_COLOR_ACCENT,
         ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,ABM_THEME_COLOR_36B1A8);
+    RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,ABM_UI_COLOR_ACCENT);
     RECT sub={116,60,306,83};
-    Text(dc,L"STREAMING CENTRE",sub,ABM_THEME_COLOR_9DB1C9,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"STREAMING CENTRE",sub,ABM_UI_COLOR_TEXT_MUTED,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     g_helpRect=RECT{318,15,390,55};
     Rounded(dc,g_helpRect,g_hoverControl==5?ABM_THEME_COLOR_244B5E:ABM_UI_COLOR_SURFACE_NAVIGATION,9);
@@ -1420,7 +1420,7 @@ void PaintChrome(HWND hwnd){
     SelectObject(dc,oldCastBrush);SelectObject(dc,oldCastPen);DeleteObject(castPen);
     DrawFluentGlyph(dc,RECT{g_castRect.left+3,g_castRect.top+2,g_castRect.left+31,g_castRect.bottom-2},0xE721,ABM_THEME_COLOR_8EE2D3,17);
     RECT findTvLabel={g_castRect.left+29,g_castRect.top,g_castRect.right-5,g_castRect.bottom};
-    Text(dc,L"Find TVs",findTvLabel,receiverReady?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E0FAF5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Text(dc,L"Find TVs",findTvLabel,receiverReady?ABM_UI_COLOR_TEXT:ABM_THEME_COLOR_E0FAF5,11,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 
     g_castVideoRect=RECT{620,15,730,55};
     Rounded(dc,g_castVideoRect,g_hoverControl==9?ABM_THEME_COLOR_237E6F:ABM_THEME_COLOR_195B50,10);
@@ -1520,12 +1520,12 @@ void PaintChrome(HWND hwnd){
             }
         }else{
             RECT missing={left+8,serviceY+18,left+serviceW-8,serviceY+82};
-            Text(dc,kServices[i],missing,ABM_THEME_COLOR_9AB8CD,15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            Text(dc,kServices[i],missing,ABM_UI_COLOR_TEXT_MUTED,15,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }
         RECT label=g_serviceRects[i];
         label.top=serviceY+66;label.bottom=serviceY+87;
         label.left+=5;label.right-=5;
-        Text(dc,kServices[i],label,active?ABM_THEME_COLOR_F8FFFF:ABM_THEME_COLOR_D6E4F0,
+        Text(dc,kServices[i],label,active?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,
             13,active||hover?700:600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         if(active){
             RECT activeMark={left+serviceW/2-18,serviceY+91,left+serviceW/2+18,serviceY+93};
