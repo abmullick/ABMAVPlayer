@@ -849,3 +849,8 @@ The floating Now Playing dock follows the ABM signature gold identity used by th
 ### Command Centre and Media Collection drawer colour alignment
 
 The Command Centre and the Main Player's Media Collection / Playback & Output drawer use the same signature-gold accent system as the masthead and primary actions. Feature rows no longer use separate teal, brown, blue and green brand fills: they share dark raised surfaces, restrained gold borders, gold glyph tiles and gold hover/focus states. Drawer section headings, active quick controls, device discovery, output selector, Advanced Settings action, collection heading, Manage action and search focus use semantic gold tokens. Preserve the dark navy surface ladder, neutral inactive controls, status colours, text contrast, geometry and existing interaction behaviour.
+
+
+### Windows title-bar application icon
+
+All top-level ABM AV Player windows use the single shared `assets/abm_av_player.ico` resource: a deep navy circular field with the gold-gradient ABM media emblem. The resource is referenced by `IDI_APP_ICON` (resource ID 101) and is used for both large and small window icons. Secondary utility windows must set `WNDCLASSEXW::hIcon` and `hIconSm` from this resource, or explicitly send `WM_SETICON` after creation. Do not create teal or window-specific title-bar variants. This title-bar resource is independent of the larger in-window brand lockups and does not alter their size or layout.
