@@ -5081,7 +5081,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
             ABM_D2D_CanvasFillRound(&g_equalizerCanvas,8,8,(float)client.right-8,(float)client.bottom-8,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE);
             ABM_D2D_CanvasStrokeRound(&g_equalizerCanvas,8.5f,8.5f,(float)client.right-8.5f,(float)client.bottom-8.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER_STRONG,1.0f);
             RECT r={28,20,650,48};ABM_D2D_CanvasText(&g_equalizerCanvas,L"ADVANCED EQUALIZER",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            r.top=49;r.bottom=73;ABM_D2D_CanvasText(&g_equalizerCanvas,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=49;r.bottom=73;ABM_D2D_CanvasText(&g_equalizerCanvas,L"SHAPE YOUR SOUND  /  REAL-TIME AUDIO PROCESSING",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.left=30;r.top=94;r.right=130;r.bottom=126;ABM_D2D_CanvasText(&g_equalizerCanvas,L"PREAMP",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasFill(&g_equalizerCanvas,145,116,555,120,ABM_UI_COLOR_BORDER);
             int preX=145+(int)((g_eqPreamp+12.0f)/24.0f*410.0f);
@@ -5101,7 +5101,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
                 int thumbY=155+(int)((12.0f-g_eqBandGain[i])*160.0f/24.0f);
                 ABM_D2D_CanvasLine(&g_equalizerCanvas,(float)cx,155,(float)cx,315,ABM_UI_COLOR_SURFACE_RAISED,5.0f);
                 ABM_D2D_CanvasLine(&g_equalizerCanvas,(float)cx,(float)zeroY,(float)cx,(float)thumbY,ABM_UI_COLOR_ACCENT_BRIGHT,5.0f);
-                ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)cx-8,(float)thumbY-8,(float)cx+8,(float)thumbY+8,8.0f,ABM_UI_COLOR_ACCENT_ORANGE);
+                ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)cx-8,(float)thumbY-8,(float)cx+8,(float)thumbY+8,8.0f,ABM_UI_COLOR_ACCENT_BRIGHT);
                 wchar_t val[24];swprintf_s(val,_countof(val),L"%+.1f",g_eqBandGain[i]);
                 r.left=cx-27;r.top=thumbY-29;r.right=cx+27;r.bottom=thumbY-10;
                 ABM_D2D_CanvasText(&g_equalizerCanvas,val,r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -5111,11 +5111,11 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
             static const wchar_t *presetNames[5]={L"FLAT",L"BASS",L"VOCAL",L"ROCK",L"CLASSICAL"};
             for(int i=0;i<5;i++){
                 RECT pr={30+i*126,354,145+i*126,383};
-                COLORREF fill=(g_eqUiPreset==i)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED;
+                COLORREF fill=(g_eqUiPreset==i)?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_SURFACE_RAISED;
                 COLORREF edge=(g_eqUiPreset==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER;
                 ABM_D2D_CanvasFillRound(&g_equalizerCanvas,(float)pr.left,(float)pr.top,(float)pr.right,(float)pr.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
                 ABM_D2D_CanvasStrokeRound(&g_equalizerCanvas,(float)pr.left+0.5f,(float)pr.top+0.5f,(float)pr.right-0.5f,(float)pr.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,1.0f);
-                ABM_D2D_CanvasText(&g_equalizerCanvas,presetNames[i],pr,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                ABM_D2D_CanvasText(&g_equalizerCanvas,presetNames[i],pr,(g_eqUiPreset==i)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
             ABM_D2D_CanvasEnd(&g_equalizerCanvas);
         }else{
@@ -5215,7 +5215,7 @@ static void VideoEnhancementPaint(HWND w) {
         ABM_D2D_CanvasStrokeRound(c,8.5f,8.5f,(float)rc.right-8.5f,(float)rc.bottom-8.5f,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER_STRONG,1.0f);
         RECT t={28,20,rc.right-28,48},sub={28,49,rc.right-28,73};
         ABM_D2D_CanvasText(c,L"VIDEO ENHANCEMENT STUDIO",t,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_CanvasText(c,L"REAL-TIME PICTURE PROCESSING  /  FINE-TUNE YOUR VIDEO",sub,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(c,L"REAL-TIME PICTURE PROCESSING  /  FINE-TUNE YOUR VIDEO",sub,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         RECT presetLabel={22,78,rc.right-22,94};
         ABM_D2D_CanvasText(c,L"QUICK LOOKS",presetLabel,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         VideoEnhancementLayout(w);
@@ -5245,13 +5245,13 @@ static void VideoEnhancementPaint(HWND w) {
         }
         RECT r=g_videoEnhancementResetRect;
         ABM_D2D_CanvasFillRound(c,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_BUTTON,
-            g_videoEnhancementResetPressed?ABM_UI_COLOR_ACCENT_SOFT:(g_videoEnhancementResetHover?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED));
-        ABM_D2D_CanvasStrokeRound(c,(float)r.left+.5f,(float)r.top+.5f,(float)r.right-.5f,(float)r.bottom-.5f,ABM_UI_RADIUS_BUTTON,g_videoEnhancementFocus==6?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER,g_videoEnhancementFocus==6?1.7f:.9f);
+            g_videoEnhancementResetPressed?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_SURFACE_RAISED);
+        ABM_D2D_CanvasStrokeRound(c,(float)r.left+.5f,(float)r.top+.5f,(float)r.right-.5f,(float)r.bottom-.5f,ABM_UI_RADIUS_BUTTON,g_videoEnhancementFocus==6?ABM_UI_COLOR_ACCENT_BRIGHT:(g_videoEnhancementResetHover?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER),g_videoEnhancementFocus==6?1.7f:.9f);
         ABM_D2D_CanvasText(c,L"RESET TO ORIGINAL",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT cr=g_videoEnhancementCompareRect;
         ABM_D2D_CanvasFillRound(c,(float)cr.left,(float)cr.top,(float)cr.right,(float)cr.bottom,ABM_UI_RADIUS_BUTTON,
-            g_videoEnhancementComparePressed?ABM_UI_COLOR_ACCENT_SOFT:(g_videoEnhancementCompareHover?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED));
-        ABM_D2D_CanvasStrokeRound(c,(float)cr.left+.5f,(float)cr.top+.5f,(float)cr.right-.5f,(float)cr.bottom-.5f,ABM_UI_RADIUS_BUTTON,g_videoEnhancementFocus==5?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER,g_videoEnhancementFocus==5?1.7f:.9f);
+            g_videoEnhancementComparePressed?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_SURFACE_RAISED);
+        ABM_D2D_CanvasStrokeRound(c,(float)cr.left+.5f,(float)cr.top+.5f,(float)cr.right-.5f,(float)cr.bottom-.5f,ABM_UI_RADIUS_BUTTON,g_videoEnhancementFocus==5?ABM_UI_COLOR_ACCENT_BRIGHT:(g_videoEnhancementCompareHover?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER),g_videoEnhancementFocus==5?1.7f:.9f);
         ABM_D2D_CanvasText(c,g_videoEnhancementCompareOriginal?L"SHOW ADJUSTED":L"PREVIEW ORIGINAL",cr,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         RECT hint={cr.right+12,r.top,rc.right-18,r.bottom};
         ABM_D2D_CanvasText(c,L"Live picture controls",hint,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
