@@ -214,7 +214,28 @@ extern "C" void ABM_D2D_CanvasFill(ABM_D2D_CANVAS *c,float l,float t,float r,flo
     CanvasBrush(c)->SetColor(ToD2D(color));
     CanvasTarget(c)->FillRectangle(D2D1::RectF(l,t,r,b),CanvasBrush(c));
 }
-extern "C" void ABM_D2D_CanvasFillRound(ABM_D2D_CANVAS *c,float l,float t,float r,float b,float radius,COLORREF color) {
+extern "C" void ABM_D2D_CanvasGradientRound(ABM_D2D_CANVAS *c,float l,float t,float r,float b,float radius,COLORREF start,COLORREF end) {
+    if (!c || !c->drawing || r<=l || b<=t) return;
+    ID2D1RenderTarget *target=CanvasTarget(c);
+    D2D1_GRADIENT_STOP stops[2] = {
+        {0.0f,ToD2D(start)},
+        {1.0f,ToD2D(end)}
+    };
+    ID2D1GradientStopCollection *collection=nullptr;
+    ID2D1LinearGradientBrush *gradient=nullptr;
+    if (SUCCEEDED(target->CreateGradientStopCollection(stops,2,D2D1_GAMMA_2_2,D2D1_EXTEND_MODE_CLAMP,&collection)) && collection) {
+        D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES props = {
+            D2D1::Point2F(l,t),
+            D2D1::Point2F(r,t)
+        };
+        if (SUCCEEDED(target->CreateLinearGradientBrush(props,collection,&gradient)) && gradient) {
+            target->FillRoundedRectangle(D2D1::RoundedRect(D2D1::RectF(l,t,r,b),radius,radius),gradient);
+            gradient->Release();
+        }
+        collection->Release();
+    }
+}
+void ABM_D2D_CanvasFillRound(ABM_D2D_CANVAS *c,float l,float t,float r,float b,float radius,COLORREF color) {
     if (!c || !c->drawing || r<=l || b<=t) return;
     D2D1_COLOR_F col=ToD2D(color); CanvasBrush(c)->SetColor(col);
     CanvasTarget(c)->FillRoundedRectangle(D2D1::RoundedRect(D2D1::RectF(l,t,r,b),radius,radius),CanvasBrush(c));
