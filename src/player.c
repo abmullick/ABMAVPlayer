@@ -2226,8 +2226,9 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_drawerProgress>0) {
     /* Slide-out media drawer: output, quick controls, search and queue. */
     /* Premium media-library surface with layered navy and an inset rim. */
-    RECT drawerShadow=R_SIDEBAR;OffsetRect(&drawerShadow,0,8);
-    RoundBox(dc,drawerShadow,ABM_THEME_COLOR_04080E,26);
+    ABM_D2D_ShadowRound(&g_ui,(float)R_SIDEBAR.left,(float)R_SIDEBAR.top,
+        (float)R_SIDEBAR.right,(float)R_SIDEBAR.bottom,26.0f,ABM_THEME_COLOR_04080E,
+        0.82f*(float)g_drawerProgress/100.0f,7.0f);
     /* Slightly lighter layered glass treatment while media is playing. */
     if(g_hasMedia && libvlc_media_player_get_state(g_player)==libvlc_Playing)
         GradientRound(dc,R_SIDEBAR,ABM_THEME_COLOR_141D2A,ABM_THEME_COLOR_101926,28);
@@ -2660,7 +2661,9 @@ static void DrawUI(HDC dc,RECT client) {
     if(g_menuProgress>0) {
         RECT menu=R_MENU_PANEL;
         menu.bottom=menu.top+((menu.bottom-menu.top)*g_menuProgress)/100;
-        RECT shadow=menu;OffsetRect(&shadow,0,7);RoundBox(dc,shadow,ABM_THEME_COLOR_04080E,20);
+        ABM_D2D_ShadowRound(&g_ui,(float)menu.left,(float)menu.top,(float)menu.right,
+            (float)menu.bottom,20.0f,ABM_THEME_COLOR_04080E,
+            0.78f*(float)g_menuProgress/100.0f,7.0f);
         RECT menuGlow=menu;InflateRect(&menuGlow,2,2);RoundBox(dc,menuGlow,ABM_THEME_COLOR_070C14,22);
         Panel(dc,menu,ABM_THEME_COLOR_0C1420,ABM_THEME_COLOR_314C5E,18);
         RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+4};
