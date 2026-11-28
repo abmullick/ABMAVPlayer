@@ -4744,7 +4744,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     RECT trInner={tr.left+1,tr.top+1,tr.right-1,tr.bottom-1};
     OverlayRoundRect(mem,trInner,ABM_THEME_COLOR_162434,3);
     RECT progress=trInner;progress.right=playheadX;
-    if(progress.right>progress.left)OverlayRoundRect(mem,progress,ABM_UI_COLOR_FOCUS,3);
+    if(progress.right>progress.left)OverlayRoundRect(mem,progress,ABM_THEME_COLOR_41BEA5,3);
     /* Floating pearl playhead with a dark halo for contrast on bright footage. */
     RECT haloRect={playheadX-10,h-126,playheadX+10,h-96};
     OverlayRoundRect(mem,haloRect,ABM_THEME_COLOR_1B4C48,9);
@@ -4776,7 +4776,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
     OverlayRoundRect(mem,vtInner,ABM_THEME_COLOR_162434,4);
     int volume=g_volume;if(volume<0)volume=0;if(volume>100)volume=100;
     RECT vf=vtInner;vf.right=vf.left+(vf.right-vf.left)*volume/100;
-    if(vf.right>vf.left)OverlayRoundRect(mem,vf,ABM_UI_COLOR_FOCUS,4);
+    if(vf.right>vf.left)OverlayRoundRect(mem,vf,ABM_THEME_COLOR_41BEA5,4);
     int knobX=vf.right;
     RECT knobHalo={knobX-8,h-46,knobX+8,h-22};
     OverlayRoundRect(mem,knobHalo,ABM_THEME_COLOR_1B4C48,7);
