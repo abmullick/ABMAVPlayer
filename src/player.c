@@ -8202,9 +8202,14 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
        ABM_THEME_COLOR_2B586F,1.0f);
-   ABM_D2D_Round(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_1C9D9D);
-   ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,ABM_THEME_COLOR_73D2CF,1.0f);
-   AdvancedSettingsText(L"⚙",39,31,73,70,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+   /* Gold-gradient settings mark; use the Segoe MDL2 Settings cog rather
+      than the emoji gear, whose platform rendering resembles a flower. */
+   ABM_D2D_GradientRound(&g_advancedSettingsUi,34,29,78,73,12,
+       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_80652A);
+   ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,
+       ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+   {RECT gear={39,31,73,70};ABM_D2D_Text(&g_advancedSettingsUi,L"\xE713",gear,
+       ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);}
    AdvancedSettingsText(g_advancedSettingsPage==4?L"SUBTITLE MANAGER":g_advancedSettingsPage==10?L"ADVANCED AUDIO CENTRE":L"ADVANCED SETTINGS",94,24,660,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    AdvancedSettingsText(g_advancedSettingsPage==4?L"TRACKS  ·  SYNCHRONIZATION  ·  APPEARANCE":g_advancedSettingsPage==10?L"OUTPUT  ·  EQUALIZER  ·  AUDIO PROCESSING":L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,760,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Round(&g_advancedSettingsUi,18,106,258,718,14,SETTINGS_PANEL);
@@ -8777,9 +8782,13 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    ABM_D2D_SetOffset(&g_settingsUi,(float)-g_settingsScrollX,(float)-g_settingsScrollY);
    ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
    ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
-   ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_1C9D9D);
-   ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,ABM_THEME_COLOR_73D2CF,1.0f);
-   SettingsText(L"⚙",39,29,72,66,ABM_THEME_COLOR_FFFFFF,2,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+   /* Match Advanced Settings: gold gradient tile and a true Segoe MDL2 cog. */
+   ABM_D2D_GradientRound(&g_settingsUi,34,27,76,69,12,
+       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_80652A);
+   ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,
+       ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+   {RECT gear={39,29,72,66};ABM_D2D_Text(&g_settingsUi,L"\xE713",gear,
+       ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);}
    SettingsText(L"SETTINGS",92,20,420,53,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsButtonDraw(650,27,780,62,L"Advanced…",TRUE);
    SettingsText(L"PLAYBACK  ·  AUDIO  ·  STORAGE  ·  NETWORK",94,49,550,69,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
