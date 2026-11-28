@@ -49,24 +49,24 @@ static void LicenseDrawText(HDC dc,const wchar_t *text,RECT r,COLORREF color,HFO
 static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
     if(g_licenseCanvasReady&&d&&ABM_D2D_CanvasBegin(&g_licenseCanvas,d->hDC,&d->rcItem)){
         BOOL primary=d->CtlID==ID_LICENSE_ACTIVATE,hot=(d->itemState&ODS_SELECTED)!=0,focus=(d->itemState&ODS_FOCUS)!=0;
-        COLORREF fill=primary?(hot?ABM_THEME_COLOR_2A9D94:ABM_THEME_COLOR_1D7D77):(hot?ABM_THEME_COLOR_1F3648:ABM_THEME_COLOR_162434);
-        COLORREF edge=focus?ABM_THEME_COLOR_63E1CD:(primary?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_344D62);
-        ABM_D2D_CanvasFill(&g_licenseCanvas,(float)d->rcItem.left,(float)d->rcItem.top,(float)d->rcItem.right,(float)d->rcItem.bottom,ABM_THEME_COLOR_060A12);
+        COLORREF fill=primary?(hot?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT):(hot?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
+        COLORREF edge=focus?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
+        ABM_D2D_CanvasFill(&g_licenseCanvas,(float)d->rcItem.left,(float)d->rcItem.top,(float)d->rcItem.right,(float)d->rcItem.bottom,ABM_UI_COLOR_BACKGROUND);
         ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)d->rcItem.left+1,(float)d->rcItem.top+1,(float)d->rcItem.right-1,(float)d->rcItem.bottom-1,(float)ABM_UI_RADIUS_BUTTON,fill);
         ABM_D2D_CanvasStrokeRound(&g_licenseCanvas,(float)d->rcItem.left+0.5f,(float)d->rcItem.top+0.5f,(float)d->rcItem.right-0.5f,(float)d->rcItem.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focus?2.0f:1.0f);
         wchar_t label[64]=L"";GetWindowTextW(d->hwndItem,label,_countof(label));
-        ABM_D2D_CanvasText(&g_licenseCanvas,label,d->rcItem,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_licenseCanvas,label,d->rcItem,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
         ABM_D2D_CanvasEnd(&g_licenseCanvas);return;
     }
     BOOL primary=d->CtlID==ID_LICENSE_ACTIVATE,hot=(d->itemState&ODS_SELECTED)!=0,focus=(d->itemState&ODS_FOCUS)!=0;
     /* Owner-drawn BUTTON controls retain a native class background in the
        unpainted corner pixels. Paint those pixels with the dialog surface
        first, then draw the rounded ABM button over it. */
-    HBRUSH surface=CreateSolidBrush(ABM_THEME_COLOR_060A12);
+    HBRUSH surface=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);
     FillRect(d->hDC,&d->rcItem,surface);
     DeleteObject(surface);
-    HBRUSH brush=CreateSolidBrush(primary?(hot?ABM_THEME_COLOR_2A9D94:ABM_THEME_COLOR_1D7D77):(hot?ABM_THEME_COLOR_1F3648:ABM_THEME_COLOR_162434));
-    HPEN pen=CreatePen(PS_SOLID,focus?2:1,focus?ABM_THEME_COLOR_63E1CD:(primary?ABM_THEME_COLOR_43B2A6:ABM_THEME_COLOR_344D62));
+    HBRUSH brush=CreateSolidBrush(primary?(hot?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT):(hot?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION));
+    HPEN pen=CreatePen(PS_SOLID,focus?2:1,focus?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG));
     HGDIOBJ ob=SelectObject(d->hDC,brush),op=SelectObject(d->hDC,pen);
     RoundRect(d->hDC,d->rcItem.left,d->rcItem.top,d->rcItem.right,d->rcItem.bottom,14,14);
     /* Focus is shown by the rounded accent pen above; no native rectangular
@@ -74,7 +74,7 @@ static void LicenseDrawButton(const DRAWITEMSTRUCT *d) {
     SelectObject(d->hDC,ob);SelectObject(d->hDC,op);DeleteObject(brush);DeleteObject(pen);
     wchar_t label[64]=L"";
     GetWindowTextW(d->hwndItem,label,_countof(label));
-    RECT text=d->rcItem;LicenseDrawText(d->hDC,label,text,ABM_THEME_COLOR_F7FAFF,g_licenseBodyFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    RECT text=d->rcItem;LicenseDrawText(d->hDC,label,text,ABM_UI_COLOR_TEXT,g_licenseBodyFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
 }
 
 static BOOL GetLicensePaths(wchar_t *dir,size_t dc,wchar_t *licensePath,size_t lc,wchar_t *statePath,size_t sc) {
@@ -213,7 +213,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,310,365,132,44,w,(HMENU)ID_LICENSE_ACTIVATE,d->instance,NULL);
         d->trialButton=CreateWindowW(L"BUTTON",(d->manual||!d->trialAllowed)?L"Close":L"Continue trial",
             WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,454,365,132,44,w,(HMENU)ID_LICENSE_TRIAL,d->instance,NULL);
-        g_licenseEditBrush=CreateSolidBrush(ABM_THEME_COLOR_0B1928);
+        g_licenseEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
         g_licenseBodyFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_BODY),0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
         g_licenseTitleFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_HEADING),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_DISPLAY);
         g_licenseCaptionFont=CreateFontW(ABM_UI_FONT_HEIGHT(ABM_UI_FONT_SIZE_D2D_SMALL),0,0,0,FW_SEMIBOLD,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,ABM_UI_FONT_FAMILY_TEXT);
@@ -253,34 +253,34 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
         HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_E2EEFA);SetBkMode(dc,TRANSPARENT);return (LRESULT)GetStockObject(NULL_BRUSH);
     }
     case WM_CTLCOLOREDIT:{
-        HDC dc=(HDC)wp;SetTextColor(dc,ABM_THEME_COLOR_F7FAFF);SetBkColor(dc,ABM_THEME_COLOR_0B1928);SetBkMode(dc,OPAQUE);
+        HDC dc=(HDC)wp;SetTextColor(dc,ABM_UI_COLOR_TEXT);SetBkColor(dc,ABM_UI_COLOR_INPUT);SetBkMode(dc,OPAQUE);
         return (LRESULT)g_licenseEditBrush;
     }
     case WM_PAINT:{
         PAINTSTRUCT ps;HDC dc=BeginPaint(w,&ps);RECT rc;GetClientRect(w,&rc);
         if(g_licenseCanvasReady&&ABM_D2D_CanvasBegin(&g_licenseCanvas,dc,&rc)){
-            ABM_D2D_CanvasFill(&g_licenseCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_THEME_COLOR_060A12);
+            ABM_D2D_CanvasFill(&g_licenseCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
             ABM_SkinRenderCanvas(&g_licenseCanvas,&rc);
             RECT hero={18,16,rc.right-18,160};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)hero.left,(float)hero.top,(float)hero.right,(float)hero.bottom,(float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_0E2231);
             ABM_D2D_CanvasLine(&g_licenseCanvas,(float)hero.left+14,(float)hero.top+1,(float)hero.right-14,(float)hero.top+1,ABM_THEME_COLOR_36B1A8,2.0f);
             RECT logoRc={34,36,88,90};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)logoRc.left,(float)logoRc.top,(float)logoRc.right,(float)logoRc.bottom,(float)ABM_UI_RADIUS_BUTTON,ABM_THEME_COLOR_1C7D77);
             ABM_D2D_CanvasText(&g_licenseCanvas,L"A",logoRc,ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT cap={106,34,rc.right-34,56};ABM_D2D_CanvasText(&g_licenseCanvas,L"ABM AV PLAYER  /  LICENSE",cap,ABM_THEME_COLOR_68CDBE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT title={106,58,rc.right-34,101};ABM_D2D_CanvasText(&g_licenseCanvas,d->alreadyActivated?L"You're all set.":L"Unlock the full experience.",title,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT cap={106,34,rc.right-34,56};ABM_D2D_CanvasText(&g_licenseCanvas,L"ABM AV PLAYER  /  LICENSE",cap,ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT title={106,58,rc.right-34,101};ABM_D2D_CanvasText(&g_licenseCanvas,d->alreadyActivated?L"You're all set.":L"Unlock the full experience.",title,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *intro=d->manual?L"Enter your universal 16-character key to activate ABM AV Player.":L"Enter your activation key now, or continue with your 10-day full-feature trial.";
-            RECT introRect={106,105,rc.right-34,145};ABM_D2D_CanvasText(&g_licenseCanvas,intro,introRect,ABM_THEME_COLOR_B1C4D5,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
-            RECT label={34,184,rc.right-34,210};ABM_D2D_CanvasText(&g_licenseCanvas,L"ACTIVATION KEY",label,ABM_THEME_COLOR_84ABBB,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            RECT input={32,216,rc.right-32,266};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)input.left,(float)input.top,(float)input.right,(float)input.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_0B1928);
-            ABM_D2D_CanvasStrokeRound(&g_licenseCanvas,(float)input.left+0.5f,(float)input.top+0.5f,(float)input.right-0.5f,(float)input.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_356F7F,1.0f);
-            RECT status={32,282,rc.right-32,332};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)status.left,(float)status.top,(float)status.right,(float)status.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_0C1B28);
+            RECT introRect={106,105,rc.right-34,145};ABM_D2D_CanvasText(&g_licenseCanvas,intro,introRect,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
+            RECT label={34,184,rc.right-34,210};ABM_D2D_CanvasText(&g_licenseCanvas,L"ACTIVATION KEY",label,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT input={32,216,rc.right-32,266};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)input.left,(float)input.top,(float)input.right,(float)input.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_INPUT);
+            ABM_D2D_CanvasStrokeRound(&g_licenseCanvas,(float)input.left+0.5f,(float)input.top+0.5f,(float)input.right-0.5f,(float)input.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+            RECT status={32,282,rc.right-32,332};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)status.left,(float)status.top,(float)status.right,(float)status.bottom,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_SURFACE_CARD);
             COLORREF statusAccent=d->alreadyActivated?ABM_THEME_COLOR_4DC499:(d->trialAllowed?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_F2B14F);
             ABM_D2D_CanvasFillRound(&g_licenseCanvas,48,302,56,310,4.0f,statusAccent);
             RECT statusText={68,290,rc.right-44,324};ABM_D2D_CanvasText(&g_licenseCanvas,d->statusMessage,statusText,d->statusColor,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             RECT foot={34,338,rc.right-34,357};ABM_D2D_CanvasText(&g_licenseCanvas,L"Your key is checked offline. No account or internet connection is required.",foot,ABM_THEME_COLOR_748CA0,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasEnd(&g_licenseCanvas);
         }else{
-            HBRUSH bg=CreateSolidBrush(ABM_THEME_COLOR_060A12);FillRect(dc,&rc,bg);DeleteObject(bg);
-            RECT title={34,36,rc.right-34,90};LicenseDrawText(dc,L"ABM AV PLAYER",title,ABM_THEME_COLOR_F7FAFF,g_licenseTitleFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
+            RECT title={34,36,rc.right-34,90};LicenseDrawText(dc,L"ABM AV PLAYER",title,ABM_UI_COLOR_TEXT,g_licenseTitleFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT status={32,282,rc.right-32,332};LicenseDrawText(dc,d->statusMessage,status,d->statusColor,g_licenseBodyFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }
         EndPaint(w,&ps);return 0;
@@ -320,7 +320,7 @@ static BOOL ShowLicenseDialog(HINSTANCE instance,HWND owner,int daysLeft,BOOL tr
     if(x+width>work.right-8)x=work.right-width-8;if(y+height>work.bottom-8)y=work.bottom-height-8;
     w=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayer.Licensing",L"ABM AV Player — License & Activation",
         style,x,y,width,height,owner,NULL,instance,&d);if(!w)return FALSE;
-    {BOOL dark=TRUE;int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_060A12;
+    {BOOL dark=TRUE;int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_UI_COLOR_BACKGROUND;
      DwmSetWindowAttribute(w,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
      DwmSetWindowAttribute(w,DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
      DwmSetWindowAttribute(w,DWMWA_BORDER_COLOR,&border,sizeof(border));
