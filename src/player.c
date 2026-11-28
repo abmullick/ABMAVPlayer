@@ -6263,6 +6263,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
     ABM_D2D_Fill(&g_torrentUi,0,0,w,2,ABM_UI_COLOR_ACCENT);
     /* Canonical Main Player signature: dark tile, champagne A and white play glyph.
+    */
 
     ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_272E3A);
     ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_343D4C,1.0f);
