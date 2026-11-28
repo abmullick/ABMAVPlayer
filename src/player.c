@@ -75,7 +75,7 @@ static void ABM_TitleIconLine(DWORD *pixels,int x0,int y0,int x1,int y1,DWORD co
         if(e2<=dx){err+=dx;y0+=sy;}
     }
 }
-static HICON ABM_GetTitleBarIcon(void) {
+HICON ABM_GetTitleBarIcon(void) {
     if(g_abmTitleBarIcon)return g_abmTitleBarIcon;
     BITMAPINFO bmi={0};
     bmi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
@@ -111,6 +111,12 @@ static HICON ABM_GetTitleBarIcon(void) {
     if(mask)DeleteObject(mask);
     DeleteObject(color);
     return g_abmTitleBarIcon?g_abmTitleBarIcon:LoadIconW(GetModuleHandleW(NULL),MAKEINTRESOURCEW(IDI_APP_ICON));
+}
+
+void ABM_ApplyTitleBarIcon(HWND window) {
+    if(!window||!IsWindow(window))return;
+    HICON icon=ABM_GetTitleBarIcon();
+    if(icon){SendMessageW(window,WM_SETICON,ICON_BIG,(LPARAM)icon);SendMessageW(window,WM_SETICON,ICON_SMALL,(LPARAM)icon);}
 }
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
