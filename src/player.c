@@ -1388,7 +1388,8 @@ static void UpdateLayout(HWND hwnd) {
     int sectionHeaderH=showSectionLabels?16:0;
     int sectionGap=showSectionLabels?5:3;
     int sectionSpace=5*sectionHeaderH+5*sectionGap;
-    int menuUnit=(menuUsable-sectionSpace)/26;
+    /* Reserve three height units for each featured row so its title and subtitle remain readable. */
+    int menuUnit=(menuUsable-sectionSpace)/30;
     if(menuUnit<15)menuUnit=15;
     int menuY=R_MENU_PANEL.top+54;
     for(int group=0;group<5;group++){
@@ -1396,7 +1397,7 @@ static void UpdateLayout(HWND hwnd) {
         menuY+=sectionHeaderH;
         int groupTop=menuY;
         for(int i=menuStarts[group];i<menuEnds[group];i++){
-            int weight=(i>=12&&i<=15)?2:1;
+            int weight=(i>=12&&i<=15)?3:1;
             int rowH=menuUnit*weight;
             R_MENU_ITEMS[i]=(RECT){R_MENU_PANEL.left+12,menuY,R_MENU_PANEL.right-12,menuY+rowH-3};
             menuY+=rowH;
@@ -2786,6 +2787,8 @@ static void DrawUI(HDC dc,RECT client) {
             L"Ctrl+Shift+L",L"Ctrl+,",L"Ctrl+I",L"Alt+F4"
         };
         const wchar_t *icons[22]={L"+",L"N",L"TV",L"▶",L"⛶",L"↓",L"↑",L"◷",L"⇄",L"↻",L"VID",L"EQ",L"WEB",L"TOR",L"HT",L"LIB",L"?",L"↻",L"KEY",L"⚙",L"i",L"×"};
+        const COLORREF featureAccents[4]={RGB(104,185,232),RGB(183,145,235),RGB(232,139,166),RGB(119,205,165)};
+        const COLORREF featureFills[4]={RGB(18,39,59),RGB(39,29,55),RGB(54,31,43),RGB(22,49,43)};
         for(int i=0;i<22;i++) {
             RECT item=R_MENU_ITEMS[i];
             if(i==8)labels[8]=g_shuffle?L"Shuffle: On":L"Shuffle: Off";
@@ -2795,22 +2798,25 @@ static void DrawUI(HDC dc,RECT client) {
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             BOOL featured=(i>=12&&i<=15);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=ABM_THEME_COLOR_193041;
-            COLORREF edge=featured?ABM_UI_COLOR_BORDER:ABM_THEME_COLOR_1F3041;
+            int featureIndex=featured?i-12:0;
+            COLORREF fill=featured?featureFills[featureIndex]:ABM_THEME_COLOR_193041;
+            COLORREF edge=featured?Blend(featureAccents[featureIndex],ABM_UI_COLOR_BORDER,30):ABM_THEME_COLOR_1F3041;
             if(hot){fill=ABM_UI_COLOR_SURFACE_INTERACTIVE;edge=ABM_UI_COLOR_ACCENT;}
+            if(featured&&!hot)GradientRound(dc,row,featureFills[featureIndex],Blend(featureFills[featureIndex],ABM_THEME_COLOR_0C1420,32),ABM_UI_RADIUS_CARD);
+            else if(featured||hot)RoundBox(dc,row,fill,featured?ABM_UI_RADIUS_CARD:ABM_UI_RADIUS_CONTROL);
             if(featured||hot){
-                RoundBox(dc,row,fill,featured?ABM_UI_RADIUS_CARD:ABM_UI_RADIUS_CONTROL);
                 ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
-                    featured?(float)ABM_UI_RADIUS_CARD:(float)ABM_UI_RADIUS_CONTROL,hot?ABM_UI_COLOR_FOCUS:edge,hot?1.25f:0.8f);
+                    featured?(float)ABM_UI_RADIUS_CARD:(float)ABM_UI_RADIUS_CONTROL,hot?ABM_UI_COLOR_FOCUS:edge,hot?1.25f:1.0f);
+                if(featured&&!hot){RECT marker={row.left+1,row.top+8,row.left+4,row.bottom-8};RoundBox(dc,marker,featureAccents[featureIndex],2);}
             }else if(i!=0){
                 DrawLine(dc,item.left+46,item.bottom-1,item.right-8,item.bottom-1,ABM_THEME_COLOR_1C2F3D,1);
             }
             RECT glyph={item.left+(featured?14:9),item.top+(featured?8:4),
                         item.left+(featured?56:38),item.bottom-(featured?8:4)};
-            COLORREF glyphFill=ABM_UI_COLOR_SURFACE_INTERACTIVE;
+            COLORREF glyphFill=featured?Blend(featureFills[featureIndex],featureAccents[featureIndex],24):ABM_UI_COLOR_SURFACE_INTERACTIVE;
             if(hot)glyphFill=ABM_UI_COLOR_ACCENT_SOFT;
             RoundBox(dc,glyph,glyphFill,featured?ABM_UI_RADIUS_CONTROL:ABM_UI_RADIUS_CONTROL);
-            Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,icons[i],glyph,featured&&!hot?featureAccents[featureIndex]:ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
                         item.right-112,item.bottom-(featured?6:2)};
             if(featured){
@@ -2818,7 +2824,7 @@ static void DrawUI(HDC dc,RECT client) {
                 RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
                 const wchar_t *featureTitle=i==12?L"STREAMING TVs & SERVICES":(i==13?L"TORRENT STREAMING":(i==14?L"HOME THEATRE":L"MEDIA LIBRARY"));
                 const wchar_t *featureSubtitle=i==12?L"Open services, discover TVs and cast video":(i==13?L"Stream torrents while they download":(i==14?L"Explore films, shows and local metadata":L"Discover, scan and organise local media"));
-                Txt(dc,featureTitle,mainLabel,ABM_THEME_COLOR_F9FCFF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,featureTitle,mainLabel,featured&&!hot?Blend(ABM_THEME_COLOR_F9FCFF,featureAccents[featureIndex],18):ABM_THEME_COLOR_F9FCFF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,featureSubtitle,subLabel,ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }else{
                 COLORREF textColor=hot?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E2ECF6;
@@ -8896,8 +8902,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(L"MAIN PLAYER BACKGROUND SKINS",40,1112,780,1140,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   SettingsText(L"4 animated ambient skins · 4 static artwork skins · Classic keeps the original look",40,1140,780,1164,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsSection(1104,L"MAIN PLAYER BACKGROUND SKINS",L"4 animated · 4 artwork · Classic preserves the original look",1330);
    for(int skin=0;skin<ABM_SKIN_COUNT;skin++){
     int col=skin%4,row=skin/4;float left=(float)(40+col*185),top=(float)(1172+row*50);
     COLORREF swatchA[ABM_SKIN_COUNT]={ABM_THEME_COLOR_0D1E2F,RGB(7,24,39),RGB(11,24,42),RGB(6,11,29),RGB(12,17,41),RGB(12,28,43),RGB(12,16,23),RGB(23,20,21),RGB(14,22,33)};
