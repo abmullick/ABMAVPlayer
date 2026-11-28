@@ -291,7 +291,7 @@ static void DrawLibraryMenuItem(const DRAWITEMSTRUCT *d) {
     float w=(float)(r.right-r.left),h=(float)(r.bottom-r.top);
     ABM_D2D_CanvasFill(&g.canvas,0,0,w,h,ABM_UI_COLOR_INPUT);
     if(item->separator) {
-        ABM_D2D_CanvasFill(&g.canvas,12.0f,h*0.5f,w-12.0f,h*0.5f+1.0f,ABM_THEME_COLOR_334F65);
+        ABM_D2D_CanvasFill(&g.canvas,12.0f,h*0.5f,w-12.0f,h*0.5f+1.0f,ABM_UI_COLOR_BORDER);
     } else {
         bool hot=(d->itemState&ODS_SELECTED)!=0;
         if(hot)ABM_D2D_CanvasFillRound(&g.canvas,4.0f,2.0f,w-4.0f,h-2.0f,6.0f,ABM_UI_COLOR_ACCENT_SOFT);
@@ -536,10 +536,10 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
     bool activeSpinner=scanning&&(int)d->CtlID==g.activeScanButton;
     bool glowing=!scanning&&scanButton&&d->CtlID==g.activeScanButton&&g.scanGlowUntil&&(LONG)(g.scanGlowUntil-GetTickCount())>0;
     bool primary=scanButton||d->CtlID==ML_PLAY;
-    COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:((scanning&&scanButton&&!activeSpinner)?ABM_THEME_COLOR_192737:(primary?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_192737));
+    COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:((scanning&&scanButton&&!activeSpinner)?ABM_UI_COLOR_SURFACE_NAVIGATION:(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_NAVIGATION));
     ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
-    COLORREF edge=glowing?ABM_THEME_COLOR_DC414C:((d->itemState&ODS_FOCUS)?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_394E63);
-    if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,12.0f,ABM_THEME_COLOR_844C51,3.0f);
+    COLORREF edge=glowing?ABM_UI_COLOR_DANGER:((d->itemState&ODS_FOCUS)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER_STRONG);
+    if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,12.0f,ABM_UI_COLOR_DANGER,3.0f);
     ABM_D2D_CanvasStrokeRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,edge,(glowing||(d->itemState&ODS_FOCUS))?2.0f:1.0f);
     if(activeSpinner) {
         float cx=17.0f,cy=buttonHeight*0.5f,radius=7.0f;
@@ -738,18 +738,18 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasLine(&g.canvas,62,40,75,48,ABM_UI_COLOR_TEXT,2.0f);
             ABM_D2D_CanvasLine(&g.canvas,75,48,62,56,ABM_UI_COLOR_TEXT,2.0f);
             ABM_D2D_CanvasLine(&g.canvas,62,56,62,40,ABM_UI_COLOR_TEXT,2.0f);
-            ABM_D2D_CanvasText(&g.canvas,L"ABM",RECT{116,8,420,49},ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"ABM",RECT{116,8,420,49},ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasText(&g.canvas,L"AV  PLAYER",RECT{188,20,390,48},ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasFillRound(&g.canvas,116,52,354,54,1,ABM_UI_COLOR_ACCENT);
             ABM_D2D_CanvasText(&g.canvas,L"MEDIA LIBRARY  ·  LOCAL AUDIO & VIDEO",RECT{116,60,560,83},ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",RECT{24,164,340,184},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasText(&g.canvas,L"DISCOVERED MEDIA",RECT{368,164,rc.right-24,184},ABM_THEME_COLOR_59B9AE,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",RECT{24,164,340,184},ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"DISCOVERED MEDIA",RECT{368,164,rc.right-24,184},ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             int panelTop=190,panelBottom=rc.bottom-88,leftWidth=rc.right<900?280:330;
             ABM_D2D_CanvasFillRound(&g.canvas,24.0f,(float)panelTop,(float)(24+leftWidth),(float)panelBottom,12.0f,ABM_UI_COLOR_SURFACE_CARD);
-            ABM_D2D_CanvasStrokeRound(&g.canvas,24.5f,(float)panelTop+0.5f,(float)(24+leftWidth)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,24.5f,(float)panelTop+0.5f,(float)(24+leftWidth)-0.5f,(float)panelBottom-0.5f,12,ABM_UI_COLOR_BORDER_STRONG,1.0f);
             int rightLeft=24+leftWidth+12;
             ABM_D2D_CanvasFillRound(&g.canvas,(float)rightLeft,(float)panelTop,(float)(rc.right-24),(float)panelBottom,12.0f,ABM_UI_COLOR_SURFACE_CARD);
-            ABM_D2D_CanvasStrokeRound(&g.canvas,(float)rightLeft+0.5f,(float)panelTop+0.5f,(float)(rc.right-24)-0.5f,(float)panelBottom-0.5f,12,ABM_THEME_COLOR_394E63,1.0f);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,(float)rightLeft+0.5f,(float)panelTop+0.5f,(float)(rc.right-24)-0.5f,(float)panelBottom-0.5f,12,ABM_UI_COLOR_BORDER_STRONG,1.0f);
             /* Shared Direct2D search surface; native EDIT is borderless and inset. */
             ABM_D2D_CanvasFillRound(&g.canvas,(float)(rightLeft+12),(float)(panelTop+12),(float)(rc.right-36),(float)(panelTop+48),7.0f,ABM_UI_COLOR_INPUT);
             ABM_D2D_CanvasStrokeRound(&g.canvas,(float)(rightLeft+12.5f),(float)(panelTop+12.5f),(float)(rc.right-36.5f),(float)(panelTop+47.5f),7.0f,ABM_UI_COLOR_BORDER_STRONG,1.0f);
