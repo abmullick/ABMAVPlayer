@@ -924,14 +924,13 @@ extern "C" void ABM_HomeTheatre_Show(HWND owner,const wchar_t *const *mediaPaths
     g_mediaPaths.clear();for(int i=0;mediaPaths&&i<mediaCount;i++)if(mediaPaths[i]&&mediaPaths[i][0])g_mediaPaths.emplace_back(mediaPaths[i]);
     g_playCallback=playCallback;g_itemCount=0;g_selected=-1;g_localMatch=-1;
     static BOOL registered=FALSE;HINSTANCE instance=GetModuleHandleW(nullptr);
-    if(!registered){WNDCLASSEXW wc={};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HomeWndProc;wc.hInstance=instance;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=LoadIconW(instance,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerHomeTheatre";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HomeWndProc;wc.hInstance=instance;wc.hCursor=LoadCursorW(nullptr,IDC_ARROW);wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerHomeTheatre";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr={0,0,1080,720};DWORD style=WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN;
     AdjustWindowRectEx(&wr,style,FALSE,0);RECT o={};GetWindowRect(owner,&o);
     int x=o.left+(o.right-o.left-(wr.right-wr.left))/2,y=o.top+(o.bottom-o.top-(wr.bottom-wr.top))/2;
     g_window=CreateWindowExW(WS_EX_APPWINDOW,L"ABMAVPlayerHomeTheatre",L"ABM AV Player — Home Theatre",style,x,y,wr.right-wr.left,wr.bottom-wr.top,owner,nullptr,instance,nullptr);
     if(!g_window)return;
-    HICON appIcon=LoadIconW(instance,MAKEINTRESOURCEW(IDI_APP_ICON));
-    if(appIcon){SendMessageW(g_window,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_window,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
+    ABM_ApplyTitleBarIcon(g_window);
     BOOL dark=TRUE;DwmSetWindowAttribute(g_window, DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     g_canvasReady=ABM_D2D_Init(&g_canvas,g_window);
     EnableWindow(owner,FALSE);
