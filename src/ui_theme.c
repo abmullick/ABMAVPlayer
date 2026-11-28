@@ -1205,6 +1205,24 @@ COLORREF ABMThemeColor(ABMThemeColorId id) {
         surfaceId=ABM_THEME_ID_343D4C; break;
     default: break;
     }
+
+    /* Normalize older low-luminance neutral/blue-teal surface swatches too.
+       This catches legacy per-window shades that predate semantic tokens,
+       while leaving black video, vivid accents and semantic status colours
+       untouched. Classification uses the stable base palette, not the
+       currently selected preset hue. */
+    if(surfaceId==id && id<ABM_THEME_ID_151820 && id!=ABM_THEME_ID_000000) {
+        COLORREF base=g_defaultColors[id];
+        int r=GetRValue(base),g=GetGValue(base),b=GetBValue(base);
+        int hi=r>g?(r>b?r:b):(g>b?g:b);
+        int lo=r<g?(r<b?r:b):(g<b?g:b);
+        if(hi<=82 && ((g>=r && b>=r) || hi-lo<=10)) {
+            surfaceId=(hi<=35)?ABM_THEME_ID_151820:
+                      (hi<=49)?ABM_THEME_ID_1D222D:
+                      (hi<=67)?ABM_THEME_ID_272E3A:
+                               ABM_THEME_ID_343D4C;
+        }
+    }
     return (COLORREF)InterlockedCompareExchange((volatile LONG *)&g_themeColors[surfaceId], 0, 0);
 }
 BOOL ABMThemeSetColor(ABMThemeColorId id, COLORREF color) {
