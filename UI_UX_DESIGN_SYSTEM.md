@@ -33,7 +33,7 @@ The main issue is not a lack of styling. It is that visual decisions are duplica
 - **Video first:** The playback canvas remains the dominant visual surface. Controls must not obscure video unnecessarily.
 - **One product, multiple workspaces:** Main Player, Streaming Centre, Torrent, Settings and auxiliary windows share the same brand, typography, spacing and interaction vocabulary.
 - **Dark, restrained, legible:** Use the five fixed charcoal surface levels, ABM signature gold, clear text contrast and subtle borders. Avoid excessive gradients, glow and glass effects.
-- **Teal is the primary action colour:** Orange is reserved for meaningful attention or selected/active states; red is reserved for destructive or stop/error states.
+- **ABM gold is the permanent signature accent:** Theme presets may use a secondary hue for decorative elements; orange, warning yellow, success green and destructive red retain their semantic meanings.
 - **Clear action hierarchy:** Primary, secondary, quiet and destructive actions must be visually distinguishable.
 - **State is explicit:** Hover, pressed, keyboard focus, disabled, loading, success, warning and error states must be designed rather than improvised.
 - **Motion is purposeful:** Animation must be short, subtle, interruptible and never compromise playback or input responsiveness.
