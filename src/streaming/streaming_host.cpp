@@ -1699,8 +1699,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(item->hwndItem==g_devicePanel){
             RECT r=item->rcItem;
             if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&r)){
-                ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_0C1D2D);
-                ABM_SkinRenderCanvas(&g_streamButtonCanvas,&r);
+                ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,ABM_UI_RADIUS_PANEL,ABM_UI_COLOR_SURFACE_NAVIGATION);
                 ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,(float)r.left+0.5f,(float)r.top+0.5f,(float)r.right-0.5f,(float)r.bottom-0.5f,ABM_UI_RADIUS_PANEL,ABM_THEME_COLOR_2B5B70,1.0f);
                 ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left+16.0f,(float)r.top+157.0f,(float)r.right-16.0f,(float)r.top+158.0f,ABM_THEME_COLOR_267077);
                 ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)r.left+16.0f,(float)r.top+326.0f,(float)r.right-16.0f,(float)r.top+327.0f,ABM_THEME_COLOR_267077);
