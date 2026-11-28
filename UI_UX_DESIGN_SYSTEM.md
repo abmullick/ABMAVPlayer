@@ -909,3 +909,15 @@ Source implementation committed:
 - Download, upload, cache, torrent task, playback, pause/resume, file selection, receiver discovery and casting logic were not intentionally changed.
 
 This is a source-level visual alignment pass, not a completed Torrent Stream redesign. The fixed geometry and existing control layout remain. Windows build and visual/interaction validation are still required before acceptance.
+
+
+## Settings and Advanced Settings — surface hierarchy pass
+
+Source implementation committed:
+- Main Settings and Advanced Settings now use the shared raised/background surfaces for their mastheads, with standard neutral border tokens. The settings cog sits on a raised neutral tile rather than a large gold gradient block; the cog itself retains the theme accent.
+- Section headings, navigation captions and explanatory labels are neutral text. Gold/theme accent is reserved for selected navigation/options, focused controls and primary actions rather than repeated as default heading colour.
+- Primary buttons retain the theme's accent treatment, but no longer transition into a hard-coded teal gradient. Secondary actions stay on raised neutral surfaces.
+- The playback-rate dropdown, selection highlight and custom Settings scrollbars now use shared surface, border and focus/accent tokens instead of their separate teal palette.
+- Existing seven colour presets, background-skin swatches, storage settings, validation, save semantics, diagnostic generation, VLC inventory and advanced control behaviour remain intact.
+
+This is a source-level visual consistency pass. It does not certify layout, contrast or interaction at runtime; validate on Windows across all themes and supported display scales before acceptance.
