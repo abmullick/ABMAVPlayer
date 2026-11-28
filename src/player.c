@@ -6966,7 +6966,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasEnd(&g_aboutCanvas);
         }else{
             HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
-            RECT band={0,0,rc.right,7};HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_BORDER_STRONG);FillRect(dc,&band,accent);DeleteObject(accent);
+            RECT band={0,0,rc.right,2};HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_BORDER_STRONG);FillRect(dc,&band,accent);DeleteObject(accent);
         }
         if(g_aboutPortrait) {
             HDC mem=CreateCompatibleDC(dc);HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
@@ -7012,7 +7012,7 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             SelectObject(dc,g_font);SetTextColor(dc,ABM_UI_COLOR_TEXT);
             r.top=461;r.bottom=535;DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             r.top=550;r.bottom=580;DrawTextW(dc,L"BUILT WITH",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             r.top=585;r.bottom=616;DrawTextW(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -7404,7 +7404,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
                 COLORREF fill=pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT_SOFT;
                 COLORREF edge=focused?ABM_UI_COLOR_FOCUS:ABM_UI_COLOR_ACCENT_BRIGHT;
-                ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_THEME_COLOR_0C1D2D);
+                ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_UI_COLOR_BACKGROUND);
                 RECT face=bounds;InflateRect(&face,-1,-1);
                 ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
                 ABM_D2D_CanvasStrokeRound(&g_helpCanvas,0.5f,0.5f,(float)bounds.right-0.5f,(float)bounds.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
