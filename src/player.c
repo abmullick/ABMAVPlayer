@@ -6322,7 +6322,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     int progress=(int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0);
     if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)==TORRENT_PLAYBACK_PLAYING)progress=100;
     float barL=m+14,barT=playbackY+47,barR=w-m-14;
-    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_THEME_COLOR_193041);
+    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_UI_COLOR_SURFACE_RAISED);
     ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,ABM_THEME_COLOR_314B5B);
     if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
     r=TorrentMakeRect(m+14,playbackY+23,w-m-14,playbackY+43);
@@ -7605,7 +7605,7 @@ static void SettingsSection(int top,const wchar_t *title,const wchar_t *descript
                      (float)ABM_UI_RADIUS_CARD,SETTINGS_BORDER,0.9f);
  ABM_D2D_Round(&g_settingsUi,30.0f,(float)top+12.0f,33.5f,(float)top+35.0f,
                1.7f,ABM_UI_COLOR_ACCENT_BRIGHT);
- SettingsText(title,44,top+11,510,top+36,SETTINGS_ACCENT,1,
+ SettingsText(title,44,top+11,510,top+36,SETTINGS_FG,1,
               DT_LEFT|DT_VCENTER|DT_SINGLELINE);
  if(description&&description[0])
   SettingsText(description,510,top+11,780,top+36,SETTINGS_MUTED,1,
@@ -7629,7 +7629,7 @@ static BOOL ABM_PointInRect(int x,int y,int l,int t,int r,int b){return x>=l&&x<
 static void SettingsButtonDraw(int l,int t,int r,int b,const wchar_t *label,BOOL primary) {
  BOOL hot=ABM_PointInRect(g_settingsHoverX,g_settingsHoverY,l,t,r,b),down=hot&&g_settingsMousePressed;
  COLORREF top=down?ABM_UI_COLOR_SURFACE_BLUE:hot?(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE_BLUE):(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
- COLORREF bottom=primary&&!down&&!hot?ABM_THEME_COLOR_1C9D9D:ABM_UI_COLOR_SURFACE;
+ COLORREF bottom=primary&&!down&&!hot?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE;
  COLORREF edge=hot?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
  ABM_D2D_GradientRound(&g_settingsUi,(float)l,(float)t,(float)r,(float)b,
                (float)ABM_UI_RADIUS_BUTTON,top,bottom);
@@ -8260,22 +8260,21 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    ABM_D2D_Begin(&g_advancedSettingsUi,SETTINGS_BG);
    {RECT skinBounds={0,0,1060,760};ABM_SkinRenderD2D(&g_advancedSettingsUi,&skinBounds);}
    ABM_D2D_GradientRound(&g_advancedSettingsUi,18,14,1062,92,16,
-       ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
+       ABM_UI_COLOR_SURFACE_RAISED,ABM_UI_COLOR_BACKGROUND);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,14.5f,1061.5f,91.5f,16,
-       ABM_THEME_COLOR_2B586F,1.0f);
+       ABM_UI_COLOR_BORDER_STRONG,1.0f);
    /* Gold-gradient settings mark; use the Segoe MDL2 Settings cog rather
       than the emoji gear, whose platform rendering resembles a flower. */
-   ABM_D2D_GradientRound(&g_advancedSettingsUi,34,29,78,73,12,
-       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_66551F);
+   ABM_D2D_Round(&g_advancedSettingsUi,34,29,78,73,12,ABM_UI_COLOR_SURFACE_RAISED);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,34,29,78,73,12,
-       ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+       ABM_UI_COLOR_BORDER_STRONG,1.0f);
    {RECT gear={39,31,73,70};ABM_D2D_Text(&g_advancedSettingsUi,L"\xE713",gear,
-       ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);}
+       ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);}
    AdvancedSettingsText(g_advancedSettingsPage==4?L"SUBTITLE MANAGER":g_advancedSettingsPage==10?L"ADVANCED AUDIO CENTRE":L"ADVANCED SETTINGS",94,24,660,57,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   AdvancedSettingsText(g_advancedSettingsPage==4?L"TRACKS  ·  SYNCHRONIZATION  ·  APPEARANCE":g_advancedSettingsPage==10?L"OUTPUT  ·  EQUALIZER  ·  AUDIO PROCESSING":L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,760,78,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(g_advancedSettingsPage==4?L"TRACKS  ·  SYNCHRONIZATION  ·  APPEARANCE":g_advancedSettingsPage==10?L"OUTPUT  ·  EQUALIZER  ·  AUDIO PROCESSING":L"PLAYBACK ENGINE  ·  OUTPUT  ·  PERFORMANCE",96,55,760,78,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    ABM_D2D_Round(&g_advancedSettingsUi,18,106,258,718,14,SETTINGS_PANEL);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,18.5f,106.5f,257.5f,717.5f,14,SETTINGS_BORDER,0.8f);
-   AdvancedSettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   AdvancedSettingsText(L"CONFIGURATION",34,119,238,145,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    for(int i=0;i<(int)_countof(g_advancedSettingsPages);i++){
     float top=(float)(151+i*50);
     BOOL selected=(i==g_advancedSettingsPage);
@@ -8290,11 +8289,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
    ABM_D2D_Round(&g_advancedSettingsUi,274,106,1062,718,14,SETTINGS_PANEL);
    ABM_D2D_StrokeRound(&g_advancedSettingsUi,274.5f,106.5f,1061.5f,717.5f,14,SETTINGS_BORDER,0.8f);
    AdvancedSettingsText(g_advancedSettingsPages[g_advancedSettingsPage],304,130,1028,174,
-       ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+       ABM_UI_COLOR_TEXT,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    AdvancedSettingsText(g_advancedSettingsDescriptions[g_advancedSettingsPage],306,178,1028,216,
        SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    if(g_advancedSettingsPage==2){
-    AdvancedSettingsText(L"Audio output engine",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Audio output engine",322,232,1018,258,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     const wchar_t *outNames[3]={L"Automatic (recommended)",L"Windows Audio Session API (WASAPI)",L"DirectSound"};
     const wchar_t *outDesc[3]={L"Let LibVLC select the best available Windows audio output.",L"Use the Windows modern audio endpoint engine for device routing and low-latency playback.",L"Use the DirectSound output module for compatibility troubleshooting."};
     for(int i=0;i<3;i++){
@@ -8316,7 +8315,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     for(int i=0;i<3;i++){int top=260+i*74;BOOL selected=(g_advancedAudioOutDraft==i);ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+66,9,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+65.5f,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.5f:0.8f);ABM_D2D_Round(&g_advancedSettingsUi,338,(float)top+22,356,(float)top+40,9,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_SURFACE);if(selected)ABM_D2D_Round(&g_advancedSettingsUi,343,(float)top+27,351,(float)top+35,4,ABM_THEME_COLOR_0D1E2F);AdvancedSettingsText(outNames[i],372,top+8,990,top+32,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(outDesc[i],372,top+34,990,top+59,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
     AdvancedSettingsButtonDraw(320,486,660,530,g_replayGain?L"ReplayGain: On":L"ReplayGain: Off",g_replayGain);
     AdvancedSettingsButtonDraw(676,486,1018,530,g_compressor?L"Dynamic-range compressor: On":L"Dynamic-range compressor: Off",g_compressor);
-    AdvancedSettingsText(L"Audio synchronization",322,540,510,580,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Audio synchronization",322,540,510,580,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(720,540,820,580,L"− 50 ms",FALSE);AdvancedSettingsButtonDraw(830,540,930,580,L"+ 50 ms",FALSE);AdvancedSettingsButtonDraw(940,540,1018,580,L"Reset",FALSE);
     AdvancedSettingsButtonDraw(322,594,440,638,L"Audio track",FALSE);
     AdvancedSettingsButtonDraw(452,594,660,638,L"Advanced equalizer",FALSE);
@@ -8324,7 +8323,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     wchar_t audioDelayText[96];StringCchPrintfW(audioDelayText,_countof(audioDelayText),L"Offset: %+.0f ms",(double)g_audioDelayUs/1000.0);AdvancedSettingsText(audioDelayText,520,540,700,580,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     if(g_advancedAudioOutMessage[0])AdvancedSettingsText(g_advancedAudioOutMessage,322,642,1032,660,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
    }else if(g_advancedSettingsPage==5){
-    AdvancedSettingsText(L"Stream buffering",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Stream buffering",322,232,1018,258,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     int cacheValues[3]={g_advancedNetworkCaching,g_advancedFileCaching,g_advancedLiveCaching};
     const wchar_t *cacheNames[3]={L"Network stream caching",L"Local file caching",L"Live stream caching"};
     const wchar_t *cacheDesc[3]={L"Buffer before playback for network URLs and remote streams.",L"Read-ahead buffer used when opening local media files.",L"Buffer target for live and time-sensitive streams."};
@@ -8338,7 +8337,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }
     AdvancedSettingsText(L"Click a value to cycle through 300, 1,000, 2,000 and 5,000 ms. Applies when the next media item opens.",322,584,1018,624,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==3){
-    AdvancedSettingsText(L"Video aspect ratio",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Video aspect ratio",322,232,1018,258,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int n=0;n<4;n++){
      int top=260+n*74;BOOL selected=(g_advancedAspectMode==n);
      ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+66,9,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);
@@ -8350,7 +8349,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,628.5f,1017.5f,659.5f,8,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
     AdvancedSettingsText(L"OPEN VIDEO ENHANCEMENT STUDIO  ·  BRIGHTNESS  ·  CONTRAST  ·  SATURATION  ·  GAMMA  ·  HUE",336,630,1002,658,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==1){
-    AdvancedSettingsText(L"Hardware acceleration",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Hardware acceleration",322,232,1018,258,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     const wchar_t *hwNames[3]={L"Automatic (recommended)",L"Software decoding",L"Direct3D 11 Video Acceleration"};
     const wchar_t *hwDesc[3]={L"Let LibVLC choose the available hardware decoder.",L"Decode on the CPU. Useful for diagnosing GPU or driver issues.",L"Request D3D11VA hardware decoding through the LibVLC video decoder."};
     for(int i=0;i<3;i++){
@@ -8366,14 +8365,14 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(870,594,1032,638,L"Apply preference",TRUE);
     AdvancedSettingsText(g_advancedHwMessage,322,548,840,636,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
    }else if(g_advancedSettingsPage==7){
-    AdvancedSettingsText(L"Confirmation and interaction",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Confirmation and interaction",322,232,1018,258,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     const wchar_t *labels[3]={L"Confirm before exiting ABM AV Player",L"Confirm before clearing the playlist",L"Double-click video to toggle fullscreen"};
     const wchar_t *helps[3]={L"Show a confirmation prompt before closing the application.",L"Ask before removing all playlist entries. Source files are never deleted.",L"Use a double-click on the video area to enter or leave fullscreen."};
     BOOL values[3]={g_advancedConfirmExit,g_advancedConfirmClearPlaylist,g_advancedDoubleClickFullscreen};
     for(int n=0;n<3;n++){int top=260+n*112;ABM_D2D_Round(&g_advancedSettingsUi,320,(float)top,1018,(float)top+96,9,ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,(float)top+0.5f,1017.5f,(float)top+95.5f,9,SETTINGS_BORDER,0.8f);AdvancedSettingsText(labels[n],340,top+10,790,top+38,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);AdvancedSettingsText(helps[n],340,top+43,790,top+80,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK);AdvancedSettingsButtonDraw(830,top+24,996,top+68,values[n]?L"Enabled":L"Disabled",values[n]);}
     AdvancedSettingsText(L"Preferences are saved immediately and apply to the next matching interaction.",322,612,1018,642,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    }else if(g_advancedSettingsPage==4){
-    AdvancedSettingsText(L"Subtitle timing",322,232,790,254,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Subtitle timing",322,232,790,254,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     wchar_t languageLabel[80];StringCchPrintfW(languageLabel,_countof(languageLabel),L"Language: %s",g_subtitleLanguageNames[g_subtitlePreferredLanguage]);
     AdvancedSettingsButtonDraw(820,228,1032,258,languageLabel,g_subtitlePreferredLanguage!=0);
     ABM_D2D_Round(&g_advancedSettingsUi,320,258,1018,324,10,ABM_UI_COLOR_SURFACE);
@@ -8383,14 +8382,14 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     AdvancedSettingsButtonDraw(770,268,850,312,L"- 50 ms",FALSE);
     AdvancedSettingsButtonDraw(860,268,940,312,L"+ 50 ms",FALSE);
     AdvancedSettingsButtonDraw(950,268,1032,312,L"Reset",FALSE);
-    AdvancedSettingsText(L"Font size",322,334,1018,358,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Font size",322,334,1018,358,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleFontSize==g_subtitleFontSizes[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,366,(float)left+164,410,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,366.5f,(float)left+163.5f,409.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleFontSizeLabels[i],left+5,367,left+159,409,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Text color",322,414,1018,436,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Text color",322,414,1018,436,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleColor==g_subtitleColors[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,440,(float)left+164,484,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,440.5f,(float)left+163.5f,483.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleColorLabels[i],left+5,441,left+159,483,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Text style and readability",322,486,1018,508,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Text style and readability",322,486,1018,508,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     AdvancedSettingsButtonDraw(320,510,500,552,g_advancedSubtitleBold?L"Bold: On":L"Bold: Off",g_advancedSubtitleBold);
     for(int i=0;i<4;i++){int left=520+i*126;BOOL selected=(g_advancedSubtitleOutline==g_subtitleOutlineValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,510,(float)left+120,552,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,510.5f,(float)left+119.5f,551.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleOutlineLabels[i],left+4,511,left+116,551,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
-    AdvancedSettingsText(L"Subtitle vertical position",322,554,1018,576,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    AdvancedSettingsText(L"Subtitle vertical position",322,554,1018,576,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     for(int i=0;i<4;i++){int left=320+i*176;BOOL selected=(g_advancedSubtitleMargin==g_subtitleMarginValues[i]);ABM_D2D_Round(&g_advancedSettingsUi,(float)left,578,(float)left+164,622,7,selected?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE_RAISED);ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,578.5f,(float)left+163.5f,621.5f,7,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.4f:0.8f);AdvancedSettingsText(g_subtitleMarginLabels[i],left+5,579,left+159,621,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);}
     AdvancedSettingsButtonDraw(320,624,540,662,L"Choose subtitle track",FALSE);
     AdvancedSettingsButtonDraw(552,624,772,662,L"Disable subtitles",FALSE);
@@ -8409,7 +8408,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
      StringCchPrintfW(row5,_countof(row5),L"Shuffle: %s     Repeat: %s",g_shuffle?L"On":L"Off",g_repeat==2?L"All":(g_repeat==1?L"Current":L"Off"));
     }else if(g_advancedSettingsPage==6){
      int threadIndex=0;for(int j=0;j<4;j++)if(g_advancedThreadChoices[j]==g_advancedDecoderThreads)threadIndex=j;
-     AdvancedSettingsText(L"Decoder thread count",322,232,1018,258,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsText(L"Decoder thread count",322,232,1018,258,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
      ABM_D2D_Round(&g_advancedSettingsUi,320,260,1018,326,9,ABM_UI_COLOR_SURFACE_RAISED);
      ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,260.5f,1017.5f,325.5f,9,SETTINGS_BORDER,0.8f);
      AdvancedSettingsText(L"CPU threads used by the video decoder",340,270,730,314,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -8485,13 +8484,13 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        int col=oi%2,row=oi/2,left=320+col*354,top=260+row*94;
        ABM_D2D_Round(&g_advancedSettingsUi,(float)left,(float)top,(float)(left+340),(float)(top+82),8,ABM_UI_COLOR_SURFACE_RAISED);
        ABM_D2D_StrokeRound(&g_advancedSettingsUi,(float)left+0.5f,(float)top+0.5f,(float)(left+339.5f),(float)(top+81.5f),8,SETTINGS_BORDER,0.7f);
-       AdvancedSettingsText(overviewTitles[oi],left+14,top+8,left+326,top+30,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+       AdvancedSettingsText(overviewTitles[oi],left+14,top+8,left+326,top+30,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
        AdvancedSettingsText(overviewValues[oi],left+14,top+34,left+326,top+70,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_WORDBREAK|DT_END_ELLIPSIS);
       }
     }else if(g_advancedSettingsPage==9){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);
       ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
-      AdvancedSettingsText(L"Loaded LibVLC runtime",326,258,1008,284,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(L"Loaded LibVLC runtime",326,258,1008,284,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsText(g_vlcRuntimeLoaded?L"Loaded in this process":L"Not loaded",326,290,520,320,g_vlcRuntimeLoaded?ABM_UI_COLOR_SUCCESS:ABM_UI_COLOR_WARNING,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsText(L"LibVLC version",548,290,680,320,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsText(g_vlcRuntimeVersion,680,290,1008,320,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -8508,7 +8507,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
        ABM_D2D_StrokeRound(&g_advancedSettingsUi,320.5f,530.5f,1017.5f,647.5f,8,SETTINGS_BORDER,0.8f);
     }else if(g_advancedSettingsPage==8){
       ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,650,12,ABM_UI_COLOR_SURFACE);ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,649.5f,12,SETTINGS_BORDER,0.8f);
-      AdvancedSettingsText(sectionTitle,326,258,1008,290,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+      AdvancedSettingsText(sectionTitle,326,258,1008,290,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
       AdvancedSettingsText(row1,326,294,1008,320,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
       AdvancedSettingsText(row2,326,326,1008,352,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
       AdvancedSettingsText(row3,326,358,1008,384,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -8519,7 +8518,7 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     }else if(g_advancedSettingsPage!=6&&g_advancedSettingsPage!=7){
      ABM_D2D_Round(&g_advancedSettingsUi,304,244,1032,548,12,ABM_UI_COLOR_SURFACE);
      ABM_D2D_StrokeRound(&g_advancedSettingsUi,304.5f,244.5f,1031.5f,547.5f,12,SETTINGS_BORDER,0.8f);
-     AdvancedSettingsText(sectionTitle,326,260,1008,298,ABM_UI_COLOR_ACCENT_BRIGHT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+     AdvancedSettingsText(sectionTitle,326,260,1008,298,SETTINGS_FG,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
      AdvancedSettingsText(row1,326,312,1008,344,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
      AdvancedSettingsText(row2,326,354,1008,386,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
      AdvancedSettingsText(row3,326,396,1008,428,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -8647,15 +8646,15 @@ static void SettingsDrawScrollBars(HWND w){
  int ts,tl,thumb,th,maxScroll;
  SettingsScrollMetrics(w,TRUE,&ts,&tl,&thumb,&th,&maxScroll);
  if(maxScroll>0){
-  ABM_D2D_Round(&g_settingsUi,(float)(rc.right-9),4.0f,(float)(rc.right-5),(float)(rc.bottom-SETTINGS_SCROLLBAR_SIZE-4),2.0f,ABM_THEME_COLOR_193041);
+  ABM_D2D_Round(&g_settingsUi,(float)(rc.right-9),4.0f,(float)(rc.right-5),(float)(rc.bottom-SETTINGS_SCROLLBAR_SIZE-4),2.0f,ABM_UI_COLOR_SURFACE_RAISED);
   ABM_D2D_Round(&g_settingsUi,(float)(rc.right-10),(float)thumb,(float)(rc.right-4),(float)(thumb+th),3.0f,
-    g_settingsScrollDragging&&g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_45697C);
+    g_settingsScrollDragging&&g_settingsScrollDragVertical?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
  }
  SettingsScrollMetrics(w,FALSE,&ts,&tl,&thumb,&th,&maxScroll);
  if(maxScroll>0){
-  ABM_D2D_Round(&g_settingsUi,4.0f,(float)(rc.bottom-9),(float)(rc.right-SETTINGS_SCROLLBAR_SIZE-4),(float)(rc.bottom-5),2.0f,ABM_THEME_COLOR_193041);
+  ABM_D2D_Round(&g_settingsUi,4.0f,(float)(rc.bottom-9),(float)(rc.right-SETTINGS_SCROLLBAR_SIZE-4),(float)(rc.bottom-5),2.0f,ABM_UI_COLOR_SURFACE_RAISED);
   ABM_D2D_Round(&g_settingsUi,(float)thumb,(float)(rc.bottom-10),(float)(thumb+th),(float)(rc.bottom-4),3.0f,
-    g_settingsScrollDragging&&!g_settingsScrollDragVertical?ABM_THEME_COLOR_52CDBE:ABM_THEME_COLOR_45697C);
+    g_settingsScrollDragging&&!g_settingsScrollDragVertical?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
  }
 }
 static void SettingsUpdateScrollBars(HWND w){
@@ -8841,26 +8840,25 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    ABM_D2D_BeginClip(&g_settingsUi,SETTINGS_BG,&ps.rcPaint);
    {RECT skinBounds={0};GetClientRect(w,&skinBounds);ABM_SkinRenderD2D(&g_settingsUi,&skinBounds);}
    ABM_D2D_SetOffset(&g_settingsUi,(float)-g_settingsScrollX,(float)-g_settingsScrollY);
-   ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_0F2739,ABM_THEME_COLOR_0D1E2F);
-   ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_THEME_COLOR_2B586F,1.0f);
+   ABM_D2D_GradientRound(&g_settingsUi,20,14,800,76,15,ABM_UI_COLOR_SURFACE_RAISED,ABM_UI_COLOR_BACKGROUND);
+   ABM_D2D_StrokeRound(&g_settingsUi,20,14,800,76,15,ABM_UI_COLOR_BORDER_STRONG,1.0f);
    /* Match Advanced Settings: gold gradient tile and a true Segoe MDL2 cog. */
-   ABM_D2D_GradientRound(&g_settingsUi,34,27,76,69,12,
-       ABM_THEME_COLOR_F2B14F,ABM_THEME_COLOR_66551F);
+   ABM_D2D_Round(&g_settingsUi,34,27,76,69,12,ABM_UI_COLOR_SURFACE_RAISED);
    ABM_D2D_StrokeRound(&g_settingsUi,34,27,76,69,12,
-       ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+       ABM_UI_COLOR_BORDER_STRONG,1.0f);
    {RECT gear={39,29,72,66};ABM_D2D_Text(&g_settingsUi,L"\xE713",gear,
-       ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);}
+       ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);}
    SettingsText(L"SETTINGS",92,20,420,53,ABM_THEME_COLOR_F7FAFF,2,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsButtonDraw(650,27,780,62,L"Advanced…",TRUE);
-   SettingsText(L"PLAYBACK  ·  AUDIO  ·  STORAGE  ·  NETWORK",94,49,550,69,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"PLAYBACK  ·  AUDIO  ·  STORAGE  ·  NETWORK",94,49,550,69,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsSection(88,L"GENERAL",L"Playback defaults",226);
    SettingsText(L"Volume (0–100)",40,140,155,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(160,155,264,188);if(GetFocus()==GetDlgItem(w,6207))ABM_D2D_StrokeRound(&g_settingsUi,159,154,265,189,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.8f);
    SettingsText(L"Playback speed",430,140,550,180,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsEditFrame(565,155,704,190);
-   ABM_D2D_Round(&g_settingsUi,572,160,697,185,5,ABM_THEME_COLOR_102737);
+   ABM_D2D_Round(&g_settingsUi,572,160,697,185,5,ABM_UI_COLOR_SURFACE_RAISED);
    SettingsText(g_settingsRateLabels[g_settingsRateIndex],579,160,670,185,SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-   ABM_D2D_Line(&g_settingsUi,681,169,686,175,SETTINGS_ACCENT,1.8f);ABM_D2D_Line(&g_settingsUi,686,175,691,169,SETTINGS_ACCENT,1.8f);
+   ABM_D2D_Line(&g_settingsUi,681,169,686,175,ABM_UI_COLOR_TEXT_SECONDARY,1.8f);ABM_D2D_Line(&g_settingsUi,686,175,691,169,ABM_UI_COLOR_TEXT_SECONDARY,1.8f);
    SettingsCheckDraw(40,202,L"Shuffle by default",g_settingsShuffle);
    SettingsCheckDraw(342,202,g_settingsRepeat==0?L"Repeat mode: Off":(g_settingsRepeat==2?L"Repeat mode: All":L"Repeat mode: Current item"),g_settingsRepeat!=0);
    SettingsSection(238,L"AUDIO",L"Processing",324);
@@ -8893,7 +8891,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     SettingsText(ABMThemePresetName((ABMThemePreset)preset),(int)left+10,(int)top+22,(int)left+167,(int)top+39,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,selected?1:0,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_StrokeRound(&g_settingsUi,left+0.5f,top+0.5f,left+176.5f,top+43.5f,8.0f,selected?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_BORDER,selected?1.8f:0.8f);
    }
-   SettingsText(L"MAIN PLAYER BACKGROUND SKINS",40,1112,780,1140,SETTINGS_ACCENT,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+   SettingsText(L"MAIN PLAYER BACKGROUND SKINS",40,1112,780,1140,SETTINGS_MUTED,1,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    SettingsText(L"4 animated ambient skins · 4 static artwork skins · Classic keeps the original look",40,1140,780,1164,SETTINGS_MUTED,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
    for(int skin=0;skin<ABM_SKIN_COUNT;skin++){
     int col=skin%4,row=skin/4;float left=(float)(40+col*185),top=(float)(1172+row*50);
@@ -8908,9 +8906,9 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
    SettingsButtonDraw(610,1040,735,1078,L"Save settings",TRUE);
    SettingsButtonDraw(744,1040,800,1078,L"Close",FALSE);
    if(g_settingsRateOpen){
-    ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_0C1B2B);
-    ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_THEME_COLOR_438999,1.0f);
-    for(int i=0;i<7;i++){int y=191+i*26;if(i==g_settingsRateIndex)ABM_D2D_Round(&g_settingsUi,570,(float)y,699,(float)(y+25),5,ABM_THEME_COLOR_195B58);SettingsText(g_settingsRateLabels[i],580,y,694,y+25,i==g_settingsRateIndex?ABM_THEME_COLOR_FFFFFF:SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
+    ABM_D2D_Round(&g_settingsUi,565,190,704,374,8,ABM_UI_COLOR_SURFACE_RAISED);
+    ABM_D2D_StrokeRound(&g_settingsUi,565,190,704,374,8,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+    for(int i=0;i<7;i++){int y=191+i*26;if(i==g_settingsRateIndex)ABM_D2D_Round(&g_settingsUi,570,(float)y,699,(float)(y+25),5,ABM_UI_COLOR_SURFACE_BLUE);SettingsText(g_settingsRateLabels[i],580,y,694,y+25,i==g_settingsRateIndex?ABM_UI_COLOR_ACCENT_BRIGHT:SETTINGS_FG,0,DT_LEFT|DT_VCENTER|DT_SINGLELINE);}
    }
    ABM_D2D_SetOffset(&g_settingsUi,0.0f,0.0f);
    SettingsDrawScrollBars(w);
