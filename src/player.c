@@ -6322,7 +6322,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     int progress=(int)InterlockedCompareExchange(&g_torrentBufferPercent,0,0);
     if(InterlockedCompareExchange(&g_torrentPlaybackState,0,0)==TORRENT_PLAYBACK_PLAYING)progress=100;
     float barL=m+14,barT=playbackY+47,barR=w-m-14;
-    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_UI_COLOR_SURFACE_RAISED);
+    ABM_D2D_Round(&g_torrentUi,barL,barT,barR,barT+5,3,ABM_THEME_COLOR_193041);
     ABM_D2D_Fill(&g_torrentUi,barL+2,barT+1,barR-2,barT+2,ABM_THEME_COLOR_314B5B);
     if(progress>0)ABM_D2D_GradientRound(&g_torrentUi,barL,barT,barL+(barR-barL)*progress/100.0f,barT+5,3,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
     r=TorrentMakeRect(m+14,playbackY+23,w-m-14,playbackY+43);
