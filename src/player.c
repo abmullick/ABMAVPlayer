@@ -5340,6 +5340,7 @@ static void ShowVideoEnhancementStudio(void) {
         DWORD style=WS_POPUP;RECT fr={0,0,540,670};
         g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_LAYERED|WS_EX_TOPMOST,L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",style,0,0,fr.right-fr.left,fr.bottom-fr.top,g_main,NULL,inst,NULL);
         if(!g_videoEnhancementWindow)return;
+        ABM_ApplyTitleBarIcon(g_videoEnhancementWindow);
         SetLayeredWindowAttributes(g_videoEnhancementWindow,0,244,LWA_ALPHA);
     }
     RECT owner={0};if(g_main&&IsWindow(g_main))GetWindowRect(g_main,&owner);else SystemParametersInfoW(SPI_GETWORKAREA,0,&owner,0);
@@ -5358,6 +5359,7 @@ static void ShowEqualizer(void) {
             wc.lpszClassName,L"ABM AV Player - Advanced Equalizer",WS_POPUP,
             CW_USEDEFAULT,CW_USEDEFAULT,680,405,g_main,NULL,wc.hInstance,NULL);
         if(!g_eqWindow){ABM_MessageBoxW(g_main,L"Could not create the equalizer window.",APP_NAME,MB_ICONERROR);return;}
+        ABM_ApplyTitleBarIcon(g_eqWindow);
         SetLayeredWindowAttributes(g_eqWindow,0,244,LWA_ALPHA);
     }
     RECT owner;GetWindowRect(g_main,&owner);
@@ -7521,6 +7523,7 @@ static void ShowHelpDialog(HWND owner) {
         L"Help Centre",WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_POPUP,
         x,y,w,h,owner,NULL,inst,NULL);
     if(!dlg)return;
+    ABM_ApplyTitleBarIcon(dlg);
     BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
@@ -7551,6 +7554,7 @@ static void ShowAboutDialog(HWND owner) {
         L"About ABM AV Player",WS_CAPTION|WS_SYSMENU|WS_POPUP,
         x,y,w,h,owner,NULL,inst,NULL);
     if(!dlg)return;
+    ABM_ApplyTitleBarIcon(dlg);
     /* Match the dark caption, border and rounded frame used by the Main Player. */
     BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
     {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
