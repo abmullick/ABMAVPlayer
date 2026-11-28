@@ -8873,8 +8873,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;int backdrop=2;
          DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
          DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
-         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
-         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_SYSTEMBACKDROP_TYPE,&backdrop,sizeof(backdrop));}
+         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
         RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_APP+0x351:
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
