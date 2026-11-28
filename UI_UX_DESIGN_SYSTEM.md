@@ -972,3 +972,10 @@ The Command Centre's five grouped command areas now use a quieter deep-navy grou
 For compact one-line command rows, labels now use the shared small-text format and occupy the full row height. Shortcut pills and glyph tiles use near-full-height bounds rather than narrow inset rectangles that clipped text at compact row heights. Featured destination title/subtitle typography remains unchanged.
 
 This is a source-level layout correction. Verify on Windows at narrow widths and short heights; no runtime build or visual acceptance is claimed here.
+
+
+## Canonical ABM masthead identity
+
+The Main Player masthead is the single visual reference for the ABM signature mark. Native windows must reuse its dark slate outer tile, dark inset, champagne A strokes, white crossbar/play glyph, split ABM / AV PLAYER wordmark and muted secondary AV PLAYER colour. Window-specific subtitles and content may vary; the ABM logo itself must not.
+
+Streaming Centre previously diverged by filling its logo tile with a gold gradient and colouring the AV PLAYER suffix with the accent. Home Theatre, Media Library and Torrent Stream also contained alternate logo treatments. These mastheads have now been aligned to the Main Player identity. This is a source-level alignment; visual acceptance still requires a Windows rebuild and side-by-side comparison.
