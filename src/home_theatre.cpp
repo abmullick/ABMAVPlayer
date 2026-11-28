@@ -902,7 +902,7 @@ static LRESULT CALLBACK HomeWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_THEMECHANGED:
         if(g_darkBrush)DeleteObject(g_darkBrush);
         g_darkBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
-        InvalidateRect(w,nullptr,TRUE);
+        RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
     case WM_CLOSE:DestroyWindow(w);return 0;
     case WM_DESTROY:
