@@ -514,6 +514,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_CREATE:ABM_SkinRegisterWindow(w);g_abmDialogCanvasReady=ABM_D2D_CanvasInit(&g_abmDialogCanvas);return 0;
+    case WM_THEMECHANGED:InvalidateRect(w,NULL,FALSE);return 0;
     case WM_DESTROY:ABM_SkinUnregisterWindow(w);if(g_abmDialogCanvasReady){g_abmDialogCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_abmDialogCanvas);}return 0;
     case WM_ERASEBKGND:return 1;
     case WM_KEYDOWN:
@@ -595,6 +596,7 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
     switch(m) {
     case WM_NCCREATE:SetWindowLongPtrW(w,GWLP_USERDATA,(LONG_PTR)((CREATESTRUCTW*)lp)->lpCreateParams);return TRUE;
     case WM_CREATE:ABM_SkinRegisterWindow(w);g_abmMenuCanvasReady=ABM_D2D_CanvasInit(&g_abmMenuCanvas);return 0;
+    case WM_THEMECHANGED:InvalidateRect(w,NULL,FALSE);return 0;
     case WM_DESTROY:ABM_SkinUnregisterWindow(w);if(g_abmMenuCanvasReady){g_abmMenuCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_abmMenuCanvas);}return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
@@ -3588,6 +3590,7 @@ static BOOL g_recentPopupCanvasReady=FALSE;
 static LRESULT CALLBACK RecentPopupWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_CREATE:ABM_SkinRegisterWindow(hwnd);g_recentPopupCanvasReady=ABM_D2D_CanvasInit(&g_recentPopupCanvas);return 0;
+    case WM_THEMECHANGED:InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_MOUSEMOVE: {
         TRACKMOUSEEVENT t={sizeof(t),TME_LEAVE,hwnd,0};TrackMouseEvent(&t);
@@ -4999,6 +5002,7 @@ static LRESULT CALLBACK EqualizerWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp)
     case WM_CREATE:
         ABM_SkinRegisterWindow(hwnd);g_equalizerCanvasReady=ABM_D2D_CanvasInit(&g_equalizerCanvas);
         return 0;
+    case WM_THEMECHANGED:InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_DESTROY:
         ABM_SkinUnregisterWindow(hwnd);if(g_equalizerCanvasReady){g_equalizerCanvasReady=FALSE;ABM_D2D_CanvasDestroy(&g_equalizerCanvas);}
         return 0;
@@ -5196,6 +5200,7 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
         if(LOWORD(wp)==WA_INACTIVE)ShowWindow(w,SW_HIDE);
         return 0;
     case WM_CREATE:ABM_SkinRegisterWindow(w);g_videoEnhancementCanvasReady=ABM_D2D_CanvasInit(&g_videoEnhancementCanvas);VideoEnhancementLayout(w);return 0;
+    case WM_THEMECHANGED:InvalidateRect(w,NULL,FALSE);return 0;
     case WM_PAINT:VideoEnhancementPaint(w);return 0;
     case WM_ERASEBKGND:return 1;
     case WM_NCHITTEST:{
@@ -6874,6 +6879,7 @@ static HBITMAP LoadAboutPortrait(void) {
 
 static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
+    case WM_THEMECHANGED:InvalidateRect(hwnd,NULL,FALSE);return 0;
     case WM_CREATE: {
         ABM_SkinRegisterWindow(hwnd);g_aboutPortrait=LoadAboutPortrait();
         g_aboutCanvasReady=ABM_D2D_CanvasInit(&g_aboutCanvas);
