@@ -56,6 +56,63 @@ static void AddAdvancedPerformanceOptions(libvlc_media_t *media);
 #pragma comment(lib, "uuid.lib")
 #pragma comment(lib, "shlwapi.lib")
 
+/* A self-contained title-bar icon. This avoids relying on the .ico decoder
+   or the process working directory when Windows creates top-level windows. */
+static HICON g_abmTitleBarIcon;
+
+static void ABM_TitleIconPixel(DWORD *pixels,int x,int y,DWORD color) {
+    if(x>=0&&x<32&&y>=0&&y<32)pixels[y*32+x]=color;
+}
+static void ABM_TitleIconLine(DWORD *pixels,int x0,int y0,int x1,int y1,DWORD color,int width) {
+    int dx=abs(x1-x0),sx=x0<x1?1:-1,dy=-abs(y1-y0),sy=y0<y1?1:-1,err=dx+dy;
+    for(;;) {
+        for(int oy=-(width/2);oy<=width/2;oy++)
+            for(int ox=-(width/2);ox<=width/2;ox++)
+                ABM_TitleIconPixel(pixels,x0+ox,y0+oy,color);
+        if(x0==x1&&y0==y1)break;
+        int e2=2*err;
+        if(e2>=dy){err+=dy;x0+=sx;}
+        if(e2<=dx){err+=dx;y0+=sy;}
+    }
+}
+static HICON ABM_GetTitleBarIcon(void) {
+    if(g_abmTitleBarIcon)return g_abmTitleBarIcon;
+    BITMAPINFO bmi={0};
+    bmi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth=32;
+    bmi.bmiHeader.biHeight=-32;
+    bmi.bmiHeader.biPlanes=1;
+    bmi.bmiHeader.biBitCount=32;
+    bmi.bmiHeader.biCompression=BI_RGB;
+    DWORD *pixels=NULL;
+    HBITMAP color=CreateDIBSection(NULL,&bmi,DIB_RGB_COLORS,(void**)&pixels,NULL,0);
+    if(!color||!pixels)return LoadIconW(GetModuleHandleW(NULL),MAKEINTRESOURCEW(IDI_APP_ICON));
+    ZeroMemory(pixels,32*32*sizeof(DWORD));
+    for(int y=1;y<31;y++)for(int x=1;x<31;x++) {
+        int dx=x-16,dy=y-16,d2=dx*dx+dy*dy;
+        if(d2<=225)pixels[y*32+x]=0xFF142033; /* deep navy circular field */
+        if(d2<=169) {
+            int t=(x+y)*255/62;
+            int r=242-(t*105/255),g=184-(t*94/255),b=66-(t*31/255);
+            pixels[y*32+x]=0xFF000000|((DWORD)r<<16)|((DWORD)g<<8)|(DWORD)b;
+        }
+        if(d2>=190&&d2<=225)pixels[y*32+x]=0xFFFFD36A;
+    }
+    /* Crisp white ABM A-mark, deliberately not an emoji or font glyph. */
+    ABM_TitleIconLine(pixels,8,24,16,7,0xFFFFFFFF,2);
+    ABM_TitleIconLine(pixels,16,7,24,24,0xFFFFFFFF,2);
+    ABM_TitleIconLine(pixels,11,18,21,18,0xFFFFF2D5,1);
+    ABM_TitleIconLine(pixels,17,13,24,17,0xFFFFFFFF,1);
+    ABM_TitleIconLine(pixels,24,17,17,21,0xFFFFFFFF,1);
+    ABM_TitleIconLine(pixels,17,21,17,13,0xFFFFFFFF,1);
+    HBITMAP mask=CreateBitmap(32,32,1,1,NULL);
+    ICONINFO ii={0};ii.fIcon=TRUE;ii.hbmColor=color;ii.hbmMask=mask;
+    g_abmTitleBarIcon=CreateIconIndirect(&ii);
+    if(mask)DeleteObject(mask);
+    DeleteObject(color);
+    return g_abmTitleBarIcon?g_abmTitleBarIcon:LoadIconW(GetModuleHandleW(NULL),MAKEINTRESOURCEW(IDI_APP_ICON));
+}
+
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
@@ -569,7 +626,7 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
 }
 static int ABM_MessageBoxW(HWND owner,const wchar_t *message,const wchar_t *caption,UINT flags) {
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMDialogProc;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerModalDialog";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return IDOK;registered=TRUE;}
     ABMDialogState d={0};d.text=message;d.caption=caption;d.flags=flags;d.result=(flags&MB_YESNO)?IDNO:IDOK;d.buttonCount=(flags&MB_YESNO)?2:1;d.defaultButton=(flags&MB_DEFBUTTON2)?1:0;d.focusedButton=d.defaultButton;
     int width=560,height=220;HDC measure=GetDC(NULL);HFONT measureFont=g_font?g_font:(HFONT)GetStockObject(DEFAULT_GUI_FONT);HGDIOBJ previousFont=measure?SelectObject(measure,measureFont):NULL;RECT measured={0,0,width-90,0};if(measure&&message)DrawTextW(measure,message,-1,&measured,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_CALCRECT|DT_NOPREFIX);if(previousFont)SelectObject(measure,previousFont);if(measure)ReleaseDC(NULL,measure);if(measured.bottom>80)height=measured.bottom+150;if(height>560)height=560;RECT wr={0,0,width,height};AdjustWindowRectEx(&wr,WS_POPUP|WS_BORDER,FALSE,WS_EX_TOOLWINDOW);width=wr.right-wr.left;height=wr.bottom-wr.top;
     RECT ownerRect={0};if(owner&&IsWindow(owner))GetWindowRect(owner,&ownerRect);else SystemParametersInfoW(SPI_GETWORKAREA,0,&ownerRect,0);
@@ -662,7 +719,7 @@ static LRESULT CALLBACK ABMMenuProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
 }
 static int ABM_ShowMenu(HWND owner,int x,int y,const ABMMenuItem *items,int count) {
     if(!items||count<=0)return 0;static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMMenuProc;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerActionMenu";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return 0;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=ABMMenuProc;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayerActionMenu";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return 0;registered=TRUE;}
     ABMMenuState d={owner,items,count,-1,0,0,FALSE};POINT pt={x,y};ClientToScreen(owner,&pt);
     int width=380,height=54+count*36+8;RECT work;SystemParametersInfoW(SPI_GETWORKAREA,0,&work,0);
     if(height>work.bottom-work.top-24)height=work.bottom-work.top-24;
@@ -3668,7 +3725,7 @@ static void ShowRecentMenu(HWND hwnd,int x,int y) {
     static BOOL registered=FALSE;
     HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered){
-        WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=RecentPopupWndProc;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;
+        WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=RecentPopupWndProc;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;
         wc.hCursor=LoadCursorW(NULL,IDC_HAND);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerRecentPopup";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;
     }
@@ -5274,7 +5331,7 @@ static LRESULT CALLBACK VideoEnhancementWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
 static void ShowVideoEnhancementStudio(void) {
     if(!g_videoEnhancementWindow){
         HINSTANCE inst=GetModuleHandleW(NULL);static BOOL registered=FALSE;
-        if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
+        if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=VideoEnhancementWndProc;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);wc.lpszClassName=L"ABMAVPlayer.VideoEnhancementStudio";
             wc.style=CS_DBLCLKS;if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
         DWORD style=WS_POPUP;RECT fr={0,0,540,670};
         g_videoEnhancementWindow=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_LAYERED|WS_EX_TOPMOST,L"ABMAVPlayer.VideoEnhancementStudio",L"ABM AV Player — Video Enhancement Studio",style,0,0,fr.right-fr.left,fr.bottom-fr.top,g_main,NULL,inst,NULL);
@@ -5289,7 +5346,7 @@ static void ShowVideoEnhancementStudio(void) {
 
 static void ShowEqualizer(void) {
     if(!g_eqWindow){
-        WNDCLASSEXW wc={sizeof(wc)};wc.lpfnWndProc=EqualizerWndProc;wc.hInstance=GetModuleHandleW(NULL);wc.hIcon=LoadIconW(wc.hInstance,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;
+        WNDCLASSEXW wc={sizeof(wc)};wc.lpfnWndProc=EqualizerWndProc;wc.hInstance=GetModuleHandleW(NULL);wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;
         wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
         wc.lpszClassName=L"ABMAVPlayer.Equalizer";
         RegisterClassExW(&wc);
@@ -6833,12 +6890,12 @@ static void ShowTorrentWindow(HWND owner) {
     if(!g_torrentInitialized){StartTorrentEngine(owner);return;}
     if(g_torrentWindow&&IsWindow(g_torrentWindow)){ShowWindow(g_torrentWindow,SW_SHOWNORMAL);SetForegroundWindow(g_torrentWindow);return;}
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
-    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_0A111D);wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+    if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=TorrentWndProc;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=CreateSolidBrush(ABM_THEME_COLOR_0A111D);wc.hIcon=ABM_GetTitleBarIcon();wc.lpszClassName=L"ABMAVPlayerTorrent";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
     RECT wr;GetWindowRect(owner,&wr);MONITORINFO mi={sizeof(mi)};HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);GetMonitorInfoW(mon,&mi);int maxW=mi.rcWork.right-mi.rcWork.left-32,maxH=mi.rcWork.bottom-mi.rcWork.top-32;int w=maxW<1080?maxW:1080,h=maxH<980?maxH:980;if(w<760)w=760;if(h<620)h=620;
     int x=wr.left+(wr.right-wr.left-w)/2,y=wr.top+(wr.bottom-wr.top-h)/2;if(x<0)x=20;if(y<0)y=20;
     g_torrentWindow=CreateWindowExW(0,L"ABMAVPlayerTorrent",L"ABM AV Player — Torrent Stream",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,x,y,w,h,owner,NULL,inst,NULL);
     if(g_torrentWindow){
-        HICON appIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
+        HICON appIcon=ABM_GetTitleBarIcon();
         if(appIcon){SendMessageW(g_torrentWindow,WM_SETICON,ICON_BIG,(LPARAM)appIcon);SendMessageW(g_torrentWindow,WM_SETICON,ICON_SMALL,(LPARAM)appIcon);}
         TorrentApplyWindowChrome(g_torrentWindow);
         ShowWindow(g_torrentWindow,SW_SHOW);UpdateWindow(g_torrentWindow);TorrentRefreshStatus();
@@ -7441,7 +7498,7 @@ static void ShowHelpDialog(HWND owner) {
     static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered) {
         WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=HelpWndProc;
-        wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+        wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
         wc.hbrBackground=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);wc.lpszClassName=L"ABMAVPlayerHelp";
         if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
@@ -7478,7 +7535,7 @@ static void ShowAboutDialog(HWND owner) {
     HINSTANCE inst=GetModuleHandleW(NULL);
     if(!registered) {
         WNDCLASSEXW wc={0}; wc.cbSize=sizeof(wc); wc.lpfnWndProc=AboutWndProc;
-        wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon; wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+        wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon; wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
         wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName=L"ABMAVPlayerAbout";
         if(!RegisterClassExW(&wc) && GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
         registered=TRUE;
@@ -8502,7 +8559,7 @@ static void ShowAdvancedSettingsDialog(HWND owner){
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
  if(!registered){
   WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=AdvancedSettingsWndProc;
-  wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
+  wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);
   wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerAdvancedSettings";
   if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;
   registered=TRUE;
@@ -8869,7 +8926,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
 static void ShowSettingsDialog(HWND owner) {
  if(g_settingsWindow&&IsWindow(g_settingsWindow)){RECT current;GetWindowRect(g_settingsWindow,&current);SettingsClampToMonitor(g_settingsWindow,&current);ShowWindow(g_settingsWindow,SW_SHOWNORMAL);SetForegroundWindow(g_settingsWindow);return;}
  static BOOL registered=FALSE;HINSTANCE inst=GetModuleHandleW(NULL);
- if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
+ if(!registered){WNDCLASSEXW wc={0};wc.cbSize=sizeof(wc);wc.lpfnWndProc=SettingsWndProc;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.hIconSm=wc.hIcon;wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);wc.lpszClassName=L"ABMAVPlayerSettings";if(!RegisterClassExW(&wc)&&GetLastError()!=ERROR_CLASS_ALREADY_EXISTS)return;registered=TRUE;}
  DWORD style=WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_THICKFRAME|WS_CLIPCHILDREN|WS_POPUP;
  RECT wr={0,0,820,760};AdjustWindowRectEx(&wr,style,FALSE,WS_EX_DLGMODALFRAME);int ww=wr.right-wr.left,hh=wr.bottom-wr.top;RECT o;GetWindowRect(owner,&o);
  HMONITOR mon=MonitorFromWindow(owner,MONITOR_DEFAULTTONEAREST);MONITORINFO mi={sizeof(mi)};int workL=0,workT=0,workW=GetSystemMetrics(SM_CXSCREEN),workH=GetSystemMetrics(SM_CYSCREEN);if(GetMonitorInfoW(mon,&mi)){workL=mi.rcWork.left;workT=mi.rcWork.top;workW=mi.rcWork.right-mi.rcWork.left;workH=mi.rcWork.bottom-mi.rcWork.top;}
@@ -10081,9 +10138,9 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
     g_player=libvlc_media_player_new(g_vlc);if(!g_player){libvlc_release(g_vlc);return 1;}
     /* Failure of the optional streaming cast player must not affect local playback. */
     g_streamCastPlayer=libvlc_media_player_new(g_vlc);
-    WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));
+    WNDCLASSW wc={0};wc.lpfnWndProc=WndProc;wc.style=CS_DBLCLKS;wc.hInstance=inst;wc.hIcon=ABM_GetTitleBarIcon();wc.lpszClassName=L"ABMAVPlayerWindow";wc.hCursor=LoadCursorW(NULL,IDC_ARROW);wc.hbrBackground=g_videoBrush;wc.hIcon=ABM_GetTitleBarIcon();
     if(!RegisterClassW(&wc))return 1;
-    WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.hIcon=LoadIconW(inst,MAKEINTRESOURCEW(IDI_APP_ICON));owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
+    WNDCLASSW owc={0};owc.lpfnWndProc=FullscreenOverlayProc;owc.hInstance=inst;owc.hIcon=ABM_GetTitleBarIcon();owc.lpszClassName=L"ABMFullscreenOverlay";owc.hCursor=LoadCursorW(NULL,IDC_ARROW);owc.hbrBackground=(HBRUSH)GetStockObject(BLACK_BRUSH);
     if(!RegisterClassW(&owc))return 1;
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"ABM AV Player",WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,CW_USEDEFAULT,CW_USEDEFAULT,1440,900,NULL,NULL,inst,NULL);
     if(!hwnd)return 1;
