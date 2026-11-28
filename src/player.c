@@ -2086,7 +2086,7 @@ static void DrawUI(HDC dc,RECT client) {
                 if(i==0)GradientRound(dc,card,Blend(ABM_THEME_COLOR_197770,ABM_THEME_COLOR_25998B,motion),ABM_THEME_COLOR_184B52,13);
                 else GradientRound(dc,card,Blend(ABM_THEME_COLOR_142535,ABM_THEME_COLOR_1D3A4C,motion),ABM_THEME_COLOR_0D1927,13);
                 ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,cardEdge,0.85f+(float)motion*0.005f);
-                int cardW=card.right-card.left, cardH=card.bottom-card.top;
+                int cardH=card.bottom-card.top;
                 /* Premium desktop treatment: small unboxed line icons, not app-tile glyphs. */
                 int iconX=card.left+18, iconY=card.top+cardH/2;
                 COLORREF iconColor=Blend(ABM_THEME_COLOR_9EB5C9,ABM_THEME_COLOR_7EC7B5,motion);
@@ -8659,7 +8659,8 @@ static LRESULT CALLBACK SettingsEditFocusSubclass(HWND edit,UINT msg,WPARAM wp,L
 /* A preset change is an application-wide event, not just a Windows
    WM_THEMECHANGED broadcast. Refresh every top-level ABM window on this UI
    thread so already-open workspaces do not retain stale brushes or chrome. */
-static BOOL CALLBACK ABMThemeRefreshThreadWindow(HWND window,LPARAM) {
+static BOOL CALLBACK ABMThemeRefreshThreadWindow(HWND window,LPARAM data) {
+ (void)data;
  if(IsWindow(window))SendMessageW(window,WM_THEMECHANGED,0,0);
  return TRUE;
 }
