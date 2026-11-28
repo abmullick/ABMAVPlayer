@@ -1983,69 +1983,65 @@ static void DrawUI(HDC dc,RECT client) {
     Fill(dc,client,C_BG);
     DrawAmbientSkin(client);
     RECT header={0,0,client.right,96};
-    GradientRect(dc,header,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
+    /* Main Player chrome: matte navy navigation surface with a single
+       champagne signature rule. Keep the header calm so media remains primary. */
+    GradientRect(dc,header,ABM_THEME_COLOR_1D222D,ABM_THEME_COLOR_151820);
     RECT headerShade={0,82,client.right,96};
-    GradientRect(dc,headerShade,ABM_THEME_COLOR_08111D,ABM_THEME_COLOR_050A12);
-    Fill(dc,(RECT){0,95,client.right,96},ABM_THEME_COLOR_273D53);
-    /* A restrained moving light sweep gives the top bar a little life without
-       competing with the video or increasing the media-rendering workload. */
-    Fill(dc,(RECT){0,92,client.right,95},ABM_THEME_COLOR_0D1827);
-    int sweepWidth=112;
-    int sweepX=(int)((g_visualPulse*3u)%(unsigned int)(client.right+sweepWidth))-sweepWidth;
-    RECT sweep={sweepX,92,sweepX+sweepWidth,95};
-    GradientRect(dc,sweep,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
-    /* Signature mark: a luminous A-monogram fused with a play glyph. */
+    GradientRect(dc,headerShade,ABM_THEME_COLOR_1D222D,ABM_THEME_COLOR_151820);
+    Fill(dc,(RECT){0,95,client.right,96},ABM_THEME_COLOR_343D4C);
+    Fill(dc,(RECT){0,92,client.right,94},ABM_THEME_COLOR_272E3A);
+    Fill(dc,(RECT){0,94,client.right,95},ABM_UI_COLOR_ACCENT);
+    /* Compact dark brand tile; champagne is reserved for the monogram. */
     RECT logoHalo={20,7,102,87};
-    Panel(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,ABM_UI_COLOR_ACCENT_BRIGHT,22);
+    Panel(dc,logoHalo,ABM_THEME_COLOR_272E3A,ABM_THEME_COLOR_343D4C,22);
     RECT logo={28,14,94,80};
-    GradientRound(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,17);
+    RoundBox(dc,logo,ABM_THEME_COLOR_1D222D,17);
     RECT logoInset={33,19,89,75};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
-        (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_UI_COLOR_ACCENT_BRIGHT,0.8f);
-    /* Geometric A: crisp strokes remain legible at small window sizes. */
-    DrawLine(dc,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3);
-    DrawLine(dc,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3);
-    DrawLine(dc,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2);
-    /* Play triangle, offset into the A to make the mark distinctive. */
-    DrawLine(dc,62,40,75,48,ABM_THEME_COLOR_FFFFFF,2);
-    DrawLine(dc,75,48,62,56,ABM_THEME_COLOR_FFFFFF,2);
-    DrawLine(dc,62,56,62,40,ABM_THEME_COLOR_FFFFFF,2);
+        (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_UI_COLOR_ACCENT,0.9f);
+    /* Geometric A and play mark in the permanent ABM signature accent. */
+    DrawLine(dc,42,63,59,30,ABM_UI_COLOR_ACCENT_BRIGHT,3);
+    DrawLine(dc,59,30,76,63,ABM_UI_COLOR_ACCENT_BRIGHT,3);
+    DrawLine(dc,49,49,68,49,ABM_THEME_COLOR_F7FAFF,2);
+    DrawLine(dc,62,40,75,48,ABM_THEME_COLOR_F7FAFF,2);
+    DrawLine(dc,75,48,62,56,ABM_THEME_COLOR_F7FAFF,2);
+    DrawLine(dc,62,56,62,40,ABM_THEME_COLOR_F7FAFF,2);
 
     RECT brandMain={116,8,420,49};
     Txt(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandSuffix={188,20,390,48};
-    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_UI_COLOR_ACCENT_BRIGHT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_B0BAC8,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,354,54};
-    GradientRect(dc,brandRule,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
+    Fill(dc,brandRule,ABM_UI_COLOR_ACCENT);
     RECT brandSubtitle={116,60,510,83};
     Txt(dc,L"YOUR MUSIC  ·  YOUR MOVIES  ·  YOUR SPACE",brandSubtitle,ABM_THEME_COLOR_9DB1C9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
-    Panel(dc,menuBtn,g_menuOpen?ABM_UI_COLOR_SURFACE_INTERACTIVE:Blend(ABM_THEME_COLOR_111D2F,ABM_UI_COLOR_SURFACE_HOVER,menuHot?100:0),
-        (g_menuOpen||menuHot)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER,15);
+    Panel(dc,menuBtn,(g_menuOpen||menuHot)?ABM_THEME_COLOR_343D4C:ABM_THEME_COLOR_272E3A,
+        (g_menuOpen||menuHot)?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_343D4C,15);
     /* Keep the hamburger icon in its own compact column, clear of the label. */
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.left+29,menuBtn.top+13+i*7,ABM_THEME_COLOR_E2ECF9,2);
     RECT menuLabel={menuBtn.left+39,menuBtn.top+3,menuBtn.right-7,menuBtn.bottom-3};
     Txt(dc,L"MENU",menuLabel,ABM_THEME_COLOR_E0EBF9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT drawerBtn=R_DRAWER_BUTTON;
-    Panel(dc,drawerBtn,g_drawerOpen?ABM_THEME_COLOR_204E84:Blend(ABM_THEME_COLOR_111D2F,ABM_THEME_COLOR_243954,drawerHot?100:0),g_drawerOpen?ABM_THEME_COLOR_5CA5F2:(drawerHot?ABM_THEME_COLOR_5084BF:ABM_THEME_COLOR_2F4562),15);
+    Panel(dc,drawerBtn,(g_drawerOpen||drawerHot)?ABM_THEME_COLOR_343D4C:ABM_THEME_COLOR_272E3A,
+        (g_drawerOpen||drawerHot)?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_343D4C,15);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+15,drawerBtn.left+29,drawerBtn.top+15,ABM_THEME_COLOR_DCEBFC,2);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+22,drawerBtn.left+29,drawerBtn.top+22,ABM_THEME_COLOR_DCEBFC,2);
     DrawLine(dc,drawerBtn.left+13,drawerBtn.top+29,drawerBtn.left+29,drawerBtn.top+29,ABM_THEME_COLOR_DCEBFC,2);
     RECT drawerLabel={drawerBtn.left+36,drawerBtn.top+3,drawerBtn.right-8,drawerBtn.bottom-3};
     Txt(dc,L"MEDIA",drawerLabel,ABM_THEME_COLOR_E0EBF9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT status={client.right-540,26,client.right-300,64};
-    Panel(dc,status,ABM_THEME_COLOR_0C1827,ABM_THEME_COLOR_35748F,18);
+    Panel(dc,status,ABM_THEME_COLOR_272E3A,ABM_THEME_COLOR_343D4C,18);
     RECT led={status.left+13,status.top+14,status.left+21,status.top+22};RoundBox(dc,led,g_hasMedia?ABM_THEME_COLOR_3FCD91:ABM_THEME_COLOR_64758B,5);
     RECT statusText={status.left+29,status.top+2,status.right-8,status.bottom-2};
     Txt(dc,g_statusText[0]?g_statusText:(g_hasMedia?L"READY TO PLAY":L"LOCAL PLAYER"),statusText,C_TEXT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 
     /* Video surface is a separate LibVLC child window. Keep the surrounding frame elegant. */
     RECT frame=R_VIDEO;InflateRect(&frame,3,3);
-    int glow=(int)(14.0+5.0*(0.5+0.5*sin((double)g_visualPulse*0.045)));
-    COLORREF frameEdge=Blend(ABM_THEME_COLOR_1E3035,ABM_THEME_COLOR_377F75,glow);
-    Panel(dc,frame,ABM_THEME_COLOR_060A11,frameEdge,20);
+    COLORREF frameEdge=ABM_THEME_COLOR_343D4C;
+    Panel(dc,frame,ABM_THEME_COLOR_151820,frameEdge,20);
     GradientRect(dc,R_VIDEO,ABM_THEME_COLOR_070F1A,ABM_THEME_COLOR_04080F);
     BOOL currentVideoForRender=g_hasMedia&&g_current>=0&&g_current<g_playlistCount&&IsVideoPath(g_playlist[g_current]);
     BOOL showAudioVisualizer=g_visualizerActive&&!currentVideoForRender;
@@ -2114,9 +2110,11 @@ static void DrawUI(HDC dc,RECT client) {
         /* Keep the copy in a dedicated left column. The teal hero panel
            begins farther right so the text never crosses its rounded edge. */
         RECT ambient={R_VIDEO.left+areaW*36/100,R_VIDEO.top+areaH/6,R_VIDEO.right-areaW/8,R_VIDEO.bottom-areaH/7};
-        GradientRound(dc,ambient,ABM_THEME_COLOR_0A2327,ABM_THEME_COLOR_111B22,34);
+        GradientRound(dc,ambient,ABM_THEME_COLOR_1D222D,ABM_THEME_COLOR_151820,34);
+        ABM_D2D_StrokeRound(&g_ui,(float)ambient.left,(float)ambient.top,(float)ambient.right,
+            (float)ambient.bottom,34.0f,ABM_THEME_COLOR_343D4C,1.0f);
         RECT glowLine={ambient.left+26,ambient.top+1,ambient.right-26,ambient.top+3};
-        GradientRect(dc,glowLine,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
+        Fill(dc,glowLine,ABM_UI_COLOR_ACCENT);
         int leftX=R_VIDEO.left+areaW*7/100;
         int textW=areaW*27/100;
         int topY=cy-112;
@@ -2144,15 +2142,15 @@ static void DrawUI(HDC dc,RECT client) {
             for(int i=0;i<5;i++) {
                 int motion=g_homeCardMotion[i];if(motion<0)motion=0;if(motion>100)motion=100;
                 RECT card=cards[i];OffsetRect(&card,0,-(motion*3)/100);
-                COLORREF cardEdge=Blend((i==0)?ABM_UI_COLOR_ACCENT_SOFT:ABM_THEME_COLOR_334F65,ABM_UI_COLOR_ACCENT_BRIGHT,motion);
+                COLORREF cardEdge=(i==0||motion>0)?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_343D4C;
                 RECT shadow=card;OffsetRect(&shadow,0,5);RoundBox(dc,shadow,ABM_THEME_COLOR_03080E,13);
-                if(i==0)GradientRound(dc,card,Blend(ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT,motion),ABM_THEME_COLOR_66551F,13);
-                else GradientRound(dc,card,Blend(ABM_THEME_COLOR_142535,ABM_THEME_COLOR_1D3A4C,motion),ABM_THEME_COLOR_0D1927,13);
+                COLORREF cardFill=motion>0?ABM_THEME_COLOR_343D4C:ABM_THEME_COLOR_272E3A;
+                GradientRound(dc,card,cardFill,ABM_THEME_COLOR_1D222D,13);
                 ABM_D2D_StrokeRound(&g_ui,(float)card.left,(float)card.top,(float)card.right,(float)card.bottom,13.0f,cardEdge,0.85f+(float)motion*0.005f);
                 int cardH=card.bottom-card.top;
                 /* Premium desktop treatment: small unboxed line icons, not app-tile glyphs. */
                 int iconX=card.left+18, iconY=card.top+cardH/2;
-                COLORREF iconColor=Blend(ABM_THEME_COLOR_9EB5C9,ABM_THEME_COLOR_7EC7B5,motion);
+                COLORREF iconColor=(i==0||motion>0)?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_B0BAC8;
                 if(i==0) { /* open folder */
                     ABM_D2D_StrokeRound(&g_ui,(float)iconX,(float)(iconY-5),(float)(iconX+20),(float)(iconY+8),2.5f,iconColor,1.35f);
                     DrawLine(dc,iconX,iconY-2,iconX+8,iconY-2,iconColor,1);
@@ -2199,7 +2197,7 @@ static void DrawUI(HDC dc,RECT client) {
             /* Align the signature to the first card's icon axis, not the grid's centre. */
             int signatureLeft=R_HOME_OPEN.left+18;
             RECT foot={signatureLeft,R_HOME_LIBRARY.bottom+footGap,R_HOME_RECENT.right,R_HOME_LIBRARY.bottom+footGap+footHeight};
-            Txt(dc,L"LOCAL MEDIA   •   KEYLESS METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_77A9A9,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            Txt(dc,L"LOCAL MEDIA   •   KEYLESS METADATA   •   HOME THEATRE",foot,ABM_THEME_COLOR_91A0B5,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
         }
     }
     RECT fs=R_FULLSCREEN;
@@ -2250,25 +2248,25 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dock={dockLeft,client.bottom-144,dockLeft+720,client.bottom-42};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,8);
     RoundBox(dc,dockShadow,ABM_THEME_COLOR_03070D,32);
-    GradientRound(dc,dock,ABM_THEME_COLOR_151820,ABM_THEME_COLOR_1D222D,28);
-    /* Fine top-edge light gives the transport surface a clear visual boundary. */
-    RECT dockTop={dock.left+30,dock.top+1,dock.right-30,dock.top+3};
-    GradientRect(dc,dockTop,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_8A783B,1.0f);
+    GradientRound(dc,dock,ABM_THEME_COLOR_272E3A,ABM_THEME_COLOR_1D222D,28);
+    /* A single hairline in the signature accent anchors the transport deck. */
+    RECT dockTop={dock.left+30,dock.top+1,dock.right-30,dock.top+2};
+    Fill(dc,dockTop,ABM_UI_COLOR_ACCENT);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_343D4C,1.0f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_55491F,0.65f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_343D4C,0.55f);
     /* Dedicated Now Playing identity block makes the transport dock a real
        player surface rather than a floating row of generic buttons. */
     RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
-    GradientRound(dc,miniArt,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,14);
+    GradientRound(dc,miniArt,ABM_THEME_COLOR_343D4C,ABM_THEME_COLOR_1D222D,14);
     RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
-    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_UI_COLOR_ACCENT_BRIGHT,0.85f);
+    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_THEME_COLOR_4A5668,0.85f);
     if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
     else {
         int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
-        DrawLine(dc,mx-12,my+13,mx,my-14,ABM_THEME_COLOR_F4FAFF,2);
-        DrawLine(dc,mx,my-14,mx+13,my+13,ABM_THEME_COLOR_F4FAFF,2);
-        DrawLine(dc,mx-7,my+3,mx+7,my+3,ABM_THEME_COLOR_F4FAFF,2);
+        DrawLine(dc,mx-12,my+13,mx,my-14,ABM_UI_COLOR_ACCENT,2);
+        DrawLine(dc,mx,my-14,mx+13,my+13,ABM_UI_COLOR_ACCENT,2);
+        DrawLine(dc,mx-7,my+3,mx+7,my+3,ABM_THEME_COLOR_F7FAFF,2);
     }
     RECT nowLabel={miniArt.right+14,dock.top+12,dock.left+346,dock.top+31};
     Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,ABM_UI_COLOR_ACCENT_BRIGHT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -2278,7 +2276,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-9};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,ABM_THEME_COLOR_97AEC7,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
-    Fill(dc,transportDivider,ABM_THEME_COLOR_55491F);
+    Fill(dc,transportDivider,ABM_THEME_COLOR_343D4C);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
