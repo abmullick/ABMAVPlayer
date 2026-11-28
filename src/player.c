@@ -6960,13 +6960,13 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_aboutCanvasReady&&ABM_D2D_CanvasBegin(&g_aboutCanvas,dc,&rc)){
             ABM_D2D_CanvasFill(&g_aboutCanvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
             ABM_SkinRenderCanvas(&g_aboutCanvas,&rc);
-            ABM_D2D_CanvasFill(&g_aboutCanvas,0,0,(float)rc.right,7.0f,ABM_UI_COLOR_ACCENT);
+            ABM_D2D_CanvasFill(&g_aboutCanvas,0,0,(float)rc.right,2.0f,ABM_UI_COLOR_BORDER_STRONG);
             ABM_D2D_CanvasFill(&g_aboutCanvas,28,405,(float)rc.right-28,407,ABM_UI_COLOR_BORDER);
             ABM_D2D_CanvasFillRound(&g_aboutCanvas,34,55,284,305,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE_RAISED);
             ABM_D2D_CanvasEnd(&g_aboutCanvas);
         }else{
             HBRUSH bg=CreateSolidBrush(ABM_UI_COLOR_BACKGROUND);FillRect(dc,&rc,bg);DeleteObject(bg);
-            RECT band={0,0,rc.right,7};HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(dc,&band,accent);DeleteObject(accent);
+            RECT band={0,0,rc.right,7};HBRUSH accent=CreateSolidBrush(ABM_UI_COLOR_BORDER_STRONG);FillRect(dc,&band,accent);DeleteObject(accent);
         }
         if(g_aboutPortrait) {
             HDC mem=CreateCompatibleDC(dc);HBITMAP old=(HBITMAP)SelectObject(mem,g_aboutPortrait);
@@ -6979,15 +6979,15 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if(g_aboutCanvasReady&&ABM_D2D_CanvasBegin(&g_aboutCanvas,dc,&rc)){
             RECT r={320,58,rc.right-34,108};
             ABM_D2D_CanvasText(&g_aboutCanvas,L"ABM AV Player",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            r.top=116;r.bottom=145;ABM_D2D_CanvasText(&g_aboutCanvas,L"THE CREATOR",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=116;r.bottom=145;ABM_D2D_CanvasText(&g_aboutCanvas,L"THE CREATOR",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=151;r.bottom=192;ABM_D2D_CanvasText(&g_aboutCanvas,L"Abhisek Basu Mullick",r,ABM_THEME_COLOR_FFFFFF,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=198;r.bottom=232;ABM_D2D_CanvasText(&g_aboutCanvas,L"Founder & Developer",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            r.top=245;r.bottom=274;ABM_D2D_CanvasText(&g_aboutCanvas,L"CONTACT",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=245;r.bottom=274;ABM_D2D_CanvasText(&g_aboutCanvas,L"CONTACT",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=278;r.bottom=310;ABM_D2D_CanvasText(&g_aboutCanvas,L"abmullick@gmail.com",r,ABM_THEME_COLOR_FAFCFF,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=320;r.bottom=399;ABM_D2D_CanvasText(&g_aboutCanvas,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;ABM_D2D_CanvasText(&g_aboutCanvas,L"IN TRIBUTE TO DENNIS RITCHIE",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;ABM_D2D_CanvasText(&g_aboutCanvas,L"IN TRIBUTE TO DENNIS RITCHIE",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=461;r.bottom=535;ABM_D2D_CanvasText(&g_aboutCanvas,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",r,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            r.top=550;r.bottom=580;ABM_D2D_CanvasText(&g_aboutCanvas,L"BUILT WITH",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            r.top=550;r.bottom=580;ABM_D2D_CanvasText(&g_aboutCanvas,L"BUILT WITH",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=585;r.bottom=616;ABM_D2D_CanvasText(&g_aboutCanvas,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  WebView2",r,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             r.top=628;r.bottom=656;ABM_D2D_CanvasText(&g_aboutCanvas,L"Version " APP_VERSION L"  |  © 2026 Abhisek Basu Mullick",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
              r.top=662;r.bottom=700;ABM_D2D_CanvasText(&g_aboutCanvas,L"Metadata: Wikidata (CC0 data) and TVmaze (CC BY-SA 4.0 data; tvmaze.com). Artwork: Wikimedia Commons / TVmaze; individual image rights and licences apply.",r,ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_TOP|DT_WORDBREAK);
@@ -6996,19 +6996,19 @@ static LRESULT CALLBACK AboutWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             SetBkMode(dc,TRANSPARENT);
             RECT r={320,58,rc.right-34,108};HFONT oldFont=(HFONT)SelectObject(dc,g_headingFont);
             SetTextColor(dc,ABM_UI_COLOR_TEXT);DrawTextW(dc,L"ABM AV Player",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             r.top=116;r.bottom=145;DrawTextW(dc,L"THE CREATOR",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             SelectObject(dc,g_headingFont);SetTextColor(dc,ABM_THEME_COLOR_FFFFFF);
             r.top=151;r.bottom=192;DrawTextW(dc,L"Abhisek Basu Mullick",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             SelectObject(dc,g_font);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             r.top=198;r.bottom=232;DrawTextW(dc,L"Founder & Developer",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             r.top=245;r.bottom=274;DrawTextW(dc,L"CONTACT",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             SelectObject(dc,g_font);SetTextColor(dc,ABM_THEME_COLOR_FAFCFF);
             r.top=278;r.bottom=310;DrawTextW(dc,L"abmullick@gmail.com",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             r.top=320;r.bottom=399;SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             DrawTextW(dc,L"Play local media, access streaming services through the Streaming Centre, and watch torrent video while it downloads. Cast playback to your TV.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
-            r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_ACCENT_BRIGHT);
+            r.left=34;r.right=rc.right-34;r.top=424;r.bottom=454;SelectObject(dc,g_smallFont);SetTextColor(dc,ABM_UI_COLOR_TEXT_SECONDARY);
             DrawTextW(dc,L"IN TRIBUTE TO DENNIS RITCHIE",-1,&r,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             SelectObject(dc,g_font);SetTextColor(dc,ABM_UI_COLOR_TEXT);
             r.top=461;r.bottom=535;DrawTextW(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",-1,&r,DT_LEFT|DT_TOP|DT_WORDBREAK);
@@ -7370,10 +7370,10 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_SkinRenderCanvas(&g_helpCanvas,&rc);
             /* The window now uses the same native dark DWM caption as the
                Main Player. Keep only the compact branded context strip here. */
-            ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)rc.right,62,ABM_UI_COLOR_SURFACE_BLUE);
-            RECT kicker={34,7,rc.right-28,29};ABM_D2D_CanvasText(&g_helpCanvas,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",kicker,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)rc.right,62,ABM_UI_COLOR_SURFACE_NAVIGATION);
+            RECT kicker={34,7,rc.right-28,29};ABM_D2D_CanvasText(&g_helpCanvas,L"ABM AV PLAYER   /   KNOWLEDGE & SUPPORT",kicker,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT intro={34,31,rc.right-28,57};ABM_D2D_CanvasText(&g_helpCanvas,L"Find answers, learn features and understand the practical impact of settings.",intro,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-            ABM_D2D_CanvasFill(&g_helpCanvas,0,60,(float)rc.right,63,ABM_UI_COLOR_ACCENT);
+            ABM_D2D_CanvasFill(&g_helpCanvas,0,61,(float)rc.right,62,ABM_UI_COLOR_BORDER_STRONG);
             /* Draw panel chrome from actual child bounds so cards stay aligned
                in both side-by-side and narrow stacked layouts. */
             HWND panels[3]={g_helpSearch,g_helpTopics,g_helpEdit};
@@ -7402,7 +7402,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
             RECT bounds={0,0,di->rcItem.right-di->rcItem.left,di->rcItem.bottom-di->rcItem.top};
             if(ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
-                COLORREF fill=pressed?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT;
+                COLORREF fill=pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT_SOFT;
                 COLORREF edge=focused?ABM_UI_COLOR_FOCUS:ABM_UI_COLOR_ACCENT_BRIGHT;
                 ABM_D2D_CanvasFill(&g_helpCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_THEME_COLOR_0C1D2D);
                 RECT face=bounds;InflateRect(&face,-1,-1);
@@ -7422,7 +7422,7 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             RECT bounds={0,0,di->rcItem.right-di->rcItem.left,di->rcItem.bottom-di->rcItem.top};
             if(ABM_D2D_CanvasBegin(&g_helpCanvas,di->hDC,&di->rcItem)){
                 RECT row=bounds;InflateRect(&row,-6,-2);
-                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:(hot?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE));
+                ABM_D2D_CanvasFillRound(&g_helpCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_UI_COLOR_ACCENT_SOFT:(hot?ABM_UI_COLOR_SURFACE_RAISED:ABM_UI_COLOR_SURFACE));
                 RECT textRect=row;textRect.left+=12;textRect.right-=8;
                 ABM_D2D_CanvasText(&g_helpCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 if(di->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_helpCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
@@ -7431,12 +7431,12 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         }
         if(di->CtlID==HELP_ID_FIND){
             RECT r=di->rcItem;BOOL pressed=(di->itemState&ODS_SELECTED)!=0,focused=(di->itemState&ODS_FOCUS)!=0;
-            COLORREF fill=pressed?ABM_THEME_COLOR_187E74:ABM_UI_COLOR_ACCENT;
+            COLORREF fill=pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT_SOFT;
             HBRUSH b=CreateSolidBrush(fill);HPEN p=CreatePen(PS_SOLID,focused?2:1,focused?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
             HGDIOBJ ob=SelectObject(di->hDC,b),op=SelectObject(di->hDC,p);
             RoundRect(di->hDC,r.left+1,r.top+1,r.right-1,r.bottom-1,12,12);
             SelectObject(di->hDC,op);SelectObject(di->hDC,ob);DeleteObject(p);DeleteObject(b);
-            SetBkMode(di->hDC,TRANSPARENT);SetTextColor(di->hDC,ABM_THEME_COLOR_F7FAFF);
+            SetBkMode(di->hDC,TRANSPARENT);SetTextColor(di->hDC,ABM_UI_COLOR_ACCENT_BRIGHT);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpMetaFont);
             RECT label=r;InflateRect(&label,-8,-2);wchar_t caption[64]=L"SEARCH  →";
             if(g_helpFindButton)GetWindowTextW(g_helpFindButton,caption,(int)_countof(caption));
@@ -7448,11 +7448,11 @@ static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
             if(di->itemID!=(UINT)-1)SendMessageW(di->hwndItem,LB_GETTEXT,di->itemID,(LPARAM)label);
             BOOL selected=(di->itemState&ODS_SELECTED)!=0;
             RECT row=di->rcItem;InflateRect(&row,-6,-2);
-            HBRUSH b=CreateSolidBrush(selected?ABM_THEME_COLOR_163B48:ABM_UI_COLOR_SURFACE);
+            HBRUSH b=CreateSolidBrush(selected?ABM_UI_COLOR_ACCENT_SOFT:ABM_UI_COLOR_SURFACE);
             FillRect(di->hDC,&row,b);DeleteObject(b);
-            if(selected){RECT mark={row.left,row.top+7,row.left+3,row.bottom-7};b=CreateSolidBrush(ABM_THEME_COLOR_52CDE0);FillRect(di->hDC,&mark,b);DeleteObject(b);}
+            if(selected){RECT mark={row.left,row.top+7,row.left+3,row.bottom-7};b=CreateSolidBrush(ABM_UI_COLOR_ACCENT);FillRect(di->hDC,&mark,b);DeleteObject(b);}
             SetBkMode(di->hDC,TRANSPARENT);
-            SetTextColor(di->hDC,selected?ABM_THEME_COLOR_F5F8FF:ABM_UI_COLOR_TEXT_SECONDARY);
+            SetTextColor(di->hDC,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY);
             HFONT f=(HFONT)SelectObject(di->hDC,g_helpBodyFont);
             RECT t=row;t.left+=18;t.right-=10;
             DrawTextW(di->hDC,label,-1,&t,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
