@@ -1379,28 +1379,27 @@ void PaintChrome(HWND hwnd){
     RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,ABM_UI_COLOR_ACCENT_BRIGHT);
     RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
 
-    /* Use the same signature logo and split wordmark as the main player.
-       ABM is the large display face; AV PLAYER is deliberately smaller and
-       teal, with the same baseline/offset and palette as the main masthead. */
-    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,ABM_UI_COLOR_SURFACE_CARD,22);
-    HPEN haloPen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_ACCENT_BRIGHT);
+    /* Canonical Main Player signature: same dark tile, champagne A,
+       white crossbar/play glyph and muted secondary wordmark. */
+    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,ABM_THEME_COLOR_272E3A,22);
+    HPEN haloPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_343D4C);
     HGDIOBJ oldLogoPen=SelectObject(dc,haloPen);
     HGDIOBJ oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoHalo.left,logoHalo.top,logoHalo.right,logoHalo.bottom,22,22);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(haloPen);
-    RECT logo={28,14,94,80};GradientRounded(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,17);
+    RECT logo={28,14,94,80};Rounded(dc,logo,ABM_THEME_COLOR_1D222D,17);
     RECT logoInset={33,19,89,75};
-    HPEN insetPen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_TEXT_SECONDARY);oldLogoPen=SelectObject(dc,insetPen);
+    HPEN insetPen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_ACCENT);oldLogoPen=SelectObject(dc,insetPen);
     oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoInset.left,logoInset.top,logoInset.right,logoInset.bottom,14,14);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(insetPen);
-    HPEN markPen=CreatePen(PS_SOLID,3,ABM_UI_COLOR_TEXT);oldLogoPen=SelectObject(dc,markPen);
+    HPEN markPen=CreatePen(PS_SOLID,3,ABM_UI_COLOR_ACCENT_BRIGHT);oldLogoPen=SelectObject(dc,markPen);
     MoveToEx(dc,42,63,nullptr);LineTo(dc,59,30);LineTo(dc,76,63);
     SelectObject(dc,oldLogoPen);DeleteObject(markPen);
-    HPEN crossPen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT_SECONDARY);oldLogoPen=SelectObject(dc,crossPen);
+    HPEN crossPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_F7FAFF);oldLogoPen=SelectObject(dc,crossPen);
     MoveToEx(dc,49,49,nullptr);LineTo(dc,68,49);
     SelectObject(dc,oldLogoPen);DeleteObject(crossPen);
-    HPEN playPen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT);oldLogoPen=SelectObject(dc,playPen);
+    HPEN playPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_F7FAFF);oldLogoPen=SelectObject(dc,playPen);
     MoveToEx(dc,62,40,nullptr);LineTo(dc,75,48);LineTo(dc,62,56);LineTo(dc,62,40);
     SelectObject(dc,oldLogoPen);DeleteObject(playPen);
 
@@ -1414,9 +1413,9 @@ void PaintChrome(HWND hwnd){
        different font metrics already provide the intended size hierarchy;
        a second top offset incorrectly shifts the suffix down. */
     RECT brandSuffix={188,8,306,49};
-    BrandText(dc,L"AV  PLAYER",brandSuffix,ABM_UI_COLOR_ACCENT,
+    BrandText(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_9EB5C9,
         ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    RECT brandRule={116,52,280,54};FillRectColor(dc,brandRule,ABM_UI_COLOR_ACCENT);
+    RECT brandRule={116,52,354,54};FillRectColor(dc,brandRule,ABM_UI_COLOR_ACCENT);
     RECT sub={116,60,306,83};
     Text(dc,L"STREAMING CENTRE",sub,ABM_UI_COLOR_TEXT_MUTED,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
