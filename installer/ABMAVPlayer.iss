@@ -21,7 +21,9 @@ PrivilegesRequired=admin
 OutputDir=..\dist
 OutputBaseFilename=ABM-AV-Player-Setup
 UninstallDisplayIcon={app}\{#MyAppExeName}
-SetupIconFile=..\assets\abm_av_player.ico
+; The repository ICO is not accepted by Inno Setup 7 on all builds.
+; Keep the installer compiler on its built-in wizard icon; installed shortcuts
+; and the uninstaller continue to use the application executable icon.
 WizardStyle=modern
 Compression=lzma2/ultra64
 SolidCompression=yes
