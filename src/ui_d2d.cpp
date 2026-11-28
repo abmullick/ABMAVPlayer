@@ -102,19 +102,36 @@ static BOOL CreateCanonicalTextFormats(
     IDWriteTextFormat **icon) {
     if (!factory || !body || !smallFormat || !heading || !brandMain || !brandSuffix || !icon)
         return FALSE;
-    return
-        MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY,
-                   DWRITE_FONT_WEIGHT_NORMAL, body) &&
-        MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL,
-                   DWRITE_FONT_WEIGHT_SEMI_BOLD, smallFormat) &&
-        MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING,
-                   DWRITE_FONT_WEIGHT_SEMI_BOLD, heading) &&
-        MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_DISPLAY,
-                   DWRITE_FONT_WEIGHT_BOLD, brandMain) &&
-        MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_SECTION,
-                   DWRITE_FONT_WEIGHT_MEDIUM, brandSuffix) &&
-        MakeFormat(factory, ABM_UI_FONT_FAMILY_ICON, ABM_UI_FONT_SIZE_ICON,
-                   DWRITE_FONT_WEIGHT_NORMAL, icon);
+    if (!MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_BODY,
+                    DWRITE_FONT_WEIGHT_NORMAL, body) ||
+        !MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_D2D_SMALL,
+                    DWRITE_FONT_WEIGHT_MEDIUM, smallFormat) ||
+        !MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_D2D_HEADING,
+                    DWRITE_FONT_WEIGHT_SEMI_BOLD, heading) ||
+        !MakeFormat(factory, ABM_UI_FONT_FAMILY_DISPLAY, ABM_UI_FONT_SIZE_DISPLAY,
+                    DWRITE_FONT_WEIGHT_BOLD, brandMain) ||
+        !MakeFormat(factory, ABM_UI_FONT_FAMILY_TEXT, ABM_UI_FONT_SIZE_SECTION,
+                    DWRITE_FONT_WEIGHT_MEDIUM, brandSuffix) ||
+        !MakeFormat(factory, ABM_UI_FONT_FAMILY_ICON, ABM_UI_FONT_SIZE_ICON,
+                    DWRITE_FONT_WEIGHT_NORMAL, icon))
+        return FALSE;
+
+    /* Keep multi-line copy comfortably open while metadata remains compact.
+       Uniform spacing is applied by DirectWrite, not approximated by layout. */
+    if (FAILED((*body)->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM,
+            ABM_UI_FONT_SIZE_D2D_BODY * ABM_UI_FONT_LINE_BODY,
+            ABM_UI_FONT_SIZE_D2D_BODY * 0.96f)) ||
+        FAILED((*smallFormat)->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM,
+            ABM_UI_FONT_SIZE_D2D_SMALL * ABM_UI_FONT_LINE_SMALL,
+            ABM_UI_FONT_SIZE_D2D_SMALL * 0.96f)) ||
+        FAILED((*heading)->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM,
+            ABM_UI_FONT_SIZE_D2D_HEADING * ABM_UI_FONT_LINE_HEADING,
+            ABM_UI_FONT_SIZE_D2D_HEADING * 0.96f)) ||
+        FAILED((*brandMain)->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM,
+            ABM_UI_FONT_SIZE_DISPLAY * ABM_UI_FONT_LINE_DISPLAY,
+            ABM_UI_FONT_SIZE_DISPLAY * 0.96f)))
+        return FALSE;
+    return TRUE;
 }
 
 
