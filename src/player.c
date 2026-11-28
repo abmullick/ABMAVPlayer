@@ -2757,7 +2757,7 @@ static void DrawUI(HDC dc,RECT client) {
             RECT groupBox=R_MENU_GROUPS[group];
             if(groupBox.top>=menu.bottom||groupBox.bottom<=groupBox.top)continue;
             if(groupBox.bottom>menu.bottom)groupBox.bottom=menu.bottom;
-            RoundBox(dc,groupBox,ABM_UI_COLOR_SURFACE_CARD,ABM_UI_RADIUS_CARD);
+            RoundBox(dc,groupBox,ABM_THEME_COLOR_0C1420,ABM_UI_RADIUS_CARD);
             ABM_D2D_StrokeRound(&g_ui,(float)groupBox.left,(float)groupBox.top,(float)groupBox.right,(float)groupBox.bottom,
                 (float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,0.8f);
             RECT section=R_MENU_SECTION_LABELS[group];
@@ -2811,14 +2811,14 @@ static void DrawUI(HDC dc,RECT client) {
             }else if(i!=0){
                 DrawLine(dc,item.left+46,item.bottom-1,item.right-8,item.bottom-1,ABM_THEME_COLOR_1C2F3D,1);
             }
-            RECT glyph={item.left+(featured?14:9),item.top+(featured?8:4),
-                        item.left+(featured?56:38),item.bottom-(featured?8:4)};
+            RECT glyph={item.left+(featured?14:9),item.top+(featured?8:1),
+                        item.left+(featured?56:38),item.bottom-(featured?8:1)};
             COLORREF glyphFill=featured?Blend(featureFills[featureIndex],featureAccents[featureIndex],24):ABM_UI_COLOR_SURFACE_INTERACTIVE;
             if(hot)glyphFill=ABM_UI_COLOR_ACCENT_SOFT;
             RoundBox(dc,glyph,glyphFill,featured?ABM_UI_RADIUS_CONTROL:ABM_UI_RADIUS_CONTROL);
             Txt(dc,icons[i],glyph,featured&&!hot?featureAccents[featureIndex]:ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
-                        item.right-112,item.bottom-(featured?6:2)};
+            RECT label={item.left+(featured?68:50),item.top+(featured?6:0),
+                        item.right-112,item.bottom-(featured?6:0)};
             if(featured){
                 RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+3;
                 RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
@@ -2828,9 +2828,9 @@ static void DrawUI(HDC dc,RECT client) {
                 Txt(dc,featureSubtitle,subLabel,ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }else{
                 COLORREF textColor=hot?ABM_THEME_COLOR_FFFFFF:ABM_THEME_COLOR_E2ECF6;
-                Txt(dc,labels[i],label,textColor,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Txt(dc,labels[i],label,textColor,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
-            RECT shortcut={item.right-104,item.top+4,item.right-8,item.bottom-4};
+            RECT shortcut={item.right-104,item.top+1,item.right-8,item.bottom-1};
             RoundBox(dc,shortcut,hot?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_THEME_COLOR_0C1623,7);
             ABM_D2D_StrokeRound(&g_ui,(float)shortcut.left,(float)shortcut.top,(float)shortcut.right,
                 (float)shortcut.bottom,7.0f,hot?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_223343,0.7f);
