@@ -1473,9 +1473,9 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     if(active) {
         int pulse=(int)(2.0+2.0*(0.5+0.5*sin((double)g_visualPulse*0.07)));
         RECT halo=r; InflateRect(&halo,4,4);
-        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_0C3039,ABM_THEME_COLOR_184B52,pulse*2),radius+5);
-        GradientRound(NULL,r,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_1C7D77,radius);
-        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_THEME_COLOR_91E5D5,1.25f);
+        RoundBox(NULL,halo,Blend(ABM_THEME_COLOR_3D321B,ABM_THEME_COLOR_66551F,pulse*2),radius+5);
+        GradientRound(NULL,r,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,radius);
+        ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,ABM_UI_COLOR_ACCENT_BRIGHT,1.25f);
         glyph=ABM_THEME_COLOR_FFFFFF;
     } else {
         GradientRound(NULL,r,hot?ABM_THEME_COLOR_253D45:ABM_THEME_COLOR_1B2735,
@@ -1485,7 +1485,7 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
             GradientRect(NULL,sheen,ABM_THEME_COLOR_3E9799,ABM_THEME_COLOR_5DB097);
         }
         ABM_D2D_StrokeRound(&g_ui,(float)r.left,(float)r.top,(float)r.right,(float)r.bottom,(float)radius,
-            hot?ABM_THEME_COLOR_69BEB1:ABM_THEME_COLOR_394E63,hot?1.15f:0.8f);
+            hot?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG,hot?1.15f:0.8f);
         glyph=hot?ABM_UI_COLOR_TEXT:ABM_THEME_COLOR_BED5E3;
     }
 
