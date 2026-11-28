@@ -673,17 +673,14 @@ static void Draw(HWND w) {
     ABM_D2D_GradientRound(&g_canvas,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
     ABM_D2D_Text(&g_canvas,L"HOME THEATRE  ·  DISCOVER MOVIES & SHOWS",MakeRect(116,60,510,83),ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Round(&g_canvas,16,150,344,(float)c.bottom-88,14,PANEL);
-    {RECT skinPanel={16,150,344,c.bottom-88};ABM_SkinRenderD2D(&g_canvas,&skinPanel);}
     ABM_D2D_StrokeRound(&g_canvas,16,150,344,(float)c.bottom-88,14,ABM_UI_COLOR_BORDER,0.8f);
     ABM_D2D_Round(&g_canvas,22,102,(float)c.right-164,140,9,PANEL2);
     ABM_D2D_StrokeRound(&g_canvas,22,102,(float)c.right-164,140,9,ABM_UI_COLOR_BORDER_STRONG,0.9f);
     ABM_D2D_Round(&g_canvas,26,186,334,(float)c.bottom-94,9,PANEL2);
-    {RECT skinPanel={26,186,334,c.bottom-94};ABM_SkinRenderD2D(&g_canvas,&skinPanel);}
     ABM_D2D_StrokeRound(&g_canvas,26,186,334,(float)c.bottom-94,9,ABM_UI_COLOR_BORDER,0.8f);
     ABM_D2D_Round(&g_canvas,380,(float)c.bottom-136,742,(float)c.bottom-96,8,PANEL2);
     ABM_D2D_StrokeRound(&g_canvas,380,(float)c.bottom-136,742,(float)c.bottom-96,8,ABM_UI_COLOR_BORDER_STRONG,0.8f);
     ABM_D2D_Round(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-40,14,PANEL);
-    {RECT skinPanel={356,130,c.right-16,c.bottom-40};ABM_SkinRenderD2D(&g_canvas,&skinPanel);}
     ABM_D2D_StrokeRound(&g_canvas,356,130,(float)c.right-16,(float)c.bottom-40,14,ABM_UI_COLOR_BORDER,0.8f);
     if(g_selected>=0&&g_selected<g_itemCount) {
         MovieItem &m=g_items[g_selected];
