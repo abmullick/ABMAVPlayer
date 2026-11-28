@@ -1467,7 +1467,6 @@ static void DrawDefaultMediaArtwork(HDC dc,RECT r,BOOL video,int variant) {
 }
 static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
     (void)dc;
-    int cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
     int diameter=(r.right-r.left<r.bottom-r.top)?r.right-r.left:r.bottom-r.top;
     int radius=diameter/2;
     COLORREF glyph=ABM_THEME_COLOR_E0E7F0;
@@ -1489,17 +1488,22 @@ static void DrawIconButton(HDC dc,RECT r,int kind,BOOL hot,BOOL active) {
             hot?ABM_THEME_COLOR_69BEB1:ABM_THEME_COLOR_394E63,hot?1.15f:0.8f);
         glyph=hot?ABM_UI_COLOR_TEXT:ABM_THEME_COLOR_BED5E3;
     }
-    if(kind==1) {
-        DrawLine(NULL,cx-6,cy-11,cx+10,cy,glyph,2);DrawLine(NULL,cx+10,cy,cx-6,cy+11,glyph,2);DrawLine(NULL,cx-6,cy+11,cx-6,cy-11,glyph,2);
-    } else if(kind==2) {
-        DrawLine(NULL,cx-5,cy-9,cx-5,cy+9,glyph,2);DrawLine(NULL,cx+5,cy-9,cx+5,cy+9,glyph,2);
-    } else if(kind==3) {
-        RECT stop={cx-6,cy-6,cx+6,cy+6};RoundBox(NULL,stop,glyph,2);
-    } else if(kind==4) {
-        DrawLine(NULL,cx-8,cy-8,cx+4,cy,glyph,2);DrawLine(NULL,cx+4,cy,cx-8,cy+8,glyph,2);DrawLine(NULL,cx+7,cy-9,cx+7,cy+9,glyph,2);
-    } else if(kind==5) {
-        DrawLine(NULL,cx+8,cy-8,cx-4,cy,glyph,2);DrawLine(NULL,cx-4,cy,cx+8,cy+8,glyph,2);DrawLine(NULL,cx-7,cy-9,cx-7,cy+9,glyph,2);
+
+    /* Transport controls use the same Segoe MDL2 Assets glyph family as
+       Streaming Centre. This replaces individually hand-drawn icon variants. */
+    wchar_t symbol=0;
+    switch(kind) {
+    case 1: symbol=0xE768; break; /* Play */
+    case 2: symbol=0xE769; break; /* Pause */
+    case 3: symbol=0xE71A; break; /* Stop */
+    case 4: symbol=0xE892; break; /* Previous */
+    case 5: symbol=0xE893; break; /* Next */
+    default: return;
     }
+    wchar_t iconText[2]={symbol,0};
+    RECT iconRect=r; InflateRect(&iconRect,-2,-2);
+    ABM_D2D_Text(&g_ui,iconText,iconRect,glyph,ABM_D2D_TEXT_ICON,
+        DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
 }
 static void EnsureProjectMRenderer(HWND hwnd) {
     if(g_projectmTried)return;
