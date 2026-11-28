@@ -1184,6 +1184,11 @@ COLORREF ABMThemeColor(ABMThemeColorId id) {
        different navy hex values for equivalent surfaces. Resolve those old
        tokens here so every window converges on the same global hierarchy. */
     switch(id) {
+    /* Legacy ABM brand accents now resolve to the permanent signature gold.
+       Preset-specific secondary hues remain available through
+       ABM_UI_COLOR_THEME_ACCENT / ABMThemePresetAccent. */
+    case ABM_THEME_ID_36B1A8: case ABM_THEME_ID_52CDBE:
+        surfaceId=ABM_THEME_ID_E9B949; break;
     case ABM_THEME_ID_060910: case ABM_THEME_ID_090F19:
     case ABM_THEME_ID_0A0F19: case ABM_THEME_ID_0C1419:
     case ABM_THEME_ID_0D1420: case ABM_THEME_ID_0F1723:
