@@ -892,6 +892,15 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             StreamingHelpLayout(hwnd);StreamingHelpShowTopic(0);
         }
         return 0;
+    case WM_THEMECHANGED:
+        if(g_infoSurfaceBrush)DeleteObject(g_infoSurfaceBrush);
+        if(g_infoInputBrush)DeleteObject(g_infoInputBrush);
+        if(g_infoArticleBrush)DeleteObject(g_infoArticleBrush);
+        g_infoSurfaceBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_NAVIGATION);
+        g_infoInputBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
+        g_infoArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
+        InvalidateRect(hwnd,nullptr,TRUE);
+        return 0;
     case WM_SIZE:
         if(!g_infoAbout)StreamingHelpLayout(hwnd);
         return 0;
