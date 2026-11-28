@@ -288,7 +288,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_THEMECHANGED:
         if(g_licenseEditBrush)DeleteObject(g_licenseEditBrush);
         g_licenseEditBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
-        RedrawWindow(w,nullptr,nullptr,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
+        RedrawWindow(w,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
     case WM_DESTROY:
         ABM_SkinUnregisterWindow(w);
