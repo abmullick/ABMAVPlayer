@@ -660,7 +660,7 @@ static void Draw(HWND w) {
     ABM_D2D_Fill(&g_canvas,0,92,(float)c.right,95,ABM_UI_COLOR_BACKGROUND);
     ABM_D2D_Round(&g_canvas,20,7,102,87,22,ABM_UI_COLOR_SURFACE_CARD);
     ABM_D2D_StrokeRound(&g_canvas,20,7,102,87,22,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
-    ABM_D2D_GradientRound(&g_canvas,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
+    ABM_D2D_GradientRound(&g_canvas,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
     ABM_D2D_StrokeRound(&g_canvas,33,19,89,75,14,ABM_UI_COLOR_TEXT_SECONDARY,0.8f);
     ABM_D2D_Line(&g_canvas,42,63,59,30,ABM_UI_COLOR_TEXT,3.0f);
     ABM_D2D_Line(&g_canvas,59,30,76,63,ABM_UI_COLOR_TEXT,3.0f);
