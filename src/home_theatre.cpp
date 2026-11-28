@@ -522,7 +522,7 @@ static void DrawAbmButton(const DRAWITEMSTRUCT *d) {
     COLORREF edge=focused?ABM_UI_COLOR_FOCUS:((primary||secondary)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG);
     wchar_t caption[128]={};GetWindowTextW(d->hwndItem,caption,_countof(caption));
     if(g_controlCanvasReady&&ABM_D2D_CanvasBegin(&g_controlCanvas,d->hDC,&r)){
-        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,ABM_THEME_COLOR_1D222D);
+        ABM_D2D_CanvasFill(&g_controlCanvas,0,0,(float)width,(float)height,ABM_UI_COLOR_SURFACE_NAVIGATION);
         ABM_D2D_CanvasFillRound(&g_controlCanvas,1,1,(float)width-1,(float)height-1,(float)ABM_UI_RADIUS_BUTTON,fill);
         ABM_D2D_CanvasStrokeRound(&g_controlCanvas,0.5f,0.5f,(float)width-0.5f,(float)height-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
         RECT label={5,1,width-5,height-1};
@@ -661,14 +661,14 @@ static void Draw(HWND w) {
     ABM_D2D_Fill(&g_canvas,0,92,(float)c.right,95,ABM_UI_COLOR_BACKGROUND);
     ABM_D2D_Round(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_272E3A);
     ABM_D2D_StrokeRound(&g_canvas,20,7,102,87,22,ABM_THEME_COLOR_343D4C,1.0f);
-    ABM_D2D_Round(&g_canvas,28,14,94,80,17,ABM_UI_COLOR_SURFACE_NAVIGATION);
+    ABM_D2D_Round(&g_canvas,28,14,94,80,17,ABM_THEME_COLOR_1D222D);
     ABM_D2D_StrokeRound(&g_canvas,33,19,89,75,14,ABM_UI_COLOR_ACCENT,0.9f);
     ABM_D2D_Line(&g_canvas,42,63,59,30,ABM_UI_COLOR_ACCENT_BRIGHT,3.0f);
-    ABM_D2D_Line(&g_canvas,59,30,76,63,ABM_UI_COLOR_TEXT,3.0f);
+    ABM_D2D_Line(&g_canvas,59,30,76,63,ABM_UI_COLOR_ACCENT_BRIGHT,3.0f);
     ABM_D2D_Line(&g_canvas,49,49,68,49,ABM_THEME_COLOR_F7FAFF,2.0f);
-    ABM_D2D_Line(&g_canvas,62,40,75,48,ABM_UI_COLOR_TEXT,2.0f);
-    ABM_D2D_Line(&g_canvas,75,48,62,56,ABM_UI_COLOR_TEXT,2.0f);
-    ABM_D2D_Line(&g_canvas,62,56,62,40,ABM_UI_COLOR_TEXT,2.0f);
+    ABM_D2D_Line(&g_canvas,62,40,75,48,ABM_THEME_COLOR_F7FAFF,2.0f);
+    ABM_D2D_Line(&g_canvas,75,48,62,56,ABM_THEME_COLOR_F7FAFF,2.0f);
+    ABM_D2D_Line(&g_canvas,62,56,62,40,ABM_THEME_COLOR_F7FAFF,2.0f);
     ABM_D2D_Text(&g_canvas,L"ABM",MakeRect(116,8,420,49),ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_Text(&g_canvas,L"AV  PLAYER",MakeRect(188,20,390,48),ABM_THEME_COLOR_9EB5C9,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     ABM_D2D_GradientRound(&g_canvas,116,52,354,54,0,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
