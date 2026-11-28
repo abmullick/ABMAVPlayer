@@ -1938,7 +1938,7 @@ static void DrawUI(HDC dc,RECT client) {
     GradientRound(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,17);
     RECT logoInset={33,19,89,75};
     ABM_D2D_StrokeRound(&g_ui,(float)logoInset.left,(float)logoInset.top,
-        (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_THEME_COLOR_BEE5FF,0.8f);
+        (float)logoInset.right,(float)logoInset.bottom,14.0f,ABM_UI_COLOR_ACCENT_BRIGHT,0.8f);
     /* Geometric A: crisp strokes remain legible at small window sizes. */
     DrawLine(dc,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3);
     DrawLine(dc,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3);
@@ -6192,12 +6192,12 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
 
     /* Cinematic branded masthead */
     ABM_D2D_GradientRound(&g_torrentUi,0,0,w,headerH+18,0,ABM_THEME_COLOR_0D1B2D,ABM_THEME_COLOR_050A13);
-    ABM_D2D_Fill(&g_torrentUi,0,0,w,2,ABM_THEME_COLOR_226F7A);
+    ABM_D2D_Fill(&g_torrentUi,0,0,w,2,ABM_UI_COLOR_ACCENT);
     /* Match the main player's signature ABM identity: luminous A/play
        monogram, split ABM + AV PLAYER wordmark, gradient rule and tagline. */
     ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
-    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_3F97B4,1.0f);
-    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,ABM_THEME_COLOR_1C9D9D,ABM_THEME_COLOR_34777E);
+    ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
+    ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
     ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,ABM_THEME_COLOR_BEE5FF,0.8f);
     ABM_D2D_Line(&g_torrentUi,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3.0f);
     ABM_D2D_Line(&g_torrentUi,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3.0f);
@@ -6208,8 +6208,8 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
 
     RECT r=TorrentMakeRect(116,8,420,49);ABM_D2D_Text(&g_torrentUi,L"ABM",r,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_BRAND_MAIN,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Match the Main Player's exact brand suffix role and baseline. */
-    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_THEME_COLOR_84CDC2,ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-    ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_70BE9D);
+    r=TorrentMakeRect(188,20,390,48);ABM_D2D_Text(&g_torrentUi,L"AV  PLAYER",r,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_BRAND_SUFFIX,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    ABM_D2D_GradientRound(&g_torrentUi,116,52,354,54,0,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
     r=TorrentMakeRect(116,60,510,83);ABM_D2D_Text(&g_torrentUi,L"TORRENT STREAM  ·  PEER-TO-PEER MEDIA",r,ABM_THEME_COLOR_9DB1C9,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     /* Live task state is presented as a compact status chip. This is a
        read-only view of the existing engine task; it does not alter its state. */
@@ -6342,7 +6342,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
         iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_UI_COLOR_DANGER;
     }else{
         fill=pressed?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_RAISED;
-        iconColor=ABM_UI_COLOR_TEXT_SECONDARY;textColor=ABM_UI_COLOR_TEXT_SECONDARY;
+        iconColor=ABM_UI_COLOR_ACCENT_BRIGHT;textColor=ABM_UI_COLOR_TEXT_SECONDARY;
         borderColor=secondary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
     }
     if(hot&&!pressed&&!destructive&&!disabled)fill=TorrentBlend(fill,ABM_UI_COLOR_SURFACE_INTERACTIVE,28,100);
@@ -6362,7 +6362,7 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     }
     HDC dc=item->hDC;HBRUSH outer=CreateSolidBrush(ABM_THEME_COLOR_0A1725);FillRect(dc,&r,outer);DeleteObject(outer);
     RECT face=r;InflateRect(&face,-1,-1);
-    HBRUSH faceBrush=CreateSolidBrush(fill);HPEN edge=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_ABF6E2:borderColor);
+    HBRUSH faceBrush=CreateSolidBrush(fill);HPEN edge=CreatePen(PS_SOLID,focused?2:1,focused?ABM_UI_COLOR_FOCUS:borderColor);
     HGDIOBJ oldBrush=SelectObject(dc,faceBrush),oldPen=SelectObject(dc,edge);
     RoundRect(dc,face.left,face.top,face.right,face.bottom,ABM_UI_RADIUS_BUTTON*2,ABM_UI_RADIUS_BUTTON*2);
     SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(faceBrush);DeleteObject(edge);
