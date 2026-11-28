@@ -1,3 +1,20 @@
+# ABM AV Player v1.1.8 — release candidate
+
+## Release scope
+
+- Versioned from the current `main` source using the canonical root `VERSION` file.
+- Carries forward the v1.1.7 title-bar icon consistency work and the earlier Media Library, Home Theatre, playback and streaming improvements.
+- The planned unified ABM file-browser replacement is **not yet implemented** in this candidate. Native Windows open/save dialogs remain in the current source and must not be described as replaced.
+
+## Validation status
+
+- Source version bump to 1.1.8 is committed on `main`.
+- Windows x64/MSVC compilation, runtime regression testing, installer creation, clean installation and in-place upgrade have not yet been performed for v1.1.8.
+- Before publishing, complete the unified file-browser implementation if it is part of this release scope, rebuild using `build_installer.bat`, verify all version metadata, and complete the Windows acceptance checklist.
+- Do not publish this source candidate as a stable release until the required build and runtime checks pass.
+
+---
+
 # ABM AV Player v1.1.7 — consistent application title-bar icons
 
 ## What's new
