@@ -844,3 +844,8 @@ Do not change existing button dimensions, placement, spacing, corner radius or t
 ### Main Player transport dock identity
 
 The floating Now Playing dock follows the ABM signature gold identity used by the masthead and secondary windows. Its mini-art fallback tile uses the gold-to-antique-gold gradient; the dock rim, top-edge highlight, divider, seek progress/playhead halo and Add Media action use gold semantic accents. Keep the dock's dark layered surface, geometry and transport-button sizing unchanged. Track artwork remains untouched when available.
+
+
+### Command Centre and Media Collection drawer colour alignment
+
+The Command Centre and the Main Player's Media Collection / Playback & Output drawer use the same signature-gold accent system as the masthead and primary actions. Feature rows no longer use separate teal, brown, blue and green brand fills: they share dark raised surfaces, restrained gold borders, gold glyph tiles and gold hover/focus states. Drawer section headings, active quick controls, device discovery, output selector, Advanced Settings action, collection heading, Manage action and search focus use semantic gold tokens. Preserve the dark navy surface ladder, neutral inactive controls, status colours, text contrast, geometry and existing interaction behaviour.
