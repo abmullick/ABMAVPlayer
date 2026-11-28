@@ -2822,8 +2822,8 @@ static void DrawUI(HDC dc,RECT client) {
             if(featured){
                 RECT mainLabel=label;mainLabel.bottom=label.top+(item.bottom-item.top)/2+3;
                 RECT subLabel=label;subLabel.top=mainLabel.bottom-1;
-                const wchar_t *featureTitle=i==12?L"STREAMING TVs & SERVICES":(i==13?L"TORRENT STREAMING":(i==14?L"HOME THEATRE":L"MEDIA LIBRARY"));
-                const wchar_t *featureSubtitle=i==12?L"Open services, discover TVs and cast video":(i==13?L"Stream torrents while they download":(i==14?L"Explore films, shows and local metadata":L"Discover, scan and organise local media"));
+                const wchar_t *featureTitle=i==12?L"STREAMING CENTRE":(i==13?L"TORRENT STREAM":(i==14?L"HOME THEATRE":L"MEDIA LIBRARY"));
+                const wchar_t *featureSubtitle=i==12?L"Find TVs · cast video":(i==13?L"Play while files download":(i==14?L"Explore films and shows":L"Scan and organise media"));
                 Txt(dc,featureTitle,mainLabel,featured&&!hot?Blend(ABM_THEME_COLOR_F9FCFF,featureAccents[featureIndex],18):ABM_THEME_COLOR_F9FCFF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 Txt(dc,featureSubtitle,subLabel,ABM_THEME_COLOR_BBD2DC,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }else{
