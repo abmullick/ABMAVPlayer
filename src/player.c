@@ -6554,7 +6554,7 @@ static void TorrentApplyWindowChrome(HWND hwnd){
     if(!hwnd)return;
     BOOL dark=TRUE;
     DwmSetWindowAttribute(hwnd,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-    {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_THEME_COLOR_0A0F19;
+    {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
      DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
      DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
      DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
@@ -7454,7 +7454,7 @@ static void ShowHelpDialog(HWND owner) {
         x,y,w,h,owner,NULL,inst,NULL);
     if(!dlg)return;
     BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-    {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
+    {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
@@ -7485,7 +7485,7 @@ static void ShowAboutDialog(HWND owner) {
     if(!dlg)return;
     /* Match the dark caption, border and rounded frame used by the Main Player. */
     BOOL dark=TRUE;DwmSetWindowAttribute(dlg,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
-    {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
+    {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
      DwmSetWindowAttribute(dlg,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
@@ -7935,6 +7935,11 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
  case WM_THEMECHANGED:
   if(g_advancedDiagnosticBrush){DeleteObject(g_advancedDiagnosticBrush);g_advancedDiagnosticBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
   if(g_advancedVlcReportBrush){DeleteObject(g_advancedVlcReportBrush);g_advancedVlcReportBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
+  {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
+   DwmSetWindowAttribute(w,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+   DwmSetWindowAttribute(w,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+   DwmSetWindowAttribute(w,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
+   SetWindowPos(w,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);}
   RedrawWindow(w,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
  case WM_CREATE:
   ABM_SkinRegisterWindow(w);
@@ -8499,7 +8504,7 @@ static void ShowAdvancedSettingsDialog(HWND owner){
   WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_POPUP,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_advancedSettingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_advancedSettingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
- {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;
+ {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
   DwmSetWindowAttribute(g_advancedSettingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
@@ -8682,6 +8687,11 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  }
  case WM_THEMECHANGED:
   if(g_settingsEditBrush){DeleteObject(g_settingsEditBrush);g_settingsEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
+  {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;
+   DwmSetWindowAttribute(w,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+   DwmSetWindowAttribute(w,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+   DwmSetWindowAttribute(w,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
+   SetWindowPos(w,NULL,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);}
   RedrawWindow(w,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
  case WM_SIZE:if(g_settingsUiReady)ABM_D2D_Resize(&g_settingsUi,LOWORD(lp),HIWORD(lp));SettingsUpdateScrollBars(w);InvalidateRect(w,NULL,FALSE);return 0;
  case WM_ERASEBKGND:return 1;
@@ -8850,7 +8860,7 @@ static void ShowSettingsDialog(HWND owner) {
  g_settingsWindow=CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_CONTROLPARENT,L"ABMAVPlayerSettings",L"ABM AV Player — Settings",style,x,y,ww,hh,owner,NULL,inst,NULL);
  if(!g_settingsWindow)return;
  BOOL dark=TRUE;DwmSetWindowAttribute(g_settingsWindow,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof(dark));
- {int corners=2;COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
+ {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));DwmSetWindowAttribute(g_settingsWindow,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));}
  EnableWindow(owner,FALSE);ShowWindow(g_settingsWindow,SW_SHOW);UpdateWindow(g_settingsWindow);
  MSG m;while(IsWindow(g_settingsWindow)&&GetMessageW(&m,NULL,0,0)>0){if(!IsDialogMessageW(g_settingsWindow,&m)){TranslateMessage(&m);DispatchMessageW(&m);}}
  EnableWindow(owner,TRUE);SetActiveWindow(owner);
@@ -8860,6 +8870,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     switch(msg) {
     case WM_THEMECHANGED:
         if(g_comboBrush){DeleteObject(g_comboBrush);g_comboBrush=CreateSolidBrush(C_PANEL2);}
+        {int corners=2;COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND;int backdrop=2;
+         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
+         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
+         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
+         DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_SYSTEMBACKDROP_TYPE,&backdrop,sizeof(backdrop));}
         RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
     case WM_APP+0x351:
         if(g_drawerOpen&&!g_fullscreen)InvalidateRect(hwnd,&R_SIDEBAR,FALSE);
@@ -10072,7 +10087,7 @@ int WINAPI wWinMain(HINSTANCE inst,HINSTANCE prev,PWSTR cmd,int show) {
 #define DWMWA_CAPTION_COLOR 35
 #define DWMWA_SYSTEMBACKDROP_TYPE 38
 #endif
-    { int corners=2; COLORREF border=ABM_THEME_COLOR_2E4668,caption=ABM_THEME_COLOR_0A0F19; int backdrop=2;
+    { int corners=2; COLORREF border=ABM_UI_COLOR_BORDER_STRONG,caption=ABM_UI_COLOR_BACKGROUND; int backdrop=2;
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_WINDOW_CORNER_PREFERENCE,&corners,sizeof(corners));
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_BORDER_COLOR,&border,sizeof(border));
       DwmSetWindowAttribute(hwnd,(DWORD)DWMWA_CAPTION_COLOR,&caption,sizeof(caption));
