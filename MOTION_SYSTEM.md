@@ -144,8 +144,9 @@ The current `DEVELOPER_GUIDE.md` says this repository workflow commits directly 
 - [x] Torrent operational timer distinguished from UI animation.
 - [x] Build integration requirements identified.
 - [x] Motion architecture and safeguards documented.
-- [ ] Motion engine implementation.
+- [ ] DirectComposition device, surface and visual-tree runtime.
+- [ ] Drawer and Command Centre rendering migrated to independent composition visuals.
+- [ ] Opacity and transform transitions driven by DirectComposition commits.
 - [ ] C/C++ compile and unit tests.
-- [ ] Main Player migration.
-- [ ] Auxiliary-window migration.
+- [ ] Auxiliary-window motion migration.
 - [ ] Windows performance and regression validation.
