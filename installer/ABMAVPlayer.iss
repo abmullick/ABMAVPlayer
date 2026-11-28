@@ -21,8 +21,8 @@ PrivilegesRequired=admin
 OutputDir=..\dist
 OutputBaseFilename=ABM-AV-Player-Setup
 UninstallDisplayIcon={app}\{#MyAppExeName}
-; Use the same ABM application artwork for the setup executable and installer UI.
-SetupIconFile=..\assets\abm_av_player.ico
+; Keep the setup bootstrapper on Inno Setup's built-in wizard icon.
+; Installed shortcuts and the uninstaller use the ABM application executable icon.
 WizardStyle=modern
 Compression=lzma2/ultra64
 SolidCompression=yes
