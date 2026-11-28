@@ -452,3 +452,13 @@ Do not mark this source pass runtime-validated until the Windows build and visua
 - [ ] Confirm the same ABM icon is used regardless of the window's owner, opening order, theme preset or background skin.
 - [ ] Test at 100%, 125%, 150% and 200% display scaling and on a secondary monitor.
 - [ ] Build and run on Windows; source-level WM_SETICON calls alone do not constitute visual acceptance.
+
+
+## Command Centre featured destinations and Settings lower sections
+
+- [ ] Open the Command Centre at the minimum supported player size and at 1440×900 or larger; confirm all four featured destinations show their complete title and subtitle without clipping or overlap.
+- [ ] Confirm Streaming Centre, Torrent Stream, Home Theatre and Media Library have distinct restrained blue, violet, rose and emerald treatments; hover/focus must return to the shared interactive accent treatment.
+- [ ] Verify each featured destination remains clickable across its full row and all existing keyboard shortcuts still work.
+- [ ] Scroll Settings to Color Theme and Background Skins; confirm both sections use the same card hierarchy, border, header rule and spacing as the upper Settings sections.
+- [ ] Verify all seven colour themes, all background-skin choices, selection outlines, Save settings, Close and persistence remain functional.
+- [ ] Check the menu at 100%, 125%, 150% and 200% display scaling and with a compact main-player window.
