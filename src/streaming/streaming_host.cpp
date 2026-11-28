@@ -314,6 +314,28 @@ void Rounded(HDC dc,const RECT &r,COLORREF color,int radius){
     RoundRect(dc,r.left,r.top,r.right,r.bottom,radius,radius);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(b);DeleteObject(p);
 }
+void GradientRounded(HDC dc,const RECT &r,COLORREF from,COLORREF to,int radius){
+    if(!dc||r.right<=r.left||r.bottom<=r.top)return;
+    HRGN clip=CreateRoundRectRgn(r.left,r.top,r.right+1,r.bottom+1,radius*2,radius*2);
+    int saved=SaveDC(dc);
+    if(clip)SelectClipRgn(dc,clip);
+    const int steps=64;
+    const int fr=GetRValue(from),fg=GetGValue(from),fb=GetBValue(from);
+    const int tr=GetRValue(to),tg=GetGValue(to),tb=GetBValue(to);
+    for(int i=0;i<steps;i++){
+        int left=r.left+(r.right-r.left)*i/steps;
+        int right=r.left+(r.right-r.left)*(i+1)/steps+1;
+        int red=fr+(tr-fr)*i/(steps-1);
+        int green=fg+(tg-fg)*i/(steps-1);
+        int blue=fb+(tb-fb)*i/(steps-1);
+        RECT band={left,r.top,right,r.bottom};
+        HBRUSH brush=CreateSolidBrush(RGB(red,green,blue));
+        FillRect(dc,&band,brush);
+        DeleteObject(brush);
+    }
+    if(saved)RestoreDC(dc,saved);
+    if(clip)DeleteObject(clip);
+}
 HFONT GetCachedTextFont(int height,int weight){
     for(auto &entry:g_textFonts)if(entry.font&&entry.height==height&&entry.weight==weight)return entry.font;
     for(auto &entry:g_textFonts)if(!entry.font){
@@ -1362,7 +1384,7 @@ void PaintChrome(HWND hwnd){
     HGDIOBJ oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoHalo.left,logoHalo.top,logoHalo.right,logoHalo.bottom,22,22);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(haloPen);
-    RECT logo={28,14,94,80};Rounded(dc,logo,ABM_UI_COLOR_ACCENT,17);
+    RECT logo={28,14,94,80};GradientRounded(dc,logo,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,17);
     RECT logoInset={33,19,89,75};
     HPEN insetPen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_TEXT_SECONDARY);oldLogoPen=SelectObject(dc,insetPen);
     oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
