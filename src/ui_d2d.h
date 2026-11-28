@@ -75,6 +75,8 @@ void ABM_D2D_SetOffset(ABM_D2D *ui, float x, float y);
 BOOL ABM_D2D_End(ABM_D2D *ui);
 void ABM_D2D_Fill(ABM_D2D *ui, float l, float t, float r, float b, COLORREF color);
 void ABM_D2D_Round(ABM_D2D *ui, float l, float t, float r, float b, float radius, COLORREF color);
+/* Layered Direct2D soft shadow for floating surfaces; opacity is 0..1. */
+void ABM_D2D_ShadowRound(ABM_D2D *ui,float l,float t,float r,float b,float radius,COLORREF color,float opacity,float offsetY);
 void ABM_D2D_GradientRound(ABM_D2D *ui, float l, float t, float r, float b, float radius, COLORREF start, COLORREF end);
 void ABM_D2D_StrokeRound(ABM_D2D *ui, float l, float t, float r, float b, float radius, COLORREF color, float width);
 void ABM_D2D_Line(ABM_D2D *ui, float x1, float y1, float x2, float y2, COLORREF color, float width);
