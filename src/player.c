@@ -6198,7 +6198,7 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     ABM_D2D_Round(&g_torrentUi,20,7,102,87,22,ABM_THEME_COLOR_0D1C2D);
     ABM_D2D_StrokeRound(&g_torrentUi,20,7,102,87,22,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
     ABM_D2D_GradientRound(&g_torrentUi,28,14,94,80,17,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
-    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,ABM_THEME_COLOR_BEE5FF,0.8f);
+    ABM_D2D_StrokeRound(&g_torrentUi,33,19,89,75,14,ABM_UI_COLOR_ACCENT_BRIGHT,0.8f);
     ABM_D2D_Line(&g_torrentUi,42,63,59,30,ABM_THEME_COLOR_FFFFFF,3.0f);
     ABM_D2D_Line(&g_torrentUi,59,30,76,63,ABM_THEME_COLOR_FFFFFF,3.0f);
     ABM_D2D_Line(&g_torrentUi,49,49,68,49,ABM_THEME_COLOR_E2F5FF,2.0f);
