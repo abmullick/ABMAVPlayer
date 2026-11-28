@@ -176,6 +176,40 @@ This step adds the shared tokens and records the audit. It deliberately does **n
 | Step 9 — Motion | Add consistent transitions and feedback |
 | Step 10 — Validation | Verify DPI, keyboard, focus, contrast, layout and regression behaviour |
 
+## 5.1 Follow-up audit — global theme propagation and remaining palette references
+
+**Implementation commits on `main`:**
+- `7e8f801` — Media Library repaints its parent and native child controls on `WM_THEMECHANGED`; row, input and text treatments now use semantic tokens for the principal surface/text roles.
+- `4745148` — a theme preset change in Settings is propagated to every top-level ABM window on the UI thread, rather than refreshing only the main window.
+- `89094ce`, `2e8a092`, `87aab3f`, `5348a16` — remaining modal/popup/floating surfaces refresh on theme changes; child controls are explicitly redrawn.
+- `3202425`, `394bc4c`, `1df6b24` — Home Theatre, Streaming Centre and Licensing refresh their child controls and cached brushes.
+
+### Theme-change coverage reviewed
+
+| Window / surface | Theme-change response |
+|---|---|
+| Main Player and fullscreen overlay | Refresh cached main brush and repaint overlay |
+| Settings and Advanced Settings | Rebuild cached input/report brushes and redraw child controls |
+| Help and About | Repaint; Help also updates cached edit/navigation brushes |
+| Equalizer and Video Enhancement | Repaint their Direct2D canvases |
+| Command Centre, recent-media popup and ABM modal dialog | Repaint their Direct2D canvases |
+| Torrent Stream | Rebuild cached surface/control brushes, refresh DWM chrome and repaint children |
+| Streaming Centre and Streaming Help/About | Rebuild cached panel brushes and repaint native children |
+| Home Theatre | Rebuild its cached surface brush and repaint children |
+| Media Library | Repaint all child controls; owner-draw and native control colours resolve from semantic tokens |
+| Licensing | Rebuild its edit brush and repaint children |
+
+Settings broadcasts the theme event to all top-level windows on its UI thread. This is application-level propagation; it does not depend on Windows independently broadcasting a system theme change. Provider-owned WebView2 pages and media artwork remain outside the application palette.
+
+### Remaining colour audit findings
+
+- The canonical literal RGB palette remains centralised in `src/ui_theme.c` and the semantic aliases in `src/ui_theme.h`; the inspected secondary-window source files did not introduce new standalone `RGB(...)` palette definitions.
+- Some older drawing code still references named `ABM_THEME_COLOR_*` IDs directly instead of semantic roles. These IDs resolve through the shared theme system, so they are not separate literal palettes, but they make per-surface intent harder to audit.
+- The most visible remaining direct palette-ID clusters are the Home Theatre and Media Library masthead/logo treatments, Licensing's branded hero/buttons, and legacy Main Player/Streaming/Torrent owner-draw states. Status colours (success, warning, danger), artwork/content colours and fixed white/black drawing details are intentional exceptions where semantics require them.
+- This is a focused source audit of ABM-owned window procedures and render paths, not a claim that every individual colour expression in the 693 KB player source has been migrated. Continue replacing direct IDs with semantic tokens incrementally; do not blindly replace status, artwork, subtitle or content-derived colours.
+
+**Validation limitation:** the repository connector can update and inspect source, but no Windows desktop/runtime is attached here. Theme switching has been verified at source level only; live visual checks, GDI handle checks and a full MSVC build remain outstanding.
+
 ## 6. Non-goals and safeguards
 
 - No playback-engine or LibVLC changes.
