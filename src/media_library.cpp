@@ -346,7 +346,7 @@ static void ShowLibraryContextMenu(HWND child,int screenX,int screenY) {
        itself also receives the shared dark palette instead of Explorer defaults. */
     static HBRUSH menuBrush=nullptr;
     static COLORREF menuBrushColor=CLR_INVALID;
-    menuBrush=ThemeBrush(menuBrush,menuBrushColor,ABM_UI_COLOR_SURFACE_CARD);
+    menuBrush=ThemeBrush(menuBrush,menuBrushColor,ABM_THEME_COLOR_272E3A);
     if(!menuBrush){DestroyMenu(menu);return;}
     MENUINFO menuInfo={};menuInfo.cbSize=sizeof(menuInfo);menuInfo.fMask=MIM_BACKGROUND|MIM_STYLE;
     menuInfo.hbrBack=menuBrush;menuInfo.dwStyle=MNS_NOCHECK;
@@ -728,20 +728,20 @@ static LRESULT CALLBACK MediaLibraryProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_D2D_CanvasFill(&g.canvas,0,0,(float)rc.right,(float)rc.bottom,ABM_UI_COLOR_BACKGROUND);
             ABM_SkinRenderCanvas(&g.canvas,&rc);
             /* Shared ABM brand header, matching Home Theatre wordmark geometry. */
-            ABM_D2D_CanvasFill(&g.canvas,0,0,(float)rc.right,96,ABM_UI_COLOR_SURFACE_NAVIGATION);
+            ABM_D2D_CanvasFill(&g.canvas,0,0,(float)rc.right,96,ABM_THEME_COLOR_1D222D);
             ABM_D2D_CanvasFill(&g.canvas,0,92,(float)rc.right,96,ABM_UI_COLOR_BORDER_STRONG);
             ABM_D2D_CanvasFillRound(&g.canvas,20,7,102,87,22,ABM_UI_COLOR_SURFACE_CARD);
-            ABM_D2D_CanvasStrokeRound(&g.canvas,20,7,102,87,22,ABM_UI_COLOR_BORDER_STRONG,1.0f);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,20,7,102,87,22,ABM_THEME_COLOR_343D4C,1.0f);
             ABM_D2D_CanvasFillRound(&g.canvas,28,14,94,80,17,ABM_UI_COLOR_SURFACE_NAVIGATION);
-            ABM_D2D_CanvasStrokeRound(&g.canvas,33,19,89,75,14,ABM_UI_COLOR_TEXT_SECONDARY,0.8f);
-            ABM_D2D_CanvasLine(&g.canvas,42,63,59,30,ABM_UI_COLOR_TEXT,3.0f);
+            ABM_D2D_CanvasStrokeRound(&g.canvas,33,19,89,75,14,ABM_UI_COLOR_ACCENT,0.9f);
+            ABM_D2D_CanvasLine(&g.canvas,42,63,59,30,ABM_UI_COLOR_ACCENT_BRIGHT,3.0f);
             ABM_D2D_CanvasLine(&g.canvas,59,30,76,63,ABM_UI_COLOR_TEXT,3.0f);
-            ABM_D2D_CanvasLine(&g.canvas,49,49,68,49,ABM_UI_COLOR_TEXT_SECONDARY,2.0f);
+            ABM_D2D_CanvasLine(&g.canvas,49,49,68,49,ABM_THEME_COLOR_F7FAFF,2.0f);
             ABM_D2D_CanvasLine(&g.canvas,62,40,75,48,ABM_UI_COLOR_TEXT,2.0f);
             ABM_D2D_CanvasLine(&g.canvas,75,48,62,56,ABM_UI_COLOR_TEXT,2.0f);
             ABM_D2D_CanvasLine(&g.canvas,62,56,62,40,ABM_UI_COLOR_TEXT,2.0f);
             ABM_D2D_CanvasText(&g.canvas,L"ABM",RECT{116,8,420,49},ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
-            ABM_D2D_CanvasText(&g.canvas,L"AV  PLAYER",RECT{188,20,390,48},ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            ABM_D2D_CanvasText(&g.canvas,L"AV  PLAYER",RECT{188,20,390,48},ABM_THEME_COLOR_9EB5C9,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasFillRound(&g.canvas,116,52,354,54,1,ABM_UI_COLOR_ACCENT);
             ABM_D2D_CanvasText(&g.canvas,L"MEDIA LIBRARY  ·  LOCAL AUDIO & VIDEO",RECT{116,60,560,83},ABM_UI_COLOR_TEXT_MUTED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             ABM_D2D_CanvasText(&g.canvas,L"SCAN LOCATIONS",RECT{24,164,340,184},ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
