@@ -816,3 +816,8 @@ The source migration is not a substitute for Windows validation: the full applic
 ### Signature-accent alignment
 
 The Main Player's custom-rendered brand header and idle-state hero now use the same permanent ABM signature gold as Home Theatre: logo halo and mark, AV PLAYER wordmark, header rule, ambient highlight, hero eyebrow/headline and primary home-card emphasis resolve through `ABM_UI_COLOR_ACCENT`, `ABM_UI_COLOR_ACCENT_BRIGHT` and `ABM_UI_COLOR_ACCENT_SOFT`. The remaining teal/blue tones in the player are retained only as secondary ambient artwork or status/decorative colours; they must not recolour the ABM brand mark or primary action identity.
+
+
+### Streaming Centre button alignment
+
+Streaming Centre toolbar actions now follow the shared ABM button hierarchy: primary Cast video uses the signature gold fill; Find TVs and navigation controls use neutral raised surfaces with gold focus/hover accents; Fullscreen no longer has a separate teal-filled treatment; Stop TV retains its distinct destructive red treatment. The TV/device panel's primary actions continue to use the shared gold semantic accent. Avoid per-window green/teal primary-button fills unless the colour communicates a specific state (for example, a live receiver/status indicator).
