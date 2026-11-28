@@ -85,14 +85,14 @@ Preferred families: **Segoe UI Variable Text** for UI copy and **Segoe UI Variab
 
 The Main Player's DirectWrite typography is the authoritative runtime reference. The implementation is centralised in `src/ui_theme.h`, `src/ui_d2d.h` and `src/ui_d2d.cpp`:
 
-- `ABM_D2D_TEXT_BODY`: Segoe UI Variable Text, 16.5 px, regular.
-- `ABM_D2D_TEXT_SMALL`: Segoe UI Variable Text, 12.5 px, semibold.
-- `ABM_D2D_TEXT_HEADING`: Segoe UI Variable Display, 28 px, semibold.
-- `ABM_D2D_TEXT_BRAND_MAIN`: Segoe UI Variable Display, 30 px, bold.
+- `ABM_D2D_TEXT_BODY`: Segoe UI Variable Text, 16.5 px, regular, 1.38× line spacing.
+- `ABM_D2D_TEXT_SMALL`: Segoe UI Variable Text, 12.5 px, medium, 1.30× line spacing; use muted semantic text colours for metadata.
+- `ABM_D2D_TEXT_HEADING`: Segoe UI Variable Display, 30 px, semibold, 1.16× line spacing.
+- `ABM_D2D_TEXT_BRAND_MAIN`: Segoe UI Variable Display, 32 px, bold, 1.12× line spacing.
 - `ABM_D2D_TEXT_BRAND_SUFFIX`: Segoe UI Variable Text, 18 px, medium.
-- `ABM_D2D_TEXT_ICON`: Segoe MDL2 Assets, 16 px, regular.
+- `ABM_D2D_TEXT_ICON`: Segoe MDL2 Assets, 16 px, regular. The family name is sourced from the shared theme token; avoid per-window icon-font literals.
 
-Both the HWND renderer (`ABM_D2D`) and owner-draw canvas (`ABM_D2D_CANVAS`) now create their formats through the same `CreateCanonicalTextFormats` implementation and use the same semantic role identifiers. This prevents the two DirectWrite paths from silently drifting in family, size or weight. The original Main Player format values are preserved.
+Both the HWND renderer (`ABM_D2D`) and owner-draw canvas (`ABM_D2D_CANVAS`) now create their formats through the same `CreateCanonicalTextFormats` implementation and use the same semantic role identifiers. This prevents the two DirectWrite paths from silently drifting in family, size or weight. The shared formats now apply explicit, consistent DirectWrite line spacing. Metadata uses medium rather than semibold weight, and important media titles use the larger 30 px heading role. The Main Player and secondary canvases continue to consume the same canonical format factory.
 
 New ABM-owned Direct2D surfaces must use these semantic roles; they must not create independent DirectWrite formats or hard-code font family, size or weight. Native GDI/EDIT/RichEdit paths are not considered migrated merely because they use the same font family. Those controls remain migration work until replaced or hosted through a renderer that preserves editing, accessibility and keyboard behaviour.
 
