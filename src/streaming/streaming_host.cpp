@@ -356,7 +356,7 @@ HFONT GetCachedIconFont(int px){
     HFONT *slot=(px<=16)?&g_streamIconFont16:&g_streamIconFont17;
     if(!*slot)*slot=CreateFontW(-px,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH|FF_DONTCARE,
-        L"Segoe MDL2 Assets");
+        ABM_UI_FONT_FAMILY_ICON);
     return *slot?*slot:(HFONT)GetStockObject(DEFAULT_GUI_FONT);
 }
 void DrawFluentGlyph(HDC dc,RECT r,wchar_t glyph,COLORREF color,int px=17){
