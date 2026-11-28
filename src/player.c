@@ -897,7 +897,9 @@ static void BeginArtworkParse(libvlc_media_t *media) {
         return;
     }
     g_artworkCallbackGeneration=generation;
-    if(libvlc_media_parse_with_options(g_artMedia,libvlc_media_parse_local,5000)!=0) {        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,(void *)(INT_PTR)generation);        g_artworkCallbackGeneration=0;
+    if(libvlc_media_parse_with_options(g_artMedia,libvlc_media_parse_local,5000)!=0) {
+        libvlc_event_detach(em,libvlc_MediaParsedChanged,ArtworkParsedEvent,(void *)(INT_PTR)generation);
+        g_artworkCallbackGeneration=0;
         libvlc_media_release(g_artMedia);g_artMedia=NULL;
     }
 }
@@ -1795,8 +1797,10 @@ static void DrawVisualizer(HDC dc,RECT area) {
             RGB(10,58,77),ink);
         for(int grid=1;grid<=3;grid++) {
             float gy=(float)area.bottom-height*(0.16f+grid*0.19f);
-            ABM_D2D_Line(&g_ui,(float)area.left+width*0.045f,gy,                (float)area.right-width*0.045f,gy,Blend(ink,blue,10),0.7f*s);
-        }        const int bars=64;
+            ABM_D2D_Line(&g_ui,(float)area.left+width*0.045f,gy,
+                (float)area.right-width*0.045f,gy,Blend(ink,blue,10),0.7f*s);
+        }
+        const int bars=64;
         float slot=(float)width/(float)bars;
         float barW=slot*0.62f;
         float baseline=(float)area.bottom-height*0.16f;
@@ -2693,7 +2697,9 @@ static void DrawUI(HDC dc,RECT client) {
     RECT volumeHalo={vx-9,R_VOLUME.top-9,vx+9,R_VOLUME.bottom+9};
     RoundBox(dc,volumeHalo,ABM_THEME_COLOR_1B4C48,9);
     RECT vd={vx-5,R_VOLUME.top-6,vx+5,R_VOLUME.bottom+6};
-    GradientRound(dc,vd,ABM_THEME_COLOR_FFFFFF,ABM_UI_COLOR_ACCENT_BRIGHT,6);    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,6.0f,ABM_THEME_COLOR_70D3CA,1.0f);
+    GradientRound(dc,vd,ABM_THEME_COLOR_FFFFFF,ABM_UI_COLOR_ACCENT_BRIGHT,6);
+    ABM_D2D_StrokeRound(&g_ui,(float)vd.left,(float)vd.top,(float)vd.right,(float)vd.bottom,6.0f,ABM_THEME_COLOR_70D3CA,1.0f);
+
 
 
     }
@@ -3591,10 +3597,12 @@ static void LoadPersistentState(void) {
     g_playbackRate=(float)GetPrivateProfileIntW(L"Player",L"RatePercent",100,path)/100.0f;
     g_torrentCacheQuotaGiB=(uint64_t)GetPrivateProfileIntW(L"Torrent",L"CacheQuotaGiB",20,path);
     if(g_torrentCacheQuotaGiB<1||g_torrentCacheQuotaGiB>4096)g_torrentCacheQuotaGiB=20;
-    g_torrentDownloadLimitKiB=GetPrivateProfileIntW(L"Torrent",L"DownloadLimitKiB",0,path);    g_torrentUploadLimitKiB=GetPrivateProfileIntW(L"Torrent",L"UploadLimitKiB",0,path);
+    g_torrentDownloadLimitKiB=GetPrivateProfileIntW(L"Torrent",L"DownloadLimitKiB",0,path);
+    g_torrentUploadLimitKiB=GetPrivateProfileIntW(L"Torrent",L"UploadLimitKiB",0,path);
     if(g_torrentDownloadLimitKiB<0)g_torrentDownloadLimitKiB=0;if(g_torrentUploadLimitKiB<0)g_torrentUploadLimitKiB=0;
     GetPrivateProfileStringW(L"Torrent",L"CacheBaseDir",L"",g_torrentCacheBaseDir,_countof(g_torrentCacheBaseDir),path);
-    GetPrivateProfileStringW(L"Torrent",L"DownloadDir",L"",g_torrentDownloadDir,_countof(g_torrentDownloadDir),path);    EnsureTorrentCacheBaseDir();EnsureTorrentDownloadDir();
+    GetPrivateProfileStringW(L"Torrent",L"DownloadDir",L"",g_torrentDownloadDir,_countof(g_torrentDownloadDir),path);
+    EnsureTorrentCacheBaseDir();EnsureTorrentDownloadDir();
     if(g_volume<0||g_volume>100)g_volume=70;
     if(g_playbackRate<0.5f||g_playbackRate>2.0f)g_playbackRate=1.0f;
     const wchar_t *files[2]={L"library.m3u",L"recent.m3u"};
@@ -4489,11 +4497,13 @@ static void ShowPlaybackContextMenu(HWND hwnd,int x,int y) {
         StringCchCatW(info,_countof(info),L"\r\nLocation: ");StringCchCatW(info,_countof(info),path[0]?path:L"Not available");
         if(path[0]){
             WIN32_FILE_ATTRIBUTE_DATA fd;
-            if(GetFileAttributesExW(path,GetFileExInfoStandard,&fd)){                ULONGLONG bytes=((ULONGLONG)fd.nFileSizeHigh<<32)|fd.nFileSizeLow;
+            if(GetFileAttributesExW(path,GetFileExInfoStandard,&fd)){
+                ULONGLONG bytes=((ULONGLONG)fd.nFileSizeHigh<<32)|fd.nFileSizeLow;
                 StringCchPrintfW(value,_countof(value),L"\r\nSize: %.2f MiB",(double)bytes/(1024.0*1024.0));
                 StringCchCatW(info,_countof(info),value);
             }
-        }        StringCchCatW(info,_countof(info),L"\r\nDuration: ");
+        }
+        StringCchCatW(info,_countof(info),L"\r\nDuration: ");
         if(duration>0)StringCchPrintfW(value,_countof(value),L"%02lld:%02lld:%02lld",(long long)(duration/3600000),(long long)((duration/60000)%60),(long long)((duration/1000)%60));
         else StringCchCopyW(value,_countof(value),L"Unknown");
         StringCchCatW(info,_countof(info),value);
@@ -5387,12 +5397,14 @@ typedef BOOL (WINAPI *ABM_TorrentGetFileFn)(uint64_t,int,wchar_t *,unsigned int,
 typedef BOOL (WINAPI *ABM_TorrentSelectFileFn)(uint64_t,int);
 typedef BOOL (WINAPI *ABM_TorrentTaskActionFn)(uint64_t);
 typedef BOOL (WINAPI *ABM_TorrentRemoveFn)(uint64_t,BOOL);
-typedef BOOL (WINAPI *ABM_TorrentSetRateLimitsFn)(int,int);typedef BOOL (WINAPI *ABM_TorrentGetCacheInfoFn)(uint64_t *,uint64_t *);
+typedef BOOL (WINAPI *ABM_TorrentSetRateLimitsFn)(int,int);
+typedef BOOL (WINAPI *ABM_TorrentGetCacheInfoFn)(uint64_t *,uint64_t *);
 typedef BOOL (WINAPI *ABM_TorrentSetCacheLimitFn)(uint64_t,uint64_t *);
 typedef BOOL (WINAPI *ABM_TorrentClearCacheFn)(uint64_t *,uint64_t *);
 typedef BOOL (WINAPI *ABM_TorrentSetReadWindowFn)(uint64_t,int,int64_t,int64_t,int);
 typedef BOOL (WINAPI *ABM_TorrentWaitForRangeFn)(uint64_t,int,int64_t,int64_t,unsigned int);
-typedef BOOL (WINAPI *ABM_TorrentStartHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);typedef BOOL (WINAPI *ABM_TorrentStartLanHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentStartHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
+typedef BOOL (WINAPI *ABM_TorrentStartLanHttpStreamFn)(uint64_t,int,wchar_t *,unsigned int,wchar_t *,unsigned int);
 void ABM_TorrentDlna_StartDiscovery(void);
 void ABM_TorrentDlna_StopDiscovery(void);
 unsigned int ABM_TorrentDlna_DeviceCount(void);
@@ -6285,13 +6297,15 @@ static BOOL TorrentPaint(HWND hwnd,const RECT *paintRect){
     /* Source card: label above the edit row; no painted text beneath controls. */
     r=TorrentMakeRect(m,sourceTop,w-m,sourceTop+sourceH);
     TorrentGradientRoundRect(&g_torrentUi,r,14,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_SURFACE);
-    TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);    r=TorrentMakeRect(m+14,sourceTop+3,m+250,sourceTop+22);ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    TorrentStrokeRoundRect(&g_torrentUi,r,14,edge,1.0f);
+    r=TorrentMakeRect(m+14,sourceTop+3,m+250,sourceTop+22);ABM_D2D_Text(&g_torrentUi,L"ADD A SOURCE",r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     /* Content library card */
     r=TorrentMakeRect(m,contentTop,w-m,contentBottom);
     TorrentGradientRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_SURFACE_BLUE,ABM_UI_COLOR_BACKGROUND);
     TorrentStrokeRoundRect(&g_torrentUi,r,16,ABM_UI_COLOR_BORDER,1.0f);
-    r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);    /* Give the instruction the full header row after the section title.
+    r=TorrentMakeRect(m+14,contentTop+5,m+260,contentTop+25);ABM_D2D_Text(&g_torrentUi,L"TORRENT CONTENT",r,muted,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    /* Give the instruction the full header row after the section title.
        A width-relative left edge could make the right-aligned sentence clip
        at narrower window sizes or higher DPI settings. */
     r=TorrentMakeRect(m+270,contentTop+5,w-m-14,contentTop+25);
@@ -7183,14 +7197,16 @@ static BOOL HelpFindNext(HWND hwnd) {
  g_helpSearchCursor=docPos+(int)qlen;
  return TRUE;
 }
-static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {    switch(msg) {
+static LRESULT CALLBACK HelpWndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
+    switch(msg) {
     case WM_THEMECHANGED:
         if(g_helpBrush){DeleteObject(g_helpBrush);g_helpBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);}
         if(g_helpInputBrush){DeleteObject(g_helpInputBrush);g_helpInputBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);}
         if(g_helpArticleBrush){DeleteObject(g_helpArticleBrush);g_helpArticleBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_RAISED);}
         if(g_helpNavBrush){DeleteObject(g_helpNavBrush);g_helpNavBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE);}
         if(g_helpEdit)SendMessageW(g_helpEdit,EM_SETBKGNDCOLOR,0,ABM_UI_COLOR_SURFACE_RAISED);
-        RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;    case WM_CREATE: {
+        RedrawWindow(hwnd,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);return 0;
+    case WM_CREATE: {
         ABM_SkinRegisterWindow(hwnd);g_helpCanvasReady=ABM_D2D_CanvasInit(&g_helpCanvas);
         const wchar_t *help=
             L"ABM AV PLAYER  |  COMPLETE USER GUIDE\r\n"
@@ -8081,7 +8097,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     InvalidateRect(w,NULL,FALSE);return 0;
    }
    if(AdvancedSettingsPoint(x,y,320,350,1018,416)){
-    g_advancedDropLateFrames=!g_advancedDropLateFrames;    if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Performance",L"DropLateFrames",g_advancedDropLateFrames?L"1":L"0",p);}
+    g_advancedDropLateFrames=!g_advancedDropLateFrames;
+    if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Performance",L"DropLateFrames",g_advancedDropLateFrames?L"1":L"0",p);}
     InvalidateRect(w,NULL,FALSE);return 0;
    }
    if(AdvancedSettingsPoint(x,y,320,440,1018,506)){
@@ -8089,7 +8106,8 @@ static LRESULT CALLBACK AdvancedSettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM
     if(EnsureDataDirectory()){wchar_t p[PATH_CAP];StringCchPrintfW(p,_countof(p),L"%s\\settings.ini",g_dataDir);WritePrivateProfileStringW(L"Performance",L"SkipFrames",g_advancedSkipFrames?L"1":L"0",p);}
     InvalidateRect(w,NULL,FALSE);return 0;
    }
-  }  if(g_advancedSettingsPage==2){   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
+  }
+  if(g_advancedSettingsPage==2){   if(AdvancedSettingsPoint(x,y,320,260,1018,326)){g_advancedAudioOutDraft=0;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,320,334,1018,400)){g_advancedAudioOutDraft=1;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,320,408,1018,474)){g_advancedAudioOutDraft=2;InvalidateRect(w,NULL,FALSE);return 0;}
    if(AdvancedSettingsPoint(x,y,870,594,1032,638)){
@@ -8979,7 +8997,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_SIZE: {
         /* SetWindowPlacement/SetWindowPos generate intermediate size messages
            during fullscreen transitions. Do not let those messages resize
-           LibVLC's video child multiple times while playback is active. */        if(!g_fullscreenTransition) {
+           LibVLC's video child multiple times while playback is active. */
+        if(!g_fullscreenTransition) {
             UpdateLayout(hwnd);
             if(wp!=SIZE_MINIMIZED)ABM_D2D_Resize(&g_ui,(UINT)LOWORD(lp),(UINT)HIWORD(lp));
         }
@@ -8988,7 +9007,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     case WM_GETMINMAXINFO: { MINMAXINFO *mi=(MINMAXINFO*)lp; mi->ptMinTrackSize.x=1000; mi->ptMinTrackSize.y=650; return 0; }
     case WM_MEASUREITEM:
         if(((LPMEASUREITEMSTRUCT)lp)->CtlID==ID_RENDERERS){
-            ((LPMEASUREITEMSTRUCT)lp)->itemHeight=30;            return TRUE;
+            ((LPMEASUREITEMSTRUCT)lp)->itemHeight=30;
+            return TRUE;
         }
         break;
     case WM_DRAWITEM:
@@ -9877,7 +9897,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
                 libvlc_audio_set_volume(g_player,v);
                 if(g_fullscreen && g_fullscreenOverlay)
                     InvalidateRect(g_fullscreenOverlay,NULL,FALSE);
-                else                    InvalidateRect(hwnd,&R_VOLUME,FALSE);
+                else
+                    InvalidateRect(hwnd,&R_VOLUME,FALSE);
             }
         }
         SetCursor((hit!=HIT_NONE||chrome!=0)?LoadCursorW(NULL,IDC_HAND):LoadCursorW(NULL,IDC_ARROW));
@@ -9887,7 +9908,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
         if (g_fullscreen && !g_fullscreenControlsVisible) {
             SetCursor(NULL);
             return TRUE;
-        }        if (g_fullscreen && g_fullscreenControlsVisible) {
+        }
+        if (g_fullscreen && g_fullscreenControlsVisible) {
             SetCursor(LoadCursorW(NULL,IDC_ARROW));
             return TRUE;
         }
