@@ -264,9 +264,9 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
             ABM_SkinRenderCanvas(&g_licenseCanvas,&rc);
             RECT hero={18,16,rc.right-18,160};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)hero.left,(float)hero.top,(float)hero.right,(float)hero.bottom,(float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_SURFACE_NAVIGATION);
             ABM_D2D_CanvasLine(&g_licenseCanvas,(float)hero.left+14,(float)hero.top+1,(float)hero.right-14,(float)hero.top+1,ABM_UI_COLOR_ACCENT,2.0f);
-            RECT logoRc={34,36,88,90};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)logoRc.left,(float)logoRc.top,(float)logoRc.right,(float)logoRc.bottom,(float)ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_ACCENT);
-            ABM_D2D_CanvasText(&g_licenseCanvas,L"A",logoRc,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-            RECT cap={106,34,rc.right-34,56};ABM_D2D_CanvasText(&g_licenseCanvas,L"ABM AV PLAYER  /  LICENSE",cap,ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+            RECT logoRc={34,36,88,90};ABM_D2D_CanvasFillRound(&g_licenseCanvas,(float)logoRc.left,(float)logoRc.top,(float)logoRc.right,(float)logoRc.bottom,(float)ABM_UI_RADIUS_BUTTON,ABM_UI_COLOR_SURFACE_RAISED);
+            ABM_D2D_CanvasText(&g_licenseCanvas,L"A",logoRc,ABM_UI_COLOR_ACCENT_BRIGHT,ABM_D2D_TEXT_HEADING,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+            RECT cap={106,34,rc.right-34,56};ABM_D2D_CanvasText(&g_licenseCanvas,L"ABM AV PLAYER  /  LICENSE",cap,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT title={106,58,rc.right-34,101};ABM_D2D_CanvasText(&g_licenseCanvas,d->alreadyActivated?L"You're all set.":L"Unlock the full experience.",title,ABM_UI_COLOR_TEXT,ABM_D2D_TEXT_HEADING,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             const wchar_t *intro=d->manual?L"Enter your universal 16-character key to activate ABM AV Player.":L"Enter your activation key now, or continue with your 10-day full-feature trial.";
             RECT introRect={106,105,rc.right-34,145};ABM_D2D_CanvasText(&g_licenseCanvas,intro,introRect,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_BODY,DT_LEFT|DT_VCENTER|DT_WORDBREAK);
@@ -288,7 +288,7 @@ static LRESULT CALLBACK LicenseWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     }
     case WM_THEMECHANGED:
         if(g_licenseEditBrush)DeleteObject(g_licenseEditBrush);
-        g_licenseEditBrush=CreateSolidBrush(ABM_UI_COLOR_SURFACE_CARD);
+        g_licenseEditBrush=CreateSolidBrush(ABM_UI_COLOR_INPUT);
         RedrawWindow(w,NULL,NULL,RDW_INVALIDATE|RDW_ALLCHILDREN|RDW_NOERASE);
         return 0;
     case WM_DESTROY:
