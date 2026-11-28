@@ -921,3 +921,14 @@ Source implementation committed:
 - Existing seven colour presets, background-skin swatches, storage settings, validation, save semantics, diagnostic generation, VLC inventory and advanced control behaviour remain intact.
 
 This is a source-level visual consistency pass. It does not certify layout, contrast or interaction at runtime; validate on Windows across all themes and supported display scales before acceptance.
+
+
+## Advanced Equalizer and Video Enhancement Studio — surface refinement
+
+Source implementation committed on `main`:
+- Both floating tools retain the shared Direct2D/DirectWrite canvas, common background-skin rendering, semantic surface tokens and existing window geometry.
+- Equalizer preset selection now uses a soft accent surface with an accent label and outline instead of a solid accent fill. Slider handles use the shared bright accent token; the subtitle is secondary text.
+- Video Enhancement Studio's subtitle is secondary text. Reset and Original Preview controls remain neutral raised actions; hover and keyboard focus are communicated through the shared accent border rather than a large gold fill. Selected quick-look presets retain a soft accent surface.
+- Equalizer profiles, band/preamp values, save semantics, LibVLC adjustment calls, video enhancement values, presets, compare-original, reset and keyboard/mouse interaction were not intentionally changed.
+
+This is a source-level surface refinement only. Windows build, runtime appearance, DPI and interaction verification remain pending.
