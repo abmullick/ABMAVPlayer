@@ -1,4 +1,4 @@
 #include <windows.h>
 
 #define IDI_APP_ICON 101
-IDI_APP_ICON ICON "assets/abm_av_player.ico"
+IDI_APP_ICON ICON "assets/ABM-AV-Player-Original-Style.ico"
