@@ -1207,6 +1207,8 @@ COLORREF ABMThemeColor(ABMThemeColorId id) {
         surfaceId=ABM_THEME_ID_272E3A; break;
     case ABM_THEME_ID_1F3648: case ABM_THEME_ID_163B48:
     case ABM_THEME_ID_234B5E: case ABM_THEME_ID_305E6F:
+    case ABM_THEME_ID_244B5E: case ABM_THEME_ID_1D5B67:
+    case ABM_THEME_ID_2B5B71:
         surfaceId=ABM_THEME_ID_343D4C; break;
     default: break;
     }
@@ -1221,7 +1223,7 @@ COLORREF ABMThemeColor(ABMThemeColorId id) {
         int r=GetRValue(base),g=GetGValue(base),b=GetBValue(base);
         int hi=r>g?(r>b?r:b):(g>b?g:b);
         int lo=r<g?(r<b?r:b):(g<b?g:b);
-        if(hi<=82 && ((g>=r && b>=r) || hi-lo<=10)) {
+        if(hi<=82 && ((g>=r && b>=r) || hi-lo<=16)) {
             surfaceId=(hi<=35)?ABM_THEME_ID_151820:
                       (hi<=49)?ABM_THEME_ID_1D222D:
                       (hi<=67)?ABM_THEME_ID_272E3A:
