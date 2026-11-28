@@ -1157,6 +1157,11 @@ COLORREF ABMThemePresetAccent(ABMThemePreset preset);
 #define ABM_THEME_COLOR_344A70 (ABMThemeColor(ABM_THEME_ID_344A70))
 #define ABM_THEME_COLOR_55491F (ABMThemeColor(ABM_THEME_ID_55491F))
 #define ABM_THEME_COLOR_66551F (ABMThemeColor(ABM_THEME_ID_66551F))
+#define ABM_THEME_COLOR_151820 (ABMThemeColor(ABM_THEME_ID_151820))
+#define ABM_THEME_COLOR_1D222D (ABMThemeColor(ABM_THEME_ID_1D222D))
+#define ABM_THEME_COLOR_272E3A (ABMThemeColor(ABM_THEME_ID_272E3A))
+#define ABM_THEME_COLOR_343D4C (ABMThemeColor(ABM_THEME_ID_343D4C))
+#define ABM_THEME_COLOR_E9B949 (ABMThemeColor(ABM_THEME_ID_E9B949))
 
 /* One global ABM surface hierarchy. Every owned window uses these roles;
    theme-specific decoration must never redefine the neutral surface ladder. */
