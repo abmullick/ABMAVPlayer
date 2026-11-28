@@ -2010,7 +2010,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT brandMain={116,8,420,49};
     Txt(dc,L"ABM",brandMain,ABM_THEME_COLOR_F7FAFF,g_headingFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandSuffix={188,20,390,48};
-    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_B0BAC8,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"AV  PLAYER",brandSuffix,ABM_THEME_COLOR_9EB5C9,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     RECT brandRule={116,52,354,54};
     Fill(dc,brandRule,ABM_UI_COLOR_ACCENT);
     RECT brandSubtitle={116,60,510,83};
@@ -2150,7 +2150,7 @@ static void DrawUI(HDC dc,RECT client) {
                 int cardH=card.bottom-card.top;
                 /* Premium desktop treatment: small unboxed line icons, not app-tile glyphs. */
                 int iconX=card.left+18, iconY=card.top+cardH/2;
-                COLORREF iconColor=(i==0||motion>0)?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_B0BAC8;
+                COLORREF iconColor=(i==0||motion>0)?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_9EB5C9;
                 if(i==0) { /* open folder */
                     ABM_D2D_StrokeRound(&g_ui,(float)iconX,(float)(iconY-5),(float)(iconX+20),(float)(iconY+8),2.5f,iconColor,1.35f);
                     DrawLine(dc,iconX,iconY-2,iconX+8,iconY-2,iconColor,1);
@@ -2260,7 +2260,7 @@ static void DrawUI(HDC dc,RECT client) {
     RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
     GradientRound(dc,miniArt,ABM_THEME_COLOR_343D4C,ABM_THEME_COLOR_1D222D,14);
     RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
-    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_THEME_COLOR_4A5668,0.85f);
+    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_THEME_COLOR_43586F,0.85f);
     if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
     else {
         int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
