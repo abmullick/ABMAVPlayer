@@ -1959,8 +1959,8 @@ static void DrawUI(HDC dc,RECT client) {
     RECT menuBtn=R_MENU_BUTTON;
     POINT chromeCursor={0,0}; BOOL menuHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(menuBtn,chromeCursor.x,chromeCursor.y);
     BOOL drawerHot=GetCursorPos(&chromeCursor)&&ScreenToClient(g_main,&chromeCursor)&&Inside(R_DRAWER_BUTTON,chromeCursor.x,chromeCursor.y);
-    Panel(dc,menuBtn,g_menuOpen?ABM_THEME_COLOR_204E5B:Blend(ABM_THEME_COLOR_111D2F,ABM_THEME_COLOR_243954,menuHot?100:0),
-        g_menuOpen?ABM_THEME_COLOR_5CA5B6:(menuHot?ABM_THEME_COLOR_5084BF:ABM_THEME_COLOR_2F4562),15);
+    Panel(dc,menuBtn,g_menuOpen?ABM_UI_COLOR_SURFACE_INTERACTIVE:Blend(ABM_THEME_COLOR_111D2F,ABM_UI_COLOR_SURFACE_HOVER,menuHot?100:0),
+        (g_menuOpen||menuHot)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER,15);
     /* Keep the hamburger icon in its own compact column, clear of the label. */
     for(int i=0;i<3;i++)DrawLine(dc,menuBtn.left+12,menuBtn.top+13+i*7,menuBtn.left+29,menuBtn.top+13+i*7,ABM_THEME_COLOR_E2ECF9,2);
     RECT menuLabel={menuBtn.left+39,menuBtn.top+3,menuBtn.right-7,menuBtn.bottom-3};
@@ -2674,9 +2674,9 @@ static void DrawUI(HDC dc,RECT client) {
         RECT menuGlow=menu;InflateRect(&menuGlow,2,2);RoundBox(dc,menuGlow,ABM_THEME_COLOR_070C14,22);
         Panel(dc,menu,ABM_THEME_COLOR_0C1420,ABM_THEME_COLOR_314C5E,18);
         RECT menuTop={menu.left+18,menu.top+2,menu.right-18,menu.top+4};
-        GradientRect(dc,menuTop,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
+        GradientRect(dc,menuTop,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT);
         RECT brandMark={menu.left+16,menu.top+10,menu.left+50,menu.top+44};
-        RoundBox(dc,brandMark,ABM_THEME_COLOR_66551F,ABM_UI_RADIUS_CONTROL);
+        RoundBox(dc,brandMark,ABM_UI_COLOR_SURFACE_INTERACTIVE,ABM_UI_RADIUS_CONTROL);
         ABM_D2D_StrokeRound(&g_ui,(float)brandMark.left,(float)brandMark.top,(float)brandMark.right,(float)brandMark.bottom,
             (float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_ACCENT,1.0f);
         Txt(dc,L"A",brandMark,ABM_UI_COLOR_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -2695,9 +2695,9 @@ static void DrawUI(HDC dc,RECT client) {
             RECT groupBox=R_MENU_GROUPS[group];
             if(groupBox.top>=menu.bottom||groupBox.bottom<=groupBox.top)continue;
             if(groupBox.bottom>menu.bottom)groupBox.bottom=menu.bottom;
-            RoundBox(dc,groupBox,ABM_THEME_COLOR_55491F,ABM_UI_RADIUS_CARD);
+            RoundBox(dc,groupBox,ABM_UI_COLOR_SURFACE_CARD,ABM_UI_RADIUS_CARD);
             ABM_D2D_StrokeRound(&g_ui,(float)groupBox.left,(float)groupBox.top,(float)groupBox.right,(float)groupBox.bottom,
-                (float)ABM_UI_RADIUS_CARD,ABM_THEME_COLOR_66551F,0.8f);
+                (float)ABM_UI_RADIUS_CARD,ABM_UI_COLOR_BORDER,0.8f);
             RECT section=R_MENU_SECTION_LABELS[group];
             if(section.bottom>section.top&&section.top<menu.bottom){
                 if(section.bottom>menu.bottom)section.bottom=menu.bottom;
@@ -2734,9 +2734,9 @@ static void DrawUI(HDC dc,RECT client) {
             BOOL hot=(g_hoverMenuItem==i)||(g_menuOpen&&g_menuSelection==i);
             BOOL featured=(i>=12&&i<=15);
             RECT row=item;InflateRect(&row,-1,-1);
-            COLORREF fill=featured?(i==12?ABM_UI_COLOR_SURFACE_CARD:(i==13?ABM_UI_COLOR_SURFACE_CARD:(i==14?ABM_UI_COLOR_SURFACE_CARD:ABM_UI_COLOR_SURFACE_CARD))):ABM_THEME_COLOR_193041;
-            COLORREF edge=featured?(i==12?ABM_UI_COLOR_ACCENT_BRIGHT:(i==13?ABM_UI_COLOR_ACCENT_BRIGHT:(i==14?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT_BRIGHT))):ABM_THEME_COLOR_1F3041;
-            if(hot){fill=featured?(i==12?ABM_THEME_COLOR_55491F:(i==13?ABM_THEME_COLOR_55491F:(i==14?ABM_THEME_COLOR_55491F:ABM_THEME_COLOR_55491F))):ABM_THEME_COLOR_66551F;edge=ABM_UI_COLOR_ACCENT_BRIGHT;}
+            COLORREF fill=ABM_THEME_COLOR_193041;
+            COLORREF edge=featured?ABM_UI_COLOR_BORDER:ABM_THEME_COLOR_1F3041;
+            if(hot){fill=ABM_UI_COLOR_SURFACE_INTERACTIVE;edge=ABM_UI_COLOR_ACCENT;}
             if(featured||hot){
                 RoundBox(dc,row,fill,featured?ABM_UI_RADIUS_CARD:ABM_UI_RADIUS_CONTROL);
                 ABM_D2D_StrokeRound(&g_ui,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,
@@ -2746,8 +2746,8 @@ static void DrawUI(HDC dc,RECT client) {
             }
             RECT glyph={item.left+(featured?14:9),item.top+(featured?8:4),
                         item.left+(featured?56:38),item.bottom-(featured?8:4)};
-            COLORREF glyphFill=featured?(i==12?ABM_THEME_COLOR_66551F:(i==13?ABM_THEME_COLOR_66551F:(i==14?ABM_THEME_COLOR_55491F:ABM_THEME_COLOR_66551F))):ABM_THEME_COLOR_66551F;
-            if(hot)glyphFill=ABM_UI_COLOR_ACCENT_BRIGHT;
+            COLORREF glyphFill=ABM_UI_COLOR_SURFACE_INTERACTIVE;
+            if(hot)glyphFill=ABM_UI_COLOR_ACCENT_SOFT;
             RoundBox(dc,glyph,glyphFill,featured?ABM_UI_RADIUS_CONTROL:ABM_UI_RADIUS_CONTROL);
             Txt(dc,icons[i],glyph,ABM_THEME_COLOR_E7F4F8,g_font,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             RECT label={item.left+(featured?68:50),item.top+(featured?6:2),
@@ -2764,10 +2764,10 @@ static void DrawUI(HDC dc,RECT client) {
                 Txt(dc,labels[i],label,textColor,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             RECT shortcut={item.right-104,item.top+4,item.right-8,item.bottom-4};
-            RoundBox(dc,shortcut,hot?ABM_THEME_COLOR_55491F:ABM_THEME_COLOR_0C1623,7);
+            RoundBox(dc,shortcut,hot?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_THEME_COLOR_0C1623,7);
             ABM_D2D_StrokeRound(&g_ui,(float)shortcut.left,(float)shortcut.top,(float)shortcut.right,
-                (float)shortcut.bottom,7.0f,hot?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_223343,0.7f);
-            Txt(dc,shortcuts[i],shortcut,hot?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_91ABBE,g_smallFont,
+                (float)shortcut.bottom,7.0f,hot?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_223343,0.7f);
+            Txt(dc,shortcuts[i],shortcut,hot?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_91ABBE,g_smallFont,
                 DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             /* Quiet dividers reinforce the command groups without adding
                extra hit targets or changing menu order. */
