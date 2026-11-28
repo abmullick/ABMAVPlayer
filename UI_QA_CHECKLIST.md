@@ -51,9 +51,12 @@ Run at 100%, 125%, 150% and 200% Windows display scaling.
 
 - [ ] Main window: restore, maximize, resize, minimize and restore.
 - [ ] Home dashboard: card layout, hover hit targets, labels and icon alignment.
+- [ ] Compare Home Theatre and Media Library logo tiles, header baselines, surface levels and accent restraint against the Main Player.
 - [ ] Playback surface: video remains correctly sized and is not displaced by UI animation.
 - [ ] Playlist drawer and recent-media surface: no clipping, stale selection or off-screen popup.
 - [ ] Settings window: controls remain reachable and labels do not overlap.
+- [ ] Streaming Centre About/Help chrome uses the shared navigation surface and quiet border rule; verify the WebView2 provider page is unaffected.
+- [ ] Torrent Stream, Equalizer, Advanced Settings, Help, About and Licensing retain shared theme colours, DirectWrite typography, focus visibility and readable native inputs.
 - [ ] Torrent Stream: compare ABM / AV PLAYER wordmark font roles, sizes, weights and baseline against Main Player.
 - [ ] Torrent Stream: verify clipped repaint has no flicker, stale regions or repaint loops after resize and restore.
 - [ ] Torrent Stream: inspect magnet input, owner-drawn file list, TV selector, action buttons and all three sliders for shared typography, surface, border, radius and padding.
