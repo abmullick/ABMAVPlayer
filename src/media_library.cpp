@@ -535,10 +535,11 @@ static void DrawButton(LPDRAWITEMSTRUCT d) {
     bool scanButton=d->CtlID==ML_SCAN||d->CtlID==ML_SCAN_ALL;
     bool activeSpinner=scanning&&(int)d->CtlID==g.activeScanButton;
     bool glowing=!scanning&&scanButton&&d->CtlID==g.activeScanButton&&g.scanGlowUntil&&(LONG)(g.scanGlowUntil-GetTickCount())>0;
-    bool primary=scanButton||d->CtlID==ML_PLAY;
+    bool primary=d->CtlID==ML_PLAY;
+    bool secondary=scanButton;
     COLORREF fill=glowing?ABM_THEME_COLOR_311F2B:((scanning&&scanButton&&!activeSpinner)?ABM_UI_COLOR_SURFACE_NAVIGATION:(primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_NAVIGATION));
     ABM_D2D_CanvasFillRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,fill);
-    COLORREF edge=glowing?ABM_UI_COLOR_DANGER:((d->itemState&ODS_FOCUS)?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_BORDER_STRONG);
+    COLORREF edge=glowing?ABM_UI_COLOR_DANGER:((d->itemState&ODS_FOCUS)?ABM_UI_COLOR_FOCUS:((primary||secondary)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG));
     if(glowing)ABM_D2D_CanvasStrokeRound(&g.canvas,0.0f,0.0f,buttonWidth,buttonHeight,12.0f,ABM_UI_COLOR_DANGER,3.0f);
     ABM_D2D_CanvasStrokeRound(&g.canvas,1.0f,1.0f,buttonWidth-1.0f,buttonHeight-1.0f,11.0f,edge,(glowing||(d->itemState&ODS_FOCUS))?2.0f:1.0f);
     if(activeSpinner) {
