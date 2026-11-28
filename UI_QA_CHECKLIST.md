@@ -471,3 +471,11 @@ Do not mark this source pass runtime-validated until the Windows build and visua
 - [ ] Confirm group containers read as a quiet deep-navy surface rather than a grey pill behind every row; the four featured destination cards retain their distinct blue, violet, rose and emerald treatments.
 - [ ] Verify featured titles/subtitles, section labels, hover/focus states and all keyboard shortcuts remain legible.
 - [ ] Test short window heights and scrolling/keyboard navigation; verify no menu rows overlap or become inaccessible.
+
+
+## Canonical ABM brand mark — all native window mastheads
+
+- [ ] Compare Main Player, Streaming Centre, Home Theatre, Media Library and Torrent Stream at the same DPI: logo tile silhouette, dark fill, champagne A strokes, white crossbar/play mark and split wordmark must match.
+- [ ] Verify AV PLAYER is the muted secondary wordmark in every masthead; only the signature A and shared accent rule use the champagne theme accent.
+- [ ] Confirm window-specific subtitles may differ, but the ABM logo geometry, colours and wordmark typography do not.
+- [ ] Check title-bar application icons separately from the larger in-content masthead logo.
