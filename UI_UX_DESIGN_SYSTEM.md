@@ -897,3 +897,15 @@ The existing playback layout, LibVLC child video window, queue, drawer, transpor
 2. Bring Settings and Advanced Settings onto the same surface and control treatment.
 3. Apply the same component language to Home Theatre, Media Library, Streaming Centre and Torrent Stream without forcing provider-owned WebView2 pages into ABM styling.
 4. Implement motion only after each surface has stable layout and component states; DirectComposition work remains a separate, explicitly verified engineering task.
+
+
+## Torrent Stream — shared surface alignment
+
+Source implementation committed:
+- Torrent Stream's TV selector arrow now uses the shared raised surface, secondary-text chevron and standard border/focus tokens; the previous bespoke teal arrow and outline are removed.
+- The owner-drawn file list's GDI fallback now uses the same semantic surface, selection, text, accent and focus tokens as its Direct2D path. This keeps the fallback from reverting to a separate teal palette when the canvas renderer is unavailable.
+- Secondary action buttons use neutral shared borders and text/icon colours. The Stream action remains the single prominent gold primary action; destructive actions retain semantic danger styling.
+- Section headings and utility labels use muted neutral text. Gold remains reserved for the ABM identity, selected progress/accent details and the primary Stream action rather than being repeated on every section label.
+- Download, upload, cache, torrent task, playback, pause/resume, file selection, receiver discovery and casting logic were not intentionally changed.
+
+This is a source-level visual alignment pass, not a completed Torrent Stream redesign. The fixed geometry and existing control layout remain. Windows build and visual/interaction validation are still required before acceptance.
