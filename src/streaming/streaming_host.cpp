@@ -1014,15 +1014,15 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT featuresTitle={32,470,rc.right-32,495};
             InfoText(dc,L"KEY FEATURES",featuresTitle,ABM_UI_COLOR_ACCENT,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT features={32,500,rc.right-32,592};
-            InfoText(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_THEME_COLOR_EBF3FA,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"Local audio and video playback  •  Streaming Centre for YouTube, Netflix, Prime Video, JioHotstar, Sony LIV and ZEE5\nTorrent streaming with persistent caching and background downloading\nGoogle Cast and Android TV casting, including torrent media casting\nIntegrated playlists and audio equalizer",features,ABM_UI_COLOR_TEXT_SECONDARY,13,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT tributeTitle={32,610,rc.right-32,635};
             InfoText(dc,L"IN TRIBUTE TO DENNIS RITCHIE",tributeTitle,ABM_UI_COLOR_ACCENT,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT tribute={32,640,rc.right-32,700};
-            InfoText(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_THEME_COLOR_EBF3FA,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
+            InfoText(dc,L"My homage to Dennis Ritchie, creator of the C programming language and co-creator of Unix. His ideas and work helped shape modern computing and generations of computer science.",tribute,ABM_UI_COLOR_TEXT_SECONDARY,14,400,DT_LEFT|DT_TOP|DT_WORDBREAK);
             RECT stackTitle={32,720,rc.right-32,745};
             InfoText(dc,L"BUILT WITH",stackTitle,ABM_UI_COLOR_ACCENT,11,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT stack={32,750,rc.right-32,790};
-            InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_THEME_COLOR_DDE9F5,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+            InfoText(dc,L"C  •  C++  •  Win32 API  •  LibVLC  •  libtorrent  •  Direct2D  •  DirectWrite  •  Microsoft WebView2",stack,ABM_UI_COLOR_TEXT_SECONDARY,13,500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         }else{
             RECT navLabel={24,124,294,142};InfoText(dc,L"TOPICS",navLabel,ABM_UI_COLOR_TEXT_MUTED,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
             RECT articleLabel={310,124,rc.right-24,142};InfoText(dc,L"ARTICLE",articleLabel,ABM_UI_COLOR_TEXT_MUTED,12,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -1314,17 +1314,17 @@ h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:@TEXT_SECONDARY@;
 </style></head><body><main><div class="mark">A</div><div class="tag">ABM  /  STREAMING CENTRE</div><h1>Your streaming universe</h1><p>Choose a service from the navigation above. Sign in directly on its official website using your own account. Your browser session is stored locally on this Windows profile.</p><p style="font-size:13px;color:@TEXT_MUTED@">Playback availability and protected-video support depend on each streaming provider and the installed Microsoft Edge WebView2 Runtime.</p></main></body></html>)HTML";
 
         ReplaceThemeCssColor(html,L"@BG_TOP@",ThemeCssColor(ABM_UI_COLOR_SURFACE_INTERACTIVE));
-        ReplaceThemeCssColor(html,L"@BG_MID@",ThemeCssColor(ABM_THEME_COLOR_0B1728));
-        ReplaceThemeCssColor(html,L"@BG_BOTTOM@",ThemeCssColor(ABM_THEME_COLOR_080F1C));
-        ReplaceThemeCssColor(html,L"@TEXT@",ThemeCssColor(ABM_THEME_COLOR_EFF6FF));
-        ReplaceThemeCssColor(html,L"@ACCENT@",ThemeCssColor(ABM_THEME_COLOR_239E9B));
-        ReplaceThemeCssColor(html,L"@ACCENT_2@",ThemeCssColor(ABM_THEME_COLOR_397C89));
+        ReplaceThemeCssColor(html,L"@BG_MID@",ThemeCssColor(ABM_UI_COLOR_SURFACE_NAVIGATION));
+        ReplaceThemeCssColor(html,L"@BG_BOTTOM@",ThemeCssColor(ABM_UI_COLOR_BACKGROUND));
+        ReplaceThemeCssColor(html,L"@TEXT@",ThemeCssColor(ABM_UI_COLOR_TEXT));
+        ReplaceThemeCssColor(html,L"@ACCENT@",ThemeCssColor(ABM_UI_COLOR_ACCENT));
+        ReplaceThemeCssColor(html,L"@ACCENT_2@",ThemeCssColor(ABM_UI_COLOR_THEME_ACCENT));
         ReplaceThemeCssColor(html,L"@SHADOW@",ThemeCssColorAlpha(ABM_THEME_COLOR_020811,0x88));
-        ReplaceThemeCssColor(html,L"@TEXT_SECONDARY@",ThemeCssColor(ABM_THEME_COLOR_A9BFD2));
-        ReplaceThemeCssColor(html,L"@BORDER@",ThemeCssColor(ABM_THEME_COLOR_34566B));
-        ReplaceThemeCssColor(html,L"@INPUT@",ThemeCssColor(ABM_THEME_COLOR_102337));
-        ReplaceThemeCssColor(html,L"@ACCENT_BRIGHT@",ThemeCssColor(ABM_THEME_COLOR_9BD4D0));
-        ReplaceThemeCssColor(html,L"@TEXT_MUTED@",ThemeCssColor(ABM_THEME_COLOR_7893AA));
+        ReplaceThemeCssColor(html,L"@TEXT_SECONDARY@",ThemeCssColor(ABM_UI_COLOR_TEXT_SECONDARY));
+        ReplaceThemeCssColor(html,L"@BORDER@",ThemeCssColor(ABM_UI_COLOR_BORDER_STRONG));
+        ReplaceThemeCssColor(html,L"@INPUT@",ThemeCssColor(ABM_UI_COLOR_INPUT));
+        ReplaceThemeCssColor(html,L"@ACCENT_BRIGHT@",ThemeCssColor(ABM_UI_COLOR_ACCENT_BRIGHT));
+        ReplaceThemeCssColor(html,L"@TEXT_MUTED@",ThemeCssColor(ABM_UI_COLOR_TEXT_MUTED));
         g_webView->NavigateToString(html.c_str());
         SetStatus(L"Choose a streaming service above.");
     }
@@ -1342,36 +1342,36 @@ void PaintChrome(HWND hwnd){
         if(dc)DeleteDC(dc);
         dc=paintDc;buffer=nullptr;previousBitmap=nullptr;
     }
-    FillRectColor(dc,rc,ABM_THEME_COLOR_070C15);
+    FillRectColor(dc,rc,ABM_UI_COLOR_BACKGROUND);
     if(g_streamBackgroundCanvasReady&&ABM_D2D_CanvasBegin(&g_streamBackgroundCanvas,dc,&rc)){
         ABM_SkinRenderCanvas(&g_streamBackgroundCanvas,&rc);
         ABM_D2D_CanvasEnd(&g_streamBackgroundCanvas);
     }
 
     /* A taller, clearly separated native chrome keeps the service selector prominent. */
-    RECT header={0,0,rc.right,260};FillRectColor(dc,header,ABM_THEME_COLOR_0B1827);
-    RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,ABM_THEME_COLOR_1F5B69);
-    RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,ABM_THEME_COLOR_30A6A1);
+    RECT header={0,0,rc.right,260};FillRectColor(dc,header,ABM_UI_COLOR_SURFACE_NAVIGATION);
+    RECT topGlow={0,0,rc.right,2};FillRectColor(dc,topGlow,ABM_UI_COLOR_ACCENT_BRIGHT);
+    RECT accent={0,257,rc.right,260};FillRectColor(dc,accent,ABM_UI_COLOR_ACCENT);
 
     /* Use the same signature logo and split wordmark as the main player.
        ABM is the large display face; AV PLAYER is deliberately smaller and
        teal, with the same baseline/offset and palette as the main masthead. */
-    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,ABM_THEME_COLOR_0D1C2D,22);
-    HPEN haloPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_3F97B4);
+    RECT logoHalo={20,7,102,87};Rounded(dc,logoHalo,ABM_UI_COLOR_SURFACE_CARD,22);
+    HPEN haloPen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_ACCENT_BRIGHT);
     HGDIOBJ oldLogoPen=SelectObject(dc,haloPen);
     HGDIOBJ oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoHalo.left,logoHalo.top,logoHalo.right,logoHalo.bottom,22,22);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(haloPen);
-    RECT logo={28,14,94,80};Rounded(dc,logo,ABM_THEME_COLOR_1C9D9D,17);
+    RECT logo={28,14,94,80};Rounded(dc,logo,ABM_UI_COLOR_ACCENT,17);
     RECT logoInset={33,19,89,75};
-    HPEN insetPen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_BEE5FF);oldLogoPen=SelectObject(dc,insetPen);
+    HPEN insetPen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_TEXT_SECONDARY);oldLogoPen=SelectObject(dc,insetPen);
     oldLogoBrush=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,logoInset.left,logoInset.top,logoInset.right,logoInset.bottom,14,14);
     SelectObject(dc,oldLogoBrush);SelectObject(dc,oldLogoPen);DeleteObject(insetPen);
     HPEN markPen=CreatePen(PS_SOLID,3,ABM_UI_COLOR_TEXT);oldLogoPen=SelectObject(dc,markPen);
     MoveToEx(dc,42,63,nullptr);LineTo(dc,59,30);LineTo(dc,76,63);
     SelectObject(dc,oldLogoPen);DeleteObject(markPen);
-    HPEN crossPen=CreatePen(PS_SOLID,2,ABM_THEME_COLOR_E2F5FF);oldLogoPen=SelectObject(dc,crossPen);
+    HPEN crossPen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT_SECONDARY);oldLogoPen=SelectObject(dc,crossPen);
     MoveToEx(dc,49,49,nullptr);LineTo(dc,68,49);
     SelectObject(dc,oldLogoPen);DeleteObject(crossPen);
     HPEN playPen=CreatePen(PS_SOLID,2,ABM_UI_COLOR_TEXT);oldLogoPen=SelectObject(dc,playPen);
