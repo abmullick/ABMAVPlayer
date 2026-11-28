@@ -8640,6 +8640,16 @@ static LRESULT CALLBACK SettingsEditFocusSubclass(HWND edit,UINT msg,WPARAM wp,L
  if(msg==WM_NCDESTROY)RemoveWindowSubclass(edit,SettingsEditFocusSubclass,1);
  return DefSubclassProc(edit,msg,wp,lp);
 }
+/* A preset change is an application-wide event, not just a Windows
+   WM_THEMECHANGED broadcast. Refresh every top-level ABM window on this UI
+   thread so already-open workspaces do not retain stale brushes or chrome. */
+static BOOL CALLBACK ABMThemeRefreshThreadWindow(HWND window,LPARAM) {
+ if(IsWindow(window))SendMessageW(window,WM_THEMECHANGED,0,0);
+ return TRUE;
+}
+static void ABMThemeRefreshThreadWindows(void) {
+ EnumThreadWindows(GetCurrentThreadId(),ABMThemeRefreshThreadWindow,0);
+}
 static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
  switch(msg) {
  case WM_CREATE: {
@@ -8687,6 +8697,7 @@ static LRESULT CALLBACK SettingsWndProc(HWND w,UINT msg,WPARAM wp,LPARAM lp) {
     g_settingsThemePreset=preset;
     ABMThemeApplyPreset((ABMThemePreset)preset);
     SaveThemePreference(preset);
+    ABMThemeRefreshThreadWindows();
     StringCchCopyW(g_settingsMessage,_countof(g_settingsMessage),L"Theme applied and saved.");
     RefreshThemeWindows();
     InvalidateRect(w,NULL,FALSE);
