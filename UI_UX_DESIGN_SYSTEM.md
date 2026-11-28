@@ -821,3 +821,8 @@ The Main Player's custom-rendered brand header and idle-state hero now use the s
 ### Streaming Centre button alignment
 
 Streaming Centre toolbar actions now follow the shared ABM button hierarchy: primary Cast video uses the signature gold fill; Find TVs and navigation controls use neutral raised surfaces with gold focus/hover accents; Fullscreen no longer has a separate teal-filled treatment; Stop TV retains its distinct destructive red treatment. The TV/device panel's primary actions continue to use the shared gold semantic accent. Avoid per-window green/teal primary-button fills unless the colour communicates a specific state (for example, a live receiver/status indicator).
+
+
+### Shared logo gradient
+
+All native ABM window mastheads use the same signature mark treatment: a horizontal gold-to-deep-antique-gold gradient from `ABM_UI_COLOR_ACCENT` to `ABM_THEME_COLOR_66551F`, a consistent rounded-square radius, and a light inset monogram outline. Do not render the logo tile as a flat solid-gold fill in secondary windows. The Main Player, Home Theatre and Streaming Centre should read as the same brand at a glance.
