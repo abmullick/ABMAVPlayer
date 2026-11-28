@@ -2174,12 +2174,12 @@ static void DrawUI(HDC dc,RECT client) {
     RoundBox(dc,trackInner,ABM_THEME_COLOR_1B2735,5);
     RECT prog=trackInner;
     prog.right=prog.left+(prog.right-prog.left)*pos/1000;
-    if(prog.right>prog.left)GradientRound(dc,prog,ABM_THEME_COLOR_36B1A8,ABM_THEME_COLOR_8FD2B8,5);
+    if(prog.right>prog.left)GradientRound(dc,prog,ABM_UI_COLOR_ACCENT,ABM_UI_COLOR_ACCENT_BRIGHT,5);
     int seekThumb=R_SEEK.left+(R_SEEK.right-R_SEEK.left)*pos/1000;
     RECT halo={seekThumb-10,R_SEEK.top-10,seekThumb+10,R_SEEK.bottom+10};
-    RoundBox(dc,halo,ABM_THEME_COLOR_1B4C48,10);
+    RoundBox(dc,halo,ABM_THEME_COLOR_66551F,10);
     RECT dot={seekThumb-5,R_SEEK.top-6,seekThumb+5,R_SEEK.bottom+6};
-    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_D3F4EE,6);
+    GradientRound(dc,dot,ABM_THEME_COLOR_FFFFFF,ABM_THEME_COLOR_FFF0C2,6);
     ABM_D2D_StrokeRound(&g_ui,(float)dot.left,(float)dot.top,(float)dot.right,(float)dot.bottom,6.0f,ABM_UI_COLOR_ACCENT_BRIGHT,1.0f);
 
     /* Control dock */
@@ -2187,19 +2187,19 @@ static void DrawUI(HDC dc,RECT client) {
     RECT dock={dockLeft,client.bottom-144,dockLeft+720,client.bottom-42};
     RECT dockShadow=dock; OffsetRect(&dockShadow,0,8);
     RoundBox(dc,dockShadow,ABM_THEME_COLOR_03070D,32);
-    GradientRound(dc,dock,ABM_THEME_COLOR_11222B,ABM_THEME_COLOR_0F1B27,28);
+    GradientRound(dc,dock,ABM_THEME_COLOR_24232A,ABM_THEME_COLOR_121722,28);
     /* Fine top-edge light gives the transport surface a clear visual boundary. */
     RECT dockTop={dock.left+30,dock.top+1,dock.right-30,dock.top+3};
-    GradientRect(dc,dockTop,ABM_THEME_COLOR_309D97,ABM_THEME_COLOR_5DB097);
-    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_3B696D,1.0f);
+    GradientRect(dc,dockTop,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F);
+    ABM_D2D_StrokeRound(&g_ui,(float)dock.left,(float)dock.top,(float)dock.right,(float)dock.bottom,28.0f,ABM_THEME_COLOR_80652A,1.0f);
     RECT dockRim=dock; InflateRect(&dockRim,-2,-2);
-    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_253D45,0.65f);
+    ABM_D2D_StrokeRound(&g_ui,(float)dockRim.left,(float)dockRim.top,(float)dockRim.right,(float)dockRim.bottom,26.0f,ABM_THEME_COLOR_443A28,0.65f);
     /* Dedicated Now Playing identity block makes the transport dock a real
        player surface rather than a floating row of generic buttons. */
     RECT miniArt={dock.left+17,dock.top+17,dock.left+81,dock.bottom-17};
-    GradientRound(dc,miniArt,ABM_THEME_COLOR_1C8F8B,ABM_THEME_COLOR_347077,14);
+    GradientRound(dc,miniArt,ABM_UI_COLOR_ACCENT,ABM_THEME_COLOR_66551F,14);
     RECT miniInner={miniArt.left+6,miniArt.top+6,miniArt.right-6,miniArt.bottom-6};
-    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_THEME_COLOR_A5DACF,0.85f);
+    ABM_D2D_StrokeRound(&g_ui,(float)miniInner.left,(float)miniInner.top,(float)miniInner.right,(float)miniInner.bottom,9.0f,ABM_UI_COLOR_ACCENT_BRIGHT,0.85f);
     if(g_artworkLoaded)ABM_D2D_DrawImage(&g_ui,(float)miniArt.left+3,(float)miniArt.top+3,(float)miniArt.right-3,(float)miniArt.bottom-3);
     else {
         int mx=(miniArt.left+miniArt.right)/2,my=(miniArt.top+miniArt.bottom)/2;
@@ -2208,23 +2208,23 @@ static void DrawUI(HDC dc,RECT client) {
         DrawLine(dc,mx-7,my+3,mx+7,my+3,ABM_THEME_COLOR_F4FAFF,2);
     }
     RECT nowLabel={miniArt.right+14,dock.top+12,dock.left+346,dock.top+31};
-    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,ABM_THEME_COLOR_6FC2B4,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Txt(dc,g_hasMedia?L"NOW PLAYING  ·  ON THIS DEVICE":L"ABM  ·  YOUR MEDIA SPACE",nowLabel,ABM_UI_COLOR_ACCENT_BRIGHT,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT nowTitle={miniArt.right+14,dock.top+32,dock.left+346,dock.top+59};
     const wchar_t *dockTitle=g_hasMedia?(g_trackTitle[0]?g_trackTitle:L"Playing your selection"):L"Your entertainment, in one place";
     Txt(dc,dockTitle,nowTitle,ABM_THEME_COLOR_F6F9FF,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT nowMeta={miniArt.right+14,dock.top+62,dock.left+346,dock.bottom-9};
     Txt(dc,g_hasMedia?(g_trackArtist[0]?g_trackArtist:L"LOCAL MEDIA"):L"Build a queue or explore your library",nowMeta,ABM_THEME_COLOR_97AEC7,g_smallFont,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     RECT transportDivider={dock.left+360,dock.top+17,dock.left+361,dock.bottom-17};
-    Fill(dc,transportDivider,ABM_THEME_COLOR_2D4447);
+    Fill(dc,transportDivider,ABM_THEME_COLOR_51452E);
     DrawIconButton(dc,R_PREV,5,g_hoverButton==HIT_PREV,FALSE);
     DrawIconButton(dc,R_PLAY,libvlc_media_player_get_state(g_player)==libvlc_Playing?2:1,g_hoverButton==HIT_PLAY,TRUE);
     DrawIconButton(dc,R_NEXT,4,g_hoverButton==HIT_NEXT,FALSE);
     DrawIconButton(dc,R_STOP,3,g_hoverButton==HIT_STOP,FALSE);
     RECT open=R_OPEN;
-    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_2A9D94:ABM_THEME_COLOR_163034,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_4CAE97:ABM_THEME_COLOR_274B48,14);
-    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_7ECDB9:ABM_THEME_COLOR_427069,1.0f);
+    GradientRound(dc,open,(g_hoverButton==HIT_OPEN)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT,(g_hoverButton==HIT_OPEN)?ABM_THEME_COLOR_80652A:ABM_THEME_COLOR_66551F,14);
+    ABM_D2D_StrokeRound(&g_ui,(float)open.left,(float)open.top,(float)open.right,(float)open.bottom,14.0f,(g_hoverButton==HIT_OPEN)?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_THEME_COLOR_80652A,1.0f);
     RECT plus={open.left+14,open.top+4,open.left+37,open.bottom-4};
-    Txt(dc,L"+",plus,ABM_THEME_COLOR_E6F2FF,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    Txt(dc,L"+",plus,ABM_UI_COLOR_TEXT,g_headingFont,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     RECT openText={open.left+39,open.top+2,open.right-8,open.bottom-2};
     Txt(dc,L"Add media",openText,C_TEXT,g_font,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
