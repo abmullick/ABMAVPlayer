@@ -546,8 +546,8 @@ static LRESULT CALLBACK ABMDialogProc(HWND w,UINT m,WPARAM wp,LPARAM lp) {
             RECT msg={44,68,rc.right-24,rc.bottom-74};ABM_D2D_CanvasText(&g_abmDialogCanvas,d->text?d->text:L"",msg,ABM_THEME_COLOR_D7E4F1,ABM_D2D_TEXT_BODY,DT_LEFT|DT_TOP|DT_WORDBREAK|DT_NOPREFIX);
             for(int i=0;i<d->buttonCount;i++){
                 RECT b=d->buttons[i];BOOL primary=(i==d->defaultButton),focused=(i==d->focusedButton);
-                ABM_D2D_CanvasFillRound(&g_abmDialogCanvas,(float)b.left,(float)b.top,(float)b.right,(float)b.bottom,(float)ABM_UI_RADIUS_BUTTON,primary?ABM_THEME_COLOR_187E74:ABM_THEME_COLOR_192737);
-                ABM_D2D_CanvasStrokeRound(&g_abmDialogCanvas,(float)b.left+0.5f,(float)b.top+0.5f,(float)b.right-0.5f,(float)b.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_UI_COLOR_FOCUS:(primary?ABM_THEME_COLOR_44B4A4:ABM_THEME_COLOR_394E63),focused?2.0f:1.0f);
+                ABM_D2D_CanvasFillRound(&g_abmDialogCanvas,(float)b.left,(float)b.top,(float)b.right,(float)b.bottom,(float)ABM_UI_RADIUS_BUTTON,primary?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_SURFACE_RAISED);
+                ABM_D2D_CanvasStrokeRound(&g_abmDialogCanvas,(float)b.left+0.5f,(float)b.top+0.5f,(float)b.right-0.5f,(float)b.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,focused?ABM_UI_COLOR_FOCUS:(primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG),focused?2.0f:1.0f);
                 const wchar_t *label=(d->flags&MB_YESNO)?(i==0?L"Yes":L"No"):L"OK";
                 ABM_D2D_CanvasText(&g_abmDialogCanvas,label,b,ABM_THEME_COLOR_F7FAFF,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
@@ -6325,24 +6325,27 @@ static void TorrentDrawButton(const DRAWITEMSTRUCT *item){
     BOOL focused=(item->itemState&ODS_FOCUS)!=0;
     BOOL disabled=(item->itemState&ODS_DISABLED)!=0;
     int id=GetDlgCtrlID(item->hwndItem);
-    BOOL primary=(id==ID_TORRENT_STREAM||id==ID_TORRENT_CAST_TV||id==ID_TORRENT_ADD_MAGNET);
-    BOOL destructive=(id==ID_TORRENT_REMOVE||id==ID_TORRENT_CLEAR_CACHE);
+    BOOL primary=(id==ID_TORRENT_STREAM);
+    BOOL secondary=(id==ID_TORRENT_ADD_MAGNET||id==ID_TORRENT_CAST_TV||
+                    id==ID_TORRENT_APPLY_LIMITS||id==ID_TORRENT_CACHE_APPLY);
+    BOOL destructive=(id==ID_TORRENT_REMOVE||id==ID_TORRENT_CLEAR_CACHE||id==ID_TORRENT_STOP_TV);
     COLORREF fill,iconColor,textColor,borderColor;
     if(disabled){
         fill=ABM_UI_COLOR_SURFACE_RAISED;iconColor=ABM_UI_COLOR_TEXT_DISABLED;
         textColor=ABM_UI_COLOR_TEXT_DISABLED;borderColor=ABM_UI_COLOR_BORDER;
         hot=FALSE;pressed=FALSE;
     }else if(primary){
-        fill=pressed?ABM_UI_COLOR_ACCENT:ABM_THEME_COLOR_18706F;
+        fill=ABM_UI_COLOR_ACCENT;
         iconColor=ABM_UI_COLOR_TEXT;textColor=ABM_UI_COLOR_TEXT;borderColor=ABM_UI_COLOR_ACCENT_BRIGHT;
     }else if(destructive){
         fill=pressed?ABM_THEME_COLOR_80393F:ABM_THEME_COLOR_41252F;
         iconColor=ABM_THEME_COLOR_FFAEA9;textColor=ABM_THEME_COLOR_FFE7E5;borderColor=ABM_UI_COLOR_DANGER;
     }else{
-        fill=pressed?ABM_THEME_COLOR_305E6F:ABM_UI_COLOR_SURFACE_RAISED;
-        iconColor=ABM_UI_COLOR_ACCENT_BRIGHT;textColor=ABM_UI_COLOR_TEXT_SECONDARY;borderColor=ABM_UI_COLOR_BORDER_STRONG;
+        fill=pressed?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_RAISED;
+        iconColor=ABM_UI_COLOR_TEXT_SECONDARY;textColor=ABM_UI_COLOR_TEXT_SECONDARY;
+        borderColor=secondary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
     }
-    if(hot&&!pressed&&!destructive&&!disabled)fill=TorrentBlend(fill,ABM_UI_COLOR_ACCENT_SOFT,18,100);
+    if(hot&&!pressed&&!destructive&&!disabled)fill=TorrentBlend(fill,ABM_UI_COLOR_SURFACE_INTERACTIVE,28,100);
     BOOL numeric=(id==ID_TORRENT_DOWN_DEC||id==ID_TORRENT_UP_DEC||id==ID_TORRENT_CACHE_DEC||id==ID_TORRENT_DOWN_INC||id==ID_TORRENT_UP_INC||id==ID_TORRENT_CACHE_INC);
     wchar_t caption[128]=L"";if(!numeric)GetWindowTextW(item->hwndItem,caption,(int)_countof(caption));
     if(g_torrentButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_torrentButtonCanvas,item->hDC,&r)){
