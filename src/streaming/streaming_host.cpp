@@ -388,33 +388,33 @@ void DrawDeviceButton(const DRAWITEMSTRUCT *item,const wchar_t *caption,bool pri
     const bool pulse=(item->hwndItem==g_deviceSelect&&g_deviceSelectPulse)||
                      (item->hwndItem==g_deviceLaunch&&g_deviceLaunchPulse);
     COLORREF fill=pulse?(g_devicePulsePhase?ABM_THEME_COLOR_FF911C:ABM_THEME_COLOR_C25310):
-        primary?(pressed?ABM_THEME_COLOR_197065:ABM_THEME_COLOR_185B52):
-        (pressed?ABM_THEME_COLOR_234B5E:ABM_THEME_COLOR_142A3C);
-    COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_THEME_COLOR_41BEA5:ABM_THEME_COLOR_305B71;
+        primary?(pressed?ABM_UI_COLOR_ACCENT:ABM_UI_COLOR_ACCENT):
+        (pressed?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
+    COLORREF edge=pulse?ABM_THEME_COLOR_FFBE52:primary?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_BORDER_STRONG;
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,dc,&r)){
         const float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
-        ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,ABM_THEME_COLOR_0C1D2D);
+        ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,ABM_UI_COLOR_BACKGROUND);
         RECT face={1,1,(LONG)width-1,(LONG)height-1};
         ABM_D2D_CanvasFillRound(&g_streamButtonCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
         ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,0.5f,0.5f,width-0.5f,height-0.5f,(float)ABM_UI_RADIUS_BUTTON,
-            focused?ABM_THEME_COLOR_63E1CD:edge,focused?2.0f:1.0f);
+            focused?ABM_UI_COLOR_FOCUS:edge,focused?2.0f:1.0f);
         wchar_t glyph[2]={DeviceButtonGlyph(item->hwndItem),0};
         RECT icon={7,2,31,(LONG)height-2};
         RECT label={31,2,(LONG)width-6,(LONG)height-2};
-        ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_THEME_COLOR_91E5D5,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
-        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_THEME_COLOR_E5F4FA,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,glyph,icon,ABM_UI_COLOR_ACCENT,ABM_D2D_TEXT_ICON,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,caption,label,ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
         return;
     }
     Rounded(dc,r,fill,ABM_UI_RADIUS_BUTTON);
-    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_THEME_COLOR_63E1CD:edge);
+    HPEN pen=CreatePen(PS_SOLID,focused?2:1,focused?ABM_UI_COLOR_FOCUS:edge);
     HGDIOBJ op=SelectObject(dc,pen),ob=SelectObject(dc,GetStockObject(HOLLOW_BRUSH));
     RoundRect(dc,r.left,r.top,r.right,r.bottom,ABM_UI_RADIUS_BUTTON*2,ABM_UI_RADIUS_BUTTON*2);
     SelectObject(dc,ob);SelectObject(dc,op);DeleteObject(pen);
     RECT icon={r.left+7,r.top+2,r.left+31,r.bottom-2};
-    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),ABM_THEME_COLOR_91E5D5,16);
+    DrawFluentGlyph(dc,icon,DeviceButtonGlyph(item->hwndItem),ABM_UI_COLOR_ACCENT,16);
     RECT label={r.left+31,r.top+2,r.right-6,r.bottom-2};
-    Text(dc,caption,label,ABM_THEME_COLOR_E5F4FA,13,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    Text(dc,caption,label,ABM_UI_COLOR_TEXT_SECONDARY,13,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
 }
 void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     if(!item||item->itemID==(UINT)-1)return;
@@ -424,19 +424,19 @@ void DrawDeviceListItem(const DRAWITEMSTRUCT *item){
     RECT r=item->rcItem;
     if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&r)){
         const float width=(float)(r.right-r.left),height=(float)(r.bottom-r.top);
-        ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+        ABM_D2D_CanvasFill(&g_streamButtonCanvas,0,0,width,height,selected?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
         RECT textRect={9,0,(LONG)width-9,(LONG)height};
-        ABM_D2D_CanvasText(&g_streamButtonCanvas,name,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
-        if(item->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,1,1,width-1,height-1,ABM_UI_RADIUS_CONTROL,ABM_THEME_COLOR_4BBEB8,1.0f);
+        ABM_D2D_CanvasText(&g_streamButtonCanvas,name,textRect,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        if(item->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_streamButtonCanvas,1,1,width-1,height-1,ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
         ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
         return;
     }
-    FillRectColor(item->hDC,r,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+    FillRectColor(item->hDC,r,selected?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
     RECT textRect=r;InflateRect(&textRect,-9,0);
-    Text(item->hDC,name,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,11,selected?700:500,
+    Text(item->hDC,name,textRect,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,11,selected?700:500,
         DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
     if(item->itemState&ODS_FOCUS){
-        HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_4BBEB8);
+        HPEN pen=CreatePen(PS_SOLID,1,ABM_UI_COLOR_FOCUS);
         HGDIOBJ old=SelectObject(item->hDC,pen),brush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
         Rectangle(item->hDC,r.left+1,r.top+1,r.right-1,r.bottom-1);
         SelectObject(item->hDC,brush);SelectObject(item->hDC,old);DeleteObject(pen);
@@ -928,7 +928,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             if(ABM_D2D_CanvasBegin(&g_infoCanvas,d->hDC,&d->rcItem)){
                 COLORREF fill=pressed?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_ACCENT;
                 COLORREF edge=focused?ABM_UI_COLOR_FOCUS:ABM_UI_COLOR_ACCENT_BRIGHT;
-                ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_THEME_COLOR_0C1D2D);
+                ABM_D2D_CanvasFill(&g_infoCanvas,0,0,(float)bounds.right,(float)bounds.bottom,ABM_UI_COLOR_BACKGROUND);
                 RECT face=bounds;InflateRect(&face,-1,-1);
                 ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)face.left,(float)face.top,(float)face.right,(float)face.bottom,(float)ABM_UI_RADIUS_BUTTON,fill);
                 ABM_D2D_CanvasStrokeRound(&g_infoCanvas,0.5f,0.5f,(float)bounds.right-0.5f,(float)bounds.bottom-0.5f,(float)ABM_UI_RADIUS_BUTTON,edge,focused?2.0f:1.0f);
@@ -943,7 +943,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             RECT bounds={0,0,d->rcItem.right-d->rcItem.left,d->rcItem.bottom-d->rcItem.top};
             if(ABM_D2D_CanvasBegin(&g_infoCanvas,d->hDC,&d->rcItem)){
                 RECT row=bounds;InflateRect(&row,-6,-2);
-                ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_THEME_COLOR_163B48:(hot?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE));
+                ABM_D2D_CanvasFillRound(&g_infoCanvas,(float)row.left,(float)row.top,(float)row.right,(float)row.bottom,(float)ABM_UI_RADIUS_CONTROL,selected?ABM_UI_COLOR_SURFACE_INTERACTIVE:(hot?ABM_UI_COLOR_SURFACE_BLUE:ABM_UI_COLOR_SURFACE));
                 RECT textRect=row;textRect.left+=12;textRect.right-=8;
                 ABM_D2D_CanvasText(&g_infoCanvas,label,textRect,selected?ABM_UI_COLOR_ACCENT_BRIGHT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 if(d->itemState&ODS_FOCUS)ABM_D2D_CanvasStrokeRound(&g_infoCanvas,(float)row.left+0.5f,(float)row.top+0.5f,(float)row.right-0.5f,(float)row.bottom-0.5f,(float)ABM_UI_RADIUS_CONTROL,ABM_UI_COLOR_FOCUS,1.0f);
@@ -990,7 +990,7 @@ LRESULT CALLBACK StreamingInfoProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
         if(g_infoAbout){
             if(!g_infoPortrait){
                 RECT fallback={36,102,278,344};InfoRound(dc,fallback,ABM_THEME_COLOR_1B8F91,ABM_UI_RADIUS_CARD);
-                InfoText(dc,L"ABM",fallback,ABM_THEME_COLOR_F5FFFF,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+                InfoText(dc,L"ABM",fallback,ABM_UI_COLOR_TEXT,42,700,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
             }
             RECT product={322,98,rc.right-28,138};
             InfoText(dc,L"ABM AV Player",product,ABM_THEME_COLOR_FFFFFF,25,700,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
@@ -1313,7 +1313,7 @@ main{max-width:780px;padding:52px;text-align:center} .mark{width:62px;height:62p
 h1{font-size:34px;margin:0 0 12px;letter-spacing:-.7px}p{color:@TEXT_SECONDARY@;line-height:1.7;margin:0 auto 28px;max-width:650px}.tag{display:inline-block;border:1px solid @BORDER@;background:@INPUT@;border-radius:999px;padding:8px 14px;color:@ACCENT_BRIGHT@;font-size:12px;letter-spacing:1px}
 </style></head><body><main><div class="mark">A</div><div class="tag">ABM  /  STREAMING CENTRE</div><h1>Your streaming universe</h1><p>Choose a service from the navigation above. Sign in directly on its official website using your own account. Your browser session is stored locally on this Windows profile.</p><p style="font-size:13px;color:@TEXT_MUTED@">Playback availability and protected-video support depend on each streaming provider and the installed Microsoft Edge WebView2 Runtime.</p></main></body></html>)HTML";
 
-        ReplaceThemeCssColor(html,L"@BG_TOP@",ThemeCssColor(ABM_THEME_COLOR_163B48));
+        ReplaceThemeCssColor(html,L"@BG_TOP@",ThemeCssColor(ABM_UI_COLOR_SURFACE_INTERACTIVE));
         ReplaceThemeCssColor(html,L"@BG_MID@",ThemeCssColor(ABM_THEME_COLOR_0B1728));
         ReplaceThemeCssColor(html,L"@BG_BOTTOM@",ThemeCssColor(ABM_THEME_COLOR_080F1C));
         ReplaceThemeCssColor(html,L"@TEXT@",ThemeCssColor(ABM_THEME_COLOR_EFF6FF));
@@ -1395,12 +1395,12 @@ void PaintChrome(HWND hwnd){
     Text(dc,L"STREAMING CENTRE",sub,ABM_THEME_COLOR_9DB1C9,13,600,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
 
     g_helpRect=RECT{318,15,390,55};
-    Rounded(dc,g_helpRect,g_hoverControl==5?ABM_THEME_COLOR_244B5E:ABM_THEME_COLOR_142A3C,9);
+    Rounded(dc,g_helpRect,g_hoverControl==5?ABM_THEME_COLOR_244B5E:ABM_UI_COLOR_SURFACE_NAVIGATION,9);
     DrawFluentGlyph(dc,RECT{g_helpRect.left+3,g_helpRect.top+2,g_helpRect.left+31,g_helpRect.bottom-2},0xE897,ABM_THEME_COLOR_8EE2D3,17);
     RECT helpLabel={g_helpRect.left+29,g_helpRect.top,g_helpRect.right-4,g_helpRect.bottom};
     Text(dc,L"Help",helpLabel,ABM_THEME_COLOR_D2E8F4,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
     g_aboutRect=RECT{398,15,470,55};
-    Rounded(dc,g_aboutRect,g_hoverControl==6?ABM_THEME_COLOR_244B5E:ABM_THEME_COLOR_142A3C,9);
+    Rounded(dc,g_aboutRect,g_hoverControl==6?ABM_THEME_COLOR_244B5E:ABM_UI_COLOR_SURFACE_NAVIGATION,9);
     DrawFluentGlyph(dc,RECT{g_aboutRect.left+3,g_aboutRect.top+2,g_aboutRect.left+31,g_aboutRect.bottom-2},0xE946,ABM_THEME_COLOR_8EE2D3,17);
     RECT aboutLabel={g_aboutRect.left+29,g_aboutRect.top,g_aboutRect.right-4,g_aboutRect.bottom};
     Text(dc,L"About",aboutLabel,ABM_THEME_COLOR_D2E8F4,11,600,DT_CENTER|DT_VCENTER|DT_SINGLELINE);
@@ -1711,7 +1711,7 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
                 ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
                 return TRUE;
             }
-            FillRectColor(item->hDC,r,ABM_THEME_COLOR_0C1D2D);
+            FillRectColor(item->hDC,r,ABM_UI_COLOR_BACKGROUND);
             HPEN pen=CreatePen(PS_SOLID,1,ABM_THEME_COLOR_2B5B70);
             HGDIOBJ oldPen=SelectObject(item->hDC,pen),oldBrush=SelectObject(item->hDC,GetStockObject(HOLLOW_BRUSH));
             RoundRect(item->hDC,r.left,r.top,r.right,r.bottom,ABM_UI_RADIUS_PANEL*2,ABM_UI_RADIUS_PANEL*2);
@@ -1743,14 +1743,14 @@ LRESULT CALLBACK StreamingProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp){
             wchar_t label[256]{};SendMessageW(item->hwndItem,LB_GETTEXT,item->itemID,(LPARAM)label);
             const bool selected=(item->itemState&ODS_SELECTED)!=0;
             if(g_streamButtonCanvasReady&&ABM_D2D_CanvasBegin(&g_streamButtonCanvas,item->hDC,&item->rcItem)){
-                ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)item->rcItem.left,(float)item->rcItem.top,(float)item->rcItem.right,(float)item->rcItem.bottom,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+                ABM_D2D_CanvasFill(&g_streamButtonCanvas,(float)item->rcItem.left,(float)item->rcItem.top,(float)item->rcItem.right,(float)item->rcItem.bottom,selected?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
                 RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
-                ABM_D2D_CanvasText(&g_streamButtonCanvas,label,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                ABM_D2D_CanvasText(&g_streamButtonCanvas,label,textRect,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,ABM_D2D_TEXT_SMALL,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
                 ABM_D2D_CanvasEnd(&g_streamButtonCanvas);
             }else{
-                FillRectColor(item->hDC,item->rcItem,selected?ABM_THEME_COLOR_1D5B67:ABM_THEME_COLOR_0F1F2F);
+                FillRectColor(item->hDC,item->rcItem,selected?ABM_UI_COLOR_SURFACE_INTERACTIVE:ABM_UI_COLOR_SURFACE_NAVIGATION);
                 RECT textRect=item->rcItem;InflateRect(&textRect,-8,0);
-                Text(item->hDC,label,textRect,selected?ABM_THEME_COLOR_F5FFFF:ABM_THEME_COLOR_CFE1ED,10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+                Text(item->hDC,label,textRect,selected?ABM_UI_COLOR_TEXT:ABM_UI_COLOR_TEXT_SECONDARY,10,selected?700:500,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
             }
             return TRUE;
         }
