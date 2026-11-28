@@ -462,3 +462,12 @@ Do not mark this source pass runtime-validated until the Windows build and visua
 - [ ] Scroll Settings to Color Theme and Background Skins; confirm both sections use the same card hierarchy, border, header rule and spacing as the upper Settings sections.
 - [ ] Verify all seven colour themes, all background-skin choices, selection outlines, Save settings, Close and persistence remain functional.
 - [ ] Check the menu at 100%, 125%, 150% and 200% display scaling and with a compact main-player window.
+
+
+## Command Centre — compact menu readability regression
+
+- [ ] At narrow window widths (including approximately 466 px client width), verify all 22 command labels and shortcut hints are fully visible and vertically centred.
+- [ ] Confirm normal command rows use the compact shared small-text format, with no clipped glyphs, labels or shortcut pills.
+- [ ] Confirm group containers read as a quiet deep-navy surface rather than a grey pill behind every row; the four featured destination cards retain their distinct blue, violet, rose and emerald treatments.
+- [ ] Verify featured titles/subtitles, section labels, hover/focus states and all keyboard shortcuts remain legible.
+- [ ] Test short window heights and scrolling/keyboard navigation; verify no menu rows overlap or become inaccessible.
