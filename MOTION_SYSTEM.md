@@ -1,6 +1,6 @@
 # ABM AV Player — Motion System 1.0
 
-**Status:** Phase 0 architecture audit complete; implementation not yet started  
+**Status:** Phase 0 audit complete; DirectComposition implementation remains pending  
 **Baseline:** `main`  
 **Scope:** UI motion and transitions only. Playback, media decoding, casting, Torrent Stream networking and WebView2 behaviour are non-goals.
 
@@ -40,6 +40,16 @@
 - Torrent Stream has a 1 s status/discovery timer. It is operational polling, not a candidate for the shared animation scheduler.
 - Equalizer, Settings, Advanced Settings, Help, About, modal dialogs and popup windows contain their own Win32 procedures and paint paths. Each requires a focused inventory before motion is added.
 - The build is explicitly enumerated in `build.bat`; new C++ motion translation units must be added to both compile and link commands, and the public header must remain C-compatible.
+
+## 2.1 DirectComposition migration boundary (required before implementation)
+
+The current floating drawer and Command Centre are painted into the Main Player's existing Direct2D HWND render target. That target is a single HWND surface; its individual painted regions are not independently addressable DirectComposition visuals. Calling `IDCompositionVisual::SetOpacity` or `SetTransform` on an unrelated visual would not animate those existing panel pixels.
+
+A correct DirectComposition implementation therefore requires a dedicated composition surface for each independently animated panel (or a shared surface with explicit panel subregions), a D3D11/DXGI device, an `IDCompositionDevice`, an HWND composition target and a visual tree. Render panel content into an `IDCompositionSurface` through a Direct2D device context, then animate the panel visual's opacity and transform and commit the composition. The existing main HWND renderer remains responsible for the rest of the player.
+
+Build integration must add and verify the required Windows SDK headers and import libraries (DirectComposition, D3D11 and DXGI) in `build.bat`. The composition tree must be torn down on HWND destruction/device loss and recreated on resize/DPI changes. The LibVLC video child HWND must remain outside the panel visual tree and must not be resized, reparented or covered by an animated transparent surface.
+
+**Do not mark this step complete** until the drawer and Command Centre are actually rendered through their composition visuals and their opacity/translation are driven by the composition engine. A timer-only alpha approximation or a DirectComposition object that is not connected to those panels does not satisfy this requirement.
 
 ## 3. Architectural decision
 
