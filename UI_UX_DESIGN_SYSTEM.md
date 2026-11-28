@@ -748,3 +748,20 @@ ABM AV Player provides eight application-wide background skins in Settings: Clas
 - [x] Apply it to the media drawer and Command Centre.
 - [ ] Build with Windows MSVC and complete runtime/performance checks.
 
+
+
+## Global five-level ABM surface hierarchy
+
+The application-owned UI has one process-wide semantic surface ladder, declared centrally in `src/ui_theme.h` and backed by the shared runtime palette in `src/ui_theme.c`:
+
+| Role | Token | Default |
+|---|---|---|
+| Level 1 — Application background | `ABM_UI_COLOR_BACKGROUND` | `#151820` |
+| Level 2 — Navigation and panels | `ABM_UI_COLOR_SURFACE_NAVIGATION` | `#1D222D` |
+| Level 3 — Cards and containers | `ABM_UI_COLOR_SURFACE_CARD` | `#272E3A` |
+| Level 4 — Hover and active surfaces | `ABM_UI_COLOR_SURFACE_INTERACTIVE` | `#343D4C` |
+| Level 5 — ABM signature accent | `ABM_UI_COLOR_ACCENT` | `#E9B949` |
+
+Legacy semantic aliases resolve to the corresponding new levels so existing modules can migrate without duplicating palette values. The signature gold and all four neutral surface levels are excluded from preset hue transforms. All seven existing selectable presets remain available and can continue to theme secondary decorative colours. Do not add window-local palette globals or hardcoded surface hex values. Every new or revised ABM-owned window must use these global semantic tokens for its surfaces, with the global typography, spacing and radius tokens already defined in the same header.
+
+This is the central token foundation. A repository-wide visual audit, remaining module migration, Windows MSVC build and runtime verification are still required before claiming every existing surface is fully unified.
