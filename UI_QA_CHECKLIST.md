@@ -411,3 +411,17 @@ Do not mark this source pass runtime-validated until the Windows build and visua
 - [ ] Build with the documented MSVC toolchain and visually inspect both windows on Windows before marking this pass complete.
 
 Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
+
+
+## Advanced Equalizer and Video Enhancement Studio — visual regression
+
+- [ ] Verify both floating windows use the shared background skin, surface hierarchy, typography, border and title-bar icon across all seven colour themes.
+- [ ] Equalizer: selected preset uses a soft accent fill and clear accent outline/text; inactive presets remain neutral; slider handles and values remain visible against every theme.
+- [ ] Equalizer: test all ten bands, preamp drag, Flat/Bass/Vocal/Rock/Classical profiles, preference persistence, close/Escape and reopening while media is playing.
+- [ ] Video Enhancement Studio: quick-look selection, all five sliders, double-click reset per slider, mouse wheel, keyboard arrows/Home/End, Tab focus, Reset to Original and Preview Original/Show Adjusted all work.
+- [ ] Verify Reset and Preview controls remain neutral raised actions; hover/focus is visible without a large solid accent fill.
+- [ ] Verify video adjustments are applied only to the active local player and return to the expected original/adjusted state when toggled.
+- [ ] Check resizing, minimum size, title-bar drag region, focus dismissal, 100%, 125%, 150% and 200% display scaling.
+- [ ] Build with the documented MSVC toolchain and inspect both windows on Windows before marking this pass complete.
+
+Do not mark this source pass runtime-validated until the Windows build and visual/interaction checks above pass.
