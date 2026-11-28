@@ -39,6 +39,16 @@ The main issue is not a lack of styling. It is that visual decisions are duplica
 - **Motion is purposeful:** Animation must be short, subtle, interruptible and never compromise playback or input responsiveness.
 - **Preserve native behaviour:** Keyboard access, focus order, text selection, accessibility and familiar Windows interactions take precedence over purely decorative treatment.
 
+## 2A. Secondary-window visual alignment — implementation pass
+
+The Main Player's neutral surface hierarchy is the reference for app-owned workspaces. The current alignment pass carries that visual language into the secondary windows without changing their layout geometry, controls, workflows or media behaviour:
+
+- Home Theatre and Media Library retain the shared ABM wordmark geometry, but their logo tiles now use the same neutral raised/nav surface treatment rather than a gold-filled tile.
+- Streaming Centre About/Help chrome now uses the shared navigation surface and a quiet border rule instead of a full-width gold top bar. Provider-owned WebView2 pages remain untouched.
+- Torrent Stream, Settings, Equalizer, Help, About and Licensing continue to resolve their app-owned surfaces through the central semantic theme tokens. They are not all visually identical: their specialised layouts and controls remain intact.
+
+This is a source-level visual alignment pass, not a claim that every native control has been replaced or that runtime acceptance is complete. Review the remaining specialised windows in the checklist below before release.
+
 ## 3. Shared design tokens
 
 The shared runtime palette is implemented in `src/ui_theme.h` and `src/ui_theme.c`. App-owned native windows resolve their static colors through runtime tokens; the Streaming Centre welcome page resolves its CSS colors from the same palette. Provider-owned WebView2 pages retain provider styling. Procedurally generated media-art colors remain content-driven rather than interface theme colors.
