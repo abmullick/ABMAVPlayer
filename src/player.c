@@ -4743,6 +4743,7 @@ static void PaintFullscreenOverlay(HWND hwnd) {
 }
 static LRESULT CALLBACK FullscreenOverlayProc(HWND hwnd,UINT msg,WPARAM wp,LPARAM lp) {
     HWND owner=GetWindow(hwnd,GW_OWNER);
+    if(msg==WM_THEMECHANGED){PaintFullscreenOverlay(hwnd);return 0;}
     if(msg==WM_PAINT){PAINTSTRUCT ps;BeginPaint(hwnd,&ps);EndPaint(hwnd,&ps);PaintFullscreenOverlay(hwnd);return 0;}
     if(msg==WM_MOUSEMOVE||msg==WM_LBUTTONDOWN||msg==WM_LBUTTONUP){
         POINT pt={GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};MapWindowPoints(hwnd,owner,&pt,1);
